@@ -142,20 +142,24 @@ Completed:
 - homeostatic/social grid loop with grounded teacher and silent control,
 - randomized object placement and masked object-kind observations,
 - tabular Q-learning plumbing baseline,
-- recurrent actor-critic baseline,
+- recurrent actor-critic baseline with PPO-style clipped updates,
 - richer egocentric visible-object observation slots,
 - previous-event observation features,
-- action-conditioned auxiliary prediction heads for next interoceptive state,
-  reward delta, and teacher utterance,
+- deeper recurrent latent core,
+- action-conditioned latent transition head predicting next observation,
+  interoceptive state, reward delta, and teacher utterance,
 - denser viability-weighted training objective and normalized policy
-  advantages.
+  advantages,
+- padded batched rollout updates for longer local sweeps,
+- GAE value targets and bootstrapping for truncated episodes,
+- CLI knobs for larger hidden sizes, PPO epochs, batch size, and grid
+  dimensions.
 
 Not yet passed:
 
 - reliable no-language versus grounded-language separation,
 - reliable ask-then-act discovery in the randomized hidden-kind setting,
-- batched rollout collection,
-- learned latent dynamics/imagination rollouts,
+- latent imagination rollouts trained from the transition model,
 - self-battery evaluation.
 
 Interpretation:
@@ -164,8 +168,9 @@ Prewarming and curriculum learning are not inherently hacks when they use real
 closed-loop trajectories. They are standard ways to make sparse embodied RL
 tractable. But they should come after the environment, observation stream,
 objective, and baseline learner can pass fixed-world and scripted sanity checks.
-The immediate bar is therefore: prove fixed-world resource use, then prove
-teacher utterances add value under matched conditions, then scale randomized
+The immediate bar is therefore: keep proving fixed-world resource use under
+matched silent/grounded conditions, then create a randomized hidden-kind
+diagnostic where teacher utterances are necessary, then scale randomized
 training.
 
 ### Stage 0: Environment Validation

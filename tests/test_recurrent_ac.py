@@ -10,6 +10,8 @@ from homesocial.recurrent_ac import (
     RecurrentConfig,
     action_mask,
     choose_action,
+    collect_episode,
+    pad_trajectories,
     train_condition,
 )
 
@@ -48,11 +50,32 @@ class RecurrentActorCriticTests(unittest.TestCase):
         observations = mx.zeros((5, input_size))
         actions = mx.array([0, 1, 2, 3, 4], dtype=mx.int32)
 
-        needs, rewards, utterances = model.predict_consequences(observations, actions)
+        next_observations, needs, rewards, utterances = model.predict_consequences(
+            observations, actions
+        )
 
+        self.assertEqual(next_observations.shape, (5, input_size))
         self.assertEqual(needs.shape, (5, 4))
         self.assertEqual(rewards.shape, (5,))
         self.assertEqual(utterances.shape[0], 5)
+
+    def test_batched_model_forward_shapes(self):
+        input_size = observation_vector_size()
+        model = RecurrentActorCritic(input_size, hidden_size=16, action_size=8)
+        observations = mx.zeros((2, 5, input_size))
+        actions = mx.zeros((2, 5), dtype=mx.int32)
+
+        logits, values = model(observations)
+        next_observations, needs, rewards, utterances = model.predict_consequences(
+            observations, actions
+        )
+
+        self.assertEqual(logits.shape, (2, 5, 8))
+        self.assertEqual(values.shape, (2, 5))
+        self.assertEqual(next_observations.shape, (2, 5, input_size))
+        self.assertEqual(needs.shape, (2, 5, 4))
+        self.assertEqual(rewards.shape, (2, 5))
+        self.assertEqual(utterances.shape[:2], (2, 5))
 
     def test_choose_action_returns_valid_action_index(self):
         input_size = observation_vector_size()
@@ -82,6 +105,46 @@ class RecurrentActorCriticTests(unittest.TestCase):
         self.assertEqual(mask[4], 0.0)
         self.assertEqual(mask[5], 0.0)
 
+    def test_pad_trajectories_adds_step_mask(self):
+        env = HomeostaticSocialGrid(seed=1, max_steps=8)
+        input_size = observation_vector_size()
+        model = RecurrentActorCritic(input_size, hidden_size=16, action_size=8)
+        rng = np.random.default_rng(1)
+        first = collect_episode(
+            env,
+            model,
+            seed=1,
+            rng=rng,
+            include_language=True,
+            include_object_kinds=False,
+            viability_reward_weight=0.05,
+            train=True,
+        )[0]
+        env.max_steps = 5
+        second = collect_episode(
+            env,
+            model,
+            seed=2,
+            rng=rng,
+            include_language=True,
+            include_object_kinds=False,
+            viability_reward_weight=0.05,
+            train=True,
+        )[0]
+
+        batch = pad_trajectories([first, second], discount=0.99, gae_lambda=0.95)
+
+        self.assertEqual(batch.observations.shape[0], 2)
+        self.assertEqual(batch.next_observations.shape, batch.observations.shape)
+        self.assertEqual(batch.step_masks.shape[0], 2)
+        self.assertEqual(batch.advantages.shape, batch.step_masks.shape)
+        self.assertEqual(batch.value_targets.shape, batch.step_masks.shape)
+        self.assertEqual(batch.old_action_log_probs.shape, batch.step_masks.shape)
+        self.assertEqual(
+            float(mx.sum(batch.step_masks)),
+            len(first.rewards) + len(second.rewards),
+        )
+
     def test_tiny_training_run_completes(self):
         result = train_condition(
             RecurrentConfig(
@@ -91,6 +154,7 @@ class RecurrentActorCriticTests(unittest.TestCase):
                 seed=1,
                 hidden_size=16,
                 max_steps=20,
+                batch_size=2,
             )
         )
 

@@ -43,14 +43,20 @@ PYTHONPATH=src python3 -m homesocial.experiment --episodes 500 --eval-episodes 5
 Run the recurrent actor-critic baseline:
 
 ```bash
-PYTHONPATH=src python3 -m homesocial.recurrent_ac --episodes 500 --eval-episodes 20 --hidden-size 128 --log-every 50
+PYTHONPATH=src python3 -m homesocial.recurrent_ac --episodes 500 --batch-size 16 --ppo-epochs 3 --eval-episodes 20 --hidden-size 128 --log-every 50
 ```
 
 Run a cheaper fixed-world diagnostic before spending time on randomized hidden
 object-kind sweeps:
 
 ```bash
-PYTHONPATH=src python3 -m homesocial.recurrent_ac --episodes 120 --eval-episodes 10 --hidden-size 64 --max-steps 80 --fixed-world --conditions grounded_teacher --log-every 40
+PYTHONPATH=src python3 -m homesocial.recurrent_ac --episodes 120 --batch-size 8 --ppo-epochs 2 --eval-episodes 10 --hidden-size 64 --max-steps 80 --fixed-world --conditions grounded_teacher silent_teacher --log-every 40
+```
+
+Run a larger local sweep once the fixed-world diagnostic is healthy:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.recurrent_ac --episodes 2000 --batch-size 32 --ppo-epochs 3 --eval-episodes 50 --hidden-size 256 --max-steps 160 --conditions grounded_teacher silent_teacher --log-every 100
 ```
 
 ## Test
