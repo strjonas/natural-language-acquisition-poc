@@ -143,6 +143,12 @@ PYTHONPATH=src python3 -m homesocial.interoception --checkpoint runs/bc_stochast
 PYTHONPATH=src python3 -m homesocial.compositional_report --checkpoint runs/bc_stochastic_body.weights.npz --random-model-control
 ```
 
+Train a two-slot discrete message protocol only through receiver decisions:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.emergent_language --checkpoint runs/bc_stochastic_body.weights.npz --feature-mode self_estimate --random-model-control
+```
+
 Run a larger local sweep once the fixed-world diagnostic is healthy:
 
 ```bash

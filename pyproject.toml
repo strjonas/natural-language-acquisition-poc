@@ -22,6 +22,7 @@ homegrid-report-mediation = "homesocial.report_mediation:main"
 homegrid-interoception = "homesocial.interoception:main"
 homegrid-hidden-mediation = "homesocial.hidden_mediation:main"
 homegrid-compositional-report = "homesocial.compositional_report:main"
+homegrid-emergent-language = "homesocial.emergent_language:main"
 
 [build-system]
 requires = ["hatchling"]

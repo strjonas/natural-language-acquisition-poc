@@ -182,6 +182,9 @@ Completed:
   bodily events,
 - compositional reports for inferred need, severity, trend, and calibrated
   confidence; latest cause remains an explicit symbolic field.
+- emergent two-slot discrete messages trained only through another agent's
+  body-relevant use/avoid decision, with balanced social intents and causal
+  message-slot interventions.
 
 Not yet passed:
 
@@ -189,7 +192,8 @@ Not yet passed:
 - stable hidden-report quality across training seeds,
 - learned multi-step cause attribution for bodily events rather than symbolic
   rendering of the latest event,
-- compositional message learning rather than a fixed hand-defined grammar,
+- convention transfer to new receivers and independently trained agents,
+- population-level pressure toward shared, stable message semantics,
 - longer autobiographical memory and cross-episode continuity,
 - reliable ask-then-act discovery in the randomized hidden-kind setting,
 - recurrent PPO learning of the language-necessity diagnostic without

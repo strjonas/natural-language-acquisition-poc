@@ -135,3 +135,29 @@ Recorded deviation:
 - the first stochastic body used additive shocks and did not create a strong
   order requirement; it was rejected and replaced by persistent metabolic
   pressures before the final runs.
+
+## M9 Emergent Message Audit
+
+Date: 2026-06-25
+
+Message constraints:
+
+- two categorical slots,
+- three symbols per slot,
+- no direct message-label supervision,
+- sender receives only the learned predicted body state,
+- receiver receives only message and object kind.
+
+Gates:
+
+- balanced decision accuracy above `0.80`,
+- all four social intents represented in the learned codebook,
+- shuffling both slots reduces decision accuracy by at least `0.10`,
+- natural-world mediation precision above `0.75` on two body-model seeds,
+- latest-only history mediation precision below full history.
+
+Recorded deviation:
+
+- natural-frequency training omitted a stable food symbol. Intent-balanced
+  sender/receiver training was introduced; natural-world mediation remained
+  unchanged.
