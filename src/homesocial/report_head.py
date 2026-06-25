@@ -17,10 +17,12 @@ from .attribution import (
     _attribution_features,
     _clone_env,
     _needs_array,
+    attribution_feature_layout,
 )
 from .env import Action, HomeostaticSocialGrid
 from .imitation import load_checkpoint
 from .observations import observation_vector
+from .observations import observation_vector_size
 from .recurrent_ac import (
     RecurrentActorCritic,
     RecurrentConfig,
@@ -39,6 +41,7 @@ CONSEQUENCE_LABELS = (
     "safety_down",
     "no_major_change",
 )
+REPORT_FEATURE_MODES = ("internal", "hidden", "full")
 
 
 @dataclass(frozen=True)
@@ -60,6 +63,14 @@ class ReportResult:
     rendered_examples: tuple[str, ...]
 
 
+@dataclass(frozen=True)
+class TrainedSelfReport:
+    report: SelfReportHead
+    feature_mean: mx.array
+    feature_std: mx.array
+    train_samples: int
+
+
 class SelfReportHead(nn.Module):
     def __init__(self, input_size: int, hidden_size: int = 96) -> None:
         super().__init__()
@@ -73,6 +84,76 @@ class SelfReportHead(nn.Module):
         x = nn.relu(self.input(features))
         x = x + nn.relu(self.hidden(x))
         return self.need(x), self.cause(x), self.consequence(x)
+
+
+def report_feature_indices(hidden_size: int, mode: str) -> np.ndarray:
+    if mode not in REPORT_FEATURE_MODES:
+        raise ValueError(f"Unknown report feature mode: {mode}.")
+    layout = attribution_feature_layout(hidden_size)
+    if mode == "full":
+        return np.arange(layout.size)
+    hidden = np.arange(layout.hidden.start, layout.hidden.stop)
+    if mode == "hidden":
+        return hidden
+    return np.concatenate(
+        [
+            hidden,
+            np.arange(layout.predicted_delta.start, layout.predicted_delta.stop),
+            np.arange(layout.predicted_reward.start, layout.predicted_reward.stop),
+        ]
+    )
+
+
+def project_report_dataset(
+    dataset: ReportDataset,
+    indices: np.ndarray | list[int] | tuple[int, ...],
+) -> ReportDataset:
+    mx_indices = mx.array(np.asarray(indices), dtype=mx.int32)
+    return ReportDataset(
+        features=dataset.features[:, mx_indices],
+        need_labels=dataset.need_labels,
+        cause_labels=dataset.cause_labels,
+        consequence_labels=dataset.consequence_labels,
+    )
+
+
+def internal_report_features(
+    model: RecurrentActorCritic,
+    obs_vectors: list[np.ndarray],
+    action_index: int,
+    *,
+    current_needs: np.ndarray,
+) -> np.ndarray:
+    observations = mx.array(np.stack(obs_vectors), dtype=mx.float32)
+    hidden = np.asarray(model.hidden_states(observations)[-1], dtype=np.float32)
+    actions = np.zeros(len(obs_vectors), dtype=np.int32)
+    actions[-1] = action_index
+    _next_observations, predicted_needs, predicted_rewards, _utterances = (
+        model.predict_consequences(observations, mx.array(actions, dtype=mx.int32))
+    )
+    predicted_next_needs = np.asarray(predicted_needs[-1], dtype=np.float32)
+    predicted_reward = np.asarray(
+        [float(np.asarray(predicted_rewards[-1]))],
+        dtype=np.float32,
+    )
+    return np.concatenate(
+        [
+            hidden,
+            predicted_next_needs - current_needs,
+            predicted_reward,
+        ]
+    )
+
+
+def predict_report(
+    trained: TrainedSelfReport,
+    features: np.ndarray,
+) -> tuple[int, int, int]:
+    normalized = (
+        mx.array(features[None, :], dtype=mx.float32) - trained.feature_mean
+    ) / trained.feature_std
+    need, cause, consequence = _predict(trained.report, normalized)
+    return int(need[0]), int(cause[0]), int(consequence[0])
 
 
 def collect_report_dataset(
@@ -200,11 +281,32 @@ def train_and_evaluate_report_head(
     learning_rate: float = 1e-3,
     seed: int = 1,
     examples: int = 5,
+    balance_need_classes: bool = False,
 ) -> ReportResult:
+    trained = train_report_head(
+        train_dataset,
+        hidden_size=hidden_size,
+        epochs=epochs,
+        batch_size=batch_size,
+        learning_rate=learning_rate,
+        seed=seed,
+        balance_need_classes=balance_need_classes,
+    )
+    return evaluate_report_head(trained, eval_dataset, examples=examples)
+
+
+def train_report_head(
+    train_dataset: ReportDataset,
+    *,
+    hidden_size: int = 96,
+    epochs: int = 24,
+    batch_size: int = 128,
+    learning_rate: float = 1e-3,
+    seed: int = 1,
+    balance_need_classes: bool = False,
+) -> TrainedSelfReport:
     if train_dataset.features.shape[0] == 0:
         raise ValueError("Cannot train report head on an empty dataset.")
-    if eval_dataset.features.shape[0] == 0:
-        raise ValueError("Cannot evaluate report head on an empty dataset.")
 
     rng = np.random.default_rng(seed)
     mx.random.seed(seed)
@@ -218,7 +320,11 @@ def train_and_evaluate_report_head(
         + 1e-6
     )
     train_features = (train_dataset.features - feature_mean) / feature_std
-    eval_features = (eval_dataset.features - feature_mean) / feature_std
+    need_class_weights = (
+        _class_weights(train_dataset.need_labels, len(NEED_LABELS))
+        if balance_need_classes
+        else None
+    )
 
     def loss_fn(
         features: mx.array,
@@ -228,7 +334,7 @@ def train_and_evaluate_report_head(
     ) -> mx.array:
         need_logits, cause_logits, consequence_logits = report(features)
         return (
-            _cross_entropy(need_logits, need_labels)
+            _cross_entropy(need_logits, need_labels, class_weights=need_class_weights)
             + _cross_entropy(cause_logits, cause_labels)
             + _cross_entropy(consequence_logits, consequence_labels)
         )
@@ -248,8 +354,38 @@ def train_and_evaluate_report_head(
             optimizer.update(report, grads)
             mx.eval(report.parameters(), optimizer.state, loss)
 
+    return TrainedSelfReport(
+        report=report,
+        feature_mean=feature_mean,
+        feature_std=feature_std,
+        train_samples=sample_count,
+    )
+
+
+def evaluate_report_head(
+    trained: TrainedSelfReport,
+    eval_dataset: ReportDataset,
+    *,
+    examples: int = 5,
+    ablate_indices: np.ndarray | list[int] | tuple[int, ...] | None = None,
+) -> ReportResult:
+    if eval_dataset.features.shape[0] == 0:
+        raise ValueError("Cannot evaluate report head on an empty dataset.")
+
+    eval_features = eval_dataset.features
+    if ablate_indices is not None and len(ablate_indices) > 0:
+        indices = mx.array(np.asarray(ablate_indices), dtype=mx.int32)
+        eval_features = mx.array(np.asarray(eval_features), dtype=mx.float32)
+        eval_features[:, indices] = mx.broadcast_to(
+            trained.feature_mean[:, indices],
+            (eval_features.shape[0], len(ablate_indices)),
+        )
+    eval_features = (
+        eval_features - trained.feature_mean
+    ) / trained.feature_std
+
     need_predictions, cause_predictions, consequence_predictions = _predict(
-        report,
+        trained.report,
         eval_features,
     )
     need_labels = np.asarray(eval_dataset.need_labels)
@@ -269,7 +405,7 @@ def train_and_evaluate_report_head(
         for index in range(min(examples, len(need_predictions)))
     )
     return ReportResult(
-        train_samples=sample_count,
+        train_samples=trained.train_samples,
         eval_samples=int(eval_dataset.features.shape[0]),
         need_accuracy=float(np.mean(need_predictions == need_labels)),
         cause_accuracy=float(np.mean(cause_predictions == cause_labels)),
@@ -430,10 +566,31 @@ def _build_report_dataset(
     )
 
 
-def _cross_entropy(logits: mx.array, labels: mx.array) -> mx.array:
+def _cross_entropy(
+    logits: mx.array,
+    labels: mx.array,
+    *,
+    class_weights: mx.array | None = None,
+) -> mx.array:
     log_probs = logits - mx.logsumexp(logits, axis=-1, keepdims=True)
     one_hot = mx.eye(logits.shape[-1])[labels]
-    return -mx.mean(mx.sum(log_probs * one_hot, axis=-1))
+    losses = -mx.sum(log_probs * one_hot, axis=-1)
+    if class_weights is not None:
+        losses = losses * class_weights[labels]
+    return mx.mean(losses)
+
+
+def _class_weights(labels: mx.array, class_count: int) -> mx.array:
+    counts = np.bincount(
+        np.asarray(labels, dtype=np.int32),
+        minlength=class_count,
+    ).astype(np.float32)
+    present = counts > 0
+    weights = np.zeros(class_count, dtype=np.float32)
+    weights[present] = counts[present].sum() / (
+        float(np.sum(present)) * counts[present]
+    )
+    return mx.array(weights, dtype=mx.float32)
 
 
 def _predict(report: SelfReportHead, features: mx.array) -> tuple[np.ndarray, ...]:
@@ -448,6 +605,18 @@ def _predict(report: SelfReportHead, features: mx.array) -> tuple[np.ndarray, ..
 def main() -> None:
     args = _parse_args()
     model, config = load_checkpoint(args.checkpoint)
+    model_control = "trained"
+    if args.random_model_control:
+        mx.random.seed(args.seed)
+        model = RecurrentActorCritic(
+            observation_vector_size(
+                include_language=config.include_language_channel,
+                include_object_kinds=config.include_object_kinds,
+            ),
+            config.hidden_size,
+            len(Action),
+        )
+        model_control = "random"
     train_dataset = collect_report_dataset(
         model,
         config,
@@ -457,8 +626,11 @@ def main() -> None:
         rollout_policy=args.rollout_policy,
         max_samples=args.max_train_samples,
     )
+    feature_indices = report_feature_indices(config.hidden_size, args.feature_mode)
+    train_dataset = project_report_dataset(train_dataset, feature_indices)
     print(
-        "eval_teacher_mode,train_samples,eval_samples,need_accuracy,cause_accuracy,consequence_accuracy,exact_match,examples"
+        "model_control,feature_mode,eval_teacher_mode,train_samples,eval_samples,need_accuracy,"
+        "cause_accuracy,consequence_accuracy,exact_match,examples"
     )
     for mode in args.eval_teacher_modes:
         eval_dataset = collect_report_dataset(
@@ -470,6 +642,7 @@ def main() -> None:
             rollout_policy=args.rollout_policy,
             max_samples=args.max_eval_samples,
         )
+        eval_dataset = project_report_dataset(eval_dataset, feature_indices)
         result = train_and_evaluate_report_head(
             train_dataset,
             eval_dataset,
@@ -483,6 +656,8 @@ def main() -> None:
         print(
             ",".join(
                 [
+                    model_control,
+                    args.feature_mode,
                     mode,
                     str(result.train_samples),
                     str(result.eval_samples),
@@ -510,6 +685,12 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--learning-rate", type=float, default=1e-3)
     parser.add_argument("--teacher-mode", choices=TEACHER_MODES, default="grounded")
     parser.add_argument(
+        "--feature-mode",
+        choices=REPORT_FEATURE_MODES,
+        default="internal",
+        help="Restrict reports to recurrent/internal consequence features by default.",
+    )
+    parser.add_argument(
         "--eval-teacher-modes",
         nargs="+",
         choices=TEACHER_MODES,
@@ -521,6 +702,11 @@ def _parse_args() -> argparse.Namespace:
         default="teacher",
     )
     parser.add_argument("--examples", type=int, default=3)
+    parser.add_argument(
+        "--random-model-control",
+        action="store_true",
+        help="Use the checkpoint configuration with freshly initialized model weights.",
+    )
     return parser.parse_args()
 
 

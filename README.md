@@ -91,6 +91,31 @@ Train and evaluate the structured self-report head:
 PYTHONPATH=src python3 -m homesocial.report_head --checkpoint runs/cf_homegrid.weights.npz --eval-teacher-modes grounded masked shuffled wrong
 ```
 
+The default report input is restricted to recurrent state plus the model's own
+action-conditioned need/reward predictions. Run the anti-shortcut calibration
+suite before interpreting report accuracy:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.report_calibration --checkpoint runs/cf_homegrid.weights.npz
+```
+
+Compare against an untrained recurrent/consequence representation with:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.report_head --checkpoint runs/cf_homegrid.weights.npz --random-model-control
+```
+
+Test whether truthful need reports are causally useful to a teacher that cannot
+inspect the agent's needs:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.report_mediation --checkpoint runs/cf_homegrid.weights.npz
+```
+
+This triage gate validates causal communication, not learned-model necessity.
+Use `--random-model-control` to expose the current direct-interoception
+shortcut.
+
 Run a larger local sweep once the fixed-world diagnostic is healthy:
 
 ```bash

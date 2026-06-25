@@ -165,11 +165,19 @@ Completed:
 - viability-rank training over branched action choices,
 - causal-attribution probe over frozen recurrent/consequence features,
 - initial structured self-report head for need, cause, and consequence reports.
+- anti-parrot calibration with majority/shuffled-label controls, random-model
+  comparison, and recurrent/consequence feature ablations,
+- restricted self-report path that excludes current needs, observed outcomes,
+  action identity, and teacher-presence shortcuts.
+- report-mediated social triage where emitted need reports causally change
+  teacher advice, action, and homeostatic outcome.
 
 Not yet passed:
 
 - free-form reflective language generation,
-- anti-parrot report calibration with shuffled labels and latent ablations,
+- learned-model necessity for need reports; a random representation still
+  passes while exact needs are directly observable,
+- hidden/noisy interoception requiring recurrent self-state inference,
 - reliable ask-then-act discovery in the randomized hidden-kind setting,
 - recurrent PPO learning of the language-necessity diagnostic without
   curriculum or imitation warmstart,

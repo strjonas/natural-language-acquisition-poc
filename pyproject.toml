@@ -17,6 +17,8 @@ homegrid-self-battery = "homesocial.self_battery:main"
 homegrid-counterfactual = "homesocial.counterfactual:main"
 homegrid-attribution = "homesocial.attribution:main"
 homegrid-report = "homesocial.report_head:main"
+homegrid-report-calibration = "homesocial.report_calibration:main"
+homegrid-report-mediation = "homesocial.report_mediation:main"
 
 [build-system]
 requires = ["hatchling"]

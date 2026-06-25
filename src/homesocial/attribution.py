@@ -44,6 +44,21 @@ class AttributionResult:
     confusion: tuple[tuple[int, ...], ...]
 
 
+@dataclass(frozen=True)
+class AttributionFeatureLayout:
+    hidden: slice
+    action: slice
+    current_needs: slice
+    observed_delta: slice
+    predicted_delta: slice
+    mismatch: slice
+    observed_reward: slice
+    predicted_reward: slice
+    reward_mismatch: slice
+    teacher_utterance_present: slice
+    size: int
+
+
 class AttributionProbe(nn.Module):
     def __init__(self, input_size: int, hidden_size: int = 64) -> None:
         super().__init__()
@@ -55,6 +70,30 @@ class AttributionProbe(nn.Module):
         x = nn.relu(self.input(features))
         x = x + nn.relu(self.hidden(x))
         return self.output(x)
+
+
+def attribution_feature_layout(hidden_size: int) -> AttributionFeatureLayout:
+    start = 0
+
+    def take(width: int) -> slice:
+        nonlocal start
+        result = slice(start, start + width)
+        start += width
+        return result
+
+    return AttributionFeatureLayout(
+        hidden=take(hidden_size),
+        action=take(len(Action)),
+        current_needs=take(4),
+        observed_delta=take(4),
+        predicted_delta=take(4),
+        mismatch=take(4),
+        observed_reward=take(1),
+        predicted_reward=take(1),
+        reward_mismatch=take(1),
+        teacher_utterance_present=take(1),
+        size=start,
+    )
 
 
 def collect_attribution_dataset(
