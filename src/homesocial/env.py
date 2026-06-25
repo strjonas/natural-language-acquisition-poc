@@ -41,6 +41,9 @@ DELTAS = {
 STANDARD_MODE = "standard"
 LANGUAGE_NECESSARY_MODE = "language_necessary"
 DIAGNOSTIC_MODES = (STANDARD_MODE, LANGUAGE_NECESSARY_MODE)
+DETERMINISTIC_BODY = "deterministic"
+STOCHASTIC_BODY = "stochastic"
+BODY_DYNAMICS_MODES = (DETERMINISTIC_BODY, STOCHASTIC_BODY)
 
 
 @dataclass(frozen=True)
@@ -149,11 +152,14 @@ class HomeostaticSocialGrid:
         teacher: SituatedTeacher | None = None,
         randomize_world: bool = False,
         diagnostic_mode: str = STANDARD_MODE,
+        body_dynamics_mode: str = DETERMINISTIC_BODY,
     ) -> None:
         if width < 5 or height < 5:
             raise ValueError("Grid must be at least 5x5.")
         if diagnostic_mode not in DIAGNOSTIC_MODES:
             raise ValueError(f"Unknown diagnostic mode: {diagnostic_mode}.")
+        if body_dynamics_mode not in BODY_DYNAMICS_MODES:
+            raise ValueError(f"Unknown body dynamics mode: {body_dynamics_mode}.")
 
         self.width = width
         self.height = height
@@ -162,12 +168,19 @@ class HomeostaticSocialGrid:
         self.teacher = teacher or SituatedTeacher()
         self.randomize_world = randomize_world
         self.diagnostic_mode = diagnostic_mode
+        self.body_dynamics_mode = body_dynamics_mode
 
         self.step_count = 0
         self.agent_pos = (1, 1)
         self.direction = Direction.EAST
         self.needs = Needs()
         self.objects: list[WorldObject] = []
+        self.body_strain = 0.0
+        self.food_pressure = 0.0
+        self.water_pressure = 0.0
+        self.food_metabolism = 0.01
+        self.water_metabolism = 0.014
+        self.energy_metabolism = 1.0
 
     def reset(self, seed: int | None = None) -> Observation:
         if seed is not None:
@@ -177,6 +190,17 @@ class HomeostaticSocialGrid:
         self.agent_pos = (1, 1)
         self.direction = Direction.EAST
         self.needs = Needs()
+        self.body_strain = 0.0
+        self.food_pressure = 0.0
+        self.water_pressure = 0.0
+        if self.body_dynamics_mode == STOCHASTIC_BODY:
+            self.food_metabolism = self.rng.uniform(0.007, 0.015)
+            self.water_metabolism = self.rng.uniform(0.010, 0.020)
+            self.energy_metabolism = self.rng.uniform(0.75, 1.35)
+        else:
+            self.food_metabolism = 0.01
+            self.water_metabolism = 0.014
+            self.energy_metabolism = 1.0
         self.objects = self._make_default_world()
         return self._observe(None, None)
 
@@ -189,11 +213,12 @@ class HomeostaticSocialGrid:
         before = self.needs.mean_viability()
         event = self._apply_action(action)
         self._apply_metabolism(action)
+        body_event = self._apply_stochastic_body_event()
         self.needs = self.needs.clipped()
 
         obj_ahead = self.object_ahead()
         utterance = self.teacher.respond(action, obj_ahead, self.needs, event)
-        obs = self._observe(utterance, event)
+        obs = self._observe(utterance, body_event or event)
 
         after = self.needs.mean_viability()
         reward = after - before
@@ -202,6 +227,7 @@ class HomeostaticSocialGrid:
         truncated = self.step_count >= self.max_steps
         info = {
             "event": event,
+            "body_event": body_event,
             "viability": self.needs.viability(),
             "mean_viability": self.needs.mean_viability(),
         }
@@ -352,13 +378,64 @@ class HomeostaticSocialGrid:
         elif action == Action.REST:
             energy_cost = -0.02
 
+        if self.body_dynamics_mode == STOCHASTIC_BODY:
+            if action == Action.MOVE_FORWARD:
+                self.body_strain = min(1.0, 0.72 * self.body_strain + 0.22)
+            elif action == Action.REST:
+                self.body_strain = max(0.0, 0.30 * self.body_strain - 0.08)
+            else:
+                self.body_strain *= 0.90
+            energy_cost = (
+                energy_cost * self.energy_metabolism
+                + 0.045 * self.body_strain
+                + 0.018 * self.body_strain**2
+            )
+
+        food_cost = self.food_metabolism
+        water_cost = self.water_metabolism
+        if self.body_dynamics_mode == STOCHASTIC_BODY:
+            food_cost *= 1.0 + 1.4 * self.food_pressure
+            water_cost *= 1.0 + 1.4 * self.water_pressure
+            self.food_pressure *= 0.82
+            self.water_pressure *= 0.82
+
         self.needs = replace(
             self.needs,
-            food=self.needs.food - 0.01,
-            water=self.needs.water - 0.014,
+            food=self.needs.food - food_cost,
+            water=self.needs.water - water_cost,
             energy=self.needs.energy - energy_cost,
             safety=self.needs.safety - 0.002,
         )
+
+    def _apply_stochastic_body_event(self) -> str | None:
+        if self.body_dynamics_mode != STOCHASTIC_BODY:
+            return None
+        if self.rng.random() >= 0.18:
+            return None
+
+        draw = self.rng.random()
+        if draw < 0.28:
+            self.food_pressure = min(1.0, self.food_pressure + 0.65)
+            self.needs = replace(self.needs, food=self.needs.food - 0.03)
+            return "body_hunger"
+        if draw < 0.56:
+            self.water_pressure = min(1.0, self.water_pressure + 0.65)
+            self.needs = replace(self.needs, water=self.needs.water - 0.04)
+            return "body_thirst"
+        if draw < 0.84:
+            self.body_strain = min(1.0, self.body_strain + 0.25)
+            self.needs = replace(self.needs, energy=self.needs.energy - 0.10)
+            return "body_fatigue"
+
+        self.body_strain = max(0.0, self.body_strain - 0.35)
+        self.food_pressure *= 0.45
+        self.water_pressure *= 0.45
+        self.needs = replace(
+            self.needs,
+            energy=self.needs.energy + 0.06,
+            safety=self.needs.safety + 0.03,
+        )
+        return "body_recovery"
 
     def _observe(self, utterance: str | None, event: str | None) -> Observation:
         return Observation(

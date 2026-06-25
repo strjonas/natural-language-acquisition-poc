@@ -13,6 +13,8 @@ import mlx.optimizers as optim
 import numpy as np
 
 from .env import (
+    BODY_DYNAMICS_MODES,
+    DETERMINISTIC_BODY,
     DIAGNOSTIC_MODES,
     STANDARD_MODE,
     Action,
@@ -105,6 +107,7 @@ class RecurrentConfig:
     randomize_world: bool = True
     include_object_kinds: bool = False
     interoception_mode: str = EXACT_INTEROCEPTION
+    body_dynamics_mode: str = DETERMINISTIC_BODY
     diagnostic_mode: str = STANDARD_MODE
     batch_size: int = 16
     log_every: int = 0
@@ -129,6 +132,7 @@ def train_condition(config: RecurrentConfig) -> TrainResult:
     input_size = observation_vector_size(
         include_language=config.include_language_channel,
         include_object_kinds=config.include_object_kinds,
+        body_dynamics_mode=config.body_dynamics_mode,
     )
     model = RecurrentActorCritic(input_size, config.hidden_size, len(Action))
     if config.init_from is not None:
@@ -144,6 +148,7 @@ def train_condition(config: RecurrentConfig) -> TrainResult:
         teacher=teacher,
         randomize_world=config.randomize_world,
         diagnostic_mode=config.diagnostic_mode,
+        body_dynamics_mode=config.body_dynamics_mode,
     )
 
     train_stats: list[EpisodeStats] = []
@@ -163,6 +168,7 @@ def train_condition(config: RecurrentConfig) -> TrainResult:
                 mask_language=mask_language,
                 include_object_kinds=config.include_object_kinds,
                 interoception_mode=config.interoception_mode,
+                body_dynamics_mode=config.body_dynamics_mode,
                 viability_reward_weight=config.viability_reward_weight,
                 train=True,
             )
@@ -272,6 +278,7 @@ def train_condition(config: RecurrentConfig) -> TrainResult:
             mask_language=mask_language,
             include_object_kinds=config.include_object_kinds,
             interoception_mode=config.interoception_mode,
+            body_dynamics_mode=config.body_dynamics_mode,
             viability_reward_weight=config.viability_reward_weight,
             train=False,
         )[1]
@@ -431,6 +438,7 @@ def collect_episode(
     mask_language: bool = False,
     include_object_kinds: bool = False,
     interoception_mode: str = EXACT_INTEROCEPTION,
+    body_dynamics_mode: str = DETERMINISTIC_BODY,
     viability_reward_weight: float,
     train: bool,
 ) -> tuple[Trajectory, EpisodeStats]:
@@ -465,6 +473,7 @@ def collect_episode(
             mask_language=mask_language,
             include_object_kinds=include_object_kinds,
             interoception_mode=interoception_mode,
+            body_dynamics_mode=body_dynamics_mode,
         )
         obs_vectors.append(vector)
         mask = action_mask(observation)
@@ -491,6 +500,7 @@ def collect_episode(
                 mask_language=mask_language,
                 include_object_kinds=include_object_kinds,
                 interoception_mode=interoception_mode,
+                body_dynamics_mode=body_dynamics_mode,
             )
         )
 
@@ -535,6 +545,7 @@ def collect_episode(
             mask_language=mask_language,
             include_object_kinds=include_object_kinds,
             interoception_mode=interoception_mode,
+            body_dynamics_mode=body_dynamics_mode,
         )
         _, final_values = model(
             mx.array(np.concatenate([np.stack(obs_vectors), final_vector[None, :]]))
@@ -759,6 +770,7 @@ def main() -> None:
             randomize_world=args.randomize_world,
             include_object_kinds=args.include_object_kinds,
             interoception_mode=args.interoception_mode,
+            body_dynamics_mode=args.body_dynamics_mode,
             diagnostic_mode=args.diagnostic_mode,
             batch_size=args.batch_size,
             max_steps=args.max_steps,
@@ -837,6 +849,12 @@ def _parse_args() -> argparse.Namespace:
         choices=INTEROCEPTION_MODES,
         default=EXACT_INTEROCEPTION,
         help="Use exact need levels or hide them while preserving input shape.",
+    )
+    parser.add_argument(
+        "--body-dynamics-mode",
+        choices=BODY_DYNAMICS_MODES,
+        default=DETERMINISTIC_BODY,
+        help="Use deterministic metabolism or hidden stochastic nonlinear body dynamics.",
     )
     parser.add_argument(
         "--conditions",

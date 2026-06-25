@@ -2,6 +2,7 @@ import unittest
 
 from homesocial.env import (
     LANGUAGE_NECESSARY_MODE,
+    STOCHASTIC_BODY,
     Action,
     Direction,
     HomeostaticSocialGrid,
@@ -84,6 +85,32 @@ class HomeostaticSocialGridTests(unittest.TestCase):
         self.assertEqual(info["event"], "consumed_danger")
         self.assertLess(obs.needs.safety, before)
         self.assertEqual(obs.teacher_utterance, "danger hurts you")
+
+    def test_stochastic_body_is_seeded_and_action_order_dependent(self):
+        first = HomeostaticSocialGrid(
+            seed=7,
+            body_dynamics_mode=STOCHASTIC_BODY,
+        )
+        second = HomeostaticSocialGrid(
+            seed=7,
+            body_dynamics_mode=STOCHASTIC_BODY,
+        )
+        first.reset(seed=7)
+        second.reset(seed=7)
+
+        self.assertEqual(first.food_metabolism, second.food_metabolism)
+        self.assertEqual(first.water_metabolism, second.water_metabolism)
+        self.assertEqual(first.energy_metabolism, second.energy_metabolism)
+
+        first._apply_metabolism(Action.MOVE_FORWARD)
+        first._apply_metabolism(Action.MOVE_FORWARD)
+        first._apply_metabolism(Action.REST)
+        second._apply_metabolism(Action.MOVE_FORWARD)
+        second._apply_metabolism(Action.REST)
+        second._apply_metabolism(Action.MOVE_FORWARD)
+
+        self.assertNotEqual(first.body_strain, second.body_strain)
+        self.assertNotEqual(first.needs.energy, second.needs.energy)
 
 
 if __name__ == "__main__":

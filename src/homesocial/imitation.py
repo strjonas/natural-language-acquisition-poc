@@ -11,7 +11,14 @@ import mlx.optimizers as optim
 import numpy as np
 
 from .agents import TeacherFollowingAgent
-from .env import DIAGNOSTIC_MODES, STANDARD_MODE, Action, HomeostaticSocialGrid
+from .env import (
+    BODY_DYNAMICS_MODES,
+    DETERMINISTIC_BODY,
+    DIAGNOSTIC_MODES,
+    STANDARD_MODE,
+    Action,
+    HomeostaticSocialGrid,
+)
 from .observations import (
     EXACT_INTEROCEPTION,
     INTEROCEPTION_MODES,
@@ -85,6 +92,7 @@ def collect_expert_episodes(
         teacher=build_teacher(teacher_mode, seed=seed),
         randomize_world=config.randomize_world,
         diagnostic_mode=config.diagnostic_mode,
+        body_dynamics_mode=config.body_dynamics_mode,
     )
     episodes = tuple(
         _collect_expert_episode(
@@ -119,6 +127,7 @@ def train_bc(
     input_size = observation_vector_size(
         include_language=model_config.include_language_channel,
         include_object_kinds=model_config.include_object_kinds,
+        body_dynamics_mode=model_config.body_dynamics_mode,
     )
     model = RecurrentActorCritic(input_size, model_config.hidden_size, len(Action))
     optimizer = optim.Adam(learning_rate=model_config.learning_rate)
@@ -207,6 +216,7 @@ def evaluate_model(
         teacher=build_teacher(normalized_mode, seed=config.seed),
         randomize_world=config.randomize_world,
         diagnostic_mode=config.diagnostic_mode,
+        body_dynamics_mode=config.body_dynamics_mode,
     )
     rng = np.random.default_rng(config.seed + 100_000)
     return [
@@ -219,6 +229,7 @@ def evaluate_model(
             mask_language=masks_language(normalized_mode),
             include_object_kinds=config.include_object_kinds,
             interoception_mode=config.interoception_mode,
+            body_dynamics_mode=config.body_dynamics_mode,
             viability_reward_weight=config.viability_reward_weight,
             train=False,
         )[1]
@@ -245,6 +256,7 @@ def load_checkpoint(path: str) -> tuple[RecurrentActorCritic, RecurrentConfig]:
     input_size = observation_vector_size(
         include_language=config.include_language_channel,
         include_object_kinds=config.include_object_kinds,
+        body_dynamics_mode=config.body_dynamics_mode,
     )
     model = RecurrentActorCritic(input_size, config.hidden_size, len(Action))
     model.load_weights(str(weights_path))
@@ -333,6 +345,7 @@ def _collect_expert_episode(
                 mask_language=effective_mask_language,
                 include_object_kinds=config.include_object_kinds,
                 interoception_mode=config.interoception_mode,
+                body_dynamics_mode=config.body_dynamics_mode,
             )
         )
         mask = action_mask(observation)
@@ -362,6 +375,7 @@ def _collect_expert_episode(
                 mask_language=effective_mask_language,
                 include_object_kinds=config.include_object_kinds,
                 interoception_mode=config.interoception_mode,
+                body_dynamics_mode=config.body_dynamics_mode,
             )
         )
 
@@ -507,6 +521,7 @@ def main() -> None:
         randomize_world=args.randomize_world,
         include_object_kinds=args.include_object_kinds,
         interoception_mode=args.interoception_mode,
+        body_dynamics_mode=args.body_dynamics_mode,
         diagnostic_mode=args.diagnostic_mode,
         batch_size=args.batch_size,
     )
@@ -621,6 +636,11 @@ def _parse_args() -> argparse.Namespace:
         "--interoception-mode",
         choices=INTEROCEPTION_MODES,
         default=EXACT_INTEROCEPTION,
+    )
+    parser.add_argument(
+        "--body-dynamics-mode",
+        choices=BODY_DYNAMICS_MODES,
+        default=DETERMINISTIC_BODY,
     )
     return parser.parse_args()
 

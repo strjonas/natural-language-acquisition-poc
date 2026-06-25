@@ -115,6 +115,7 @@ def collect_counterfactual_branches(
         teacher=build_teacher(normalized_mode, seed=seed),
         randomize_world=config.randomize_world,
         diagnostic_mode=config.diagnostic_mode,
+        body_dynamics_mode=config.body_dynamics_mode,
     )
     rng = np.random.default_rng(seed + 300_000)
     samples: list[CounterfactualSample] = []
@@ -136,6 +137,7 @@ def collect_counterfactual_branches(
                 mask_language=mask_language,
                 include_object_kinds=config.include_object_kinds,
                 interoception_mode=config.interoception_mode,
+                body_dynamics_mode=config.body_dynamics_mode,
             )
             obs_vectors.append(vector)
             mask = action_mask(observation)
@@ -210,6 +212,7 @@ def collect_counterfactual_decisions(
         teacher=build_teacher(normalized_mode, seed=seed),
         randomize_world=config.randomize_world,
         diagnostic_mode=config.diagnostic_mode,
+        body_dynamics_mode=config.body_dynamics_mode,
     )
     rng = np.random.default_rng(seed + 350_000)
     decisions: list[CounterfactualDecision] = []
@@ -231,6 +234,7 @@ def collect_counterfactual_decisions(
                 mask_language=mask_language,
                 include_object_kinds=config.include_object_kinds,
                 interoception_mode=config.interoception_mode,
+                body_dynamics_mode=config.body_dynamics_mode,
             )
             obs_vectors.append(vector)
             mask = action_mask(observation)
@@ -583,6 +587,7 @@ def _branch_samples(
             mask_language=mask_language,
             include_object_kinds=config.include_object_kinds,
             interoception_mode=config.interoception_mode,
+            body_dynamics_mode=config.body_dynamics_mode,
         )
         samples.append(
             CounterfactualSample(
@@ -638,6 +643,7 @@ def _branch_decision(
                 mask_language=mask_language,
                 include_object_kinds=config.include_object_kinds,
                 interoception_mode=config.interoception_mode,
+                body_dynamics_mode=config.body_dynamics_mode,
             )
         )
         next_needs.append(

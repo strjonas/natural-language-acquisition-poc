@@ -2,7 +2,13 @@ from __future__ import annotations
 
 import numpy as np
 
-from .env import Direction, Observation
+from .env import (
+    BODY_DYNAMICS_MODES,
+    DETERMINISTIC_BODY,
+    STOCHASTIC_BODY,
+    Direction,
+    Observation,
+)
 
 
 OBJECT_KINDS = ("water", "food", "shelter", "danger", "tree", "rock")
@@ -25,6 +31,12 @@ LAST_EVENTS = (
     "asked_empty",
     "waited",
     "hit_danger",
+)
+STOCHASTIC_BODY_EVENTS = (
+    "body_hunger",
+    "body_thirst",
+    "body_fatigue",
+    "body_recovery",
 )
 TEACHER_UTTERANCES = (
     "that is water",
@@ -56,10 +68,13 @@ def observation_vector(
     mask_language: bool = False,
     include_object_kinds: bool = False,
     interoception_mode: str = EXACT_INTEROCEPTION,
+    body_dynamics_mode: str = DETERMINISTIC_BODY,
     max_visible_slots: int = 6,
 ) -> np.ndarray:
     if interoception_mode not in INTEROCEPTION_MODES:
         raise ValueError(f"Unknown interoception mode: {interoception_mode}.")
+    if body_dynamics_mode not in BODY_DYNAMICS_MODES:
+        raise ValueError(f"Unknown body dynamics mode: {body_dynamics_mode}.")
     features: list[float] = []
 
     x, y = observation.position
@@ -83,7 +98,13 @@ def observation_vector(
             )
         )
 
-    features.extend(_one_hot(_event_index(observation.last_event), len(LAST_EVENTS) + 1))
+    event_vocabulary = _event_vocabulary(body_dynamics_mode)
+    features.extend(
+        _one_hot(
+            _event_index(observation.last_event, event_vocabulary),
+            len(event_vocabulary) + 1,
+        )
+    )
 
     visible = tuple(
         sorted(
@@ -126,9 +147,13 @@ def observation_vector_size(
     *,
     include_language: bool = True,
     include_object_kinds: bool = False,
+    body_dynamics_mode: str = DETERMINISTIC_BODY,
     max_visible_slots: int = 6,
 ) -> int:
-    size = 2 + 4 + 4 + 1 + (len(LAST_EVENTS) + 1) + 1
+    if body_dynamics_mode not in BODY_DYNAMICS_MODES:
+        raise ValueError(f"Unknown body dynamics mode: {body_dynamics_mode}.")
+    event_vocabulary = _event_vocabulary(body_dynamics_mode)
+    size = 2 + 4 + 4 + 1 + (len(event_vocabulary) + 1) + 1
     if include_object_kinds:
         size += len(OBJECT_KINDS) + 1
     size += max_visible_slots * (
@@ -170,7 +195,16 @@ def _utterance_index(utterance: str | None) -> int:
     return TEACHER_UTTERANCES.index(utterance)
 
 
-def _event_index(event: str | None) -> int:
-    if event is None or event not in LAST_EVENTS:
-        return len(LAST_EVENTS)
-    return LAST_EVENTS.index(event)
+def _event_index(
+    event: str | None,
+    vocabulary: tuple[str, ...] = LAST_EVENTS,
+) -> int:
+    if event is None or event not in vocabulary:
+        return len(vocabulary)
+    return vocabulary.index(event)
+
+
+def _event_vocabulary(body_dynamics_mode: str) -> tuple[str, ...]:
+    if body_dynamics_mode == STOCHASTIC_BODY:
+        return LAST_EVENTS + STOCHASTIC_BODY_EVENTS
+    return LAST_EVENTS

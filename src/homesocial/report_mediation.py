@@ -75,6 +75,7 @@ def collect_mediation_report_dataset(
             include_language=config.include_language_channel,
             include_object_kinds=config.include_object_kinds,
             interoception_mode=config.interoception_mode,
+            body_dynamics_mode=config.body_dynamics_mode,
         )
         features.append(
             internal_report_features(
@@ -159,6 +160,7 @@ def evaluate_report_mediation(
                 include_language=config.include_language_channel,
                 include_object_kinds=config.include_object_kinds,
                 interoception_mode=config.interoception_mode,
+                body_dynamics_mode=config.body_dynamics_mode,
             )
         ]
 
@@ -257,6 +259,7 @@ def _make_triage_env(
         teacher=SilentTeacher(),
         randomize_world=config.randomize_world,
         diagnostic_mode=config.diagnostic_mode,
+        body_dynamics_mode=config.body_dynamics_mode,
     )
     env.reset(seed=seed)
     target_index = next(
@@ -314,6 +317,7 @@ def main() -> None:
             observation_vector_size(
                 include_language=config.include_language_channel,
                 include_object_kinds=config.include_object_kinds,
+                body_dynamics_mode=config.body_dynamics_mode,
             ),
             config.hidden_size,
             len(Action),

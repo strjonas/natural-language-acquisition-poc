@@ -5,7 +5,11 @@ from pathlib import Path
 import mlx.core as mx
 import numpy as np
 
-from homesocial.env import LANGUAGE_NECESSARY_MODE, HomeostaticSocialGrid
+from homesocial.env import (
+    LANGUAGE_NECESSARY_MODE,
+    STOCHASTIC_BODY,
+    HomeostaticSocialGrid,
+)
 from homesocial.observations import (
     MASKED_INTEROCEPTION,
     observation_vector,
@@ -39,6 +43,26 @@ class RecurrentActorCriticTests(unittest.TestCase):
             vector.shape[0],
             observation_vector_size(include_language=True, include_object_kinds=False),
         )
+
+    def test_stochastic_body_observation_size_is_mode_specific(self):
+        deterministic_size = observation_vector_size()
+        stochastic_size = observation_vector_size(
+            body_dynamics_mode=STOCHASTIC_BODY,
+        )
+        env = HomeostaticSocialGrid(
+            seed=1,
+            body_dynamics_mode=STOCHASTIC_BODY,
+        )
+        observation = env.reset(seed=1)
+        vector = observation_vector(
+            observation,
+            width=env.width,
+            height=env.height,
+            body_dynamics_mode=STOCHASTIC_BODY,
+        )
+
+        self.assertEqual(stochastic_size, deterministic_size + 4)
+        self.assertEqual(vector.shape[0], stochastic_size)
 
     def test_hidden_kind_does_not_leak_into_masked_observation_vector(self):
         env = HomeostaticSocialGrid(

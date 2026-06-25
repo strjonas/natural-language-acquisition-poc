@@ -130,6 +130,19 @@ PYTHONPATH=src python3 -m homesocial.interoception --checkpoint runs/bc_hidden_i
 PYTHONPATH=src python3 -m homesocial.hidden_mediation --checkpoint runs/bc_hidden_interoception.weights.npz --random-model-control
 ```
 
+Train sequence-dependent hidden body dynamics:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.imitation --expert-episodes 800 --epochs 12 --hidden-size 128 --next-needs-weight 6 --diagnostic-mode language_necessary --interoception-mode masked --body-dynamics-mode stochastic --checkpoint runs/bc_stochastic_body.weights.npz
+```
+
+Evaluate ordered-history inference and compositional reports:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.interoception --checkpoint runs/bc_stochastic_body.weights.npz --history-modes full latest shuffled reversed --random-model-control
+PYTHONPATH=src python3 -m homesocial.compositional_report --checkpoint runs/bc_stochastic_body.weights.npz --random-model-control
+```
+
 Run a larger local sweep once the fixed-world diagnostic is healthy:
 
 ```bash

@@ -177,15 +177,20 @@ Completed:
   hidden-state consequence estimate,
 - hidden-report mediation with latest-only, shuffled-history, and random-model
   controls.
+- stochastic nonlinear body dynamics with hidden episode metabolism,
+  persistent hunger/thirst pressure, action-order-dependent strain, and visible
+  bodily events,
+- compositional reports for inferred need, severity, trend, and calibrated
+  confidence; latest cause remains an explicit symbolic field.
 
 Not yet passed:
 
 - free-form reflective language generation,
 - stable hidden-report quality across training seeds,
-- richer hidden interoception with uncertain metabolism, exogenous bodily
-  events, and longer horizons,
-- free-form or compositional report language grounded in the same inferred
-  self-state,
+- learned multi-step cause attribution for bodily events rather than symbolic
+  rendering of the latest event,
+- compositional message learning rather than a fixed hand-defined grammar,
+- longer autobiographical memory and cross-episode continuity,
 - reliable ask-then-act discovery in the randomized hidden-kind setting,
 - recurrent PPO learning of the language-necessity diagnostic without
   curriculum or imitation warmstart,

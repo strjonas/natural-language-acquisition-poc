@@ -101,6 +101,7 @@ def evaluate_hidden_mediation(
         teacher=build_teacher(normalized_teacher, seed=seed),
         randomize_world=config.randomize_world,
         diagnostic_mode=config.diagnostic_mode,
+        body_dynamics_mode=config.body_dynamics_mode,
     )
     rng = np.random.default_rng(seed + 1_010_000)
     report_correct = 0
@@ -130,6 +131,7 @@ def evaluate_hidden_mediation(
                     mask_language=mask_language,
                     include_object_kinds=config.include_object_kinds,
                     interoception_mode=config.interoception_mode,
+                    body_dynamics_mode=config.body_dynamics_mode,
                 )
             )
             if observation.object_ahead is not None:
@@ -280,6 +282,7 @@ def _collect_need_pairs(
         teacher=build_teacher(normalized_teacher, seed=seed),
         randomize_world=config.randomize_world,
         diagnostic_mode=config.diagnostic_mode,
+        body_dynamics_mode=config.body_dynamics_mode,
     )
     predicted: list[np.ndarray] = []
     actual: list[np.ndarray] = []
@@ -299,6 +302,7 @@ def _collect_need_pairs(
                     mask_language=mask_language,
                     include_object_kinds=config.include_object_kinds,
                     interoception_mode=config.interoception_mode,
+                    body_dynamics_mode=config.body_dynamics_mode,
                 )
             )
             predicted.append(_predict_needs(model, history))
@@ -347,6 +351,7 @@ def main() -> None:
                     observation_vector_size(
                         include_language=config.include_language_channel,
                         include_object_kinds=config.include_object_kinds,
+                        body_dynamics_mode=config.body_dynamics_mode,
                     ),
                     config.hidden_size,
                     len(Action),

@@ -176,6 +176,7 @@ def collect_report_dataset(
         teacher=build_teacher(normalized_mode, seed=seed),
         randomize_world=config.randomize_world,
         diagnostic_mode=config.diagnostic_mode,
+        body_dynamics_mode=config.body_dynamics_mode,
     )
     rng = np.random.default_rng(seed + 550_000)
     features: list[np.ndarray] = []
@@ -200,6 +201,7 @@ def collect_report_dataset(
                 mask_language=mask_language,
                 include_object_kinds=config.include_object_kinds,
                 interoception_mode=config.interoception_mode,
+                body_dynamics_mode=config.body_dynamics_mode,
             )
             obs_vectors.append(vector)
             mask = action_mask(observation)
@@ -613,6 +615,7 @@ def main() -> None:
             observation_vector_size(
                 include_language=config.include_language_channel,
                 include_object_kinds=config.include_object_kinds,
+                body_dynamics_mode=config.body_dynamics_mode,
             ),
             config.hidden_size,
             len(Action),

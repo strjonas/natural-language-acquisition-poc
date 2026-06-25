@@ -14,7 +14,7 @@ from .recurrent_ac import RecurrentActorCritic, RecurrentConfig, action_mask
 from .teachers import build_teacher, masks_language, normalize_teacher_mode
 
 
-HISTORY_MODES = ("full", "latest", "shuffled")
+HISTORY_MODES = ("full", "latest", "shuffled", "reversed")
 
 
 @dataclass(frozen=True)
@@ -55,6 +55,7 @@ def evaluate_interoception(
         teacher=build_teacher(normalized_teacher, seed=seed),
         randomize_world=config.randomize_world,
         diagnostic_mode=config.diagnostic_mode,
+        body_dynamics_mode=config.body_dynamics_mode,
     )
     rng = np.random.default_rng(seed + 910_000)
     predicted: list[np.ndarray] = []
@@ -77,6 +78,7 @@ def evaluate_interoception(
                     mask_language=mask_language,
                     include_object_kinds=config.include_object_kinds,
                     interoception_mode=config.interoception_mode,
+                    body_dynamics_mode=config.body_dynamics_mode,
                 )
             )
             policy_observation = observation
@@ -150,6 +152,8 @@ def _history_control(
     if mode == "latest" or len(history) <= 2:
         return [history[-1]]
     prior = list(history[:-1])
+    if mode == "reversed":
+        return list(reversed(prior)) + [history[-1]]
     permutation = rng.permutation(len(prior))
     return [prior[index] for index in permutation] + [history[-1]]
 
@@ -197,6 +201,7 @@ def main() -> None:
                     observation_vector_size(
                         include_language=config.include_language_channel,
                         include_object_kinds=config.include_object_kinds,
+                        body_dynamics_mode=config.body_dynamics_mode,
                     ),
                     config.hidden_size,
                     len(Action),

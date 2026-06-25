@@ -108,3 +108,30 @@ Protocol deviations recorded during development:
 4. Overall mediation decision accuracy was demoted to secondary because
    non-helpful object/need pairs dominate. Selective helpful versus irrelevant
    use is the primary causal measure.
+
+## M8 Stochastic Body And Compositional Report Audit
+
+Date: 2026-06-25
+
+Primary inference gate:
+
+- full-history next-need MSE below shuffled and reversed history,
+- full-history MSE below latest-only and random controls,
+- replicate on two training seeds.
+
+Primary report gate:
+
+- score need, severity, and trend separately,
+- report confidence coverage and conditional need accuracy,
+- keep symbolic cause accuracy separate from learned state fields.
+
+Primary mediation gate:
+
+- full-history helpful-use precision above latest-only and random controls,
+- irrelevant-use rate remains below `0.02` on both trained seeds.
+
+Recorded deviation:
+
+- the first stochastic body used additive shocks and did not create a strong
+  order requirement; it was rejected and replaced by persistent metabolic
+  pressures before the final runs.
