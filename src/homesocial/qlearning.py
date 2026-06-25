@@ -11,6 +11,7 @@ def encode_observation(
     observation: Observation,
     *,
     include_language: bool = True,
+    mask_language: bool = False,
     include_object_kinds: bool = True,
 ) -> tuple[object, ...]:
     if observation.object_ahead is None:
@@ -31,7 +32,11 @@ def encode_observation(
         )
     )
     needs = observation.needs
-    utterance = observation.teacher_utterance if include_language else None
+    utterance = (
+        observation.teacher_utterance
+        if include_language and not mask_language
+        else None
+    )
     return (
         observation.position,
         observation.direction.value,
@@ -67,12 +72,14 @@ class QLearningAgent:
         epsilon: float = 0.2,
         seed: int | None = None,
         include_language: bool = True,
+        mask_language: bool = False,
         include_object_kinds: bool = True,
     ) -> None:
         self.learning_rate = learning_rate
         self.discount = discount
         self.epsilon = epsilon
         self.include_language = include_language
+        self.mask_language = mask_language
         self.include_object_kinds = include_object_kinds
         self.rng = Random(seed)
         self.actions = tuple(Action)
@@ -82,6 +89,7 @@ class QLearningAgent:
         state = encode_observation(
             observation,
             include_language=self.include_language,
+            mask_language=self.mask_language,
             include_object_kinds=self.include_object_kinds,
         )
         if explore and self.rng.random() < self.epsilon:
@@ -103,11 +111,13 @@ class QLearningAgent:
         state = encode_observation(
             observation,
             include_language=self.include_language,
+            mask_language=self.mask_language,
             include_object_kinds=self.include_object_kinds,
         )
         next_state = encode_observation(
             next_observation,
             include_language=self.include_language,
+            mask_language=self.mask_language,
             include_object_kinds=self.include_object_kinds,
         )
         current = self.q[(state, action)]
@@ -153,7 +163,7 @@ def run_episode(
         event = info["event"]
         if event in {"consumed_water", "consumed_food", "rested_shelter"}:
             resource_uses += 1
-        if event == "hit_danger":
+        if event in {"hit_danger", "consumed_danger", "rested_danger"}:
             danger_hits += 1
         if next_observation.teacher_utterance:
             teacher_utterances += 1

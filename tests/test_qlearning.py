@@ -1,8 +1,13 @@
 import unittest
 
 from homesocial.agents import TeacherFollowingAgent
-from homesocial.env import Action, HomeostaticSocialGrid, SilentTeacher
-from homesocial.experiment import run_condition
+from homesocial.env import (
+    LANGUAGE_NECESSARY_MODE,
+    Action,
+    HomeostaticSocialGrid,
+    SilentTeacher,
+)
+from homesocial.experiment import run_condition, run_scripted_condition
 from homesocial.qlearning import QLearningAgent, encode_observation, run_episode
 
 
@@ -63,6 +68,25 @@ class QLearningTests(unittest.TestCase):
 
         self.assertEqual(obs.teacher_utterance, "drink water")
         self.assertEqual(agent.act(obs), Action.CONSUME)
+
+    def test_scripted_probe_separates_grounded_from_silent_diagnostic(self):
+        grounded = run_scripted_condition(
+            condition="grounded_teacher",
+            eval_episodes=5,
+            seed=1,
+            randomize_world=False,
+            diagnostic_mode=LANGUAGE_NECESSARY_MODE,
+        )
+        silent = run_scripted_condition(
+            condition="silent_teacher",
+            eval_episodes=5,
+            seed=1,
+            randomize_world=False,
+            diagnostic_mode=LANGUAGE_NECESSARY_MODE,
+        )
+
+        self.assertGreater(grounded.resource_uses, silent.resource_uses)
+        self.assertGreater(grounded.mean_viability, silent.mean_viability)
 
 
 if __name__ == "__main__":

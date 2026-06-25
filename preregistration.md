@@ -1,0 +1,70 @@
+# Preregistration: M0 Experimental Validity
+
+Date: 2026-06-23
+
+## Purpose
+
+M0 validates the Homeostatic Social Grid before learner claims are made. The
+goal is to prove that teacher language has causal value in the diagnostic setup
+and that comparisons across teacher conditions are not confounded by input
+shape or hidden-kind leakage.
+
+## Fixed Configuration
+
+- Environment: `HomeostaticSocialGrid`
+- Diagnostic mode: `language_necessary`
+- World placement: fixed positions unless explicitly labeled randomized
+- Learner-facing object kinds: hidden
+- Language channel: included for matched-shape comparisons
+- Teacher modes: `grounded`, `silent`, `masked`, `shuffled`, `wrong`
+- Diagnostic seeds: `1..12` for unit-level audit, `1..40` for command-line M0
+  audit
+- Shuffled teacher seed: same as run seed
+
+## Metrics
+
+- `mean_viability`
+- `min_viability`
+- `resource_uses`
+- `danger_hits`
+- `teacher_utterances`
+
+The primary M0 metric is paired mean viability across diagnostic seeds. Resource
+use and danger hits are secondary behavioral checks.
+
+## Gates
+
+M0 passes only if all gates hold:
+
+1. Observation vector size is invariant across teacher modes when
+   `include_language_channel=True`.
+2. Masked language uses the null/OOV language token while preserving the full
+   language-channel shape.
+3. Hidden object kind does not change the masked observation vector in the fixed
+   diagnostic layout.
+4. The grounded teacher-following oracle beats the best blind diagnostic
+   control by at least `0.01` mean viability.
+5. The grounded oracle produces more useful resource actions than silent,
+   masked, and blind controls.
+6. Shuffled and wrong teacher modes score below grounded on mean viability.
+
+## Allowed Deviations
+
+Allowed before M1:
+
+- Increase diagnostic seeds if estimates are noisy.
+- Tighten gate margins after results are stable.
+- Add more blind controls if a new positional shortcut is found.
+- Fix environment bugs that leak hidden kind or make teacher utterances
+  non-actionable.
+
+Not allowed without recording a new preregistration section:
+
+- Changing teacher utterance semantics after seeing learner results.
+- Rewarding language directly.
+- Comparing grounded and silent learners with different input shapes.
+- Treating self-report as evidence before the self-battery exists.
+
+## Post-Run Log
+
+No deviations yet.

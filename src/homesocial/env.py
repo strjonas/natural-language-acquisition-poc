@@ -38,6 +38,10 @@ DELTAS = {
     Direction.WEST: (-1, 0),
 }
 
+STANDARD_MODE = "standard"
+LANGUAGE_NECESSARY_MODE = "language_necessary"
+DIAGNOSTIC_MODES = (STANDARD_MODE, LANGUAGE_NECESSARY_MODE)
+
 
 @dataclass(frozen=True)
 class WorldObject:
@@ -116,7 +120,7 @@ class SituatedTeacher:
             return "food helps hunger"
         if event == "rested_shelter" and needs.energy < 0.8:
             return "shelter helps rest"
-        if event == "hit_danger":
+        if event in {"hit_danger", "consumed_danger", "rested_danger"}:
             return "danger hurts you"
 
         return None
@@ -144,9 +148,12 @@ class HomeostaticSocialGrid:
         seed: int | None = None,
         teacher: SituatedTeacher | None = None,
         randomize_world: bool = False,
+        diagnostic_mode: str = STANDARD_MODE,
     ) -> None:
         if width < 5 or height < 5:
             raise ValueError("Grid must be at least 5x5.")
+        if diagnostic_mode not in DIAGNOSTIC_MODES:
+            raise ValueError(f"Unknown diagnostic mode: {diagnostic_mode}.")
 
         self.width = width
         self.height = height
@@ -154,6 +161,7 @@ class HomeostaticSocialGrid:
         self.rng = Random(seed)
         self.teacher = teacher or SituatedTeacher()
         self.randomize_world = randomize_world
+        self.diagnostic_mode = diagnostic_mode
 
         self.step_count = 0
         self.agent_pos = (1, 1)
@@ -282,6 +290,13 @@ class HomeostaticSocialGrid:
         obj = self.object_ahead()
         if obj is None:
             return "consumed_empty"
+        if self.diagnostic_mode == LANGUAGE_NECESSARY_MODE and obj.kind == "danger":
+            self.needs = replace(
+                self.needs,
+                energy=self.needs.energy - 0.08,
+                safety=self.needs.safety - 0.35,
+            )
+            return "consumed_danger"
         if not obj.consumable:
             return "not_consumable"
 
@@ -303,6 +318,17 @@ class HomeostaticSocialGrid:
     def _rest(self) -> str:
         obj_here = self.object_at(self.agent_pos)
         obj_ahead = self.object_ahead()
+        near_danger = (obj_here and obj_here.kind == "danger") or (
+            obj_ahead and obj_ahead.kind == "danger"
+        )
+        if self.diagnostic_mode == LANGUAGE_NECESSARY_MODE and near_danger:
+            self.needs = replace(
+                self.needs,
+                energy=self.needs.energy - 0.08,
+                safety=self.needs.safety - 0.35,
+            )
+            return "rested_danger"
+
         near_shelter = (obj_here and obj_here.kind == "shelter") or (
             obj_ahead and obj_ahead.kind == "shelter"
         )
@@ -363,6 +389,9 @@ class HomeostaticSocialGrid:
         return 0 <= x < self.width and 0 <= y < self.height
 
     def _make_default_world(self) -> list[WorldObject]:
+        if self.diagnostic_mode == LANGUAGE_NECESSARY_MODE:
+            return self._make_language_necessary_world()
+
         if self.randomize_world:
             positions = [
                 (x, y)
@@ -399,6 +428,48 @@ class HomeostaticSocialGrid:
             WorldObject("thorn", "danger", (4, 3), energy_delta=-0.08, safety_delta=-0.35),
             WorldObject("tree", "tree", (3, 4), blocks=True),
             WorldObject("rock", "rock", (5, 5), blocks=True),
+        ]
+
+    def _make_language_necessary_world(self) -> list[WorldObject]:
+        if self.randomize_world:
+            positions = [
+                (x, y)
+                for y in range(self.height)
+                for x in range(self.width)
+                if (x, y) != self.agent_pos
+            ]
+            object_positions = self.rng.sample(positions, 6)
+        else:
+            object_positions = [(2, 1), (5, 1), (1, 5), (4, 3), (3, 4), (5, 5)]
+
+        specs = [
+            ("water", 0.0, 0.45, 0.0, 0.0, True),
+            ("food", 0.4, 0.0, 0.0, 0.0, True),
+            ("shelter", 0.0, 0.0, 0.0, 0.0, False),
+            ("danger", 0.0, 0.0, -0.08, -0.35, False),
+            ("danger", 0.0, 0.0, -0.08, -0.35, False),
+            ("danger", 0.0, 0.0, -0.08, -0.35, False),
+        ]
+        shuffled_specs = self.rng.sample(specs, len(specs))
+        return [
+            WorldObject(
+                "object",
+                kind,
+                pos,
+                food_delta=food_delta,
+                water_delta=water_delta,
+                energy_delta=energy_delta,
+                safety_delta=safety_delta,
+                consumable=consumable,
+            )
+            for pos, (
+                kind,
+                food_delta,
+                water_delta,
+                energy_delta,
+                safety_delta,
+                consumable,
+            ) in zip(object_positions, shuffled_specs)
         ]
 
 

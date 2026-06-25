@@ -12,6 +12,11 @@ dependencies = [
 homegrid-demo = "homesocial.demo:main"
 homegrid-experiment = "homesocial.experiment:main"
 homegrid-recurrent = "homesocial.recurrent_ac:main"
+homegrid-imitation = "homesocial.imitation:main"
+homegrid-self-battery = "homesocial.self_battery:main"
+homegrid-counterfactual = "homesocial.counterfactual:main"
+homegrid-attribution = "homesocial.attribution:main"
+homegrid-report = "homesocial.report_head:main"
 
 [build-system]
 requires = ["hatchling"]

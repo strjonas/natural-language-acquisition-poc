@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import argparse
+import json
 import math
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+from pathlib import Path
 from statistics import mean
 
 import mlx.core as mx
@@ -10,7 +12,12 @@ import mlx.nn as nn
 import mlx.optimizers as optim
 import numpy as np
 
-from .env import Action, HomeostaticSocialGrid, SilentTeacher, SituatedTeacher
+from .env import (
+    DIAGNOSTIC_MODES,
+    STANDARD_MODE,
+    Action,
+    HomeostaticSocialGrid,
+)
 from .observations import (
     TEACHER_UTTERANCES,
     observation_vector,
@@ -18,6 +25,7 @@ from .observations import (
     teacher_utterance_index,
 )
 from .qlearning import EpisodeStats
+from .teachers import TEACHER_MODES, build_teacher, masks_language, normalize_teacher_mode
 
 
 class RecurrentActorCritic(nn.Module):
@@ -71,6 +79,7 @@ class RecurrentActorCritic(nn.Module):
 @dataclass(frozen=True)
 class RecurrentConfig:
     condition: str = "grounded_teacher"
+    include_language_channel: bool = True
     episodes: int = 500
     eval_episodes: int = 20
     seed: int = 1
@@ -93,8 +102,11 @@ class RecurrentConfig:
     height: int = 7
     randomize_world: bool = True
     include_object_kinds: bool = False
+    diagnostic_mode: str = STANDARD_MODE
     batch_size: int = 16
     log_every: int = 0
+    init_from: str | None = None
+    save_checkpoint: str | None = None
 
 
 @dataclass(frozen=True)
@@ -108,17 +120,17 @@ def train_condition(config: RecurrentConfig) -> TrainResult:
     rng = np.random.default_rng(config.seed)
     mx.random.seed(config.seed)
 
-    teacher = (
-        SituatedTeacher()
-        if config.condition == "grounded_teacher"
-        else SilentTeacher()
-    )
-    include_language = config.condition == "grounded_teacher"
+    teacher_mode = normalize_teacher_mode(config.condition)
+    teacher = build_teacher(teacher_mode, seed=config.seed)
+    mask_language = masks_language(teacher_mode)
     input_size = observation_vector_size(
-        include_language=include_language,
+        include_language=config.include_language_channel,
         include_object_kinds=config.include_object_kinds,
     )
     model = RecurrentActorCritic(input_size, config.hidden_size, len(Action))
+    if config.init_from is not None:
+        model.load_weights(config.init_from)
+        mx.eval(model.parameters())
     optimizer = optim.Adam(learning_rate=config.learning_rate)
 
     env = HomeostaticSocialGrid(
@@ -128,6 +140,7 @@ def train_condition(config: RecurrentConfig) -> TrainResult:
         max_steps=config.max_steps,
         teacher=teacher,
         randomize_world=config.randomize_world,
+        diagnostic_mode=config.diagnostic_mode,
     )
 
     train_stats: list[EpisodeStats] = []
@@ -143,7 +156,8 @@ def train_condition(config: RecurrentConfig) -> TrainResult:
                 model,
                 seed=config.seed + episode,
                 rng=rng,
-                include_language=include_language,
+                include_language=config.include_language_channel,
+                mask_language=mask_language,
                 include_object_kinds=config.include_object_kinds,
                 viability_reward_weight=config.viability_reward_weight,
                 train=True,
@@ -250,13 +264,16 @@ def train_condition(config: RecurrentConfig) -> TrainResult:
             model,
             seed=config.seed + config.episodes + idx,
             rng=rng,
-            include_language=include_language,
+            include_language=config.include_language_channel,
+            mask_language=mask_language,
             include_object_kinds=config.include_object_kinds,
             viability_reward_weight=config.viability_reward_weight,
             train=False,
         )[1]
         for idx in range(config.eval_episodes)
     ]
+    if config.save_checkpoint is not None:
+        save_checkpoint(model, config, config.save_checkpoint)
     window = train_stats[-min(50, len(train_stats)) :]
     return TrainResult(
         condition=config.condition,
@@ -406,7 +423,8 @@ def collect_episode(
     seed: int,
     rng: np.random.Generator,
     include_language: bool,
-    include_object_kinds: bool,
+    mask_language: bool = False,
+    include_object_kinds: bool = False,
     viability_reward_weight: float,
     train: bool,
 ) -> tuple[Trajectory, EpisodeStats]:
@@ -438,6 +456,7 @@ def collect_episode(
             width=env.width,
             height=env.height,
             include_language=include_language,
+            mask_language=mask_language,
             include_object_kinds=include_object_kinds,
         )
         obs_vectors.append(vector)
@@ -462,6 +481,7 @@ def collect_episode(
                 width=env.width,
                 height=env.height,
                 include_language=include_language,
+                mask_language=mask_language,
                 include_object_kinds=include_object_kinds,
             )
         )
@@ -480,7 +500,9 @@ def collect_episode(
             ]
         )
         teacher_utterance_targets.append(
-            teacher_utterance_index(observation.teacher_utterance)
+            teacher_utterance_index(
+                None if mask_language or not include_language else observation.teacher_utterance
+            )
         )
         total_reward += float(reward)
         steps += 1
@@ -490,7 +512,7 @@ def collect_episode(
         event = info["event"]
         if event in {"consumed_water", "consumed_food", "rested_shelter"}:
             resource_uses += 1
-        if event == "hit_danger":
+        if event in {"hit_danger", "consumed_danger", "rested_danger"}:
             danger_hits += 1
         if observation.teacher_utterance:
             teacher_utterances += 1
@@ -502,6 +524,7 @@ def collect_episode(
             width=env.width,
             height=env.height,
             include_language=include_language,
+            mask_language=mask_language,
             include_object_kinds=include_object_kinds,
         )
         _, final_values = model(
@@ -709,6 +732,7 @@ def main() -> None:
     for condition in args.conditions:
         config = RecurrentConfig(
             condition=condition,
+            include_language_channel=args.include_language_channel,
             episodes=args.episodes,
             eval_episodes=args.eval_episodes,
             seed=args.seed,
@@ -725,11 +749,14 @@ def main() -> None:
             utterance_prediction_weight=args.utterance_prediction_weight,
             randomize_world=args.randomize_world,
             include_object_kinds=args.include_object_kinds,
+            diagnostic_mode=args.diagnostic_mode,
             batch_size=args.batch_size,
             max_steps=args.max_steps,
             width=args.width,
             height=args.height,
             log_every=args.log_every,
+            init_from=args.init_from,
+            save_checkpoint=args.save_checkpoint,
         )
         result = train_condition(config)
         stats = result.eval_stats
@@ -767,6 +794,8 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--utterance-prediction-weight", type=float, default=0.2)
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--log-every", type=int, default=0)
+    parser.add_argument("--init-from", default=None)
+    parser.add_argument("--save-checkpoint", default=None)
     parser.add_argument("--max-steps", type=int, default=120)
     parser.add_argument("--width", type=int, default=7)
     parser.add_argument("--height", type=int, default=7)
@@ -782,12 +811,39 @@ def _parse_args() -> argparse.Namespace:
         help="Expose object kinds directly to the learner.",
     )
     parser.add_argument(
+        "--no-language-channel",
+        action="store_false",
+        dest="include_language_channel",
+        help="Remove the teacher-language channel from the learner input.",
+    )
+    parser.add_argument(
+        "--diagnostic-mode",
+        choices=DIAGNOSTIC_MODES,
+        default=STANDARD_MODE,
+        help="Environment diagnostic mode. language_necessary hides exploitable object identity shortcuts.",
+    )
+    parser.add_argument(
         "--conditions",
         nargs="+",
-        default=["silent_teacher", "grounded_teacher"],
-        choices=["silent_teacher", "grounded_teacher"],
+        default=["silent", "grounded"],
+        choices=[*TEACHER_MODES, "silent_teacher", "grounded_teacher"],
     )
     return parser.parse_args()
+
+
+def save_checkpoint(
+    model: RecurrentActorCritic,
+    config: RecurrentConfig,
+    path: str,
+) -> None:
+    weights_path = Path(path)
+    weights_path.parent.mkdir(parents=True, exist_ok=True)
+    model.save_weights(str(weights_path))
+    _metadata_path(weights_path).write_text(json.dumps(asdict(config), indent=2) + "\n")
+
+
+def _metadata_path(weights_path: Path) -> Path:
+    return weights_path.with_suffix(weights_path.suffix + ".json")
 
 
 if __name__ == "__main__":

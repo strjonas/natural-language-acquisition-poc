@@ -154,13 +154,27 @@ Completed:
 - GAE value targets and bootstrapping for truncated episodes,
 - CLI knobs for larger hidden sizes, PPO epochs, batch size, and grid
   dimensions.
+- language-necessity diagnostic mode where hidden kind changes independently of
+  object position, learner-facing object names are ambiguous, and unsafe
+  guessing is costly,
+- scripted ask-then-act probe for checking that grounded teacher language is
+  actionable before blaming recurrent learner capacity.
+- behavior-cloning warmstart from closed-loop teacher-following trajectories,
+- counterfactual branch training for action-conditioned interoceptive
+  consequence heads,
+- viability-rank training over branched action choices,
+- causal-attribution probe over frozen recurrent/consequence features,
+- initial structured self-report head for need, cause, and consequence reports.
 
 Not yet passed:
 
-- reliable no-language versus grounded-language separation,
+- free-form reflective language generation,
+- anti-parrot report calibration with shuffled labels and latent ablations,
 - reliable ask-then-act discovery in the randomized hidden-kind setting,
+- recurrent PPO learning of the language-necessity diagnostic without
+  curriculum or imitation warmstart,
 - latent imagination rollouts trained from the transition model,
-- self-battery evaluation.
+- richer self-battery tests beyond one-step consequences and attribution.
 
 Interpretation:
 
@@ -168,10 +182,10 @@ Prewarming and curriculum learning are not inherently hacks when they use real
 closed-loop trajectories. They are standard ways to make sparse embodied RL
 tractable. But they should come after the environment, observation stream,
 objective, and baseline learner can pass fixed-world and scripted sanity checks.
-The immediate bar is therefore: keep proving fixed-world resource use under
-matched silent/grounded conditions, then create a randomized hidden-kind
-diagnostic where teacher utterances are necessary, then scale randomized
-training.
+The immediate bar is therefore: keep the current grounded-language and
+self-battery effects under matched controls, add anti-parrot report calibration,
+then decide whether to deepen the grid world or move to a richer survival
+environment before scaling randomized PPO training.
 
 ### Stage 0: Environment Validation
 
@@ -334,12 +348,18 @@ Next concrete implementation:
    MLX-backed GRU actor-critic is implemented, but from-scratch A2C does not
    yet discover resource-use behavior in the hard randomized hidden-kind setup.
 2. Add a scripted teacher-following evaluation to verify language usefulness.
-   Done at the unit-test level; next add aggregate evaluation metrics.
-3. Add curriculum or imitation warmstart so the recurrent policy can discover
-   ask-then-act routines before scaling.
-4. Add a world-model module that predicts observation, interoception, reward,
-   and teacher utterance from action-conditioned trajectories.
-5. Decide whether to scale the environment to Crafter before adding large
+   Done at the unit-test and aggregate diagnostic level.
+3. Add a language-necessity diagnostic where object position cannot solve the
+   task and unsafe guessing is costly. Done.
+4. Add curriculum or imitation warmstart so the recurrent policy can discover
+   ask-then-act routines before scaling. Done for BC warmstart; not solved for
+   from-scratch PPO.
+5. Add a world-model module that predicts observation, interoception, reward,
+   and teacher utterance from action-conditioned trajectories. Partially done
+   with one-step consequence heads plus counterfactual branch training.
+6. Add minimal self-battery and report heads. Partially done with
+   action-consequence ranking, causal attribution, and structured self-report.
+7. Decide whether to scale the environment to Crafter before adding large
    language generation.
 
 The first publishable experiment is not "we created a self." It is:

@@ -1,9 +1,11 @@
 import unittest
+import tempfile
+from pathlib import Path
 
 import mlx.core as mx
 import numpy as np
 
-from homesocial.env import HomeostaticSocialGrid
+from homesocial.env import LANGUAGE_NECESSARY_MODE, HomeostaticSocialGrid
 from homesocial.observations import observation_vector, observation_vector_size
 from homesocial.recurrent_ac import (
     RecurrentActorCritic,
@@ -33,6 +35,34 @@ class RecurrentActorCriticTests(unittest.TestCase):
             vector.shape[0],
             observation_vector_size(include_language=True, include_object_kinds=False),
         )
+
+    def test_hidden_kind_does_not_leak_into_masked_observation_vector(self):
+        env = HomeostaticSocialGrid(
+            seed=1,
+            randomize_world=False,
+            diagnostic_mode=LANGUAGE_NECESSARY_MODE,
+        )
+        first = env.reset(seed=1)
+        first_kind = first.object_ahead.kind
+        first_vector = observation_vector(
+            first,
+            width=env.width,
+            height=env.height,
+            include_language=False,
+            include_object_kinds=False,
+        )
+
+        second = env.reset(seed=2)
+        second_vector = observation_vector(
+            second,
+            width=env.width,
+            height=env.height,
+            include_language=False,
+            include_object_kinds=False,
+        )
+
+        self.assertNotEqual(first_kind, second.object_ahead.kind)
+        np.testing.assert_array_equal(first_vector, second_vector)
 
     def test_model_forward_shapes(self):
         input_size = observation_vector_size()
@@ -161,6 +191,25 @@ class RecurrentActorCriticTests(unittest.TestCase):
         self.assertEqual(result.condition, "grounded_teacher")
         self.assertGreater(result.train_stats.steps, 0)
         self.assertGreater(result.eval_stats.steps, 0)
+
+    def test_tiny_training_run_saves_checkpoint(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            checkpoint = str(Path(tmpdir) / "ppo.weights.npz")
+            train_condition(
+                RecurrentConfig(
+                    condition="grounded",
+                    episodes=2,
+                    eval_episodes=1,
+                    seed=1,
+                    hidden_size=16,
+                    max_steps=20,
+                    batch_size=2,
+                    save_checkpoint=checkpoint,
+                )
+            )
+
+            self.assertTrue(Path(checkpoint).exists())
+            self.assertTrue(Path(checkpoint + ".json").exists())
 
 
 if __name__ == "__main__":

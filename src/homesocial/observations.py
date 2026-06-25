@@ -15,8 +15,10 @@ LAST_EVENTS = (
     "not_consumable",
     "consumed_water",
     "consumed_food",
+    "consumed_danger",
     "rested_shelter",
     "rested_unsheltered",
+    "rested_danger",
     "pointed",
     "pointed_empty",
     "asked",
@@ -48,6 +50,7 @@ def observation_vector(
     width: int,
     height: int,
     include_language: bool = True,
+    mask_language: bool = False,
     include_object_kinds: bool = False,
     max_visible_slots: int = 6,
 ) -> np.ndarray:
@@ -99,9 +102,10 @@ def observation_vector(
             features.extend(_one_hot(_object_index(obj.kind), len(OBJECT_KINDS) + 1))
 
     if include_language:
+        utterance = None if mask_language else observation.teacher_utterance
         features.extend(
             _one_hot(
-                _utterance_index(observation.teacher_utterance),
+                _utterance_index(utterance),
                 len(TEACHER_UTTERANCES) + 1,
             )
         )

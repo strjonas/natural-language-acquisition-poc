@@ -53,6 +53,44 @@ object-kind sweeps:
 PYTHONPATH=src python3 -m homesocial.recurrent_ac --episodes 120 --batch-size 8 --ppo-epochs 2 --eval-episodes 10 --hidden-size 64 --max-steps 80 --fixed-world --conditions grounded_teacher silent_teacher --log-every 40
 ```
 
+Run the stricter language-necessity sanity check before larger PPO sweeps. In
+this mode object positions do not identify object kind, visible objects share
+the same learner-facing name, and unsafe guessing is costly:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.experiment --episodes 0 --eval-episodes 20 --fixed-world --diagnostic-mode language_necessary --scripted-probe --conditions grounded_teacher silent_teacher
+```
+
+Run a tiny recurrent smoke test against the same diagnostic mode:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.recurrent_ac --episodes 16 --batch-size 4 --ppo-epochs 1 --eval-episodes 2 --hidden-size 32 --max-steps 40 --diagnostic-mode language_necessary --conditions grounded_teacher silent_teacher --log-every 8
+```
+
+Run a behavior-cloning warmstart from closed-loop teacher-following episodes:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.imitation --expert-episodes 200 --epochs 5 --batch-size 32 --eval-episodes 20 --hidden-size 128 --fixed-world --diagnostic-mode language_necessary --checkpoint runs/bc_homegrid.weights.npz
+```
+
+Run the first self-battery consequence probe on a trained checkpoint:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.self_battery --checkpoint runs/bc_homegrid.weights.npz --rollout-policy model --teacher-modes grounded masked shuffled wrong
+```
+
+Train counterfactual branch consequences for the self-battery:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.counterfactual --checkpoint runs/bc_homegrid.weights.npz --output-checkpoint runs/cf_homegrid.weights.npz --episodes 400 --max-decisions 1200 --epochs 6 --batch-size 128 --rollout-policy teacher --branch-selection probe --rank-weight 1.0
+```
+
+Train and evaluate the structured self-report head:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.report_head --checkpoint runs/cf_homegrid.weights.npz --eval-teacher-modes grounded masked shuffled wrong
+```
+
 Run a larger local sweep once the fixed-world diagnostic is healthy:
 
 ```bash

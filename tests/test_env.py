@@ -1,6 +1,11 @@
 import unittest
 
-from homesocial.env import Action, Direction, HomeostaticSocialGrid
+from homesocial.env import (
+    LANGUAGE_NECESSARY_MODE,
+    Action,
+    Direction,
+    HomeostaticSocialGrid,
+)
 
 
 class HomeostaticSocialGridTests(unittest.TestCase):
@@ -51,7 +56,35 @@ class HomeostaticSocialGridTests(unittest.TestCase):
         self.assertFalse(terminated)
         self.assertTrue(truncated)
 
+    def test_language_necessary_mode_randomizes_hidden_kind_at_fixed_positions(self):
+        env = HomeostaticSocialGrid(
+            seed=1,
+            randomize_world=False,
+            diagnostic_mode=LANGUAGE_NECESSARY_MODE,
+        )
+        env.reset(seed=1)
+        first_mapping = {obj.pos: obj.kind for obj in env.objects}
+        env.reset(seed=2)
+        second_mapping = {obj.pos: obj.kind for obj in env.objects}
+
+        self.assertNotEqual(first_mapping, second_mapping)
+        self.assertEqual({obj.name for obj in env.objects}, {"object"})
+
+    def test_language_necessary_mode_punishes_unsafe_guessing(self):
+        env = HomeostaticSocialGrid(
+            seed=1,
+            randomize_world=False,
+            diagnostic_mode=LANGUAGE_NECESSARY_MODE,
+        )
+        env.reset(seed=5)
+        before = env.needs.safety
+
+        obs, reward, terminated, truncated, info = env.step(Action.CONSUME)
+
+        self.assertEqual(info["event"], "consumed_danger")
+        self.assertLess(obs.needs.safety, before)
+        self.assertEqual(obs.teacher_utterance, "danger hurts you")
+
 
 if __name__ == "__main__":
     unittest.main()
-
