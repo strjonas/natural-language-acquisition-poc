@@ -171,13 +171,21 @@ Completed:
   action identity, and teacher-presence shortcuts.
 - report-mediated social triage where emitted need reports causally change
   teacher advice, action, and homeostatic outcome.
+- masked-interoception training where exact need values are absent from model
+  input but recurrent action/outcome history supports next-need inference,
+- deterministic structured need reports generated directly from the learned
+  hidden-state consequence estimate,
+- hidden-report mediation with latest-only, shuffled-history, and random-model
+  controls.
 
 Not yet passed:
 
 - free-form reflective language generation,
-- learned-model necessity for need reports; a random representation still
-  passes while exact needs are directly observable,
-- hidden/noisy interoception requiring recurrent self-state inference,
+- stable hidden-report quality across training seeds,
+- richer hidden interoception with uncertain metabolism, exogenous bodily
+  events, and longer horizons,
+- free-form or compositional report language grounded in the same inferred
+  self-state,
 - reliable ask-then-act discovery in the randomized hidden-kind setting,
 - recurrent PPO learning of the language-necessity diagnostic without
   curriculum or imitation warmstart,

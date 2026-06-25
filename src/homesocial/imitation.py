@@ -12,7 +12,13 @@ import numpy as np
 
 from .agents import TeacherFollowingAgent
 from .env import DIAGNOSTIC_MODES, STANDARD_MODE, Action, HomeostaticSocialGrid
-from .observations import observation_vector, observation_vector_size, teacher_utterance_index
+from .observations import (
+    EXACT_INTEROCEPTION,
+    INTEROCEPTION_MODES,
+    observation_vector,
+    observation_vector_size,
+    teacher_utterance_index,
+)
 from .qlearning import EpisodeStats
 from .recurrent_ac import (
     RecurrentActorCritic,
@@ -212,6 +218,7 @@ def evaluate_model(
             include_language=config.include_language_channel,
             mask_language=masks_language(normalized_mode),
             include_object_kinds=config.include_object_kinds,
+            interoception_mode=config.interoception_mode,
             viability_reward_weight=config.viability_reward_weight,
             train=False,
         )[1]
@@ -325,6 +332,7 @@ def _collect_expert_episode(
                 include_language=config.include_language_channel,
                 mask_language=effective_mask_language,
                 include_object_kinds=config.include_object_kinds,
+                interoception_mode=config.interoception_mode,
             )
         )
         mask = action_mask(observation)
@@ -353,6 +361,7 @@ def _collect_expert_episode(
                 include_language=config.include_language_channel,
                 mask_language=effective_mask_language,
                 include_object_kinds=config.include_object_kinds,
+                interoception_mode=config.interoception_mode,
             )
         )
 
@@ -491,11 +500,13 @@ def main() -> None:
         seed=args.seed,
         hidden_size=args.hidden_size,
         learning_rate=args.learning_rate,
+        next_needs_weight=args.next_needs_weight,
         max_steps=args.max_steps,
         width=args.width,
         height=args.height,
         randomize_world=args.randomize_world,
         include_object_kinds=args.include_object_kinds,
+        interoception_mode=args.interoception_mode,
         diagnostic_mode=args.diagnostic_mode,
         batch_size=args.batch_size,
     )
@@ -566,6 +577,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--hidden-size", type=int, default=128)
     parser.add_argument("--learning-rate", type=float, default=3e-4)
+    parser.add_argument("--next-needs-weight", type=float, default=1.0)
     parser.add_argument("--noise", type=float, default=0.05)
     parser.add_argument("--max-steps", type=int, default=120)
     parser.add_argument("--width", type=int, default=7)
@@ -604,6 +616,11 @@ def _parse_args() -> argparse.Namespace:
         "--diagnostic-mode",
         choices=DIAGNOSTIC_MODES,
         default=STANDARD_MODE,
+    )
+    parser.add_argument(
+        "--interoception-mode",
+        choices=INTEROCEPTION_MODES,
+        default=EXACT_INTEROCEPTION,
     )
     return parser.parse_args()
 

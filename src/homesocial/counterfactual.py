@@ -135,6 +135,7 @@ def collect_counterfactual_branches(
                 include_language=config.include_language_channel,
                 mask_language=mask_language,
                 include_object_kinds=config.include_object_kinds,
+                interoception_mode=config.interoception_mode,
             )
             obs_vectors.append(vector)
             mask = action_mask(observation)
@@ -229,6 +230,7 @@ def collect_counterfactual_decisions(
                 include_language=config.include_language_channel,
                 mask_language=mask_language,
                 include_object_kinds=config.include_object_kinds,
+                interoception_mode=config.interoception_mode,
             )
             obs_vectors.append(vector)
             mask = action_mask(observation)
@@ -580,6 +582,7 @@ def _branch_samples(
             include_language=config.include_language_channel,
             mask_language=mask_language,
             include_object_kinds=config.include_object_kinds,
+            interoception_mode=config.interoception_mode,
         )
         samples.append(
             CounterfactualSample(
@@ -634,6 +637,7 @@ def _branch_decision(
                 include_language=config.include_language_channel,
                 mask_language=mask_language,
                 include_object_kinds=config.include_object_kinds,
+                interoception_mode=config.interoception_mode,
             )
         )
         next_needs.append(

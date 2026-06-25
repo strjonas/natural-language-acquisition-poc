@@ -19,6 +19,8 @@ from .env import (
     HomeostaticSocialGrid,
 )
 from .observations import (
+    EXACT_INTEROCEPTION,
+    INTEROCEPTION_MODES,
     TEACHER_UTTERANCES,
     observation_vector,
     observation_vector_size,
@@ -102,6 +104,7 @@ class RecurrentConfig:
     height: int = 7
     randomize_world: bool = True
     include_object_kinds: bool = False
+    interoception_mode: str = EXACT_INTEROCEPTION
     diagnostic_mode: str = STANDARD_MODE
     batch_size: int = 16
     log_every: int = 0
@@ -159,6 +162,7 @@ def train_condition(config: RecurrentConfig) -> TrainResult:
                 include_language=config.include_language_channel,
                 mask_language=mask_language,
                 include_object_kinds=config.include_object_kinds,
+                interoception_mode=config.interoception_mode,
                 viability_reward_weight=config.viability_reward_weight,
                 train=True,
             )
@@ -267,6 +271,7 @@ def train_condition(config: RecurrentConfig) -> TrainResult:
             include_language=config.include_language_channel,
             mask_language=mask_language,
             include_object_kinds=config.include_object_kinds,
+            interoception_mode=config.interoception_mode,
             viability_reward_weight=config.viability_reward_weight,
             train=False,
         )[1]
@@ -425,6 +430,7 @@ def collect_episode(
     include_language: bool,
     mask_language: bool = False,
     include_object_kinds: bool = False,
+    interoception_mode: str = EXACT_INTEROCEPTION,
     viability_reward_weight: float,
     train: bool,
 ) -> tuple[Trajectory, EpisodeStats]:
@@ -458,6 +464,7 @@ def collect_episode(
             include_language=include_language,
             mask_language=mask_language,
             include_object_kinds=include_object_kinds,
+            interoception_mode=interoception_mode,
         )
         obs_vectors.append(vector)
         mask = action_mask(observation)
@@ -483,6 +490,7 @@ def collect_episode(
                 include_language=include_language,
                 mask_language=mask_language,
                 include_object_kinds=include_object_kinds,
+                interoception_mode=interoception_mode,
             )
         )
 
@@ -526,6 +534,7 @@ def collect_episode(
             include_language=include_language,
             mask_language=mask_language,
             include_object_kinds=include_object_kinds,
+            interoception_mode=interoception_mode,
         )
         _, final_values = model(
             mx.array(np.concatenate([np.stack(obs_vectors), final_vector[None, :]]))
@@ -749,6 +758,7 @@ def main() -> None:
             utterance_prediction_weight=args.utterance_prediction_weight,
             randomize_world=args.randomize_world,
             include_object_kinds=args.include_object_kinds,
+            interoception_mode=args.interoception_mode,
             diagnostic_mode=args.diagnostic_mode,
             batch_size=args.batch_size,
             max_steps=args.max_steps,
@@ -821,6 +831,12 @@ def _parse_args() -> argparse.Namespace:
         choices=DIAGNOSTIC_MODES,
         default=STANDARD_MODE,
         help="Environment diagnostic mode. language_necessary hides exploitable object identity shortcuts.",
+    )
+    parser.add_argument(
+        "--interoception-mode",
+        choices=INTEROCEPTION_MODES,
+        default=EXACT_INTEROCEPTION,
+        help="Use exact need levels or hide them while preserving input shape.",
     )
     parser.add_argument(
         "--conditions",

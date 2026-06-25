@@ -42,6 +42,9 @@ TEACHER_UTTERANCES = (
     "shelter helps rest",
     "danger hurts you",
 )
+EXACT_INTEROCEPTION = "exact"
+MASKED_INTEROCEPTION = "masked"
+INTEROCEPTION_MODES = (EXACT_INTEROCEPTION, MASKED_INTEROCEPTION)
 
 
 def observation_vector(
@@ -52,8 +55,11 @@ def observation_vector(
     include_language: bool = True,
     mask_language: bool = False,
     include_object_kinds: bool = False,
+    interoception_mode: str = EXACT_INTEROCEPTION,
     max_visible_slots: int = 6,
 ) -> np.ndarray:
+    if interoception_mode not in INTEROCEPTION_MODES:
+        raise ValueError(f"Unknown interoception mode: {interoception_mode}.")
     features: list[float] = []
 
     x, y = observation.position
@@ -62,7 +68,10 @@ def observation_vector(
     features.extend(_one_hot(_direction_index(observation.direction), 4))
 
     needs = observation.needs
-    features.extend([needs.food, needs.water, needs.energy, needs.safety])
+    if interoception_mode == MASKED_INTEROCEPTION:
+        features.extend([0.0, 0.0, 0.0, 0.0])
+    else:
+        features.extend([needs.food, needs.water, needs.energy, needs.safety])
 
     ahead = observation.object_ahead
     features.append(1.0 if ahead is not None else 0.0)

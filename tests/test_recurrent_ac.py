@@ -6,7 +6,11 @@ import mlx.core as mx
 import numpy as np
 
 from homesocial.env import LANGUAGE_NECESSARY_MODE, HomeostaticSocialGrid
-from homesocial.observations import observation_vector, observation_vector_size
+from homesocial.observations import (
+    MASKED_INTEROCEPTION,
+    observation_vector,
+    observation_vector_size,
+)
 from homesocial.recurrent_ac import (
     RecurrentActorCritic,
     RecurrentConfig,
@@ -63,6 +67,25 @@ class RecurrentActorCriticTests(unittest.TestCase):
 
         self.assertNotEqual(first_kind, second.object_ahead.kind)
         np.testing.assert_array_equal(first_vector, second_vector)
+
+    def test_masked_interoception_preserves_shape_and_hides_need_levels(self):
+        env = HomeostaticSocialGrid(seed=1)
+        observation = env.reset(seed=1)
+        exact = observation_vector(
+            observation,
+            width=env.width,
+            height=env.height,
+        )
+        masked = observation_vector(
+            observation,
+            width=env.width,
+            height=env.height,
+            interoception_mode=MASKED_INTEROCEPTION,
+        )
+
+        self.assertEqual(exact.shape, masked.shape)
+        np.testing.assert_array_equal(masked[6:10], np.zeros(4))
+        self.assertFalse(np.array_equal(exact[6:10], masked[6:10]))
 
     def test_model_forward_shapes(self):
         input_size = observation_vector_size()

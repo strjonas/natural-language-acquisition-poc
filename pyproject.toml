@@ -19,6 +19,8 @@ homegrid-attribution = "homesocial.attribution:main"
 homegrid-report = "homesocial.report_head:main"
 homegrid-report-calibration = "homesocial.report_calibration:main"
 homegrid-report-mediation = "homesocial.report_mediation:main"
+homegrid-interoception = "homesocial.interoception:main"
+homegrid-hidden-mediation = "homesocial.hidden_mediation:main"
 
 [build-system]
 requires = ["hatchling"]

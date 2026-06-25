@@ -74,6 +74,7 @@ def collect_mediation_report_dataset(
             height=env.height,
             include_language=config.include_language_channel,
             include_object_kinds=config.include_object_kinds,
+            interoception_mode=config.interoception_mode,
         )
         features.append(
             internal_report_features(
@@ -157,6 +158,7 @@ def evaluate_report_mediation(
                 height=env.height,
                 include_language=config.include_language_channel,
                 include_object_kinds=config.include_object_kinds,
+                interoception_mode=config.interoception_mode,
             )
         ]
 

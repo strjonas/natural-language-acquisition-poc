@@ -68,3 +68,43 @@ Not allowed without recording a new preregistration section:
 ## Post-Run Log
 
 No deviations yet.
+
+## M7 Hidden-Interoception Audit
+
+Date: 2026-06-25
+
+Purpose:
+
+- remove exact need values from model input without changing observation size,
+- test whether recurrent action/outcome history supports body-state inference,
+- make the inferred state causally useful through a teacher-mediated report.
+
+Primary inference controls:
+
+- trained full history,
+- trained latest observation only,
+- trained shuffled prior history,
+- random weights with the same architecture.
+
+Primary inference metric: next-need MSE. Secondary metric: lowest-need accuracy.
+
+Primary mediation metrics:
+
+- report accuracy,
+- helpful-resource use rate,
+- irrelevant-resource use rate,
+- helpful-use precision,
+- target-need delta.
+
+Protocol deviations recorded during development:
+
+1. The first long-horizon mediation metric was rejected after a constant
+   `need_rest` report exploited repeated shelter use.
+2. Balanced one-step triage validated the communication protocol but was
+   insufficient because random representations retained directly observed
+   needs.
+3. Exact needs were then masked and the final hidden-state audit used natural
+   action/outcome histories.
+4. Overall mediation decision accuracy was demoted to secondary because
+   non-helpful object/need pairs dominate. Selective helpful versus irrelevant
+   use is the primary causal measure.

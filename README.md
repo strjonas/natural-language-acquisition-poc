@@ -116,6 +116,20 @@ This triage gate validates causal communication, not learned-model necessity.
 Use `--random-model-control` to expose the current direct-interoception
 shortcut.
 
+Train with exact need values removed from the observation while retaining
+next-need supervision:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.imitation --expert-episodes 500 --epochs 10 --hidden-size 96 --next-needs-weight 5 --diagnostic-mode language_necessary --interoception-mode masked --checkpoint runs/bc_hidden_interoception.weights.npz
+```
+
+Evaluate temporal self-state inference and report-mediated action:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.interoception --checkpoint runs/bc_hidden_interoception.weights.npz --random-model-control
+PYTHONPATH=src python3 -m homesocial.hidden_mediation --checkpoint runs/bc_hidden_interoception.weights.npz --random-model-control
+```
+
 Run a larger local sweep once the fixed-world diagnostic is healthy:
 
 ```bash

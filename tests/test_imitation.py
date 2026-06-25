@@ -11,10 +11,30 @@ from homesocial.imitation import (
     pad_expert_episodes,
     train_bc,
 )
+from homesocial.observations import MASKED_INTEROCEPTION
 from homesocial.recurrent_ac import RecurrentConfig
 
 
 class ImitationTests(unittest.TestCase):
+    def test_expert_dataset_can_hide_exact_interoception(self):
+        config = RecurrentConfig(
+            condition="grounded",
+            include_language_channel=True,
+            max_steps=12,
+            hidden_size=16,
+            randomize_world=False,
+            diagnostic_mode=LANGUAGE_NECESSARY_MODE,
+            interoception_mode=MASKED_INTEROCEPTION,
+        )
+        dataset = collect_expert_episodes(config, n=1, seed=1, noise=0.0)
+        observations = np.asarray(dataset.episodes[0].observations)
+
+        np.testing.assert_array_equal(observations[:, 6:10], 0.0)
+        self.assertGreater(
+            float(np.mean(np.asarray(dataset.episodes[0].next_needs))),
+            0.0,
+        )
+
     def test_collect_expert_episodes_contains_ask_then_act_data(self):
         config = RecurrentConfig(
             condition="grounded",

@@ -199,6 +199,7 @@ def collect_report_dataset(
                 include_language=config.include_language_channel,
                 mask_language=mask_language,
                 include_object_kinds=config.include_object_kinds,
+                interoception_mode=config.interoception_mode,
             )
             obs_vectors.append(vector)
             mask = action_mask(observation)
