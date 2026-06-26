@@ -185,6 +185,8 @@ Completed:
 - emergent two-slot discrete messages trained only through another agent's
   body-relevant use/avoid decision, with balanced social intents and causal
   message-slot interventions.
+- convention transfer to fresh receivers trained against a frozen sender from
+  small outcome-labeled interaction sets.
 
 Not yet passed:
 
@@ -192,7 +194,7 @@ Not yet passed:
 - stable hidden-report quality across training seeds,
 - learned multi-step cause attribution for bodily events rather than symbolic
   rendering of the latest event,
-- convention transfer to new receivers and independently trained agents,
+- zero-shot convention alignment between independently initialized agents,
 - population-level pressure toward shared, stable message semantics,
 - longer autobiographical memory and cross-episode continuity,
 - reliable ask-then-act discovery in the randomized hidden-kind setting,

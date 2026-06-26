@@ -149,6 +149,13 @@ Train a two-slot discrete message protocol only through receiver decisions:
 PYTHONPATH=src python3 -m homesocial.emergent_language --checkpoint runs/bc_stochastic_body.weights.npz --feature-mode self_estimate --random-model-control
 ```
 
+Test whether the learned convention transfers to new receivers or independent
+protocol initializations:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.convention_transfer --checkpoint runs/bc_stochastic_body.weights.npz --feature-mode self_estimate
+```
+
 Run a larger local sweep once the fixed-world diagnostic is healthy:
 
 ```bash

@@ -161,3 +161,29 @@ Recorded deviation:
 - natural-frequency training omitted a stable food symbol. Intent-balanced
   sender/receiver training was introduced; natural-world mediation remained
   unchanged.
+
+## M10 Convention Transfer Audit
+
+Date: 2026-06-26
+
+Transfer constraints:
+
+- train two independent sender/receiver protocols from different random seeds,
+- keep the sender input restricted to the learned predicted body state,
+- test zero-shot sender/receiver swaps without remapping symbols,
+- freeze one sender and train fresh receivers only from message, object, and
+  use/avoid outcomes.
+
+Gates:
+
+- original protocol pair remains above `0.85` decision accuracy,
+- independent zero-shot swaps should be reported as a failure unless they match
+  original-pair balanced accuracy,
+- frozen-sender receivers should approach original-pair balanced accuracy with
+  small labeled interaction sets.
+
+Recorded result:
+
+- zero-shot swaps did not converge to a shared lexicon;
+- a fresh receiver reached `0.8454` balanced accuracy from 32 sender examples
+  and `0.8960` from 256 examples on the seed13 body checkpoint.
