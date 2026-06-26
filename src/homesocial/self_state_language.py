@@ -30,6 +30,8 @@ STATE_MESSAGE_SLOTS = 3
 STATE_MESSAGE_VOCABULARY = 4
 SEVERITY_LABELS = ("critical", "low", "adequate")
 TREND_LABELS = ("worsening", "steady", "improving")
+SELF_STATE_FEATURE_MODES = FEATURE_MODES + ("self_estimate_delta",)
+BALANCE_TARGETS = ("none", "intent", "trend")
 
 
 @dataclass(frozen=True)
@@ -209,12 +211,17 @@ def collect_self_state_dataset(
     history_mode: str = "full",
     feature_mode: str = "self_estimate",
     balance_intents: bool = False,
+    balance_target: str | None = None,
     max_states: int = 3000,
 ) -> SelfStateDataset:
-    if feature_mode not in FEATURE_MODES:
+    if feature_mode not in SELF_STATE_FEATURE_MODES:
         raise ValueError(f"Unknown communication feature mode: {feature_mode}.")
     if history_mode not in HISTORY_MODES:
         raise ValueError(f"Unknown history mode: {history_mode}.")
+    if balance_target is None:
+        balance_target = "intent" if balance_intents else "none"
+    if balance_target not in BALANCE_TARGETS:
+        raise ValueError(f"Unknown balance target: {balance_target}.")
     normalized_teacher = normalize_teacher_mode(teacher_mode)
     mask_language = (
         masks_language(normalized_teacher) or not config.include_language_channel
@@ -258,7 +265,7 @@ def collect_self_state_dataset(
                 )
             )
             controlled = _history_control(history, history_mode, rng)
-            feature = _communication_features(
+            feature = _self_state_features(
                 base_model,
                 controlled,
                 feature_mode=feature_mode,
@@ -294,8 +301,10 @@ def collect_self_state_dataset(
             break
 
     indices = np.arange(len(state_features))
-    if balance_intents:
+    if balance_target == "intent":
         indices = _balanced_intent_indices(dominant_labels, rng)
+    elif balance_target == "trend":
+        indices = _balanced_label_indices(trend_labels, rng)
 
     return SelfStateDataset(
         features=mx.array(
@@ -589,6 +598,52 @@ def _trend(previous: np.ndarray | None, current: np.ndarray) -> int:
     return 1
 
 
+def _self_state_features(
+    base_model: RecurrentActorCritic,
+    history: list[np.ndarray],
+    *,
+    feature_mode: str,
+) -> np.ndarray:
+    if feature_mode != "self_estimate_delta":
+        return _communication_features(
+            base_model,
+            history,
+            feature_mode=feature_mode,
+        )
+    current = _communication_features(
+        base_model,
+        history,
+        feature_mode="self_estimate",
+    )
+    if len(history) <= 1:
+        previous = current
+    else:
+        previous = _communication_features(
+            base_model,
+            history[:-1],
+            feature_mode="self_estimate",
+        )
+    return np.concatenate([current, current - previous]).astype(np.float32)
+
+
+def _balanced_label_indices(
+    labels: list[int],
+    rng: np.random.Generator,
+) -> np.ndarray:
+    values = np.asarray(labels, dtype=np.int32)
+    buckets = [np.flatnonzero(values == label) for label in np.unique(values)]
+    if not buckets or any(bucket.size == 0 for bucket in buckets):
+        return np.arange(len(values))
+    target = max(1, min(bucket.size for bucket in buckets))
+    balanced = [
+        rng.choice(bucket, size=target, replace=bucket.size < target)
+        for bucket in buckets
+    ]
+    result = np.concatenate(balanced)
+    rng.shuffle(result)
+    return result
+
+
 def _message_codes(messages: list[mx.array]) -> np.ndarray:
     codes = np.zeros(int(messages[0].shape[0]), dtype=np.int32)
     for message in messages:
@@ -717,7 +772,7 @@ def main() -> None:
             teacher_mode=args.teacher_mode,
             history_mode="full",
             feature_mode=args.feature_mode,
-            balance_intents=True,
+            balance_target=args.balance_target,
             max_states=args.max_train_states,
         )
         for agreement_weight in args.agreement_weights:
@@ -748,7 +803,7 @@ def main() -> None:
                     teacher_mode=args.teacher_mode,
                     history_mode=history_mode,
                     feature_mode=args.feature_mode,
-                    balance_intents=True,
+                    balance_target=args.balance_target,
                     max_states=args.max_eval_states,
                 )
                 result = evaluate_self_state_communication(
@@ -797,8 +852,13 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--teacher-mode", default="grounded")
     parser.add_argument(
         "--feature-mode",
-        choices=FEATURE_MODES,
+        choices=SELF_STATE_FEATURE_MODES,
         default="self_estimate",
+    )
+    parser.add_argument(
+        "--balance-target",
+        choices=BALANCE_TARGETS,
+        default="intent",
     )
     parser.add_argument("--random-model-control", action="store_true")
     return parser.parse_args()

@@ -254,3 +254,29 @@ Recorded outcome:
   code agreement `1.0000`, and dominant-code distinctness `1.0000`.
 - trend did not pass: best trend accuracy was `0.6851` against a `0.667`
   majority baseline.
+
+## M13 Trend-Balanced Temporal Self-State Audit
+
+Date: 2026-06-26
+
+Problem:
+
+- natural trajectories are heavily skewed toward worsening states;
+- the first trend metric barely beat a majority baseline;
+- a temporal self-report should be tested on worsening, steady, and improving
+  states separately.
+
+Added constraints:
+
+- balance train/eval samples across trend labels,
+- sender input uses only learned self-estimates and learned estimate deltas,
+- exact current or previous needs remain masked,
+- compare full history, latest-only, and random-model controls.
+
+Recorded outcome:
+
+- on a 372-sample balanced eval set, trained full-history
+  `self_estimate_delta` messages reached `0.8360` trend accuracy;
+- latest-only control fell to `0.2883`;
+- random full-history control reached `0.7742`, so the learned model improves
+  the trend signal but environmental regularities still explain some of it.

@@ -197,6 +197,9 @@ Completed:
 - multi-aspect current self-state language where a shared receiver reconstructs
   continuous needs, low-need flags, dominant need, and severity from a compact
   learned message.
+- trend-balanced temporal self-state language using learned self-estimate
+  deltas, passing majority and latest-only controls on worsening/steady/
+  improving states.
 
 Not yet passed:
 
@@ -207,7 +210,9 @@ Not yet passed:
 - zero-shot convention alignment between independently initialized agents,
 - replicated self-request language across body-model seeds,
 - replicated multi-aspect self-state language across body-model seeds,
-- temporal trend communication that materially beats majority baselines,
+- robust temporal trend communication under stronger anti-shortcut controls;
+  the current random full-history control still extracts nontrivial trend
+  signal from environmental regularities,
 - longer autobiographical memory and cross-episode continuity,
 - reliable ask-then-act discovery in the randomized hidden-kind setting,
 - recurrent PPO learning of the language-necessity diagnostic without

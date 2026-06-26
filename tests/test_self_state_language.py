@@ -37,8 +37,8 @@ class SelfStateLanguageTests(unittest.TestCase):
             config,
             episodes=3,
             seed=1,
-            feature_mode="self_estimate",
-            balance_intents=True,
+            feature_mode="self_estimate_delta",
+            balance_target="trend",
             max_states=20,
         )
         trained = train_self_state_communication(
@@ -55,12 +55,13 @@ class SelfStateLanguageTests(unittest.TestCase):
             trained,
             dataset,
             model_control="random",
-            feature_mode="self_estimate",
+            feature_mode="self_estimate_delta",
             history_mode="full",
         )
 
         self.assertEqual(result.population_size, 2)
         self.assertEqual(result.samples_per_sender, dataset.features.shape[0])
+        self.assertEqual(dataset.features.shape[1], 8)
         self.assertTrue(math.isfinite(result.need_mse))
         self.assertGreaterEqual(result.message_codes_used, 1)
 

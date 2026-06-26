@@ -178,6 +178,13 @@ alone:
 PYTHONPATH=src python3 -m homesocial.self_state_language --checkpoint runs/bc_stochastic_body.weights.npz --agreement-weights 0 0.05 --history-modes full latest --random-model-control
 ```
 
+For a stricter temporal-reflection audit, balance the dataset across worsening,
+steady, and improving states and expose only learned self-estimate deltas:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.self_state_language --checkpoint runs/bc_stochastic_body.weights.npz --feature-mode self_estimate_delta --balance-target trend --agreement-weights 0.05 --history-modes full latest --random-model-control
+```
+
 Run a larger local sweep once the fixed-world diagnostic is healthy:
 
 ```bash
