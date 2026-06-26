@@ -170,6 +170,14 @@ category from the message alone:
 PYTHONPATH=src python3 -m homesocial.self_request_language --checkpoint runs/bc_stochastic_body.weights.npz --agreement-weights 0 0.05 0.2
 ```
 
+Train a richer self-state protocol where the receiver reconstructs continuous
+needs, low-need flags, dominant need, severity, and trend from the message
+alone:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.self_state_language --checkpoint runs/bc_stochastic_body.weights.npz --agreement-weights 0 0.05 --history-modes full latest --random-model-control
+```
+
 Run a larger local sweep once the fixed-world diagnostic is healthy:
 
 ```bash

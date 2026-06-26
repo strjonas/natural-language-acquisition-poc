@@ -26,6 +26,7 @@ homegrid-emergent-language = "homesocial.emergent_language:main"
 homegrid-convention-transfer = "homesocial.convention_transfer:main"
 homegrid-population-language = "homesocial.population_language:main"
 homegrid-self-request-language = "homesocial.self_request_language:main"
+homegrid-self-state-language = "homesocial.self_state_language:main"
 
 [build-system]
 requires = ["hatchling"]

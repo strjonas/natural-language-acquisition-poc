@@ -219,3 +219,38 @@ Recorded deviations and outcomes:
 4. With that body model, four senders plus one shared receiver reached `0.8384`
    request accuracy, `1.0000` intent-pair agreement, and `1.0000` dominant
    intent distinctness under mild agreement pressure.
+
+## M12 Multi-Aspect Self-State Language Audit
+
+Date: 2026-06-26
+
+Communication constraints:
+
+- sender input is still restricted to the learned self-state representation,
+- message is three categorical slots with four symbols each,
+- one shared receiver reconstructs state from message alone,
+- no direct message-symbol labels are provided.
+
+Primary targets:
+
+- continuous four-need vector,
+- low-need flags for each need,
+- dominant need/request,
+- severity,
+- trend.
+
+Gates:
+
+- full-history messages beat latest-only and random-model controls on current
+  state fields,
+- dominant need codes align across senders under mild agreement pressure,
+- trend is counted as passed only if it materially beats a majority trend
+  baseline.
+
+Recorded outcome:
+
+- current-state communication passed: need MSE `0.005698`, low-flag accuracy
+  `0.9538`, dominant accuracy `0.8327`, severity accuracy `0.8598`, sender
+  code agreement `1.0000`, and dominant-code distinctness `1.0000`.
+- trend did not pass: best trend accuracy was `0.6851` against a `0.667`
+  majority baseline.

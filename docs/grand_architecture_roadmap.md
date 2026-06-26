@@ -194,6 +194,9 @@ Completed:
 - shared self-request code where four senders use aligned dominant symbols for
   `food`, `water`, `rest`, and `avoid`, and a receiver chooses aid from message
   alone.
+- multi-aspect current self-state language where a shared receiver reconstructs
+  continuous needs, low-need flags, dominant need, and severity from a compact
+  learned message.
 
 Not yet passed:
 
@@ -203,8 +206,8 @@ Not yet passed:
   rendering of the latest event,
 - zero-shot convention alignment between independently initialized agents,
 - replicated self-request language across body-model seeds,
-- multi-need or continuous-state communication rather than one dominant aid
-  request,
+- replicated multi-aspect self-state language across body-model seeds,
+- temporal trend communication that materially beats majority baselines,
 - longer autobiographical memory and cross-episode continuity,
 - reliable ask-then-act discovery in the randomized hidden-kind setting,
 - recurrent PPO learning of the language-necessity diagnostic without
