@@ -280,3 +280,29 @@ Recorded outcome:
 - latest-only control fell to `0.2883`;
 - random full-history control reached `0.7742`, so the learned model improves
   the trend signal but environmental regularities still explain some of it.
+
+## M14 Temporal Delta Intervention Audit
+
+Date: 2026-06-26
+
+Intervention:
+
+- train the trend-balanced `self_estimate_delta` message protocol,
+- evaluate the same balanced states after modifying only the learned delta half
+  of the sender input,
+- keep the current learned self-estimate fixed,
+- compare original, zeroed, shuffled, and negated deltas.
+
+Gate:
+
+- trend accuracy should fall when the learned delta is removed or contradicted,
+  while current-state reconstruction should degrade less.
+
+Recorded outcome:
+
+- trained trend accuracy fell from `0.8468` original to `0.6720` with shuffled
+  deltas and `0.4825` with negated deltas;
+- random trend accuracy also fell from `0.7419` to `0.3972` shuffled and
+  `0.4449` negated, so random temporal features still carry trajectory signal;
+- trained original remained better than random original on trend and all
+  current-state metrics.

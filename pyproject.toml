@@ -27,6 +27,7 @@ homegrid-convention-transfer = "homesocial.convention_transfer:main"
 homegrid-population-language = "homesocial.population_language:main"
 homegrid-self-request-language = "homesocial.self_request_language:main"
 homegrid-self-state-language = "homesocial.self_state_language:main"
+homegrid-temporal-counterfactual = "homesocial.temporal_counterfactual:main"
 
 [build-system]
 requires = ["hatchling"]

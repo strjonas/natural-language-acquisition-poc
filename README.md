@@ -185,6 +185,13 @@ steady, and improving states and expose only learned self-estimate deltas:
 PYTHONPATH=src python3 -m homesocial.self_state_language --checkpoint runs/bc_stochastic_body.weights.npz --feature-mode self_estimate_delta --balance-target trend --agreement-weights 0.05 --history-modes full latest --random-model-control
 ```
 
+Intervene on the learned self-estimate delta channel while holding current
+self-state fixed:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.temporal_counterfactual --checkpoint runs/bc_stochastic_body.weights.npz --random-model-control
+```
+
 Run a larger local sweep once the fixed-world diagnostic is healthy:
 
 ```bash
