@@ -187,6 +187,13 @@ Completed:
   message-slot interventions.
 - convention transfer to fresh receivers trained against a frozen sender from
   small outcome-labeled interaction sets.
+- population-level pressure with multiple senders and one shared receiver,
+  including a failed use/avoid shortcut audit and a harder self-request game.
+- a stronger masked-interoception stochastic body checkpoint whose compressed
+  self-estimate supports substantially better food/water/rest/avoid requests.
+- shared self-request code where four senders use aligned dominant symbols for
+  `food`, `water`, `rest`, and `avoid`, and a receiver chooses aid from message
+  alone.
 
 Not yet passed:
 
@@ -195,7 +202,9 @@ Not yet passed:
 - learned multi-step cause attribution for bodily events rather than symbolic
   rendering of the latest event,
 - zero-shot convention alignment between independently initialized agents,
-- population-level pressure toward shared, stable message semantics,
+- replicated self-request language across body-model seeds,
+- multi-need or continuous-state communication rather than one dominant aid
+  request,
 - longer autobiographical memory and cross-episode continuity,
 - reliable ask-then-act discovery in the randomized hidden-kind setting,
 - recurrent PPO learning of the language-necessity diagnostic without

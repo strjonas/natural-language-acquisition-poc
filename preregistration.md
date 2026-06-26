@@ -187,3 +187,35 @@ Recorded result:
 - zero-shot swaps did not converge to a shared lexicon;
 - a fresh receiver reached `0.8454` balanced accuracy from 32 sender examples
   and `0.8960` from 256 examples on the seed13 body checkpoint.
+
+## M11 Population And Self-Request Language Audit
+
+Date: 2026-06-26
+
+Population constraints:
+
+- multiple independently initialized senders,
+- one shared receiver that never observes sender identity,
+- sender input restricted to the learned internal self-state representation,
+- no direct message-label supervision.
+
+Primary gates:
+
+- all senders remain useful to the shared receiver,
+- dominant intent-symbol mappings align across senders,
+- four request intents use distinct dominant symbols,
+- request receiver chooses aid category from message alone.
+
+Recorded deviations and outcomes:
+
+1. The first shared-receiver use/avoid game aligned senders but allowed a lossy
+   shortcut: food and water often shared one dominant message because object
+   kind was still visible to the receiver.
+2. The harder self-request game removed object-kind input. It failed on the old
+   stochastic checkpoints because the compressed self-estimate itself only
+   supported about `0.71-0.74` food/water/rest/avoid probe accuracy.
+3. A stronger masked-interoception stochastic body model improved full-history
+   next-need MSE to `0.002136` and lowest-need accuracy to `0.9165`.
+4. With that body model, four senders plus one shared receiver reached `0.8384`
+   request accuracy, `1.0000` intent-pair agreement, and `1.0000` dominant
+   intent distinctness under mild agreement pressure.

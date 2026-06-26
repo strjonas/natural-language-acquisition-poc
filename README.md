@@ -156,6 +156,20 @@ protocol initializations:
 PYTHONPATH=src python3 -m homesocial.convention_transfer --checkpoint runs/bc_stochastic_body.weights.npz --feature-mode self_estimate
 ```
 
+Train a population of senders against a shared receiver to test whether symbols
+become interoperable rather than private:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.population_language --checkpoint runs/bc_stochastic_body.weights.npz --agreement-weights 0 0.05 0.2
+```
+
+Train a harder self-request protocol where the receiver must choose the aid
+category from the message alone:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.self_request_language --checkpoint runs/bc_stochastic_body.weights.npz --agreement-weights 0 0.05 0.2
+```
+
 Run a larger local sweep once the fixed-world diagnostic is healthy:
 
 ```bash
