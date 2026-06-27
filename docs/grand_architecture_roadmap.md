@@ -202,6 +202,9 @@ Completed:
   improving states.
 - temporal delta intervention audit where zeroing, shuffling, or negating only
   the learned self-change channel degrades communicated trend.
+- counterfactual action-branch trend language where the sender communicates
+  action-conditioned future body trend and state from learned imagined
+  consequences.
 
 Not yet passed:
 
@@ -212,8 +215,8 @@ Not yet passed:
 - zero-shot convention alignment between independently initialized agents,
 - replicated self-request language across body-model seeds,
 - replicated multi-aspect self-state language across body-model seeds,
-- counterfactual environment trend probes that separate true body recovery from
-  generic trajectory-time regularities,
+- wider counterfactual environments where action-conditioned trend cannot be
+  partly inferred from action/time regularities,
 - longer autobiographical memory and cross-episode continuity,
 - reliable ask-then-act discovery in the randomized hidden-kind setting,
 - recurrent PPO learning of the language-necessity diagnostic without

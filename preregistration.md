@@ -306,3 +306,29 @@ Recorded outcome:
   `0.4449` negated, so random temporal features still carry trajectory signal;
 - trained original remained better than random original on trend and all
   current-state metrics.
+
+## M15 Counterfactual Action-Branch Trend Audit
+
+Date: 2026-06-27
+
+Intervention:
+
+- collect multiple valid action branches from the same current state,
+- label the actual next-body trend for each branch,
+- sender input is the model's action-conditioned learned next-state estimate
+  plus learned branch delta,
+- train/evaluate on balanced worsening, steady, and improving branch outcomes.
+
+Gate:
+
+- trained branch messages should beat random branch messages on trend and
+  current-state reconstruction,
+- branch evaluation should remain balanced across trend classes.
+
+Recorded outcome:
+
+- branch eval set contained `1130/1130/1130` worsening/steady/improving
+  samples;
+- trained branch trend accuracy reached `0.7605` versus random `0.6726`;
+- trained branch current-state reconstruction was much stronger than random:
+  need MSE `0.007946` versus `0.022587`, dominant `0.8569` versus `0.7211`.
