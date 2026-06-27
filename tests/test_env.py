@@ -34,6 +34,19 @@ class HomeostaticSocialGridTests(unittest.TestCase):
         self.assertFalse(terminated)
         self.assertFalse(truncated)
 
+    def test_renewable_resource_consumption_keeps_object_available(self):
+        env = HomeostaticSocialGrid(seed=1, renewable_resources=True)
+        env.reset()
+
+        obs, reward, terminated, truncated, info = env.step(Action.CONSUME)
+
+        self.assertEqual(info["event"], "consumed_water")
+        self.assertIsNotNone(obs.object_ahead)
+        self.assertEqual(obs.object_ahead.kind, "water")
+        self.assertGreater(reward, 0.0)
+        self.assertFalse(terminated)
+        self.assertFalse(truncated)
+
     def test_danger_hurts_safety(self):
         env = HomeostaticSocialGrid(seed=1)
         env.reset()

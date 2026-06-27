@@ -2,12 +2,18 @@ from __future__ import annotations
 
 import argparse
 from copy import deepcopy
+from dataclasses import replace
 
 import mlx.core as mx
 import mlx.nn as nn
 import numpy as np
 
-from .agents import NeedSeekingAgent, RandomAgent, TeacherFollowingAgent
+from .agents import (
+    NeedSeekingAgent,
+    RandomAgent,
+    ResourceCyclingAgent,
+    TeacherFollowingAgent,
+)
 from .attribution import _needs_array
 from .emergent_language import _intent
 from .env import Action, HomeostaticSocialGrid, Observation, WorldObject
@@ -31,7 +37,7 @@ from .teachers import build_teacher, masks_language, normalize_teacher_mode
 OPTION_NAMES = ("seek_food", "seek_water", "seek_shelter", "rest", "wait")
 OPTION_BALANCE_TARGETS = ("none", "trend", "option_trend")
 OPTION_ROLLOUT_MODES = ("observation", "latent", "latent_current")
-STATE_POLICIES = ("teacher", "need", "random", "mixed")
+STATE_POLICIES = ("teacher", "need", "random", "mixed", "cycle")
 
 
 def collect_option_counterfactual_dataset(
@@ -66,6 +72,7 @@ def collect_option_counterfactual_dataset(
         randomize_world=config.randomize_world,
         diagnostic_mode=config.diagnostic_mode,
         body_dynamics_mode=config.body_dynamics_mode,
+        renewable_resources=config.renewable_resources,
     )
     rng = np.random.default_rng(seed + 2_710_000)
     features: list[np.ndarray] = []
@@ -217,6 +224,8 @@ def _state_agent(state_policy: str, *, seed: int, episode: int):
         return NeedSeekingAgent()
     if state_policy == "random":
         return RandomAgent(seed + episode)
+    if state_policy == "cycle":
+        return ResourceCyclingAgent(offset=episode % 4)
     if state_policy == "mixed":
         mode = episode % 3
         if mode == 0:
@@ -415,6 +424,8 @@ def _print_counts(label: str, dataset: SelfStateDataset) -> None:
 def main() -> None:
     args = _parse_args()
     trained_base, config = load_checkpoint(args.checkpoint)
+    if args.renewable_resources:
+        config = replace(config, renewable_resources=True)
     base_models = [("trained", trained_base)]
     if args.random_model_control:
         mx.random.seed(args.seed)
@@ -554,6 +565,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--max-train-states", type=int, default=9000)
     parser.add_argument("--max-eval-states", type=int, default=4500)
     parser.add_argument("--horizon", type=int, default=6)
+    parser.add_argument("--renewable-resources", action="store_true")
     parser.add_argument(
         "--rollout-mode",
         choices=OPTION_ROLLOUT_MODES,

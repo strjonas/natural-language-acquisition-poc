@@ -153,6 +153,7 @@ class HomeostaticSocialGrid:
         randomize_world: bool = False,
         diagnostic_mode: str = STANDARD_MODE,
         body_dynamics_mode: str = DETERMINISTIC_BODY,
+        renewable_resources: bool = False,
     ) -> None:
         if width < 5 or height < 5:
             raise ValueError("Grid must be at least 5x5.")
@@ -169,6 +170,7 @@ class HomeostaticSocialGrid:
         self.randomize_world = randomize_world
         self.diagnostic_mode = diagnostic_mode
         self.body_dynamics_mode = body_dynamics_mode
+        self.renewable_resources = renewable_resources
 
         self.step_count = 0
         self.agent_pos = (1, 1)
@@ -333,7 +335,8 @@ class HomeostaticSocialGrid:
             energy=self.needs.energy + obj.energy_delta,
             safety=self.needs.safety + obj.safety_delta,
         )
-        self.objects = [candidate for candidate in self.objects if candidate is not obj]
+        if not self.renewable_resources:
+            self.objects = [candidate for candidate in self.objects if candidate is not obj]
 
         if obj.kind == "water":
             return "consumed_water"

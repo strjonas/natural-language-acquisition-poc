@@ -65,6 +65,83 @@ class NeedSeekingAgent:
         return "south" if ty > ay else "north"
 
 
+class ResourceCyclingAgent:
+    """Explores resource contexts without immediately consuming every resource."""
+
+    def __init__(
+        self,
+        *,
+        offset: int = 0,
+        phase_length: int = 12,
+        linger_steps: int = 3,
+    ) -> None:
+        self.offset = offset
+        self.phase_length = max(1, phase_length)
+        self.linger_steps = max(0, linger_steps)
+        self.last_target: str | None = None
+        self.linger_remaining = self.linger_steps
+
+    def act(self, observation: Observation) -> Action:
+        target_kind = self._target_kind(observation.step_count)
+        if target_kind != self.last_target:
+            self.last_target = target_kind
+            self.linger_remaining = self.linger_steps
+
+        if observation.last_event in {"bumped_wall", "blocked"}:
+            return Action.TURN_RIGHT
+
+        ahead = observation.object_ahead
+        if ahead is not None:
+            if ahead.kind == target_kind:
+                if self.linger_remaining > 0:
+                    self.linger_remaining -= 1
+                    return Action.WAIT
+                self.linger_remaining = self.linger_steps
+                if target_kind in {"food", "water"}:
+                    return Action.CONSUME
+                if target_kind == "shelter":
+                    return Action.REST
+                return Action.TURN_RIGHT
+            if ahead.kind == "danger":
+                return Action.TURN_RIGHT
+
+        target = self._nearest_visible_kind(target_kind, observation)
+        if target is None:
+            return Action.MOVE_FORWARD
+
+        desired_direction = self._desired_direction(observation.position, target.pos)
+        if desired_direction != observation.direction.value:
+            return Action.TURN_RIGHT
+        return Action.MOVE_FORWARD
+
+    def _target_kind(self, step_count: int) -> str:
+        order = ("food", "water", "shelter", "danger")
+        phase = step_count // self.phase_length
+        return order[(phase + self.offset) % len(order)]
+
+    def _nearest_visible_kind(
+        self,
+        kind: str,
+        observation: Observation,
+    ) -> WorldObject | None:
+        candidates = [obj for obj in observation.visible if obj.kind == kind]
+        if not candidates:
+            return None
+        ax, ay = observation.position
+        return min(candidates, key=lambda obj: abs(obj.pos[0] - ax) + abs(obj.pos[1] - ay))
+
+    def _desired_direction(
+        self,
+        current: tuple[int, int],
+        target: tuple[int, int],
+    ) -> str:
+        ax, ay = current
+        tx, ty = target
+        if abs(tx - ax) >= abs(ty - ay):
+            return "east" if tx > ax else "west"
+        return "south" if ty > ay else "north"
+
+
 class TeacherFollowingAgent:
     """Sanity-check agent that treats teacher utterances as grounded advice."""
 

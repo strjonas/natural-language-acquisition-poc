@@ -236,6 +236,12 @@ option samples. This is progress, but still too rest-heavy to treat as solved;
 future probes need more balanced causes of food, water, rest, wait, and danger
 changes.
 
+Renewable resources were tested as a minimal ecology change. They improved
+water branch coverage and trend margin slightly (`0.6237` versus `0.4368`
+random), but food remained rare and full-state reconstruction worsened. The
+next probe should add richer resource ecology rather than simply keeping one
+resource object alive.
+
 ---
 
 ## M6: Reflective Report With Parrot Guards

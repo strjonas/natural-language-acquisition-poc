@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import mlx.core as mx
 import mlx.nn as nn
@@ -104,6 +104,7 @@ def collect_option_branch_dataset(
         randomize_world=config.randomize_world,
         diagnostic_mode=config.diagnostic_mode,
         body_dynamics_mode=config.body_dynamics_mode,
+        renewable_resources=config.renewable_resources,
     )
     samples: list[OptionBranchSample] = []
 
@@ -587,6 +588,8 @@ def _format_result(phase: str, result: OptionWorldModelResult) -> str:
 def main() -> None:
     args = _parse_args()
     model, config = load_checkpoint(args.checkpoint)
+    if args.renewable_resources:
+        config = replace(config, renewable_resources=True)
     train_dataset = collect_option_branch_dataset(
         config,
         episodes=args.train_episodes,
@@ -642,6 +645,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--max-train-samples", type=int, default=9000)
     parser.add_argument("--max-eval-samples", type=int, default=4500)
     parser.add_argument("--horizon", type=int, default=6)
+    parser.add_argument("--renewable-resources", action="store_true")
     parser.add_argument(
         "--state-policy",
         choices=STATE_POLICIES,

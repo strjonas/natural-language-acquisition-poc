@@ -108,6 +108,7 @@ class RecurrentConfig:
     include_object_kinds: bool = False
     interoception_mode: str = EXACT_INTEROCEPTION
     body_dynamics_mode: str = DETERMINISTIC_BODY
+    renewable_resources: bool = False
     diagnostic_mode: str = STANDARD_MODE
     batch_size: int = 16
     log_every: int = 0
@@ -149,6 +150,7 @@ def train_condition(config: RecurrentConfig) -> TrainResult:
         randomize_world=config.randomize_world,
         diagnostic_mode=config.diagnostic_mode,
         body_dynamics_mode=config.body_dynamics_mode,
+        renewable_resources=config.renewable_resources,
     )
 
     train_stats: list[EpisodeStats] = []
@@ -771,6 +773,7 @@ def main() -> None:
             include_object_kinds=args.include_object_kinds,
             interoception_mode=args.interoception_mode,
             body_dynamics_mode=args.body_dynamics_mode,
+            renewable_resources=args.renewable_resources,
             diagnostic_mode=args.diagnostic_mode,
             batch_size=args.batch_size,
             max_steps=args.max_steps,
@@ -855,6 +858,11 @@ def _parse_args() -> argparse.Namespace:
         choices=BODY_DYNAMICS_MODES,
         default=DETERMINISTIC_BODY,
         help="Use deterministic metabolism or hidden stochastic nonlinear body dynamics.",
+    )
+    parser.add_argument(
+        "--renewable-resources",
+        action="store_true",
+        help="Keep consumable resources in the world after use.",
     )
     parser.add_argument(
         "--conditions",

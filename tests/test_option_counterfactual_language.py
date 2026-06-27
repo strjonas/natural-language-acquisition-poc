@@ -138,7 +138,7 @@ class OptionCounterfactualLanguageTests(unittest.TestCase):
             horizon=3,
             balance_target="none",
             rollout_mode="latent_current",
-            state_policy="mixed",
+            state_policy="cycle",
             max_states=20,
         )
 

@@ -214,6 +214,8 @@ Completed:
 - exploratory state collection plus current/future/delta option reports,
   improving balanced option trend communication margin to `0.6213` versus
   `0.4513` random.
+- renewable-resource probe that improved water branch coverage and trend margin
+  slightly, but failed to solve food coverage or full-state reconstruction.
 
 Not yet passed:
 
@@ -228,6 +230,8 @@ Not yet passed:
   partly inferred from action/time regularities,
 - option-level communication with larger balanced trend samples and less
   option/time shortcut leakage,
+- richer resource ecology with multiple food/water encounters and less
+  rest-dominated option balance,
 - longer autobiographical memory and cross-episode continuity,
 - reliable ask-then-act discovery in the randomized hidden-kind setting,
 - recurrent PPO learning of the language-necessity diagnostic without
