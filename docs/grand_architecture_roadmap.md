@@ -208,6 +208,9 @@ Completed:
 - option-level counterfactual language where short seek/rest/wait branches
   produce a clearer trained-over-random temporal self-state signal than
   one-step primitive action branches.
+- direct multi-step option-branch training for the transition model, improving
+  horizon-6 final need MSE from `0.111690` to `0.005782` and option-trend
+  prediction from `0.2602` to `0.8587`.
 
 Not yet passed:
 
@@ -220,8 +223,8 @@ Not yet passed:
 - replicated multi-aspect self-state language across body-model seeds,
 - wider counterfactual environments where action-conditioned trend cannot be
   partly inferred from action/time regularities,
-- direct multi-step option-branch training for the transition model rather than
-  recursively unrolling a one-step predictor,
+- option-level communication with larger balanced trend samples and less
+  option/time shortcut leakage,
 - longer autobiographical memory and cross-episode continuity,
 - reliable ask-then-act discovery in the randomized hidden-kind setting,
 - recurrent PPO learning of the language-necessity diagnostic without

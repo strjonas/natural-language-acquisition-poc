@@ -208,6 +208,14 @@ PYTHONPATH=src python3 -m homesocial.counterfactual_trend_language --checkpoint 
 PYTHONPATH=src python3 -m homesocial.option_counterfactual_language --checkpoint runs/bc_stochastic_body.weights.npz --horizon 6 --random-model-control
 ```
 
+Train the transition head directly on multi-step option branches, then test
+latent option-state communication from the updated world model:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.option_world_model --checkpoint runs/bc_stochastic_body.weights.npz --output-checkpoint runs/option_world.weights.npz --horizon 6
+PYTHONPATH=src python3 -m homesocial.option_counterfactual_language --checkpoint runs/option_world.weights.npz --horizon 6 --rollout-mode latent --random-model-control
+```
+
 Run a larger local sweep once the fixed-world diagnostic is healthy:
 
 ```bash

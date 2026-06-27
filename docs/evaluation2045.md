@@ -223,6 +223,13 @@ underpowered and not yet a stable imagination substrate. The next architecture
 step should therefore be direct multi-step option-branch world-model training,
 not larger language heads.
 
+Later 2026-06-27 update: direct option-branch world-model training now works as
+a substrate test: horizon-6 final need MSE improved from `0.111690` to
+`0.005782`. The follow-on communication audit improved full future-state
+reconstruction but only modestly improved trend language, so the next gate is
+better option diversity and balanced future-change coverage before scaling the
+language head.
+
 ---
 
 ## M6: Reflective Report With Parrot Guards

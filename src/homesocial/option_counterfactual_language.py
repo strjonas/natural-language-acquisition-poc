@@ -4,6 +4,7 @@ import argparse
 from copy import deepcopy
 
 import mlx.core as mx
+import mlx.nn as nn
 import numpy as np
 
 from .agents import TeacherFollowingAgent
@@ -29,6 +30,7 @@ from .teachers import build_teacher, masks_language, normalize_teacher_mode
 
 OPTION_NAMES = ("seek_food", "seek_water", "seek_shelter", "rest", "wait")
 OPTION_BALANCE_TARGETS = ("none", "trend", "option_trend")
+OPTION_ROLLOUT_MODES = ("observation", "latent")
 
 
 def collect_option_counterfactual_dataset(
@@ -40,10 +42,13 @@ def collect_option_counterfactual_dataset(
     teacher_mode: str = "grounded",
     horizon: int = 6,
     balance_target: str = "option_trend",
+    rollout_mode: str = "observation",
     max_states: int = 3000,
 ) -> SelfStateDataset:
     if balance_target not in OPTION_BALANCE_TARGETS:
         raise ValueError(f"Unknown balance target: {balance_target}.")
+    if rollout_mode not in OPTION_ROLLOUT_MODES:
+        raise ValueError(f"Unknown rollout mode: {rollout_mode}.")
     normalized_teacher = normalize_teacher_mode(teacher_mode)
     mask_language = (
         masks_language(normalized_teacher) or not config.include_language_channel
@@ -117,6 +122,7 @@ def collect_option_counterfactual_dataset(
                         base_model,
                         history,
                         option_actions=option_actions,
+                        rollout_mode=rollout_mode,
                     )
                 )
                 needs.append(after_needs)
@@ -241,10 +247,16 @@ def _option_counterfactual_features(
     history: list[np.ndarray],
     *,
     option_actions: list[int],
+    rollout_mode: str = "observation",
 ) -> np.ndarray:
-    option_needs = _imagined_rollout_needs(base_model, history, option_actions)
+    rollout = (
+        _latent_imagined_rollout_needs
+        if rollout_mode == "latent"
+        else _imagined_rollout_needs
+    )
+    option_needs = rollout(base_model, history, option_actions)
     wait_action = tuple(Action).index(Action.WAIT)
-    wait_needs = _imagined_rollout_needs(
+    wait_needs = rollout(
         base_model,
         history,
         [wait_action for _ in option_actions],
@@ -274,6 +286,25 @@ def _imagined_rollout_needs(
     if final_needs is None:
         raise ValueError("Cannot imagine an empty option rollout.")
     return final_needs
+
+
+def _latent_imagined_rollout_needs(
+    base_model: RecurrentActorCritic,
+    history: list[np.ndarray],
+    actions: list[int],
+) -> np.ndarray:
+    observations = mx.array(np.stack(history), dtype=mx.float32)
+    hidden = base_model.hidden_states(observations)[-1]
+    final_needs: mx.array | None = None
+    for action_index in actions:
+        action_features = mx.eye(base_model.action_size)[action_index]
+        x = mx.concatenate([hidden, action_features], axis=-1)
+        x = nn.relu(base_model.transition_norm(base_model.transition(x)))
+        hidden = x + nn.relu(base_model.transition_state(x))
+        final_needs = mx.sigmoid(base_model.next_needs(hidden))
+    if final_needs is None:
+        raise ValueError("Cannot imagine an empty option rollout.")
+    return np.asarray(final_needs, dtype=np.float32)
 
 
 def _balanced_option_trend_indices(
@@ -369,6 +400,7 @@ def main() -> None:
             teacher_mode=args.teacher_mode,
             horizon=args.horizon,
             balance_target=args.balance_target,
+            rollout_mode=args.rollout_mode,
             max_states=args.max_train_states,
         )
         _print_counts(f"{model_control}_train", train_dataset)
@@ -399,6 +431,7 @@ def main() -> None:
             teacher_mode=args.teacher_mode,
             horizon=args.horizon,
             balance_target=args.balance_target,
+            rollout_mode=args.rollout_mode,
             max_states=args.max_eval_states,
         )
         _print_counts(f"{model_control}_option_eval", option_eval)
@@ -406,7 +439,7 @@ def main() -> None:
             trained,
             option_eval,
             model_control=model_control,
-            feature_mode="option_counterfactual_delta",
+            feature_mode=f"option_counterfactual_{args.rollout_mode}",
             history_mode=f"horizon_{args.horizon}",
         )
         print(_row(model_control, "option", option_result))
@@ -430,7 +463,7 @@ def main() -> None:
             trained,
             trajectory_eval,
             model_control=model_control,
-            feature_mode="option_counterfactual_delta",
+            feature_mode=f"option_counterfactual_{args.rollout_mode}",
             history_mode="trajectory",
         )
         print(_row(model_control, "trajectory", trajectory_result))
@@ -464,6 +497,11 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--max-train-states", type=int, default=9000)
     parser.add_argument("--max-eval-states", type=int, default=4500)
     parser.add_argument("--horizon", type=int, default=6)
+    parser.add_argument(
+        "--rollout-mode",
+        choices=OPTION_ROLLOUT_MODES,
+        default="observation",
+    )
     parser.add_argument("--population-size", type=int, default=4)
     parser.add_argument("--hidden-size", type=int, default=96)
     parser.add_argument("--receiver-size", type=int, default=96)
