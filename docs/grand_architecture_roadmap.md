@@ -211,6 +211,9 @@ Completed:
 - direct multi-step option-branch training for the transition model, improving
   horizon-6 final need MSE from `0.111690` to `0.005782` and option-trend
   prediction from `0.2602` to `0.8587`.
+- exploratory state collection plus current/future/delta option reports,
+  improving balanced option trend communication margin to `0.6213` versus
+  `0.4513` random.
 
 Not yet passed:
 
@@ -229,7 +232,7 @@ Not yet passed:
 - reliable ask-then-act discovery in the randomized hidden-kind setting,
 - recurrent PPO learning of the language-necessity diagnostic without
   curriculum or imitation warmstart,
-- latent imagination rollouts trained from the transition model,
+- replicated latent option-world and option-language results across seeds,
 - richer self-battery tests beyond one-step consequences and attribution.
 
 Interpretation:

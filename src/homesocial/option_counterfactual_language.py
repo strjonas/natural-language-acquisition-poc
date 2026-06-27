@@ -7,7 +7,7 @@ import mlx.core as mx
 import mlx.nn as nn
 import numpy as np
 
-from .agents import TeacherFollowingAgent
+from .agents import NeedSeekingAgent, RandomAgent, TeacherFollowingAgent
 from .attribution import _needs_array
 from .emergent_language import _intent
 from .env import Action, HomeostaticSocialGrid, Observation, WorldObject
@@ -30,7 +30,8 @@ from .teachers import build_teacher, masks_language, normalize_teacher_mode
 
 OPTION_NAMES = ("seek_food", "seek_water", "seek_shelter", "rest", "wait")
 OPTION_BALANCE_TARGETS = ("none", "trend", "option_trend")
-OPTION_ROLLOUT_MODES = ("observation", "latent")
+OPTION_ROLLOUT_MODES = ("observation", "latent", "latent_current")
+STATE_POLICIES = ("teacher", "need", "random", "mixed")
 
 
 def collect_option_counterfactual_dataset(
@@ -43,12 +44,15 @@ def collect_option_counterfactual_dataset(
     horizon: int = 6,
     balance_target: str = "option_trend",
     rollout_mode: str = "observation",
+    state_policy: str = "teacher",
     max_states: int = 3000,
 ) -> SelfStateDataset:
     if balance_target not in OPTION_BALANCE_TARGETS:
         raise ValueError(f"Unknown balance target: {balance_target}.")
     if rollout_mode not in OPTION_ROLLOUT_MODES:
         raise ValueError(f"Unknown rollout mode: {rollout_mode}.")
+    if state_policy not in STATE_POLICIES:
+        raise ValueError(f"Unknown state policy: {state_policy}.")
     normalized_teacher = normalize_teacher_mode(teacher_mode)
     mask_language = (
         masks_language(normalized_teacher) or not config.include_language_channel
@@ -74,7 +78,7 @@ def collect_option_counterfactual_dataset(
 
     for episode in range(episodes):
         observation = env.reset(seed=seed + episode)
-        agent = TeacherFollowingAgent()
+        agent = _state_agent(state_policy, seed=seed, episode=episode)
         history: list[np.ndarray] = []
         terminated = False
         truncated = False
@@ -206,6 +210,23 @@ def _option_action(option_name: str, observation: Observation) -> Action:
     raise ValueError(f"Unknown option: {option_name}.")
 
 
+def _state_agent(state_policy: str, *, seed: int, episode: int):
+    if state_policy == "teacher":
+        return TeacherFollowingAgent()
+    if state_policy == "need":
+        return NeedSeekingAgent()
+    if state_policy == "random":
+        return RandomAgent(seed + episode)
+    if state_policy == "mixed":
+        mode = episode % 3
+        if mode == 0:
+            return TeacherFollowingAgent()
+        if mode == 1:
+            return NeedSeekingAgent()
+        return RandomAgent(seed + episode)
+    raise ValueError(f"Unknown state policy: {state_policy}.")
+
+
 def _seek_kind_action(kind: str, observation: Observation) -> Action:
     ahead = observation.object_ahead
     if ahead is not None:
@@ -249,6 +270,17 @@ def _option_counterfactual_features(
     option_actions: list[int],
     rollout_mode: str = "observation",
 ) -> np.ndarray:
+    if rollout_mode == "latent_current":
+        current_needs = _current_self_estimate(base_model, history)
+        option_needs = _latent_imagined_rollout_needs(
+            base_model,
+            history,
+            option_actions,
+        )
+        return np.concatenate(
+            [current_needs, option_needs, option_needs - current_needs]
+        ).astype(np.float32)
+
     rollout = (
         _latent_imagined_rollout_needs
         if rollout_mode == "latent"
@@ -262,6 +294,22 @@ def _option_counterfactual_features(
         [wait_action for _ in option_actions],
     )
     return np.concatenate([option_needs, option_needs - wait_needs]).astype(np.float32)
+
+
+def _current_self_estimate(
+    base_model: RecurrentActorCritic,
+    history: list[np.ndarray],
+) -> np.ndarray:
+    observations = mx.array(np.stack(history), dtype=mx.float32)
+    actions = np.zeros(len(history), dtype=np.int32)
+    actions[-1] = tuple(Action).index(Action.WAIT)
+    _next_observations, predicted_needs, _rewards, _utterances = (
+        base_model.predict_consequences(
+            observations,
+            mx.array(actions, dtype=mx.int32),
+        )
+    )
+    return np.asarray(predicted_needs[-1], dtype=np.float32)
 
 
 def _imagined_rollout_needs(
@@ -401,6 +449,7 @@ def main() -> None:
             horizon=args.horizon,
             balance_target=args.balance_target,
             rollout_mode=args.rollout_mode,
+            state_policy=args.state_policy,
             max_states=args.max_train_states,
         )
         _print_counts(f"{model_control}_train", train_dataset)
@@ -432,6 +481,7 @@ def main() -> None:
             horizon=args.horizon,
             balance_target=args.balance_target,
             rollout_mode=args.rollout_mode,
+            state_policy=args.state_policy,
             max_states=args.max_eval_states,
         )
         _print_counts(f"{model_control}_option_eval", option_eval)
@@ -459,6 +509,13 @@ def main() -> None:
             max_states=args.max_eval_states,
         )
         _print_counts(f"{model_control}_trajectory_eval", trajectory_eval)
+        if trajectory_eval.features.shape[-1] != train_dataset.features.shape[-1]:
+            print(
+                f"# {model_control}_trajectory_eval_skipped="
+                f"feature_width_{trajectory_eval.features.shape[-1]}_vs_"
+                f"{train_dataset.features.shape[-1]}"
+            )
+            continue
         trajectory_result = evaluate_self_state_communication(
             trained,
             trajectory_eval,
@@ -501,6 +558,11 @@ def _parse_args() -> argparse.Namespace:
         "--rollout-mode",
         choices=OPTION_ROLLOUT_MODES,
         default="observation",
+    )
+    parser.add_argument(
+        "--state-policy",
+        choices=STATE_POLICIES,
+        default="teacher",
     )
     parser.add_argument("--population-size", type=int, default=4)
     parser.add_argument("--hidden-size", type=int, default=96)

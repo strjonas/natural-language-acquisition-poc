@@ -230,6 +230,12 @@ reconstruction but only modestly improved trend language, so the next gate is
 better option diversity and balanced future-change coverage before scaling the
 language head.
 
+The broader random-state collector plus current/future/delta option features
+improved trend communication to `0.6213` versus `0.4513` random on 375 balanced
+option samples. This is progress, but still too rest-heavy to treat as solved;
+future probes need more balanced causes of food, water, rest, wait, and danger
+changes.
+
 ---
 
 ## M6: Reflective Report With Parrot Guards

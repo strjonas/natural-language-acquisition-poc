@@ -39,6 +39,7 @@ class OptionWorldModelTests(unittest.TestCase):
             episodes=2,
             seed=7,
             horizon=3,
+            state_policy="mixed",
             max_samples=18,
         )
         self.assertEqual(len(dataset.samples), 18)

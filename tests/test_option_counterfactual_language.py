@@ -101,10 +101,48 @@ class OptionCounterfactualLanguageTests(unittest.TestCase):
             horizon=3,
             balance_target="none",
             rollout_mode="latent",
+            state_policy="mixed",
             max_states=20,
         )
 
         self.assertEqual(dataset.features.shape[1], 8)
+        self.assertGreater(dataset.features.shape[0], 0)
+        self.assertTrue(math.isfinite(float(dataset.features[0, 0])))
+
+    def test_collect_option_counterfactual_dataset_latent_current_runs(self):
+        config = RecurrentConfig(
+            condition="grounded",
+            include_language_channel=True,
+            max_steps=16,
+            hidden_size=16,
+            randomize_world=False,
+            diagnostic_mode=LANGUAGE_NECESSARY_MODE,
+            interoception_mode=MASKED_INTEROCEPTION,
+            body_dynamics_mode=STOCHASTIC_BODY,
+        )
+        base_model = RecurrentActorCritic(
+            observation_vector_size(
+                include_language=True,
+                include_object_kinds=False,
+                body_dynamics_mode=STOCHASTIC_BODY,
+            ),
+            hidden_size=16,
+            action_size=len(Action),
+        )
+
+        dataset = collect_option_counterfactual_dataset(
+            base_model,
+            config,
+            episodes=2,
+            seed=8,
+            horizon=3,
+            balance_target="none",
+            rollout_mode="latent_current",
+            state_policy="mixed",
+            max_states=20,
+        )
+
+        self.assertEqual(dataset.features.shape[1], 12)
         self.assertGreater(dataset.features.shape[0], 0)
         self.assertTrue(math.isfinite(float(dataset.features[0, 0])))
 

@@ -9,12 +9,16 @@ import mlx.nn as nn
 import mlx.optimizers as optim
 import numpy as np
 
-from .agents import TeacherFollowingAgent
 from .attribution import _needs_array
 from .env import Action, HomeostaticSocialGrid
 from .imitation import load_checkpoint, save_checkpoint
 from .observations import observation_vector
-from .option_counterfactual_language import OPTION_NAMES, _option_action
+from .option_counterfactual_language import (
+    OPTION_NAMES,
+    STATE_POLICIES,
+    _option_action,
+    _state_agent,
+)
 from .recurrent_ac import RecurrentActorCritic, RecurrentConfig, action_mask
 from .self_state_language import _trend
 from .teachers import build_teacher, masks_language, normalize_teacher_mode
@@ -82,8 +86,11 @@ def collect_option_branch_dataset(
     seed: int,
     teacher_mode: str = "grounded",
     horizon: int = 6,
+    state_policy: str = "teacher",
     max_samples: int | None = None,
 ) -> OptionBranchDataset:
+    if state_policy not in STATE_POLICIES:
+        raise ValueError(f"Unknown state policy: {state_policy}.")
     normalized_teacher = normalize_teacher_mode(teacher_mode)
     mask_language = (
         masks_language(normalized_teacher) or not config.include_language_channel
@@ -102,7 +109,7 @@ def collect_option_branch_dataset(
 
     for episode in range(episodes):
         observation = env.reset(seed=seed + episode)
-        agent = TeacherFollowingAgent()
+        agent = _state_agent(state_policy, seed=seed, episode=episode)
         history: list[np.ndarray] = []
         terminated = False
         truncated = False
@@ -586,6 +593,7 @@ def main() -> None:
         seed=args.seed,
         teacher_mode=args.teacher_mode,
         horizon=args.horizon,
+        state_policy=args.state_policy,
         max_samples=args.max_train_samples,
     )
     eval_dataset = collect_option_branch_dataset(
@@ -594,6 +602,7 @@ def main() -> None:
         seed=args.seed + 10_000,
         teacher_mode=args.teacher_mode,
         horizon=args.horizon,
+        state_policy=args.state_policy,
         max_samples=args.max_eval_samples,
     )
 
@@ -633,6 +642,11 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--max-train-samples", type=int, default=9000)
     parser.add_argument("--max-eval-samples", type=int, default=4500)
     parser.add_argument("--horizon", type=int, default=6)
+    parser.add_argument(
+        "--state-policy",
+        choices=STATE_POLICIES,
+        default="teacher",
+    )
     parser.add_argument("--epochs", type=int, default=6)
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--learning-rate", type=float, default=3e-4)
