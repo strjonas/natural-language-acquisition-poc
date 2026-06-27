@@ -216,6 +216,13 @@ def imagine(latent, action_seq) -> ViabilityPrediction: ...
 
 Do not add Dreamer/Crafter/Mamba/LLM dialogue before the grid proves a real grounded-language effect.
 
+2026-06-27 update: the new option-level counterfactual language probe supports
+this gate. Recursive unrolling of the current one-step predictor gives a better
+trained-over-random signal than primitive one-step branches, but the result is
+underpowered and not yet a stable imagination substrate. The next architecture
+step should therefore be direct multi-step option-branch world-model training,
+not larger language heads.
+
 ---
 
 ## M6: Reflective Report With Parrot Guards

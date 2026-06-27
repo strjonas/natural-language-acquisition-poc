@@ -42,6 +42,7 @@ class SelfStateDataset:
     dominant_labels: mx.array
     severity_labels: mx.array
     trend_labels: mx.array
+    action_labels: mx.array | None = None
 
 
 @dataclass(frozen=True)

@@ -199,6 +199,15 @@ same current state:
 PYTHONPATH=src python3 -m homesocial.counterfactual_trend_language --checkpoint runs/bc_stochastic_body.weights.npz --random-model-control
 ```
 
+Run the stricter action-balanced branch audit, then a short option-level
+counterfactual audit where branches execute seek/rest/wait policies for several
+steps:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.counterfactual_trend_language --checkpoint runs/bc_stochastic_body.weights.npz --balance-target action_trend --random-model-control
+PYTHONPATH=src python3 -m homesocial.option_counterfactual_language --checkpoint runs/bc_stochastic_body.weights.npz --horizon 6 --random-model-control
+```
+
 Run a larger local sweep once the fixed-world diagnostic is healthy:
 
 ```bash
