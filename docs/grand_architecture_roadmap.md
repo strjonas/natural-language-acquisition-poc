@@ -241,6 +241,10 @@ Completed:
 - independent base-body mediation replication on older m8 stochastic body
   checkpoints: trained choice averages `0.7472`, random `0.5858`,
   target-majority `0.2000`, and negated-delta trained choice `0.1590`.
+- delta-only option mediation where the receiver sees only predicted
+  future-current self-change: trained choice averages `0.7790`, random drops
+  to `0.5161`, shuffled-delta trained choice `0.2027`, and negated-delta
+  trained choice `0.0738`.
 
 Not yet passed:
 

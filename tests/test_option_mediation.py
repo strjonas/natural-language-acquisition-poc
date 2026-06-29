@@ -20,9 +20,14 @@ from homesocial.recurrent_ac import RecurrentActorCritic, RecurrentConfig
 def _dataset(
     targets: list[int],
     values: np.ndarray | None = None,
+    feature_width: int = 12,
 ) -> OptionMediationDataset:
     rows = len(targets)
-    features = np.arange(rows * 5 * 12, dtype=np.float32).reshape(rows, 5, 12)
+    features = np.arange(rows * 5 * feature_width, dtype=np.float32).reshape(
+        rows,
+        5,
+        feature_width,
+    )
     if values is None:
         values = np.zeros((rows, 5), dtype=np.float32)
         for row, target in enumerate(targets):
@@ -72,6 +77,24 @@ class OptionMediationTests(unittest.TestCase):
             np.asarray(intervened.target_options),
             np.asarray(dataset.target_options),
         )
+
+    def test_delta_only_intervention_accepts_width_four(self):
+        dataset = _dataset([0, 1], feature_width=4)
+
+        intervened = intervene_option_mediation_features(
+            dataset,
+            intervention="negate_delta",
+        )
+
+        np.testing.assert_allclose(
+            np.asarray(intervened.features),
+            -np.asarray(dataset.features),
+        )
+        with self.assertRaises(ValueError):
+            intervene_option_mediation_features(
+                dataset,
+                intervention="shuffle_current",
+            )
 
     def test_majority_option_result_reports_choice_value_and_regret(self):
         train = _dataset([1, 1, 2])
@@ -132,9 +155,15 @@ class OptionMediationTests(unittest.TestCase):
             min_value_gap=0.0,
         )
         dataset = option_mediation_dataset_from_source(source, model)
+        delta_dataset = option_mediation_dataset_from_source(
+            source,
+            model,
+            feature_mode="delta",
+        )
 
         self.assertGreater(len(source.samples), 0)
         self.assertEqual(dataset.features.shape[1:], (5, 12))
+        self.assertEqual(delta_dataset.features.shape[1:], (5, 4))
         self.assertEqual(dataset.option_values.shape[1], 5)
 
 

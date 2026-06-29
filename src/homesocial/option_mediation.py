@@ -26,6 +26,7 @@ from .teachers import build_teacher, masks_language, normalize_teacher_mode
 
 
 OPTION_MEDIATION_BALANCE_TARGETS = ("none", "target_option")
+OPTION_MEDIATION_FEATURE_MODES = ("latent_current", "delta")
 OPTION_MEDIATION_SLOTS = 2
 OPTION_MEDIATION_VOCABULARY = 4
 
@@ -154,6 +155,7 @@ def collect_option_mediation_dataset(
     balance_target: str = "target_option",
     max_states: int = 3000,
     min_value_gap: float = 0.005,
+    feature_mode: str = "latent_current",
 ) -> OptionMediationDataset:
     source = collect_option_mediation_source(
         config,
@@ -169,6 +171,7 @@ def collect_option_mediation_dataset(
     return option_mediation_dataset_from_source(
         source,
         base_model,
+        feature_mode=feature_mode,
         rollout_mode=rollout_mode,
     )
 
@@ -289,8 +292,11 @@ def option_mediation_dataset_from_source(
     source: OptionMediationSourceDataset,
     base_model: RecurrentActorCritic,
     *,
+    feature_mode: str = "latent_current",
     rollout_mode: str = "latent_current",
 ) -> OptionMediationDataset:
+    if feature_mode not in OPTION_MEDIATION_FEATURE_MODES:
+        raise ValueError(f"Unknown option mediation feature mode: {feature_mode}.")
     if rollout_mode != "latent_current":
         raise ValueError("Option mediation currently requires latent_current features.")
     grouped_features: list[np.ndarray] = []
@@ -303,11 +309,14 @@ def option_mediation_dataset_from_source(
         grouped_features.append(
             np.stack(
                 [
-                    _option_counterfactual_features(
-                        base_model,
-                        history,
-                        option_actions=list(actions),
-                        rollout_mode=rollout_mode,
+                    _select_option_mediation_features(
+                        _option_counterfactual_features(
+                            base_model,
+                            history,
+                            option_actions=list(actions),
+                            rollout_mode=rollout_mode,
+                        ),
+                        feature_mode=feature_mode,
                     )
                     for actions in sample.option_actions
                 ]
@@ -346,18 +355,24 @@ def intervene_option_mediation_features(
     if intervention not in OPTION_FEATURE_INTERVENTIONS:
         raise ValueError(f"Unknown option feature intervention: {intervention}.")
     features = np.asarray(dataset.features).copy()
-    if features.shape[-1] != 12:
-        raise ValueError("Option mediation interventions require feature width 12.")
     rng = np.random.default_rng(seed)
-    blocks = {
-        "current": slice(0, 4),
-        "future": slice(4, 8),
-        "delta": slice(8, 12),
-    }
+    blocks = _feature_blocks(features.shape[-1])
     if intervention.startswith("zero_"):
-        features[:, :, blocks[intervention.removeprefix("zero_")]] = 0.0
+        block_name = intervention.removeprefix("zero_")
+        if block_name not in blocks:
+            raise ValueError(
+                f"Intervention {intervention} is invalid for feature width "
+                f"{features.shape[-1]}."
+            )
+        features[:, :, blocks[block_name]] = 0.0
     elif intervention.startswith("shuffle_"):
-        block = blocks[intervention.removeprefix("shuffle_")]
+        block_name = intervention.removeprefix("shuffle_")
+        if block_name not in blocks:
+            raise ValueError(
+                f"Intervention {intervention} is invalid for feature width "
+                f"{features.shape[-1]}."
+            )
+        block = blocks[block_name]
         flat = features[:, :, block].reshape((-1, block.stop - block.start))
         rng.shuffle(flat)
         features[:, :, block] = flat.reshape(features[:, :, block].shape)
@@ -508,6 +523,30 @@ def target_count_string(dataset: OptionMediationDataset) -> str:
         f"{OPTION_NAMES[index]}={int(np.sum(targets == index))}"
         for index in range(len(OPTION_NAMES))
     )
+
+
+def _select_option_mediation_features(
+    features: np.ndarray,
+    *,
+    feature_mode: str,
+) -> np.ndarray:
+    if feature_mode == "latent_current":
+        return features
+    if feature_mode == "delta":
+        return features[8:12]
+    raise ValueError(f"Unknown option mediation feature mode: {feature_mode}.")
+
+
+def _feature_blocks(width: int) -> dict[str, slice]:
+    if width == 12:
+        return {
+            "current": slice(0, 4),
+            "future": slice(4, 8),
+            "delta": slice(8, 12),
+        }
+    if width == 4:
+        return {"delta": slice(0, 4)}
+    raise ValueError("Option mediation interventions require feature width 12 or 4.")
 
 
 def _state_option_actions_and_values(
@@ -674,11 +713,13 @@ def main() -> None:
         train_dataset = option_mediation_dataset_from_source(
             train_source,
             base_model,
+            feature_mode=args.feature_mode,
             rollout_mode="latent_current",
         )
         eval_dataset = option_mediation_dataset_from_source(
             eval_source,
             base_model,
+            feature_mode=args.feature_mode,
             rollout_mode="latent_current",
         )
         trained = train_option_mediator(
@@ -763,6 +804,11 @@ def _parse_args() -> argparse.Namespace:
         default="target_option",
     )
     parser.add_argument("--min-value-gap", type=float, default=0.005)
+    parser.add_argument(
+        "--feature-mode",
+        choices=OPTION_MEDIATION_FEATURE_MODES,
+        default="latent_current",
+    )
     parser.add_argument("--hidden-size", type=int, default=96)
     parser.add_argument("--receiver-size", type=int, default=96)
     parser.add_argument("--epochs", type=int, default=100)

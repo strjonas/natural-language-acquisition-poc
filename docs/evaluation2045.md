@@ -305,6 +305,15 @@ from `0.1659` to `0.7686`. This is a significant robustness win. The random
 latent baseline is still high, so the next gate should target richer/noisier
 option ecologies and controls that reduce generic route/feature regularity.
 
+Delta-only mediation is the first anti-shortcut refinement against that random
+baseline. Restricting the receiver to the predicted future-current self-change
+vector kept trained choice high (`0.7790`) while reducing random choice from
+the prior full-feature `0.5812` to `0.5161`. Shuffling delta collapsed trained
+choice to `0.2027`; negating delta collapsed it to `0.0738`. This supports the
+claim that the useful message is carried by self-change, but the random
+delta-only control is still above chance on some seeds. The next environment
+change should make option outcomes less stereotyped.
+
 ---
 
 ## M6: Reflective Report With Parrot Guards

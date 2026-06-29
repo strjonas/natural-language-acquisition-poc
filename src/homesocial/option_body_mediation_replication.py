@@ -5,7 +5,10 @@ import argparse
 from .env import RESOURCE_ECOLOGIES
 from .option_counterfactual_language import STATE_POLICIES
 from .option_feature_intervention import OPTION_FEATURE_INTERVENTIONS
-from .option_mediation import OPTION_MEDIATION_BALANCE_TARGETS
+from .option_mediation import (
+    OPTION_MEDIATION_BALANCE_TARGETS,
+    OPTION_MEDIATION_FEATURE_MODES,
+)
 from .option_world_mediation_replication import (
     format_row,
     header,
@@ -88,6 +91,11 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--max-mediation-train-states", type=int, default=12000)
     parser.add_argument("--max-mediation-eval-states", type=int, default=6000)
     parser.add_argument("--min-value-gap", type=float, default=0.005)
+    parser.add_argument(
+        "--feature-mode",
+        choices=OPTION_MEDIATION_FEATURE_MODES,
+        default="latent_current",
+    )
     parser.add_argument("--hidden-size", type=int, default=96)
     parser.add_argument("--receiver-size", type=int, default=96)
     parser.add_argument("--mediation-epochs", type=int, default=100)

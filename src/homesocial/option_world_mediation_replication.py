@@ -12,6 +12,7 @@ from .option_counterfactual_language import STATE_POLICIES
 from .option_feature_intervention import OPTION_FEATURE_INTERVENTIONS
 from .option_mediation import (
     OPTION_MEDIATION_BALANCE_TARGETS,
+    OPTION_MEDIATION_FEATURE_MODES,
     collect_option_mediation_source,
     evaluate_option_mediator,
     intervene_option_mediation_features,
@@ -229,8 +230,16 @@ def _mediation_rows(
     after_world_trend_accuracy: float,
     include_target_majority: bool,
 ) -> list[OptionWorldMediationReplicationRow]:
-    train_dataset = option_mediation_dataset_from_source(train_source, base_model)
-    eval_dataset = option_mediation_dataset_from_source(eval_source, base_model)
+    train_dataset = option_mediation_dataset_from_source(
+        train_source,
+        base_model,
+        feature_mode=args.feature_mode,
+    )
+    eval_dataset = option_mediation_dataset_from_source(
+        eval_source,
+        base_model,
+        feature_mode=args.feature_mode,
+    )
     trained = train_option_mediator(
         train_dataset,
         hidden_size=args.hidden_size,
@@ -363,6 +372,11 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--max-mediation-train-states", type=int, default=12000)
     parser.add_argument("--max-mediation-eval-states", type=int, default=6000)
     parser.add_argument("--min-value-gap", type=float, default=0.005)
+    parser.add_argument(
+        "--feature-mode",
+        choices=OPTION_MEDIATION_FEATURE_MODES,
+        default="latent_current",
+    )
     parser.add_argument("--hidden-size", type=int, default=96)
     parser.add_argument("--receiver-size", type=int, default=96)
     parser.add_argument("--mediation-epochs", type=int, default=100)

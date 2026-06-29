@@ -261,6 +261,13 @@ grouped option states for trained and random controls:
 PYTHONPATH=src python3 -m homesocial.option_mediation --checkpoint runs/option_world_rich.weights.npz --horizon 6 --state-policy cycle --resource-ecology rich --random-model-control
 ```
 
+Force the mediation receiver to see only predicted future-current self-change
+instead of current and future absolute self-estimates:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.option_mediation --checkpoint runs/option_world_rich.weights.npz --horizon 6 --state-policy cycle --resource-ecology rich --feature-mode delta --random-model-control
+```
+
 Train a fresh option-world model per seed, then test whether option mediation
 still works on those independently trained world-model heads:
 
