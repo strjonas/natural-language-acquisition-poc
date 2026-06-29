@@ -223,6 +223,10 @@ Completed:
   sensitive to the learned self-change features: trained trend drops from
   `0.6606` to `0.5060` when the delta block is shuffled and `0.3527` when it
   is negated.
+- three-seed rich-ecology replication of the option-world plus intervention
+  pipeline: trained trend averages `0.6585`, random control averages `0.5185`,
+  option-majority remains `0.3333`, and negated-delta trained trend averages
+  `0.3431`.
 
 Not yet passed:
 
@@ -235,8 +239,8 @@ Not yet passed:
 - replicated multi-aspect self-state language across body-model seeds,
 - wider counterfactual environments where action-conditioned trend cannot be
   partly inferred from action/time regularities,
-- replicated option-level communication with larger balanced trend samples and
-  less option/time shortcut leakage,
+- option-level communication across independent body-model checkpoints, larger
+  balanced trend samples, and less latent-feature shortcut leakage,
 - longer autobiographical memory and cross-episode continuity,
 - reliable ask-then-act discovery in the randomized hidden-kind setting,
 - recurrent PPO learning of the language-necessity diagnostic without

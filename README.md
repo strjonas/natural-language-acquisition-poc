@@ -246,6 +246,13 @@ self-estimate features rather than only option/time regularities:
 PYTHONPATH=src python3 -m homesocial.option_feature_intervention --checkpoint runs/option_world_rich.weights.npz --horizon 6 --state-policy cycle --resource-ecology rich --trend-weight 2.0 --balance-target option_trend --random-model-control
 ```
 
+Replicate the rich-ecology option-world plus feature-intervention pipeline
+across seeds, including random-model and option-majority controls:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.option_seed_replication --checkpoint runs/bc_stochastic_body.weights.npz --seeds 9901 9902 9903 --horizon 6 --state-policy cycle --resource-ecology rich --trend-weight 2.0 --balance-target option_trend --random-model-control
+```
+
 Run a larger local sweep once the fixed-world diagnostic is healthy:
 
 ```bash

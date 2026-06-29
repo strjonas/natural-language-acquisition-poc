@@ -257,6 +257,17 @@ delta-only code; it appears to depend on the full current/future self-state
 feature. The next gate remains seed replication plus harder environments where
 option identity and time cannot carry much trend information.
 
+Three-seed replication passed the main direction: trained original trend
+communication averaged `0.6585`, random-model control averaged `0.5185`, and
+option-majority control stayed at `0.3333`. Negating the future-current delta
+collapsed trained trend to `0.3431` on average. The option world model itself
+replicated, improving final-need MSE from `0.1246` to `0.0141` and trend
+prediction from `0.2279` to `0.8314`. This is now a replicated local
+self-change communication result, but not yet a final self-language result:
+the random feature baseline remains above chance, so the next gate should make
+feature shortcuts harder with more varied trajectories and independent body
+model seeds.
+
 ---
 
 ## M6: Reflective Report With Parrot Guards
