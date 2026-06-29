@@ -287,6 +287,15 @@ was `0.2000`. Negating the self-change delta dropped trained choice to
 use inside one checkpoint; independent body/world checkpoints are still
 required before claiming robustness.
 
+Independent option-world mediation now passes a bounded two-seed gate. Each
+seed loaded the same base body checkpoint, trained a fresh rich-ecology
+horizon-6 option-world model, then ran matched-source mediation. The world
+model replicated (`final_need_mse 0.1257 -> 0.0141`, trend `0.2266 -> 0.8440`).
+Mediation also replicated: trained choice averaged `0.7853`, random `0.5597`,
+target-majority `0.2000`, and negated-delta trained choice `0.1864` with
+regret `0.1535`. The remaining robustness gap is now independent base body
+checkpoints and richer/noisier option ecologies.
+
 ---
 
 ## M6: Reflective Report With Parrot Guards

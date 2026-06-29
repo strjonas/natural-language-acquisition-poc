@@ -261,6 +261,13 @@ grouped option states for trained and random controls:
 PYTHONPATH=src python3 -m homesocial.option_mediation --checkpoint runs/option_world_rich.weights.npz --horizon 6 --state-policy cycle --resource-ecology rich --random-model-control
 ```
 
+Train a fresh option-world model per seed, then test whether option mediation
+still works on those independently trained world-model heads:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.option_world_mediation_replication --checkpoint runs/bc_stochastic_body.weights.npz --seeds 9901 9902 --horizon 6 --state-policy cycle --resource-ecology rich --random-model-control
+```
+
 Run a larger local sweep once the fixed-world diagnostic is healthy:
 
 ```bash

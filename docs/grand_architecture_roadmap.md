@@ -234,6 +234,10 @@ Completed:
 - matched-source three-seed mediation replication on the same option-world
   checkpoint: trained choice averages `0.7936`, random `0.5812`,
   target-majority `0.2000`, and negated-delta trained choice `0.2120`.
+- independent option-world mediation replication over two fresh option-world
+  heads from the same base body checkpoint: trained choice averages `0.7853`,
+  random `0.5597`, target-majority `0.2000`, and negated-delta trained choice
+  `0.1864`.
 
 Not yet passed:
 
@@ -248,7 +252,8 @@ Not yet passed:
   partly inferred from action/time regularities,
 - option-level communication across independent body-model checkpoints, larger
   balanced trend samples, and less latent-feature shortcut leakage,
-- option mediation across independent body/world checkpoints,
+- option mediation across independent base body checkpoints and richer/noisier
+  option ecologies,
 - longer autobiographical memory and cross-episode continuity,
 - reliable ask-then-act discovery in the randomized hidden-kind setting,
 - recurrent PPO learning of the language-necessity diagnostic without
