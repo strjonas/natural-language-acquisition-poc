@@ -16,7 +16,13 @@ from .agents import (
 )
 from .attribution import _needs_array
 from .emergent_language import _intent
-from .env import Action, HomeostaticSocialGrid, Observation, WorldObject
+from .env import (
+    RESOURCE_ECOLOGIES,
+    Action,
+    HomeostaticSocialGrid,
+    Observation,
+    WorldObject,
+)
 from .imitation import load_checkpoint
 from .observations import observation_vector, observation_vector_size
 from .recurrent_ac import RecurrentActorCritic, RecurrentConfig, action_mask
@@ -73,6 +79,7 @@ def collect_option_counterfactual_dataset(
         diagnostic_mode=config.diagnostic_mode,
         body_dynamics_mode=config.body_dynamics_mode,
         renewable_resources=config.renewable_resources,
+        resource_ecology=config.resource_ecology,
     )
     rng = np.random.default_rng(seed + 2_710_000)
     features: list[np.ndarray] = []
@@ -426,6 +433,8 @@ def main() -> None:
     trained_base, config = load_checkpoint(args.checkpoint)
     if args.renewable_resources:
         config = replace(config, renewable_resources=True)
+    if args.resource_ecology is not None:
+        config = replace(config, resource_ecology=args.resource_ecology)
     base_models = [("trained", trained_base)]
     if args.random_model_control:
         mx.random.seed(args.seed)
@@ -566,6 +575,11 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--max-eval-states", type=int, default=4500)
     parser.add_argument("--horizon", type=int, default=6)
     parser.add_argument("--renewable-resources", action="store_true")
+    parser.add_argument(
+        "--resource-ecology",
+        choices=RESOURCE_ECOLOGIES,
+        default=None,
+    )
     parser.add_argument(
         "--rollout-mode",
         choices=OPTION_ROLLOUT_MODES,

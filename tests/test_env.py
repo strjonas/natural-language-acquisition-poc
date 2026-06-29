@@ -47,6 +47,16 @@ class HomeostaticSocialGridTests(unittest.TestCase):
         self.assertFalse(terminated)
         self.assertFalse(truncated)
 
+    def test_rich_resource_ecology_has_multiple_food_and_water_sources(self):
+        env = HomeostaticSocialGrid(seed=1, resource_ecology="rich")
+        env.reset()
+        kinds = [obj.kind for obj in env.objects]
+
+        self.assertGreaterEqual(kinds.count("food"), 3)
+        self.assertGreaterEqual(kinds.count("water"), 3)
+        self.assertGreaterEqual(kinds.count("shelter"), 2)
+        self.assertEqual(env.object_ahead().kind, "water")
+
     def test_danger_hurts_safety(self):
         env = HomeostaticSocialGrid(seed=1)
         env.reset()
@@ -83,6 +93,20 @@ class HomeostaticSocialGridTests(unittest.TestCase):
 
         self.assertNotEqual(first_mapping, second_mapping)
         self.assertEqual({obj.name for obj in env.objects}, {"object"})
+
+    def test_rich_language_necessary_ecology_keeps_object_names_hidden(self):
+        env = HomeostaticSocialGrid(
+            seed=1,
+            randomize_world=False,
+            diagnostic_mode=LANGUAGE_NECESSARY_MODE,
+            resource_ecology="rich",
+        )
+        env.reset(seed=1)
+        kinds = [obj.kind for obj in env.objects]
+
+        self.assertEqual({obj.name for obj in env.objects}, {"object"})
+        self.assertGreaterEqual(kinds.count("food"), 3)
+        self.assertGreaterEqual(kinds.count("water"), 3)
 
     def test_language_necessary_mode_punishes_unsafe_guessing(self):
         env = HomeostaticSocialGrid(

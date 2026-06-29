@@ -44,6 +44,9 @@ DIAGNOSTIC_MODES = (STANDARD_MODE, LANGUAGE_NECESSARY_MODE)
 DETERMINISTIC_BODY = "deterministic"
 STOCHASTIC_BODY = "stochastic"
 BODY_DYNAMICS_MODES = (DETERMINISTIC_BODY, STOCHASTIC_BODY)
+STANDARD_RESOURCE_ECOLOGY = "standard"
+RICH_RESOURCE_ECOLOGY = "rich"
+RESOURCE_ECOLOGIES = (STANDARD_RESOURCE_ECOLOGY, RICH_RESOURCE_ECOLOGY)
 
 
 @dataclass(frozen=True)
@@ -154,6 +157,7 @@ class HomeostaticSocialGrid:
         diagnostic_mode: str = STANDARD_MODE,
         body_dynamics_mode: str = DETERMINISTIC_BODY,
         renewable_resources: bool = False,
+        resource_ecology: str = STANDARD_RESOURCE_ECOLOGY,
     ) -> None:
         if width < 5 or height < 5:
             raise ValueError("Grid must be at least 5x5.")
@@ -161,6 +165,8 @@ class HomeostaticSocialGrid:
             raise ValueError(f"Unknown diagnostic mode: {diagnostic_mode}.")
         if body_dynamics_mode not in BODY_DYNAMICS_MODES:
             raise ValueError(f"Unknown body dynamics mode: {body_dynamics_mode}.")
+        if resource_ecology not in RESOURCE_ECOLOGIES:
+            raise ValueError(f"Unknown resource ecology: {resource_ecology}.")
 
         self.width = width
         self.height = height
@@ -171,6 +177,7 @@ class HomeostaticSocialGrid:
         self.diagnostic_mode = diagnostic_mode
         self.body_dynamics_mode = body_dynamics_mode
         self.renewable_resources = renewable_resources
+        self.resource_ecology = resource_ecology
 
         self.step_count = 0
         self.agent_pos = (1, 1)
@@ -472,6 +479,15 @@ class HomeostaticSocialGrid:
         if self.diagnostic_mode == LANGUAGE_NECESSARY_MODE:
             return self._make_language_necessary_world()
 
+        if self.resource_ecology == RICH_RESOURCE_ECOLOGY:
+            return self._make_world_from_specs(self._rich_world_specs())
+
+        return self._make_world_from_specs(self._standard_world_specs())
+
+    def _make_world_from_specs(
+        self,
+        specs: list[tuple[str, str, float, float, float, float, bool, bool]],
+    ) -> list[WorldObject]:
         if self.randomize_world:
             positions = [
                 (x, y)
@@ -479,38 +495,39 @@ class HomeostaticSocialGrid:
                 for x in range(self.width)
                 if (x, y) != self.agent_pos
             ]
-            water_pos, food_pos, shelter_pos, danger_pos, tree_pos, rock_pos = (
-                self.rng.sample(positions, 6)
-            )
-            return [
-                WorldObject(
-                    "water", "water", water_pos, water_delta=0.45, consumable=True
-                ),
-                WorldObject(
-                    "berries", "food", food_pos, food_delta=0.4, consumable=True
-                ),
-                WorldObject("hut", "shelter", shelter_pos),
-                WorldObject(
-                    "thorn",
-                    "danger",
-                    danger_pos,
-                    energy_delta=-0.08,
-                    safety_delta=-0.35,
-                ),
-                WorldObject("tree", "tree", tree_pos, blocks=True),
-                WorldObject("rock", "rock", rock_pos, blocks=True),
-            ]
-
+            object_positions = self.rng.sample(positions, len(specs))
+        else:
+            object_positions = self._fixed_positions(len(specs))
         return [
-            WorldObject("water", "water", (2, 1), water_delta=0.45, consumable=True),
-            WorldObject("berries", "food", (5, 1), food_delta=0.4, consumable=True),
-            WorldObject("hut", "shelter", (1, 5)),
-            WorldObject("thorn", "danger", (4, 3), energy_delta=-0.08, safety_delta=-0.35),
-            WorldObject("tree", "tree", (3, 4), blocks=True),
-            WorldObject("rock", "rock", (5, 5), blocks=True),
+            WorldObject(
+                name,
+                kind,
+                pos,
+                food_delta=food_delta,
+                water_delta=water_delta,
+                energy_delta=energy_delta,
+                safety_delta=safety_delta,
+                blocks=blocks,
+                consumable=consumable,
+            )
+            for pos, (
+                name,
+                kind,
+                food_delta,
+                water_delta,
+                energy_delta,
+                safety_delta,
+                blocks,
+                consumable,
+            ) in zip(object_positions, specs)
         ]
 
     def _make_language_necessary_world(self) -> list[WorldObject]:
+        specs = (
+            self._rich_language_necessary_specs()
+            if self.resource_ecology == RICH_RESOURCE_ECOLOGY
+            else self._standard_language_necessary_specs()
+        )
         if self.randomize_world:
             positions = [
                 (x, y)
@@ -518,18 +535,10 @@ class HomeostaticSocialGrid:
                 for x in range(self.width)
                 if (x, y) != self.agent_pos
             ]
-            object_positions = self.rng.sample(positions, 6)
+            object_positions = self.rng.sample(positions, len(specs))
         else:
-            object_positions = [(2, 1), (5, 1), (1, 5), (4, 3), (3, 4), (5, 5)]
+            object_positions = self._fixed_positions(len(specs))
 
-        specs = [
-            ("water", 0.0, 0.45, 0.0, 0.0, True),
-            ("food", 0.4, 0.0, 0.0, 0.0, True),
-            ("shelter", 0.0, 0.0, 0.0, 0.0, False),
-            ("danger", 0.0, 0.0, -0.08, -0.35, False),
-            ("danger", 0.0, 0.0, -0.08, -0.35, False),
-            ("danger", 0.0, 0.0, -0.08, -0.35, False),
-        ]
         shuffled_specs = self.rng.sample(specs, len(specs))
         return [
             WorldObject(
@@ -550,6 +559,87 @@ class HomeostaticSocialGrid:
                 safety_delta,
                 consumable,
             ) in zip(object_positions, shuffled_specs)
+        ]
+
+    def _fixed_positions(self, count: int) -> list[tuple[int, int]]:
+        positions = [
+            (2, 1),
+            (5, 1),
+            (1, 5),
+            (4, 3),
+            (3, 4),
+            (5, 5),
+            (1, 3),
+            (3, 1),
+            (5, 3),
+            (2, 5),
+            (4, 5),
+            (6, 2),
+            (2, 3),
+            (6, 5),
+        ]
+        if count > len(positions):
+            raise ValueError("Not enough fixed positions for resource ecology.")
+        return positions[:count]
+
+    def _standard_world_specs(
+        self,
+    ) -> list[tuple[str, str, float, float, float, float, bool, bool]]:
+        return [
+            ("water", "water", 0.0, 0.45, 0.0, 0.0, False, True),
+            ("berries", "food", 0.4, 0.0, 0.0, 0.0, False, True),
+            ("hut", "shelter", 0.0, 0.0, 0.0, 0.0, False, False),
+            ("thorn", "danger", 0.0, 0.0, -0.08, -0.35, False, False),
+            ("tree", "tree", 0.0, 0.0, 0.0, 0.0, True, False),
+            ("rock", "rock", 0.0, 0.0, 0.0, 0.0, True, False),
+        ]
+
+    def _rich_world_specs(
+        self,
+    ) -> list[tuple[str, str, float, float, float, float, bool, bool]]:
+        return [
+            ("water", "water", 0.0, 0.45, 0.0, 0.0, False, True),
+            ("berries", "food", 0.4, 0.0, 0.0, 0.0, False, True),
+            ("hut", "shelter", 0.0, 0.0, 0.0, 0.0, False, False),
+            ("thorn", "danger", 0.0, 0.0, -0.08, -0.35, False, False),
+            ("water", "water", 0.0, 0.38, 0.0, 0.0, False, True),
+            ("roots", "food", 0.34, 0.0, 0.0, 0.0, False, True),
+            ("spring", "water", 0.0, 0.32, 0.0, 0.0, False, True),
+            ("mushroom", "food", 0.28, 0.0, 0.0, 0.0, False, True),
+            ("hut", "shelter", 0.0, 0.0, 0.0, 0.0, False, False),
+            ("thorn", "danger", 0.0, 0.0, -0.08, -0.35, False, False),
+            ("tree", "tree", 0.0, 0.0, 0.0, 0.0, True, False),
+            ("rock", "rock", 0.0, 0.0, 0.0, 0.0, True, False),
+        ]
+
+    def _standard_language_necessary_specs(
+        self,
+    ) -> list[tuple[str, float, float, float, float, bool]]:
+        return [
+            ("water", 0.0, 0.45, 0.0, 0.0, True),
+            ("food", 0.4, 0.0, 0.0, 0.0, True),
+            ("shelter", 0.0, 0.0, 0.0, 0.0, False),
+            ("danger", 0.0, 0.0, -0.08, -0.35, False),
+            ("danger", 0.0, 0.0, -0.08, -0.35, False),
+            ("danger", 0.0, 0.0, -0.08, -0.35, False),
+        ]
+
+    def _rich_language_necessary_specs(
+        self,
+    ) -> list[tuple[str, float, float, float, float, bool]]:
+        return [
+            ("water", 0.0, 0.45, 0.0, 0.0, True),
+            ("food", 0.4, 0.0, 0.0, 0.0, True),
+            ("shelter", 0.0, 0.0, 0.0, 0.0, False),
+            ("danger", 0.0, 0.0, -0.08, -0.35, False),
+            ("water", 0.0, 0.38, 0.0, 0.0, True),
+            ("food", 0.34, 0.0, 0.0, 0.0, True),
+            ("water", 0.0, 0.32, 0.0, 0.0, True),
+            ("food", 0.28, 0.0, 0.0, 0.0, True),
+            ("shelter", 0.0, 0.0, 0.0, 0.0, False),
+            ("danger", 0.0, 0.0, -0.08, -0.35, False),
+            ("danger", 0.0, 0.0, -0.08, -0.35, False),
+            ("danger", 0.0, 0.0, -0.08, -0.35, False),
         ]
 
 

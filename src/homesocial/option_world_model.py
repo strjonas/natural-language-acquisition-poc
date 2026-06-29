@@ -10,7 +10,7 @@ import mlx.optimizers as optim
 import numpy as np
 
 from .attribution import _needs_array
-from .env import Action, HomeostaticSocialGrid
+from .env import RESOURCE_ECOLOGIES, Action, HomeostaticSocialGrid
 from .imitation import load_checkpoint, save_checkpoint
 from .observations import observation_vector
 from .option_counterfactual_language import (
@@ -105,6 +105,7 @@ def collect_option_branch_dataset(
         diagnostic_mode=config.diagnostic_mode,
         body_dynamics_mode=config.body_dynamics_mode,
         renewable_resources=config.renewable_resources,
+        resource_ecology=config.resource_ecology,
     )
     samples: list[OptionBranchSample] = []
 
@@ -590,6 +591,8 @@ def main() -> None:
     model, config = load_checkpoint(args.checkpoint)
     if args.renewable_resources:
         config = replace(config, renewable_resources=True)
+    if args.resource_ecology is not None:
+        config = replace(config, resource_ecology=args.resource_ecology)
     train_dataset = collect_option_branch_dataset(
         config,
         episodes=args.train_episodes,
@@ -646,6 +649,11 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--max-eval-samples", type=int, default=4500)
     parser.add_argument("--horizon", type=int, default=6)
     parser.add_argument("--renewable-resources", action="store_true")
+    parser.add_argument(
+        "--resource-ecology",
+        choices=RESOURCE_ECOLOGIES,
+        default=None,
+    )
     parser.add_argument(
         "--state-policy",
         choices=STATE_POLICIES,

@@ -242,6 +242,13 @@ random), but food remained rare and full-state reconstruction worsened. The
 next probe should add richer resource ecology rather than simply keeping one
 resource object alive.
 
+Rich resource ecology improved the actual coverage issue: rich+cycle eval has
+`seek_food:14/14/14`, `seek_water:28/28/28`, and `rest:58/58/58` versus
+standard random `seek_food:2/2/2`, `seek_water:6/6/6`, and `rest:85/85/85`.
+Trend communication reached `0.6606` versus `0.5079` random. The next gate is
+replication and anti-shortcut controls, because the random control also improves
+in richer option structure.
+
 ---
 
 ## M6: Reflective Report With Parrot Guards

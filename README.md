@@ -232,6 +232,13 @@ PYTHONPATH=src python3 -m homesocial.option_world_model --checkpoint runs/bc_sto
 PYTHONPATH=src python3 -m homesocial.option_counterfactual_language --checkpoint runs/option_world_renewable.weights.npz --horizon 6 --state-policy random --rollout-mode latent_current --trend-weight 2.0 --random-model-control
 ```
 
+Use richer resource ecology when probing less rest-dominated option reports:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.option_world_model --checkpoint runs/bc_stochastic_body.weights.npz --output-checkpoint runs/option_world_rich.weights.npz --horizon 6 --state-policy cycle --resource-ecology rich
+PYTHONPATH=src python3 -m homesocial.option_counterfactual_language --checkpoint runs/option_world_rich.weights.npz --horizon 6 --state-policy cycle --resource-ecology rich --rollout-mode latent_current --trend-weight 2.0 --random-model-control
+```
+
 Run a larger local sweep once the fixed-world diagnostic is healthy:
 
 ```bash

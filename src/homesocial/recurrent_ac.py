@@ -16,7 +16,9 @@ from .env import (
     BODY_DYNAMICS_MODES,
     DETERMINISTIC_BODY,
     DIAGNOSTIC_MODES,
+    RESOURCE_ECOLOGIES,
     STANDARD_MODE,
+    STANDARD_RESOURCE_ECOLOGY,
     Action,
     HomeostaticSocialGrid,
 )
@@ -109,6 +111,7 @@ class RecurrentConfig:
     interoception_mode: str = EXACT_INTEROCEPTION
     body_dynamics_mode: str = DETERMINISTIC_BODY
     renewable_resources: bool = False
+    resource_ecology: str = STANDARD_RESOURCE_ECOLOGY
     diagnostic_mode: str = STANDARD_MODE
     batch_size: int = 16
     log_every: int = 0
@@ -151,6 +154,7 @@ def train_condition(config: RecurrentConfig) -> TrainResult:
         diagnostic_mode=config.diagnostic_mode,
         body_dynamics_mode=config.body_dynamics_mode,
         renewable_resources=config.renewable_resources,
+        resource_ecology=config.resource_ecology,
     )
 
     train_stats: list[EpisodeStats] = []
@@ -774,6 +778,7 @@ def main() -> None:
             interoception_mode=args.interoception_mode,
             body_dynamics_mode=args.body_dynamics_mode,
             renewable_resources=args.renewable_resources,
+            resource_ecology=args.resource_ecology,
             diagnostic_mode=args.diagnostic_mode,
             batch_size=args.batch_size,
             max_steps=args.max_steps,
@@ -863,6 +868,12 @@ def _parse_args() -> argparse.Namespace:
         "--renewable-resources",
         action="store_true",
         help="Keep consumable resources in the world after use.",
+    )
+    parser.add_argument(
+        "--resource-ecology",
+        choices=RESOURCE_ECOLOGIES,
+        default=STANDARD_RESOURCE_ECOLOGY,
+        help="Use the standard or richer resource layout.",
     )
     parser.add_argument(
         "--conditions",
