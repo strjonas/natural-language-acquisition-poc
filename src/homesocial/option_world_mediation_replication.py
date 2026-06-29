@@ -77,6 +77,16 @@ def format_row(row: OptionWorldMediationReplicationRow) -> str:
     )
 
 
+def resolved_option_action_noises(args: argparse.Namespace) -> tuple[float, float]:
+    shared_noise = float(args.option_action_noise)
+    world_noise = getattr(args, "world_option_action_noise", None)
+    mediation_noise = getattr(args, "mediation_option_action_noise", None)
+    return (
+        shared_noise if world_noise is None else float(world_noise),
+        shared_noise if mediation_noise is None else float(mediation_noise),
+    )
+
+
 def main() -> None:
     args = _parse_args()
     print(header())
@@ -95,6 +105,7 @@ def run_replication_seed(
         config = replace(config, renewable_resources=True)
     if args.resource_ecology is not None:
         config = replace(config, resource_ecology=args.resource_ecology)
+    world_noise, mediation_noise = resolved_option_action_noises(args)
 
     train_branches = collect_option_branch_dataset(
         config,
@@ -104,7 +115,7 @@ def run_replication_seed(
         horizon=args.horizon,
         state_policy=args.state_policy,
         max_samples=args.max_world_train_samples,
-        option_action_noise=args.option_action_noise,
+        option_action_noise=world_noise,
     )
     eval_branches = collect_option_branch_dataset(
         config,
@@ -114,7 +125,7 @@ def run_replication_seed(
         horizon=args.horizon,
         state_policy=args.state_policy,
         max_samples=args.max_world_eval_samples,
-        option_action_noise=args.option_action_noise,
+        option_action_noise=world_noise,
     )
     before_world = evaluate_option_world_model(
         trained_base,
@@ -151,7 +162,7 @@ def run_replication_seed(
         balance_target=args.mediation_balance_target,
         max_states=args.max_mediation_train_states,
         min_value_gap=args.min_value_gap,
-        option_action_noise=args.option_action_noise,
+        option_action_noise=mediation_noise,
     )
     eval_source = collect_option_mediation_source(
         config,
@@ -163,7 +174,7 @@ def run_replication_seed(
         balance_target=args.mediation_balance_target,
         max_states=args.max_mediation_eval_states,
         min_value_gap=args.min_value_gap,
-        option_action_noise=args.option_action_noise,
+        option_action_noise=mediation_noise,
     )
 
     rows = _mediation_rows(
@@ -338,6 +349,18 @@ def _parse_args() -> argparse.Namespace:
         type=float,
         default=0.0,
         help="Probability of replacing a scripted option step with another valid body action.",
+    )
+    parser.add_argument(
+        "--world-option-action-noise",
+        type=float,
+        default=None,
+        help="Override option action noise for option-world branch training/eval.",
+    )
+    parser.add_argument(
+        "--mediation-option-action-noise",
+        type=float,
+        default=None,
+        help="Override option action noise for mediation source collection.",
     )
     parser.add_argument("--renewable-resources", action="store_true")
     parser.add_argument(

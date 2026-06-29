@@ -324,6 +324,16 @@ at `0.2000`. Shuffling trained delta fell to `0.2049`; negating it fell to
 also drops from the deterministic-option result. The likely next requirement is
 stronger/noisier world-model training, not a larger receiver.
 
+Calibration runs narrowed that diagnosis. A larger best-option value gap
+(`0.02`) raised `0.3`-noise trained choice only to `0.5200`, and doubling noisy
+world-model samples/epochs reached only `0.5261`. Lowering branch noise to
+`0.15` raised trained choice to `0.5670` over two seeds while keeping
+negated-delta collapse (`0.1117`), but random also rose to `0.3883`.
+Training the world model at `0.3` noise and mediating at `0.15` was not a clear
+win because negated trained delta stayed above majority (`0.2250`). The next
+change should improve action-outcome diversity or train the self model with a
+direct intervention-aware objective, not merely tune noise probability.
+
 ---
 
 ## M6: Reflective Report With Parrot Guards

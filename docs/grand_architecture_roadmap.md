@@ -249,6 +249,9 @@ Completed:
   fresh noisy option-world seeds: trained choice averages `0.5020`, random
   drops to `0.2974`, target-majority remains `0.2000`, and negated-delta
   trained choice `0.0908`.
+- calibrated lower-noise branch mediation at `0.15` action noise: trained
+  choice improves to `0.5670` over two seeds and negated-delta trained choice
+  stays low (`0.1117`), but random rises to `0.3883`.
 
 Not yet passed:
 
@@ -265,6 +268,9 @@ Not yet passed:
   balanced trend samples, and less latent-feature shortcut leakage,
 - higher-accuracy noisy option mediation where the trained self-change channel
   stays strong after route regularity is reduced,
+- a better noisy-world objective: larger value-gap filtering, doubled world
+  training, and split world/mediation noise did not recover high choice without
+  reintroducing control leakage or weakening the negated-delta gate,
 - longer autobiographical memory and cross-episode continuity,
 - reliable ask-then-act discovery in the randomized hidden-kind setting,
 - recurrent PPO learning of the language-necessity diagnostic without

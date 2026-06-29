@@ -54,6 +54,18 @@ def _parse_args() -> argparse.Namespace:
         default=0.0,
         help="Probability of replacing a scripted option step with another valid body action.",
     )
+    parser.add_argument(
+        "--world-option-action-noise",
+        type=float,
+        default=None,
+        help="Override option action noise for option-world branch training/eval.",
+    )
+    parser.add_argument(
+        "--mediation-option-action-noise",
+        type=float,
+        default=None,
+        help="Override option action noise for mediation source collection.",
+    )
     parser.add_argument("--renewable-resources", action="store_true")
     parser.add_argument(
         "--resource-ecology",

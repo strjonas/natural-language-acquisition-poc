@@ -275,6 +275,12 @@ actual sampled action sequence as both the true outcome and the model input:
 PYTHONPATH=src python3 -m homesocial.option_world_mediation_replication --checkpoint runs/bc_stochastic_body.weights.npz --seeds 9921 9922 --horizon 6 --state-policy cycle --resource-ecology rich --feature-mode delta --option-action-noise 0.3 --random-model-control
 ```
 
+Option-world and mediation source noise can be split for curriculum probes:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.option_world_mediation_replication --checkpoint runs/bc_stochastic_body.weights.npz --seeds 9961 --horizon 6 --state-policy cycle --resource-ecology rich --feature-mode delta --world-option-action-noise 0.3 --mediation-option-action-noise 0.15 --random-model-control
+```
+
 Train a fresh option-world model per seed, then test whether option mediation
 still works on those independently trained world-model heads:
 

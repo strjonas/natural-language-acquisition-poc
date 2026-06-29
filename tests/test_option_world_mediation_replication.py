@@ -1,9 +1,11 @@
 import unittest
+from argparse import Namespace
 
 from homesocial.option_world_mediation_replication import (
     OptionWorldMediationReplicationRow,
     format_row,
     header,
+    resolved_option_action_noises,
 )
 
 
@@ -31,6 +33,28 @@ class OptionWorldMediationReplicationTests(unittest.TestCase):
             format_row(row),
             "7,trained,original,11,0.5000,0.012346,-0.100000,"
             "0.200000,0.034568,0.7500,0.120000,0.030000,0.2500,0.7500",
+        )
+
+    def test_noise_overrides_fall_back_to_shared_value(self):
+        self.assertEqual(
+            resolved_option_action_noises(
+                Namespace(
+                    option_action_noise=0.2,
+                    world_option_action_noise=None,
+                    mediation_option_action_noise=None,
+                )
+            ),
+            (0.2, 0.2),
+        )
+        self.assertEqual(
+            resolved_option_action_noises(
+                Namespace(
+                    option_action_noise=0.2,
+                    world_option_action_noise=0.3,
+                    mediation_option_action_noise=0.1,
+                )
+            ),
+            (0.3, 0.1),
         )
 
 
