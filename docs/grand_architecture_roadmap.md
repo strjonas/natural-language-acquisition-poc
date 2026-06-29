@@ -227,6 +227,10 @@ Completed:
   pipeline: trained trend averages `0.6585`, random control averages `0.5185`,
   option-majority remains `0.3333`, and negated-delta trained trend averages
   `0.3431`.
+- option self-change mediation where compact messages guide a receiver's
+  option choice: trained choice accuracy `0.7827` versus `0.5522` random and
+  `0.2000` target-majority, with negated-delta trained accuracy collapsing to
+  `0.1916`.
 
 Not yet passed:
 
@@ -241,6 +245,8 @@ Not yet passed:
   partly inferred from action/time regularities,
 - option-level communication across independent body-model checkpoints, larger
   balanced trend samples, and less latent-feature shortcut leakage,
+- replicated option mediation across body-model seeds and a faster grouped
+  option collector,
 - longer autobiographical memory and cross-episode continuity,
 - reliable ask-then-act discovery in the randomized hidden-kind setting,
 - recurrent PPO learning of the language-necessity diagnostic without

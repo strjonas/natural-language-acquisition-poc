@@ -253,6 +253,13 @@ across seeds, including random-model and option-majority controls:
 PYTHONPATH=src python3 -m homesocial.option_seed_replication --checkpoint runs/bc_stochastic_body.weights.npz --seeds 9901 9902 9903 --horizon 6 --state-policy cycle --resource-ecology rich --trend-weight 2.0 --balance-target option_trend --random-model-control
 ```
 
+Test whether compact option self-change messages can mediate a useful option
+choice, rather than only reconstruct labels:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.option_mediation --checkpoint runs/option_world_rich.weights.npz --horizon 6 --state-policy cycle --resource-ecology rich --random-model-control
+```
+
 Run a larger local sweep once the fixed-world diagnostic is healthy:
 
 ```bash

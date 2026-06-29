@@ -1,0 +1,101 @@
+import unittest
+
+import mlx.core as mx
+import numpy as np
+
+from homesocial.option_mediation import (
+    OptionMediationDataset,
+    _balanced_target_option_indices,
+    intervene_option_mediation_features,
+    majority_option_result,
+    target_count_string,
+)
+
+
+def _dataset(
+    targets: list[int],
+    values: np.ndarray | None = None,
+) -> OptionMediationDataset:
+    rows = len(targets)
+    features = np.arange(rows * 5 * 12, dtype=np.float32).reshape(rows, 5, 12)
+    if values is None:
+        values = np.zeros((rows, 5), dtype=np.float32)
+        for row, target in enumerate(targets):
+            values[row, target] = 1.0
+    return OptionMediationDataset(
+        features=mx.array(features, dtype=mx.float32),
+        option_values=mx.array(values, dtype=mx.float32),
+        target_options=mx.array(targets, dtype=mx.int32),
+        current_lowest=mx.zeros((rows,), dtype=mx.float32),
+    )
+
+
+class OptionMediationTests(unittest.TestCase):
+    def test_balanced_target_option_indices_equalizes_non_empty_targets(self):
+        indices = _balanced_target_option_indices(
+            [0, 0, 0, 1, 1, 2],
+            np.random.default_rng(1),
+        )
+
+        selected = np.array([0, 0, 0, 1, 1, 2])[indices]
+        self.assertEqual(len(indices), 3)
+        self.assertEqual(
+            [int(np.sum(selected == option)) for option in range(3)],
+            [1, 1, 1],
+        )
+
+    def test_grouped_delta_intervention_preserves_values_and_targets(self):
+        dataset = _dataset([0, 1])
+
+        intervened = intervene_option_mediation_features(
+            dataset,
+            intervention="negate_delta",
+        )
+
+        features = np.asarray(dataset.features)
+        intervened_features = np.asarray(intervened.features)
+        np.testing.assert_allclose(intervened_features[:, :, :8], features[:, :, :8])
+        np.testing.assert_allclose(
+            intervened_features[:, :, 8:12],
+            -features[:, :, 8:12],
+        )
+        np.testing.assert_array_equal(
+            np.asarray(intervened.option_values),
+            np.asarray(dataset.option_values),
+        )
+        np.testing.assert_array_equal(
+            np.asarray(intervened.target_options),
+            np.asarray(dataset.target_options),
+        )
+
+    def test_majority_option_result_reports_choice_value_and_regret(self):
+        train = _dataset([1, 1, 2])
+        eval_dataset = _dataset(
+            [0, 1],
+            values=np.array(
+                [
+                    [0.9, 0.2, 0.1, 0.0, 0.0],
+                    [0.1, 0.8, 0.4, 0.0, 0.0],
+                ],
+                dtype=np.float32,
+            ),
+        )
+
+        result = majority_option_result(train, eval_dataset)
+
+        self.assertEqual(result.model_control, "target_majority")
+        self.assertEqual(result.samples, 2)
+        self.assertAlmostEqual(result.choice_accuracy, 0.5)
+        self.assertAlmostEqual(result.mean_chosen_lowest, 0.5)
+        self.assertAlmostEqual(result.mean_oracle_lowest, 0.85)
+        self.assertAlmostEqual(result.mean_regret, 0.35)
+
+    def test_target_count_string_uses_stable_option_names(self):
+        self.assertEqual(
+            target_count_string(_dataset([0, 0, 2, 4])),
+            "seek_food=2;seek_water=0;seek_shelter=1;rest=0;wait=1",
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()

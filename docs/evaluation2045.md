@@ -268,6 +268,16 @@ the random feature baseline remains above chance, so the next gate should make
 feature shortcuts harder with more varied trajectories and independent body
 model seeds.
 
+Option mediation is now a stronger use test. A receiver that only sees compact
+messages for each possible option chose the best future-body option at `0.7827`
+accuracy versus `0.5522` for random latent features and `0.2000` for the
+balanced target-majority baseline. Negating the self-change delta collapsed
+trained choice accuracy to `0.1916` and increased regret from `0.0251` to
+`0.1525`. This moves the result from "communicates a label" toward "a learned
+self-change message can guide a body-relevant decision." It is still one seed
+and the grouped collector is slow, so the next gate is to optimize collection
+and replicate mediation across body-model seeds.
+
 ---
 
 ## M6: Reflective Report With Parrot Guards
