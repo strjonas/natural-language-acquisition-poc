@@ -249,6 +249,14 @@ Trend communication reached `0.6606` versus `0.5079` random. The next gate is
 replication and anti-shortcut controls, because the random control also improves
 in richer option structure.
 
+First anti-shortcut control passed directionally: on the rich+cycle checkpoint,
+trend accuracy fell from `0.6606` to `0.5060` when the future-current delta
+block was shuffled and to `0.3527` when its sign was negated. Zeroing or
+shuffling current/future blocks also hurt, so the message is not a clean
+delta-only code; it appears to depend on the full current/future self-state
+feature. The next gate remains seed replication plus harder environments where
+option identity and time cannot carry much trend information.
+
 ---
 
 ## M6: Reflective Report With Parrot Guards

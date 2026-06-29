@@ -239,6 +239,13 @@ PYTHONPATH=src python3 -m homesocial.option_world_model --checkpoint runs/bc_sto
 PYTHONPATH=src python3 -m homesocial.option_counterfactual_language --checkpoint runs/option_world_rich.weights.npz --horizon 6 --state-policy cycle --resource-ecology rich --rollout-mode latent_current --trend-weight 2.0 --random-model-control
 ```
 
+Audit whether the option self-trend message depends on current/future/delta
+self-estimate features rather than only option/time regularities:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.option_feature_intervention --checkpoint runs/option_world_rich.weights.npz --horizon 6 --state-policy cycle --resource-ecology rich --trend-weight 2.0 --balance-target option_trend --random-model-control
+```
+
 Run a larger local sweep once the fixed-world diagnostic is healthy:
 
 ```bash

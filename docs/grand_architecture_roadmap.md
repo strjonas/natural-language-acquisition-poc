@@ -219,6 +219,10 @@ Completed:
 - rich resource ecology with multiple food/water/shelter/danger objects,
   improving balanced option coverage and absolute trend communication to
   `0.6606` versus `0.5079` random.
+- option feature-intervention audit showing the rich-ecology trend message is
+  sensitive to the learned self-change features: trained trend drops from
+  `0.6606` to `0.5060` when the delta block is shuffled and `0.3527` when it
+  is negated.
 
 Not yet passed:
 
@@ -231,8 +235,8 @@ Not yet passed:
 - replicated multi-aspect self-state language across body-model seeds,
 - wider counterfactual environments where action-conditioned trend cannot be
   partly inferred from action/time regularities,
-- option-level communication with larger balanced trend samples and less
-  option/time shortcut leakage,
+- replicated option-level communication with larger balanced trend samples and
+  less option/time shortcut leakage,
 - longer autobiographical memory and cross-episode continuity,
 - reliable ask-then-act discovery in the randomized hidden-kind setting,
 - recurrent PPO learning of the language-necessity diagnostic without
