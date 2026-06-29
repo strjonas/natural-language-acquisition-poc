@@ -268,6 +268,13 @@ instead of current and future absolute self-estimates:
 PYTHONPATH=src python3 -m homesocial.option_mediation --checkpoint runs/option_world_rich.weights.npz --horizon 6 --state-policy cycle --resource-ecology rich --feature-mode delta --random-model-control
 ```
 
+Add a direct self-model rank control that chooses by predicted future self-state
+without training a message receiver:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.option_mediation --checkpoint runs/option_world_rich.weights.npz --horizon 6 --state-policy cycle --resource-ecology rich --feature-mode delta --random-model-control --self-model-rank-control
+```
+
 Stress option identity shortcuts by adding branch action noise while keeping the
 actual sampled action sequence as both the true outcome and the model input:
 
@@ -279,6 +286,13 @@ Option-world and mediation source noise can be split for curriculum probes:
 
 ```bash
 PYTHONPATH=src python3 -m homesocial.option_world_mediation_replication --checkpoint runs/bc_stochastic_body.weights.npz --seeds 9961 --horizon 6 --state-policy cycle --resource-ecology rich --feature-mode delta --world-option-action-noise 0.3 --mediation-option-action-noise 0.15 --random-model-control
+```
+
+Fine-tune the self/world model directly on grouped branch ranking before
+training the message receiver:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.option_world_mediation_replication --checkpoint runs/bc_stochastic_body.weights.npz --seeds 9981 9982 --horizon 6 --state-policy cycle --resource-ecology rich --feature-mode delta --option-action-noise 0.15 --rank-finetune-epochs 4 --self-model-rank-control --random-model-control
 ```
 
 Train a fresh option-world model per seed, then test whether option mediation

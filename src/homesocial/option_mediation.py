@@ -524,6 +524,37 @@ def majority_option_result(
     )
 
 
+def predicted_future_option_result(
+    dataset: OptionMediationDataset,
+    *,
+    model_control: str = "predicted_future",
+) -> OptionMediationResult:
+    features = np.asarray(dataset.features, dtype=np.float32)
+    if features.shape[-1] != 12:
+        raise ValueError("Predicted-future control requires latent_current features.")
+    predicted_future = features[:, :, 4:8]
+    predicted_scores = np.min(predicted_future, axis=-1)
+    choices = np.asarray(np.argmax(predicted_scores, axis=-1), dtype=np.int32)
+    targets = np.asarray(dataset.target_options, dtype=np.int32)
+    values = np.asarray(dataset.option_values, dtype=np.float32)
+    current = np.asarray(dataset.current_lowest, dtype=np.float32)
+    chosen_values = values[np.arange(values.shape[0]), choices]
+    oracle_values = np.max(values, axis=1)
+    return OptionMediationResult(
+        model_control=model_control,
+        intervention="predicted_future",
+        samples=int(values.shape[0]),
+        choice_accuracy=float(np.mean(choices == targets)),
+        mean_chosen_lowest=float(np.mean(chosen_values)),
+        mean_oracle_lowest=float(np.mean(oracle_values)),
+        mean_regret=float(np.mean(oracle_values - chosen_values)),
+        mean_chosen_delta=float(np.mean(chosen_values - current)),
+        mean_oracle_delta=float(np.mean(oracle_values - current)),
+        message_codes_used=0,
+        target_counts=target_count_string(dataset),
+    )
+
+
 def target_count_string(dataset: OptionMediationDataset) -> str:
     targets = np.asarray(dataset.target_options, dtype=np.int32)
     return ";".join(
@@ -762,6 +793,25 @@ def main() -> None:
                     )
                 )
             )
+        if args.self_model_rank_control:
+            rank_dataset = (
+                eval_dataset
+                if args.feature_mode == "latent_current"
+                else option_mediation_dataset_from_source(
+                    eval_source,
+                    base_model,
+                    feature_mode="latent_current",
+                    rollout_mode="latent_current",
+                )
+            )
+            print(
+                _row(
+                    predicted_future_option_result(
+                        rank_dataset,
+                        model_control=f"{model_control}_self_model",
+                    )
+                )
+            )
         if model_control == "trained":
             print(_row(majority_option_result(train_dataset, eval_dataset)))
 
@@ -842,6 +892,7 @@ def _parse_args() -> argparse.Namespace:
         default=["original", "shuffle_delta", "negate_delta"],
     )
     parser.add_argument("--random-model-control", action="store_true")
+    parser.add_argument("--self-model-rank-control", action="store_true")
     return parser.parse_args()
 
 

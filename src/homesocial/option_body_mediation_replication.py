@@ -90,6 +90,7 @@ def _parse_args() -> argparse.Namespace:
         default=["original", "shuffle_delta", "negate_delta"],
     )
     parser.add_argument("--random-model-control", action="store_true")
+    parser.add_argument("--self-model-rank-control", action="store_true")
 
     parser.add_argument("--world-train-episodes", type=int, default=1000)
     parser.add_argument("--world-eval-episodes", type=int, default=500)
@@ -103,6 +104,10 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--final-needs-weight", type=float, default=10.0)
     parser.add_argument("--observation-prediction-weight", type=float, default=0.03)
     parser.add_argument("--reward-prediction-weight", type=float, default=0.4)
+    parser.add_argument("--rank-finetune-epochs", type=int, default=0)
+    parser.add_argument("--rank-finetune-batch-size", type=int, default=128)
+    parser.add_argument("--rank-finetune-learning-rate", type=float, default=1e-4)
+    parser.add_argument("--rank-finetune-temperature", type=float, default=0.05)
 
     parser.add_argument("--mediation-train-episodes", type=int, default=1000)
     parser.add_argument("--mediation-eval-episodes", type=int, default=500)

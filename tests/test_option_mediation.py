@@ -10,6 +10,7 @@ from homesocial.option_mediation import (
     intervene_option_mediation_features,
     majority_option_result,
     option_mediation_dataset_from_source,
+    predicted_future_option_result,
     target_count_string,
 )
 from homesocial.env import LANGUAGE_NECESSARY_MODE, STOCHASTIC_BODY, Action
@@ -117,6 +118,37 @@ class OptionMediationTests(unittest.TestCase):
         self.assertAlmostEqual(result.mean_chosen_lowest, 0.5)
         self.assertAlmostEqual(result.mean_oracle_lowest, 0.85)
         self.assertAlmostEqual(result.mean_regret, 0.35)
+
+    def test_predicted_future_option_result_uses_future_need_block(self):
+        dataset = _dataset(
+            [1, 0],
+            values=np.array(
+                [
+                    [0.1, 0.9, 0.2, 0.0, 0.0],
+                    [0.7, 0.1, 0.4, 0.0, 0.0],
+                ],
+                dtype=np.float32,
+            ),
+        )
+        features = np.zeros((2, 5, 12), dtype=np.float32)
+        features[:, :, 4:8] = 0.2
+        features[0, 1, 4:8] = 0.8
+        features[1, 2, 4:8] = 0.9
+        dataset = OptionMediationDataset(
+            features=mx.array(features, dtype=mx.float32),
+            option_values=dataset.option_values,
+            target_options=dataset.target_options,
+            current_lowest=dataset.current_lowest,
+        )
+
+        result = predicted_future_option_result(dataset)
+
+        self.assertEqual(result.model_control, "predicted_future")
+        self.assertEqual(result.intervention, "predicted_future")
+        self.assertAlmostEqual(result.choice_accuracy, 0.5)
+        self.assertAlmostEqual(result.mean_chosen_lowest, 0.65)
+        with self.assertRaises(ValueError):
+            predicted_future_option_result(_dataset([0], feature_width=4))
 
     def test_target_count_string_uses_stable_option_names(self):
         self.assertEqual(

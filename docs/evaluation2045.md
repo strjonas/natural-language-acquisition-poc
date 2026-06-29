@@ -334,6 +334,28 @@ win because negated trained delta stayed above majority (`0.2250`). The next
 change should improve action-outcome diversity or train the self model with a
 direct intervention-aware objective, not merely tune noise probability.
 
+The new self-model rank control separates self-model quality from receiver
+quality. At `0.15` branch noise, the trained message receiver chose correctly
+at `0.5536`, while direct predicted-future self-state ranking reached `0.5268`;
+the random receiver was `0.3482`, but random predicted-future ranking was only
+`0.2321`. At `0.3` noise, trained direct ranking (`0.4940`) slightly exceeded
+the message receiver (`0.4701`), while random direct ranking fell below
+majority (`0.1726`) even though the random receiver stayed high (`0.3521`).
+This means the current bottleneck is mixed: trained self-model rankings are
+only moderate under noisy branches, and the learned receiver can still exploit
+regularities not captured by the direct self-state rank control.
+
+Direct rank fine-tuning is the first improvement that changes this picture. A
+four-epoch grouped branch-ranking update at `0.15` noise raised direct trained
+self-model choice to `0.6436` over two seeds while random self-model rank stayed
+near majority (`0.2062`). The message receiver also improved modestly to
+`0.5871`, and shuffling/negating trained delta still collapsed choice
+(`0.2005` / `0.0907`). The caveat is that the old world-trend metric dropped to
+`0.5130`, so this objective improves branch choice ranking more than general
+world-model calibration. The next objective should combine rank pressure with
+world-dynamics preservation, then improve the message bottleneck so compact
+communication can match the stronger self-model rank signal.
+
 ---
 
 ## M6: Reflective Report With Parrot Guards

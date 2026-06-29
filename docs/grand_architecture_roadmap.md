@@ -252,6 +252,14 @@ Completed:
 - calibrated lower-noise branch mediation at `0.15` action noise: trained
   choice improves to `0.5670` over two seeds and negated-delta trained choice
   stays low (`0.1117`), but random rises to `0.3883`.
+- direct predicted-future self-model rank control: at `0.15` noise trained
+  rank reaches `0.5268` versus message `0.5536`; at `0.3` noise trained rank
+  reaches `0.4940` versus message `0.4701`. Random rank is low (`0.2321` /
+  `0.1726`) even when random message receivers remain high.
+- intervention-aware rank fine-tuning on grouped noisy branches: direct trained
+  self-model choice rises to `0.6436` over two seeds at `0.15` noise, random
+  self-model rank stays near majority (`0.2062`), and message choice improves
+  modestly to `0.5871`.
 
 Not yet passed:
 
@@ -271,6 +279,12 @@ Not yet passed:
 - a better noisy-world objective: larger value-gap filtering, doubled world
   training, and split world/mediation noise did not recover high choice without
   reintroducing control leakage or weakening the negated-delta gate,
+- anti-leakage receiver objectives that suppress random receiver regularities
+  without discarding the trained self-change signal,
+- rank-plus-dynamics training that preserves the old world-trend metric while
+  keeping the improved direct branch choice from rank fine-tuning,
+- message bottleneck improvements so compact communication can express the
+  stronger rank-finetuned self-model signal,
 - longer autobiographical memory and cross-episode continuity,
 - reliable ask-then-act discovery in the randomized hidden-kind setting,
 - recurrent PPO learning of the language-necessity diagnostic without

@@ -4,6 +4,9 @@ import argparse
 from dataclasses import dataclass, replace
 
 import mlx.core as mx
+import mlx.nn as nn
+import mlx.optimizers as optim
+import numpy as np
 
 from .env import RESOURCE_ECOLOGIES, Action
 from .imitation import load_checkpoint
@@ -18,9 +21,11 @@ from .option_mediation import (
     intervene_option_mediation_features,
     majority_option_result,
     option_mediation_dataset_from_source,
+    predicted_future_option_result,
     train_option_mediator,
 )
 from .option_world_model import (
+    _last_valid_hidden,
     collect_option_branch_dataset,
     evaluate_option_world_model,
     train_option_world_model,
@@ -44,6 +49,16 @@ class OptionWorldMediationReplicationRow:
     trained_world_final_need_mse_after: float
     trained_world_trend_before: float
     trained_world_trend_after: float
+
+
+@dataclass(frozen=True)
+class OptionRankBatch:
+    observations: mx.array
+    step_masks: mx.array
+    observation_lengths: mx.array
+    actions: mx.array
+    action_masks: mx.array
+    target_options: mx.array
 
 
 def header() -> str:
@@ -85,6 +100,147 @@ def resolved_option_action_noises(args: argparse.Namespace) -> tuple[float, floa
         shared_noise if world_noise is None else float(world_noise),
         shared_noise if mediation_noise is None else float(mediation_noise),
     )
+
+
+def train_option_rank_finetune(
+    model: RecurrentActorCritic,
+    source,
+    *,
+    epochs: int,
+    batch_size: int,
+    learning_rate: float,
+    temperature: float,
+    seed: int,
+) -> float:
+    if epochs <= 0:
+        return 0.0
+    if not source.samples:
+        raise ValueError("Cannot rank-finetune on an empty option source.")
+    rng = np.random.default_rng(seed)
+    mx.random.seed(seed)
+    optimizer = optim.Adam(learning_rate=learning_rate)
+    samples = list(source.samples)
+    final_loss = 0.0
+
+    def loss_fn(
+        observations: mx.array,
+        step_masks: mx.array,
+        observation_lengths: mx.array,
+        actions: mx.array,
+        action_masks: mx.array,
+        target_options: mx.array,
+    ) -> mx.array:
+        scores = _grouped_predicted_lowest_scores(
+            model,
+            observations,
+            step_masks,
+            observation_lengths,
+            actions,
+            action_masks,
+        )
+        logits = scores / max(temperature, 1e-6)
+        log_probs = logits - mx.logsumexp(logits, axis=-1, keepdims=True)
+        selected = mx.sum(log_probs * mx.eye(scores.shape[1])[target_options], axis=-1)
+        return -mx.mean(selected)
+
+    loss_and_grad = nn.value_and_grad(model, loss_fn)
+    for _epoch in range(max(1, epochs)):
+        rng.shuffle(samples)
+        for start in range(0, len(samples), max(1, batch_size)):
+            batch = pad_option_rank_samples(samples[start : start + max(1, batch_size)])
+            loss, grads = loss_and_grad(
+                batch.observations,
+                batch.step_masks,
+                batch.observation_lengths,
+                batch.actions,
+                batch.action_masks,
+                batch.target_options,
+            )
+            optimizer.update(model, grads)
+            mx.eval(model.parameters(), optimizer.state, loss)
+            final_loss = float(loss)
+    return final_loss
+
+
+def pad_option_rank_samples(samples) -> OptionRankBatch:
+    if not samples:
+        raise ValueError("Cannot pad an empty option-rank batch.")
+    batch_size = len(samples)
+    option_count = len(samples[0].option_actions)
+    max_observation_length = max(len(sample.history) for sample in samples)
+    max_action_length = max(
+        len(actions)
+        for sample in samples
+        for actions in sample.option_actions
+    )
+    input_size = samples[0].history[0].shape[-1]
+    observations = np.zeros(
+        (batch_size, max_observation_length, input_size),
+        dtype=np.float32,
+    )
+    step_masks = np.zeros((batch_size, max_observation_length), dtype=np.float32)
+    observation_lengths = np.zeros(batch_size, dtype=np.int32)
+    actions = np.zeros(
+        (batch_size, option_count, max_action_length),
+        dtype=np.int32,
+    )
+    action_masks = np.zeros(
+        (batch_size, option_count, max_action_length),
+        dtype=np.float32,
+    )
+    target_options = np.zeros(batch_size, dtype=np.int32)
+
+    for index, sample in enumerate(samples):
+        observation_length = len(sample.history)
+        observations[index, :observation_length] = np.stack(sample.history)
+        step_masks[index, :observation_length] = 1.0
+        observation_lengths[index] = observation_length
+        for option_index, option_actions in enumerate(sample.option_actions):
+            action_length = len(option_actions)
+            actions[index, option_index, :action_length] = np.asarray(
+                option_actions,
+                dtype=np.int32,
+            )
+            action_masks[index, option_index, :action_length] = 1.0
+        target_options[index] = sample.target_option
+
+    return OptionRankBatch(
+        observations=mx.array(observations, dtype=mx.float32),
+        step_masks=mx.array(step_masks, dtype=mx.float32),
+        observation_lengths=mx.array(observation_lengths, dtype=mx.int32),
+        actions=mx.array(actions, dtype=mx.int32),
+        action_masks=mx.array(action_masks, dtype=mx.float32),
+        target_options=mx.array(target_options, dtype=mx.int32),
+    )
+
+
+def _grouped_predicted_lowest_scores(
+    model: RecurrentActorCritic,
+    observations: mx.array,
+    step_masks: mx.array,
+    observation_lengths: mx.array,
+    actions: mx.array,
+    action_masks: mx.array,
+) -> mx.array:
+    hidden = model.hidden_states(observations)
+    initial = mx.stop_gradient(
+        _last_valid_hidden(hidden, observation_lengths, step_masks)
+    )
+    option_scores = []
+    for option_index in range(actions.shape[1]):
+        state = initial
+        final_needs = mx.sigmoid(model.next_needs(state))
+        for step in range(actions.shape[2]):
+            action_features = mx.eye(model.action_size)[actions[:, option_index, step]]
+            x = mx.concatenate([state, action_features], axis=-1)
+            x = nn.relu(model.transition_norm(model.transition(x)))
+            next_state = x + nn.relu(model.transition_state(x))
+            next_needs = mx.sigmoid(model.next_needs(next_state))
+            mask = action_masks[:, option_index, step : step + 1]
+            state = mx.where(mask > 0.0, next_state, state)
+            final_needs = mx.where(mask > 0.0, next_needs, final_needs)
+        option_scores.append(mx.min(final_needs, axis=-1))
+    return mx.stack(option_scores, axis=1)
 
 
 def main() -> None:
@@ -176,6 +332,21 @@ def run_replication_seed(
         min_value_gap=args.min_value_gap,
         option_action_noise=mediation_noise,
     )
+    train_option_rank_finetune(
+        trained_base,
+        train_source,
+        epochs=args.rank_finetune_epochs,
+        batch_size=args.rank_finetune_batch_size,
+        learning_rate=args.rank_finetune_learning_rate,
+        temperature=args.rank_finetune_temperature,
+        seed=seed + 40_000,
+    )
+    if args.rank_finetune_epochs > 0:
+        after_world = evaluate_option_world_model(
+            trained_base,
+            eval_branches,
+            batch_size=args.world_eval_batch_size,
+        )
 
     rows = _mediation_rows(
         trained_base,
@@ -307,6 +478,31 @@ def _mediation_rows(
                 after_world_trend_accuracy=after_world_trend_accuracy,
             )
         )
+    if args.self_model_rank_control:
+        rank_dataset = (
+            eval_dataset
+            if args.feature_mode == "latent_current"
+            else option_mediation_dataset_from_source(
+                eval_source,
+                base_model,
+                feature_mode="latent_current",
+            )
+        )
+        rows.append(
+            _result_row(
+                seed,
+                predicted_future_option_result(
+                    rank_dataset,
+                    model_control=f"{model_control}_self_model",
+                ),
+                world_final_need_mse=world_final_need_mse,
+                world_trend_accuracy=world_trend_accuracy,
+                before_world_final_need_mse=before_world_final_need_mse,
+                after_world_final_need_mse=after_world_final_need_mse,
+                before_world_trend_accuracy=before_world_trend_accuracy,
+                after_world_trend_accuracy=after_world_trend_accuracy,
+            )
+        )
     return rows
 
 
@@ -386,6 +582,7 @@ def _parse_args() -> argparse.Namespace:
         default=["original", "shuffle_delta", "negate_delta"],
     )
     parser.add_argument("--random-model-control", action="store_true")
+    parser.add_argument("--self-model-rank-control", action="store_true")
 
     parser.add_argument("--world-train-episodes", type=int, default=1000)
     parser.add_argument("--world-eval-episodes", type=int, default=500)
@@ -399,6 +596,10 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--final-needs-weight", type=float, default=10.0)
     parser.add_argument("--observation-prediction-weight", type=float, default=0.03)
     parser.add_argument("--reward-prediction-weight", type=float, default=0.4)
+    parser.add_argument("--rank-finetune-epochs", type=int, default=0)
+    parser.add_argument("--rank-finetune-batch-size", type=int, default=128)
+    parser.add_argument("--rank-finetune-learning-rate", type=float, default=1e-4)
+    parser.add_argument("--rank-finetune-temperature", type=float, default=0.05)
 
     parser.add_argument("--mediation-train-episodes", type=int, default=1000)
     parser.add_argument("--mediation-eval-episodes", type=int, default=500)

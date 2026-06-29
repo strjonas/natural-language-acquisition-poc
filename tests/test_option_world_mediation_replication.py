@@ -1,10 +1,14 @@
 import unittest
 from argparse import Namespace
 
+import numpy as np
+
+from homesocial.option_mediation import OptionMediationSourceSample
 from homesocial.option_world_mediation_replication import (
     OptionWorldMediationReplicationRow,
     format_row,
     header,
+    pad_option_rank_samples,
     resolved_option_action_noises,
 )
 
@@ -56,6 +60,26 @@ class OptionWorldMediationReplicationTests(unittest.TestCase):
             ),
             (0.3, 0.1),
         )
+
+    def test_pad_option_rank_samples_preserves_grouped_actions_and_targets(self):
+        sample = OptionMediationSourceSample(
+            history=(
+                np.ones((3,), dtype=np.float32),
+                np.ones((3,), dtype=np.float32) * 2,
+            ),
+            option_actions=((1, 2), (3,), (4, 5, 6)),
+            option_values=np.array([0.2, 0.1, 0.3], dtype=np.float32),
+            target_option=2,
+            current_lowest=0.1,
+        )
+
+        batch = pad_option_rank_samples([sample])
+
+        self.assertEqual(batch.observations.shape, (1, 2, 3))
+        self.assertEqual(batch.actions.shape, (1, 3, 3))
+        np.testing.assert_array_equal(np.asarray(batch.actions)[0, 0, :2], [1, 2])
+        np.testing.assert_array_equal(np.asarray(batch.action_masks)[0, 1], [1, 0, 0])
+        self.assertEqual(int(np.asarray(batch.target_options)[0]), 2)
 
 
 if __name__ == "__main__":
