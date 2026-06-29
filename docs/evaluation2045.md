@@ -278,6 +278,15 @@ self-change message can guide a body-relevant decision." It is still one seed
 and the grouped collector is slow, so the next gate is to optimize collection
 and replicate mediation across body-model seeds.
 
+Source reuse now makes mediation replication practical and tighter: the grouped
+option states are collected once, then featurized through trained and random
+models. Across three mediation seeds on the same option-world checkpoint,
+trained choice averaged `0.7936`, random averaged `0.5812`, and target-majority
+was `0.2000`. Negating the self-change delta dropped trained choice to
+`0.2120` with regret `0.1501`. This replicates message-mediated self-change
+use inside one checkpoint; independent body/world checkpoints are still
+required before claiming robustness.
+
 ---
 
 ## M6: Reflective Report With Parrot Guards

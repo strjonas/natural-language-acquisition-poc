@@ -6,10 +6,15 @@ import numpy as np
 from homesocial.option_mediation import (
     OptionMediationDataset,
     _balanced_target_option_indices,
+    collect_option_mediation_source,
     intervene_option_mediation_features,
     majority_option_result,
+    option_mediation_dataset_from_source,
     target_count_string,
 )
+from homesocial.env import LANGUAGE_NECESSARY_MODE, STOCHASTIC_BODY, Action
+from homesocial.observations import MASKED_INTEROCEPTION, observation_vector_size
+from homesocial.recurrent_ac import RecurrentActorCritic, RecurrentConfig
 
 
 def _dataset(
@@ -95,6 +100,42 @@ class OptionMediationTests(unittest.TestCase):
             target_count_string(_dataset([0, 0, 2, 4])),
             "seek_food=2;seek_water=0;seek_shelter=1;rest=0;wait=1",
         )
+
+    def test_collect_source_and_featurize_runs(self):
+        config = RecurrentConfig(
+            condition="grounded",
+            include_language_channel=True,
+            max_steps=12,
+            hidden_size=16,
+            randomize_world=False,
+            diagnostic_mode=LANGUAGE_NECESSARY_MODE,
+            interoception_mode=MASKED_INTEROCEPTION,
+            body_dynamics_mode=STOCHASTIC_BODY,
+        )
+        model = RecurrentActorCritic(
+            observation_vector_size(
+                include_language=True,
+                include_object_kinds=False,
+                body_dynamics_mode=STOCHASTIC_BODY,
+            ),
+            hidden_size=16,
+            action_size=len(Action),
+        )
+
+        source = collect_option_mediation_source(
+            config,
+            episodes=1,
+            seed=13,
+            horizon=2,
+            balance_target="none",
+            max_states=3,
+            min_value_gap=0.0,
+        )
+        dataset = option_mediation_dataset_from_source(source, model)
+
+        self.assertGreater(len(source.samples), 0)
+        self.assertEqual(dataset.features.shape[1:], (5, 12))
+        self.assertEqual(dataset.option_values.shape[1], 5)
 
 
 if __name__ == "__main__":

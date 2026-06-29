@@ -39,6 +39,20 @@ class OptionMediationDataset:
 
 
 @dataclass(frozen=True)
+class OptionMediationSourceSample:
+    history: tuple[np.ndarray, ...]
+    option_actions: tuple[tuple[int, ...], ...]
+    option_values: np.ndarray
+    target_option: int
+    current_lowest: float
+
+
+@dataclass(frozen=True)
+class OptionMediationSourceDataset:
+    samples: tuple[OptionMediationSourceSample, ...]
+
+
+@dataclass(frozen=True)
 class TrainedOptionMediator:
     model: OptionMediationProtocol
     feature_mean: mx.array
@@ -141,8 +155,36 @@ def collect_option_mediation_dataset(
     max_states: int = 3000,
     min_value_gap: float = 0.005,
 ) -> OptionMediationDataset:
-    if rollout_mode != "latent_current":
-        raise ValueError("Option mediation currently requires latent_current features.")
+    source = collect_option_mediation_source(
+        config,
+        episodes=episodes,
+        seed=seed,
+        teacher_mode=teacher_mode,
+        horizon=horizon,
+        state_policy=state_policy,
+        balance_target=balance_target,
+        max_states=max_states,
+        min_value_gap=min_value_gap,
+    )
+    return option_mediation_dataset_from_source(
+        source,
+        base_model,
+        rollout_mode=rollout_mode,
+    )
+
+
+def collect_option_mediation_source(
+    config: RecurrentConfig,
+    *,
+    episodes: int,
+    seed: int,
+    teacher_mode: str = "grounded",
+    horizon: int = 6,
+    state_policy: str = "cycle",
+    balance_target: str = "target_option",
+    max_states: int = 3000,
+    min_value_gap: float = 0.005,
+) -> OptionMediationSourceDataset:
     if state_policy not in STATE_POLICIES:
         raise ValueError(f"Unknown state policy: {state_policy}.")
     if balance_target not in OPTION_MEDIATION_BALANCE_TARGETS:
@@ -164,10 +206,7 @@ def collect_option_mediation_dataset(
         resource_ecology=config.resource_ecology,
     )
     rng = np.random.default_rng(seed + 3_170_000)
-    grouped_features: list[np.ndarray] = []
-    grouped_values: list[np.ndarray] = []
-    target_options: list[int] = []
-    current_lowest: list[float] = []
+    samples: list[OptionMediationSourceSample] = []
 
     for episode in range(episodes):
         observation = env.reset(seed=seed + episode)
@@ -175,7 +214,7 @@ def collect_option_mediation_dataset(
         history: list[np.ndarray] = []
         terminated = False
         truncated = False
-        while not terminated and not truncated and len(grouped_features) < max_states:
+        while not terminated and not truncated and len(samples) < max_states:
             history.append(
                 observation_vector(
                     observation,
@@ -188,20 +227,30 @@ def collect_option_mediation_dataset(
                     body_dynamics_mode=config.body_dynamics_mode,
                 )
             )
-            features, values = _state_option_features_and_values(
-                base_model,
+            option_actions, values = _state_option_actions_and_values(
                 env,
                 observation,
-                history,
                 horizon=max(1, horizon),
-                rollout_mode=rollout_mode,
             )
             ordered_values = np.sort(values)
-            if len(ordered_values) < 2 or ordered_values[-1] - ordered_values[-2] >= min_value_gap:
-                grouped_features.append(features)
-                grouped_values.append(values)
-                target_options.append(int(np.argmax(values)))
-                current_lowest.append(float(np.min(_needs_array(observation.needs))))
+            if (
+                len(ordered_values) < 2
+                or ordered_values[-1] - ordered_values[-2] >= min_value_gap
+            ):
+                samples.append(
+                    OptionMediationSourceSample(
+                        history=tuple(
+                            np.asarray(item, dtype=np.float32) for item in history
+                        ),
+                        option_actions=tuple(
+                            tuple(int(action) for action in actions)
+                            for actions in option_actions
+                        ),
+                        option_values=values.astype(np.float32),
+                        target_option=int(np.argmax(values)),
+                        current_lowest=float(np.min(_needs_array(observation.needs))),
+                    )
+                )
 
             policy_observation = observation
             if mask_language:
@@ -220,31 +269,69 @@ def collect_option_mediation_dataset(
             if action_mask(observation)[action_index] <= 0.0:
                 action = Action.MOVE_FORWARD
             observation, _reward, terminated, truncated, _info = env.step(action)
-        if len(grouped_features) >= max_states:
+        if len(samples) >= max_states:
             break
 
-    if not grouped_features:
+    if not samples:
         raise ValueError("No option mediation states were collected.")
 
-    indices = np.arange(len(grouped_features))
+    target_options = [sample.target_option for sample in samples]
+    indices = np.arange(len(samples))
     if balance_target == "target_option":
         indices = _balanced_target_option_indices(target_options, rng)
 
+    return OptionMediationSourceDataset(
+        samples=tuple(samples[int(index)] for index in indices)
+    )
+
+
+def option_mediation_dataset_from_source(
+    source: OptionMediationSourceDataset,
+    base_model: RecurrentActorCritic,
+    *,
+    rollout_mode: str = "latent_current",
+) -> OptionMediationDataset:
+    if rollout_mode != "latent_current":
+        raise ValueError("Option mediation currently requires latent_current features.")
+    grouped_features: list[np.ndarray] = []
+    grouped_values: list[np.ndarray] = []
+    target_options: list[int] = []
+    current_lowest: list[float] = []
+
+    for sample in source.samples:
+        history = [np.asarray(item, dtype=np.float32) for item in sample.history]
+        grouped_features.append(
+            np.stack(
+                [
+                    _option_counterfactual_features(
+                        base_model,
+                        history,
+                        option_actions=list(actions),
+                        rollout_mode=rollout_mode,
+                    )
+                    for actions in sample.option_actions
+                ]
+            ).astype(np.float32)
+        )
+        grouped_values.append(np.asarray(sample.option_values, dtype=np.float32))
+        target_options.append(sample.target_option)
+        current_lowest.append(sample.current_lowest)
+
     return OptionMediationDataset(
         features=mx.array(
-            np.stack([grouped_features[int(index)] for index in indices]),
+            np.stack(grouped_features),
             dtype=mx.float32,
         ),
         option_values=mx.array(
-            np.stack([grouped_values[int(index)] for index in indices]),
+            np.stack(grouped_values),
             dtype=mx.float32,
         ),
         target_options=mx.array(
-            [target_options[int(index)] for index in indices],
+            target_options,
             dtype=mx.int32,
         ),
         current_lowest=mx.array(
-            [current_lowest[int(index)] for index in indices],
+            current_lowest,
             dtype=mx.float32,
         ),
     )
@@ -423,6 +510,36 @@ def target_count_string(dataset: OptionMediationDataset) -> str:
     )
 
 
+def _state_option_actions_and_values(
+    env: HomeostaticSocialGrid,
+    observation,
+    *,
+    horizon: int,
+) -> tuple[list[list[int]], np.ndarray]:
+    option_actions: list[list[int]] = []
+    values: list[float] = []
+    for option_name in OPTION_NAMES:
+        branch = deepcopy(env)
+        branch_observation = observation
+        actions: list[int] = []
+        for _step in range(horizon):
+            option_action = _option_action(option_name, branch_observation)
+            mask = action_mask(branch_observation)
+            option_action_index = tuple(Action).index(option_action)
+            if mask[option_action_index] <= 0.0:
+                option_action = Action.MOVE_FORWARD
+                option_action_index = tuple(Action).index(option_action)
+            actions.append(option_action_index)
+            branch_observation, _reward, terminated, truncated, _info = branch.step(
+                option_action
+            )
+            if terminated or truncated:
+                break
+        option_actions.append(actions)
+        values.append(float(np.min(_needs_array(branch_observation.needs))))
+    return option_actions, np.array(values, dtype=np.float32)
+
+
 def _state_option_features_and_values(
     base_model: RecurrentActorCritic,
     env: HomeostaticSocialGrid,
@@ -526,37 +643,43 @@ def main() -> None:
         "mean_oracle_lowest,mean_regret,mean_chosen_delta,mean_oracle_delta,"
         "message_codes_used,target_counts"
     )
+    train_source = collect_option_mediation_source(
+        config,
+        episodes=args.train_episodes,
+        seed=args.seed,
+        teacher_mode=args.teacher_mode,
+        horizon=args.horizon,
+        state_policy=args.state_policy,
+        balance_target=args.balance_target,
+        max_states=args.max_train_states,
+        min_value_gap=args.min_value_gap,
+    )
+    eval_source = collect_option_mediation_source(
+        config,
+        episodes=args.eval_episodes,
+        seed=args.seed + 10_000,
+        teacher_mode=args.teacher_mode,
+        horizon=args.horizon,
+        state_policy=args.state_policy,
+        balance_target=args.balance_target,
+        max_states=args.max_eval_states,
+        min_value_gap=args.min_value_gap,
+    )
     for model_control, base_model in _base_models(
         trained_base,
         config,
         random_model_control=args.random_model_control,
         seed=args.seed,
     ):
-        train_dataset = collect_option_mediation_dataset(
+        train_dataset = option_mediation_dataset_from_source(
+            train_source,
             base_model,
-            config,
-            episodes=args.train_episodes,
-            seed=args.seed,
-            teacher_mode=args.teacher_mode,
-            horizon=args.horizon,
             rollout_mode="latent_current",
-            state_policy=args.state_policy,
-            balance_target=args.balance_target,
-            max_states=args.max_train_states,
-            min_value_gap=args.min_value_gap,
         )
-        eval_dataset = collect_option_mediation_dataset(
+        eval_dataset = option_mediation_dataset_from_source(
+            eval_source,
             base_model,
-            config,
-            episodes=args.eval_episodes,
-            seed=args.seed + 10_000,
-            teacher_mode=args.teacher_mode,
-            horizon=args.horizon,
             rollout_mode="latent_current",
-            state_policy=args.state_policy,
-            balance_target=args.balance_target,
-            max_states=args.max_eval_states,
-            min_value_gap=args.min_value_gap,
         )
         trained = train_option_mediator(
             train_dataset,

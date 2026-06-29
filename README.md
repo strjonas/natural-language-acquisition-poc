@@ -254,7 +254,8 @@ PYTHONPATH=src python3 -m homesocial.option_seed_replication --checkpoint runs/b
 ```
 
 Test whether compact option self-change messages can mediate a useful option
-choice, rather than only reconstruct labels:
+choice, rather than only reconstruct labels. The command reuses the same
+grouped option states for trained and random controls:
 
 ```bash
 PYTHONPATH=src python3 -m homesocial.option_mediation --checkpoint runs/option_world_rich.weights.npz --horizon 6 --state-policy cycle --resource-ecology rich --random-model-control
