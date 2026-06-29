@@ -296,6 +296,15 @@ target-majority `0.2000`, and negated-delta trained choice `0.1864` with
 regret `0.1535`. The remaining robustness gap is now independent base body
 checkpoints and richer/noisier option ecologies.
 
+Independent base-body mediation also passes on the older m8 stochastic
+persistent checkpoints. Across body seeds 12 and 13, trained choice averaged
+`0.7472`, random averaged `0.5858`, target-majority was `0.2000`, and
+negated-delta trained choice fell to `0.1590`. Fresh option-world training on
+those bodies improved final-need MSE from about `0.1377` to `0.0192` and trend
+from `0.1659` to `0.7686`. This is a significant robustness win. The random
+latent baseline is still high, so the next gate should target richer/noisier
+option ecologies and controls that reduce generic route/feature regularity.
+
 ---
 
 ## M6: Reflective Report With Parrot Guards

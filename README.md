@@ -268,6 +268,13 @@ still works on those independently trained world-model heads:
 PYTHONPATH=src python3 -m homesocial.option_world_mediation_replication --checkpoint runs/bc_stochastic_body.weights.npz --seeds 9901 9902 --horizon 6 --state-policy cycle --resource-ecology rich --random-model-control
 ```
 
+Run the same option-world plus mediation pipeline across multiple independently
+trained base body checkpoints:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.option_body_mediation_replication --checkpoints runs/bc_m8_stochastic_persistent_seed12.weights.npz runs/bc_m8_stochastic_persistent_seed13.weights.npz --seeds 9912 9913 --horizon 6 --state-policy cycle --resource-ecology rich --random-model-control
+```
+
 Run a larger local sweep once the fixed-world diagnostic is healthy:
 
 ```bash
