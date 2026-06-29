@@ -26,8 +26,10 @@ from .option_mediation import (
 )
 from .option_world_model import (
     _last_valid_hidden,
+    _option_world_loss,
     collect_option_branch_dataset,
     evaluate_option_world_model,
+    pad_option_branch_samples,
     train_option_world_model,
 )
 from .recurrent_ac import RecurrentActorCritic
@@ -106,10 +108,16 @@ def train_option_rank_finetune(
     model: RecurrentActorCritic,
     source,
     *,
+    dynamics_samples=None,
     epochs: int,
     batch_size: int,
     learning_rate: float,
     temperature: float,
+    dynamics_weight: float = 0.0,
+    step_needs_weight: float = 2.0,
+    final_needs_weight: float = 10.0,
+    observation_prediction_weight: float = 0.03,
+    reward_prediction_weight: float = 0.4,
     seed: int,
 ) -> float:
     if epochs <= 0:
@@ -120,6 +128,9 @@ def train_option_rank_finetune(
     mx.random.seed(seed)
     optimizer = optim.Adam(learning_rate=learning_rate)
     samples = list(source.samples)
+    replay_samples = list(dynamics_samples or [])
+    if dynamics_weight > 0.0 and not replay_samples:
+        raise ValueError("Dynamics replay requires non-empty dynamics samples.")
     final_loss = 0.0
 
     def loss_fn(
@@ -143,9 +154,40 @@ def train_option_rank_finetune(
         selected = mx.sum(log_probs * mx.eye(scores.shape[1])[target_options], axis=-1)
         return -mx.mean(selected)
 
+    def replay_loss_fn(
+        observations: mx.array,
+        step_masks: mx.array,
+        observation_lengths: mx.array,
+        actions: mx.array,
+        action_masks: mx.array,
+        action_lengths: mx.array,
+        next_observations: mx.array,
+        next_needs: mx.array,
+        rewards: mx.array,
+    ) -> mx.array:
+        return dynamics_weight * _option_world_loss(
+            model,
+            observations,
+            step_masks,
+            observation_lengths,
+            actions,
+            action_masks,
+            action_lengths,
+            next_observations,
+            next_needs,
+            rewards,
+            step_needs_weight,
+            final_needs_weight,
+            observation_prediction_weight,
+            reward_prediction_weight,
+        )
+
     loss_and_grad = nn.value_and_grad(model, loss_fn)
+    replay_loss_and_grad = nn.value_and_grad(model, replay_loss_fn)
     for _epoch in range(max(1, epochs)):
         rng.shuffle(samples)
+        if replay_samples:
+            rng.shuffle(replay_samples)
         for start in range(0, len(samples), max(1, batch_size)):
             batch = pad_option_rank_samples(samples[start : start + max(1, batch_size)])
             loss, grads = loss_and_grad(
@@ -159,6 +201,27 @@ def train_option_rank_finetune(
             optimizer.update(model, grads)
             mx.eval(model.parameters(), optimizer.state, loss)
             final_loss = float(loss)
+            if dynamics_weight > 0.0:
+                replay_start = start % len(replay_samples)
+                replay_batch = _cyclic_sample_slice(
+                    replay_samples,
+                    replay_start,
+                    max(1, batch_size),
+                )
+                dynamics_batch = pad_option_branch_samples(replay_batch)
+                replay_loss, replay_grads = replay_loss_and_grad(
+                    dynamics_batch.observations,
+                    dynamics_batch.step_masks,
+                    dynamics_batch.observation_lengths,
+                    dynamics_batch.actions,
+                    dynamics_batch.action_masks,
+                    dynamics_batch.action_lengths,
+                    dynamics_batch.next_observations,
+                    dynamics_batch.next_needs,
+                    dynamics_batch.rewards,
+                )
+                optimizer.update(model, replay_grads)
+                mx.eval(model.parameters(), optimizer.state, replay_loss)
     return final_loss
 
 
@@ -212,6 +275,10 @@ def pad_option_rank_samples(samples) -> OptionRankBatch:
         action_masks=mx.array(action_masks, dtype=mx.float32),
         target_options=mx.array(target_options, dtype=mx.int32),
     )
+
+
+def _cyclic_sample_slice(samples: list, start: int, count: int) -> list:
+    return [samples[(start + offset) % len(samples)] for offset in range(count)]
 
 
 def _grouped_predicted_lowest_scores(
@@ -335,10 +402,16 @@ def run_replication_seed(
     train_option_rank_finetune(
         trained_base,
         train_source,
+        dynamics_samples=train_branches.samples,
         epochs=args.rank_finetune_epochs,
         batch_size=args.rank_finetune_batch_size,
         learning_rate=args.rank_finetune_learning_rate,
         temperature=args.rank_finetune_temperature,
+        dynamics_weight=args.rank_finetune_dynamics_weight,
+        step_needs_weight=args.step_needs_weight,
+        final_needs_weight=args.final_needs_weight,
+        observation_prediction_weight=args.observation_prediction_weight,
+        reward_prediction_weight=args.reward_prediction_weight,
         seed=seed + 40_000,
     )
     if args.rank_finetune_epochs > 0:
@@ -600,6 +673,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--rank-finetune-batch-size", type=int, default=128)
     parser.add_argument("--rank-finetune-learning-rate", type=float, default=1e-4)
     parser.add_argument("--rank-finetune-temperature", type=float, default=0.05)
+    parser.add_argument("--rank-finetune-dynamics-weight", type=float, default=0.0)
 
     parser.add_argument("--mediation-train-episodes", type=int, default=1000)
     parser.add_argument("--mediation-eval-episodes", type=int, default=500)

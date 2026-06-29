@@ -260,6 +260,9 @@ Completed:
   self-model choice rises to `0.6436` over two seeds at `0.15` noise, random
   self-model rank stays near majority (`0.2062`), and message choice improves
   modestly to `0.5871`.
+- rank fine-tuning with dynamics replay: direct trained self-model choice
+  remains high (`0.6207`), world-trend accuracy improves from `0.5130` to
+  `0.6175`, and negated-delta trained message choice falls to `0.0660`.
 
 Not yet passed:
 
@@ -281,8 +284,8 @@ Not yet passed:
   reintroducing control leakage or weakening the negated-delta gate,
 - anti-leakage receiver objectives that suppress random receiver regularities
   without discarding the trained self-change signal,
-- rank-plus-dynamics training that preserves the old world-trend metric while
-  keeping the improved direct branch choice from rank fine-tuning,
+- stronger rank-plus-dynamics training that recovers the old world-trend metric
+  closer to pre-rank levels while keeping direct branch choice above `0.62`,
 - message bottleneck improvements so compact communication can express the
   stronger rank-finetuned self-model signal,
 - longer autobiographical memory and cross-episode continuity,

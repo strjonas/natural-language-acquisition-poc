@@ -356,6 +356,14 @@ world-model calibration. The next objective should combine rank pressure with
 world-dynamics preservation, then improve the message bottleneck so compact
 communication can match the stronger self-model rank signal.
 
+Rank fine-tuning with dynamics replay partially fixes that caveat. Adding a
+`0.25` replay-weighted option-world loss during rank fine-tune kept direct
+trained self-model choice high (`0.6207`) and improved world-trend accuracy
+from `0.5130` to `0.6175`, with lower final-need MSE (`0.0279`). Message choice
+held at `0.5867`, and negated-delta trained choice collapsed further (`0.0660`).
+The tradeoff is that random message choice rose to `0.3709`, so dynamics replay
+helps preserve self/world calibration but does not solve receiver leakage.
+
 ---
 
 ## M6: Reflective Report With Parrot Guards

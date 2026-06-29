@@ -6,6 +6,7 @@ import numpy as np
 from homesocial.option_mediation import OptionMediationSourceSample
 from homesocial.option_world_mediation_replication import (
     OptionWorldMediationReplicationRow,
+    _cyclic_sample_slice,
     format_row,
     header,
     pad_option_rank_samples,
@@ -80,6 +81,9 @@ class OptionWorldMediationReplicationTests(unittest.TestCase):
         np.testing.assert_array_equal(np.asarray(batch.actions)[0, 0, :2], [1, 2])
         np.testing.assert_array_equal(np.asarray(batch.action_masks)[0, 1], [1, 0, 0])
         self.assertEqual(int(np.asarray(batch.target_options)[0]), 2)
+
+    def test_cyclic_sample_slice_wraps_replay_batches(self):
+        self.assertEqual(_cyclic_sample_slice([1, 2, 3], 2, 5), [3, 1, 2, 3, 1])
 
 
 if __name__ == "__main__":

@@ -108,6 +108,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--rank-finetune-batch-size", type=int, default=128)
     parser.add_argument("--rank-finetune-learning-rate", type=float, default=1e-4)
     parser.add_argument("--rank-finetune-temperature", type=float, default=0.05)
+    parser.add_argument("--rank-finetune-dynamics-weight", type=float, default=0.0)
 
     parser.add_argument("--mediation-train-episodes", type=int, default=1000)
     parser.add_argument("--mediation-eval-episodes", type=int, default=500)
