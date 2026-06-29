@@ -166,6 +166,52 @@ class OptionMediationTests(unittest.TestCase):
         self.assertEqual(delta_dataset.features.shape[1:], (5, 4))
         self.assertEqual(dataset.option_values.shape[1], 5)
 
+    def test_option_action_noise_changes_recorded_branch_scripts(self):
+        config = RecurrentConfig(
+            condition="grounded",
+            include_language_channel=True,
+            max_steps=12,
+            hidden_size=16,
+            randomize_world=False,
+            diagnostic_mode=LANGUAGE_NECESSARY_MODE,
+            interoception_mode=MASKED_INTEROCEPTION,
+            body_dynamics_mode=STOCHASTIC_BODY,
+        )
+
+        deterministic_source = collect_option_mediation_source(
+            config,
+            episodes=1,
+            seed=17,
+            horizon=2,
+            balance_target="none",
+            max_states=2,
+            min_value_gap=0.0,
+            option_action_noise=0.0,
+        )
+        noisy_source = collect_option_mediation_source(
+            config,
+            episodes=1,
+            seed=17,
+            horizon=2,
+            balance_target="none",
+            max_states=2,
+            min_value_gap=0.0,
+            option_action_noise=1.0,
+        )
+
+        self.assertGreater(len(noisy_source.samples), 0)
+        self.assertNotEqual(
+            deterministic_source.samples[0].option_actions,
+            noisy_source.samples[0].option_actions,
+        )
+        with self.assertRaises(ValueError):
+            collect_option_mediation_source(
+                config,
+                episodes=1,
+                seed=17,
+                option_action_noise=1.1,
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

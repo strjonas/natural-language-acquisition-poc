@@ -48,6 +48,12 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--checkpoint", default="")
     parser.add_argument("--seeds", nargs="+", type=int, default=[9901])
     parser.add_argument("--horizon", type=int, default=6)
+    parser.add_argument(
+        "--option-action-noise",
+        type=float,
+        default=0.0,
+        help="Probability of replacing a scripted option step with another valid body action.",
+    )
     parser.add_argument("--renewable-resources", action="store_true")
     parser.add_argument(
         "--resource-ecology",

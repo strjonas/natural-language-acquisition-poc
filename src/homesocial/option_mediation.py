@@ -16,7 +16,7 @@ from .observations import observation_vector, observation_vector_size
 from .option_counterfactual_language import (
     OPTION_NAMES,
     STATE_POLICIES,
-    _option_action,
+    _option_action_index,
     _option_counterfactual_features,
     _state_agent,
 )
@@ -156,6 +156,7 @@ def collect_option_mediation_dataset(
     max_states: int = 3000,
     min_value_gap: float = 0.005,
     feature_mode: str = "latent_current",
+    option_action_noise: float = 0.0,
 ) -> OptionMediationDataset:
     source = collect_option_mediation_source(
         config,
@@ -167,6 +168,7 @@ def collect_option_mediation_dataset(
         balance_target=balance_target,
         max_states=max_states,
         min_value_gap=min_value_gap,
+        option_action_noise=option_action_noise,
     )
     return option_mediation_dataset_from_source(
         source,
@@ -187,11 +189,14 @@ def collect_option_mediation_source(
     balance_target: str = "target_option",
     max_states: int = 3000,
     min_value_gap: float = 0.005,
+    option_action_noise: float = 0.0,
 ) -> OptionMediationSourceDataset:
     if state_policy not in STATE_POLICIES:
         raise ValueError(f"Unknown state policy: {state_policy}.")
     if balance_target not in OPTION_MEDIATION_BALANCE_TARGETS:
         raise ValueError(f"Unknown balance target: {balance_target}.")
+    if not 0.0 <= option_action_noise <= 1.0:
+        raise ValueError("Option action noise must be in [0, 1].")
     normalized_teacher = normalize_teacher_mode(teacher_mode)
     mask_language = (
         masks_language(normalized_teacher) or not config.include_language_channel
@@ -234,6 +239,8 @@ def collect_option_mediation_source(
                 env,
                 observation,
                 horizon=max(1, horizon),
+                rng=rng,
+                option_action_noise=option_action_noise,
             )
             ordered_values = np.sort(values)
             if (
@@ -554,6 +561,8 @@ def _state_option_actions_and_values(
     observation,
     *,
     horizon: int,
+    rng: np.random.Generator | None = None,
+    option_action_noise: float = 0.0,
 ) -> tuple[list[list[int]], np.ndarray]:
     option_actions: list[list[int]] = []
     values: list[float] = []
@@ -562,12 +571,12 @@ def _state_option_actions_and_values(
         branch_observation = observation
         actions: list[int] = []
         for _step in range(horizon):
-            option_action = _option_action(option_name, branch_observation)
-            mask = action_mask(branch_observation)
-            option_action_index = tuple(Action).index(option_action)
-            if mask[option_action_index] <= 0.0:
-                option_action = Action.MOVE_FORWARD
-                option_action_index = tuple(Action).index(option_action)
+            option_action, option_action_index = _option_action_index(
+                option_name,
+                branch_observation,
+                rng=rng,
+                option_action_noise=option_action_noise,
+            )
             actions.append(option_action_index)
             branch_observation, _reward, terminated, truncated, _info = branch.step(
                 option_action
@@ -587,6 +596,8 @@ def _state_option_features_and_values(
     *,
     horizon: int,
     rollout_mode: str,
+    rng: np.random.Generator | None = None,
+    option_action_noise: float = 0.0,
 ) -> tuple[np.ndarray, np.ndarray]:
     features: list[np.ndarray] = []
     values: list[float] = []
@@ -595,12 +606,12 @@ def _state_option_features_and_values(
         branch_observation = observation
         option_actions: list[int] = []
         for _step in range(horizon):
-            option_action = _option_action(option_name, branch_observation)
-            mask = action_mask(branch_observation)
-            option_action_index = tuple(Action).index(option_action)
-            if mask[option_action_index] <= 0.0:
-                option_action = Action.MOVE_FORWARD
-                option_action_index = tuple(Action).index(option_action)
+            option_action, option_action_index = _option_action_index(
+                option_name,
+                branch_observation,
+                rng=rng,
+                option_action_noise=option_action_noise,
+            )
             option_actions.append(option_action_index)
             branch_observation, _reward, terminated, truncated, _info = branch.step(
                 option_action
@@ -692,6 +703,7 @@ def main() -> None:
         balance_target=args.balance_target,
         max_states=args.max_train_states,
         min_value_gap=args.min_value_gap,
+        option_action_noise=args.option_action_noise,
     )
     eval_source = collect_option_mediation_source(
         config,
@@ -703,6 +715,7 @@ def main() -> None:
         balance_target=args.balance_target,
         max_states=args.max_eval_states,
         min_value_gap=args.min_value_gap,
+        option_action_noise=args.option_action_noise,
     )
     for model_control, base_model in _base_models(
         trained_base,
@@ -804,6 +817,12 @@ def _parse_args() -> argparse.Namespace:
         default="target_option",
     )
     parser.add_argument("--min-value-gap", type=float, default=0.005)
+    parser.add_argument(
+        "--option-action-noise",
+        type=float,
+        default=0.0,
+        help="Probability of replacing a scripted option step with another valid body action.",
+    )
     parser.add_argument(
         "--feature-mode",
         choices=OPTION_MEDIATION_FEATURE_MODES,

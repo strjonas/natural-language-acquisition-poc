@@ -245,6 +245,10 @@ Completed:
   future-current self-change: trained choice averages `0.7790`, random drops
   to `0.5161`, shuffled-delta trained choice `0.2027`, and negated-delta
   trained choice `0.0738`.
+- noisy-branch delta-only mediation with `0.3` option action noise across two
+  fresh noisy option-world seeds: trained choice averages `0.5020`, random
+  drops to `0.2974`, target-majority remains `0.2000`, and negated-delta
+  trained choice `0.0908`.
 
 Not yet passed:
 
@@ -259,8 +263,8 @@ Not yet passed:
   partly inferred from action/time regularities,
 - option-level communication across independent body-model checkpoints, larger
   balanced trend samples, and less latent-feature shortcut leakage,
-- option mediation in richer/noisier option ecologies where random latent
-  controls lose more of their remaining route regularity,
+- higher-accuracy noisy option mediation where the trained self-change channel
+  stays strong after route regularity is reduced,
 - longer autobiographical memory and cross-episode continuity,
 - reliable ask-then-act discovery in the randomized hidden-kind setting,
 - recurrent PPO learning of the language-necessity diagnostic without

@@ -104,6 +104,7 @@ def run_replication_seed(
         horizon=args.horizon,
         state_policy=args.state_policy,
         max_samples=args.max_world_train_samples,
+        option_action_noise=args.option_action_noise,
     )
     eval_branches = collect_option_branch_dataset(
         config,
@@ -113,6 +114,7 @@ def run_replication_seed(
         horizon=args.horizon,
         state_policy=args.state_policy,
         max_samples=args.max_world_eval_samples,
+        option_action_noise=args.option_action_noise,
     )
     before_world = evaluate_option_world_model(
         trained_base,
@@ -149,6 +151,7 @@ def run_replication_seed(
         balance_target=args.mediation_balance_target,
         max_states=args.max_mediation_train_states,
         min_value_gap=args.min_value_gap,
+        option_action_noise=args.option_action_noise,
     )
     eval_source = collect_option_mediation_source(
         config,
@@ -160,6 +163,7 @@ def run_replication_seed(
         balance_target=args.mediation_balance_target,
         max_states=args.max_mediation_eval_states,
         min_value_gap=args.min_value_gap,
+        option_action_noise=args.option_action_noise,
     )
 
     rows = _mediation_rows(
@@ -329,6 +333,12 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--checkpoint", required=True)
     parser.add_argument("--seeds", nargs="+", type=int, default=[9901, 9902])
     parser.add_argument("--horizon", type=int, default=6)
+    parser.add_argument(
+        "--option-action-noise",
+        type=float,
+        default=0.0,
+        help="Probability of replacing a scripted option step with another valid body action.",
+    )
     parser.add_argument("--renewable-resources", action="store_true")
     parser.add_argument(
         "--resource-ecology",

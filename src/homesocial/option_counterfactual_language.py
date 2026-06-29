@@ -44,6 +44,7 @@ OPTION_NAMES = ("seek_food", "seek_water", "seek_shelter", "rest", "wait")
 OPTION_BALANCE_TARGETS = ("none", "trend", "option_trend")
 OPTION_ROLLOUT_MODES = ("observation", "latent", "latent_current")
 STATE_POLICIES = ("teacher", "need", "random", "mixed", "cycle")
+NOISY_OPTION_EXCLUDED_ACTIONS = (Action.POINT, Action.ASK)
 
 
 def collect_option_counterfactual_dataset(
@@ -222,6 +223,43 @@ def _option_action(option_name: str, observation: Observation) -> Action:
     if option_name == "seek_water":
         return _seek_kind_action("water", observation)
     raise ValueError(f"Unknown option: {option_name}.")
+
+
+def _option_action_index(
+    option_name: str,
+    observation: Observation,
+    *,
+    rng: np.random.Generator | None = None,
+    option_action_noise: float = 0.0,
+) -> tuple[Action, int]:
+    if not 0.0 <= option_action_noise <= 1.0:
+        raise ValueError("Option action noise must be in [0, 1].")
+
+    actions = tuple(Action)
+    mask = action_mask(observation)
+    action = _option_action(option_name, observation)
+    action_index = actions.index(action)
+    if mask[action_index] <= 0.0:
+        action = Action.MOVE_FORWARD
+        action_index = actions.index(action)
+
+    if (
+        rng is not None
+        and option_action_noise > 0.0
+        and rng.random() < option_action_noise
+    ):
+        candidates = [
+            index
+            for index, candidate in enumerate(actions)
+            if mask[index] > 0.0
+            and index != action_index
+            and candidate not in NOISY_OPTION_EXCLUDED_ACTIONS
+        ]
+        if candidates:
+            action_index = int(rng.choice(candidates))
+            action = actions[action_index]
+
+    return action, action_index
 
 
 def _state_agent(state_policy: str, *, seed: int, episode: int):

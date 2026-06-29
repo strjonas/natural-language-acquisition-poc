@@ -16,7 +16,7 @@ from .observations import observation_vector
 from .option_counterfactual_language import (
     OPTION_NAMES,
     STATE_POLICIES,
-    _option_action,
+    _option_action_index,
     _state_agent,
 )
 from .recurrent_ac import RecurrentActorCritic, RecurrentConfig, action_mask
@@ -88,9 +88,12 @@ def collect_option_branch_dataset(
     horizon: int = 6,
     state_policy: str = "teacher",
     max_samples: int | None = None,
+    option_action_noise: float = 0.0,
 ) -> OptionBranchDataset:
     if state_policy not in STATE_POLICIES:
         raise ValueError(f"Unknown state policy: {state_policy}.")
+    if not 0.0 <= option_action_noise <= 1.0:
+        raise ValueError("Option action noise must be in [0, 1].")
     normalized_teacher = normalize_teacher_mode(teacher_mode)
     mask_language = (
         masks_language(normalized_teacher) or not config.include_language_channel
@@ -107,6 +110,7 @@ def collect_option_branch_dataset(
         renewable_resources=config.renewable_resources,
         resource_ecology=config.resource_ecology,
     )
+    rng = np.random.default_rng(seed + 2_950_000)
     samples: list[OptionBranchSample] = []
 
     for episode in range(episodes):
@@ -140,6 +144,8 @@ def collect_option_branch_dataset(
                     horizon=max(1, horizon),
                     config=config,
                     mask_language=mask_language,
+                    rng=rng,
+                    option_action_noise=option_action_noise,
                 )
                 samples.append(sample)
                 if max_samples is not None and len(samples) >= max_samples:
@@ -424,6 +430,8 @@ def _option_branch_sample(
     horizon: int,
     config: RecurrentConfig,
     mask_language: bool,
+    rng: np.random.Generator | None = None,
+    option_action_noise: float = 0.0,
 ) -> OptionBranchSample:
     branch = deepcopy(env)
     branch_observation = observation
@@ -433,12 +441,12 @@ def _option_branch_sample(
     rewards: list[float] = []
 
     for _step in range(horizon):
-        action = _option_action(option_name, branch_observation)
-        mask = action_mask(branch_observation)
-        action_index = tuple(Action).index(action)
-        if mask[action_index] <= 0.0:
-            action = Action.MOVE_FORWARD
-            action_index = tuple(Action).index(action)
+        action, action_index = _option_action_index(
+            option_name,
+            branch_observation,
+            rng=rng,
+            option_action_noise=option_action_noise,
+        )
         branch_observation, reward, terminated, truncated, _info = branch.step(action)
         actions.append(action_index)
         next_observations.append(
@@ -601,6 +609,7 @@ def main() -> None:
         horizon=args.horizon,
         state_policy=args.state_policy,
         max_samples=args.max_train_samples,
+        option_action_noise=args.option_action_noise,
     )
     eval_dataset = collect_option_branch_dataset(
         config,
@@ -610,6 +619,7 @@ def main() -> None:
         horizon=args.horizon,
         state_policy=args.state_policy,
         max_samples=args.max_eval_samples,
+        option_action_noise=args.option_action_noise,
     )
 
     print(
@@ -648,6 +658,12 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--max-train-samples", type=int, default=9000)
     parser.add_argument("--max-eval-samples", type=int, default=4500)
     parser.add_argument("--horizon", type=int, default=6)
+    parser.add_argument(
+        "--option-action-noise",
+        type=float,
+        default=0.0,
+        help="Probability of replacing a scripted option step with another valid body action.",
+    )
     parser.add_argument("--renewable-resources", action="store_true")
     parser.add_argument(
         "--resource-ecology",

@@ -314,6 +314,16 @@ claim that the useful message is carried by self-change, but the random
 delta-only control is still above chance on some seeds. The next environment
 change should make option outcomes less stereotyped.
 
+Noisy-branch mediation is the first version of that environment change. With
+`--option-action-noise 0.3`, each option branch sometimes takes another valid
+body action, and the receiver sees only predicted self-change for the actual
+sampled action sequence. Across two fresh noisy option-world seeds, trained
+choice averaged `0.5020`, random averaged `0.2974`, and target-majority stayed
+at `0.2000`. Shuffling trained delta fell to `0.2049`; negating it fell to
+`0.0908`. This sharply reduces the random shortcut, but trained performance
+also drops from the deterministic-option result. The likely next requirement is
+stronger/noisier world-model training, not a larger receiver.
+
 ---
 
 ## M6: Reflective Report With Parrot Guards

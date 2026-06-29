@@ -268,6 +268,13 @@ instead of current and future absolute self-estimates:
 PYTHONPATH=src python3 -m homesocial.option_mediation --checkpoint runs/option_world_rich.weights.npz --horizon 6 --state-policy cycle --resource-ecology rich --feature-mode delta --random-model-control
 ```
 
+Stress option identity shortcuts by adding branch action noise while keeping the
+actual sampled action sequence as both the true outcome and the model input:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.option_world_mediation_replication --checkpoint runs/bc_stochastic_body.weights.npz --seeds 9921 9922 --horizon 6 --state-policy cycle --resource-ecology rich --feature-mode delta --option-action-noise 0.3 --random-model-control
+```
+
 Train a fresh option-world model per seed, then test whether option mediation
 still works on those independently trained world-model heads:
 
