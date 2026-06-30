@@ -392,6 +392,15 @@ the issue is a soft-to-hard mismatch rather than leakage. The next attempt
 should preserve hard-message training while adding an auxiliary semantic loss
 that forces messages to carry self-score structure.
 
+The first auxiliary semantic loss is now implemented but did not beat the
+baseline. A receiver-side score head reconstructs the sender's predicted option
+scores from hard messages. Weights `0.1` and `0.03` kept random controlled
+(`0.1164` and `0.1968`) but trained message choice stayed around `0.541`, below
+the `0.5631` self-model-target baseline. This suggests the issue is not just
+missing score supervision at the receiver hidden state. The next communication
+attempt should be staged: pretrain or distill a hard-message code against
+self-model scores, then fine-tune the choice receiver.
+
 ---
 
 ## M6: Reflective Report With Parrot Guards

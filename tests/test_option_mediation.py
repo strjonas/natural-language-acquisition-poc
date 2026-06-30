@@ -12,6 +12,7 @@ from homesocial.option_mediation import (
     option_mediation_dataset_with_targets,
     option_mediation_dataset_from_source,
     predicted_future_option_choices,
+    predicted_future_option_scores,
     predicted_future_option_result,
     target_count_string,
     train_option_mediator,
@@ -152,6 +153,16 @@ class OptionMediationTests(unittest.TestCase):
         self.assertAlmostEqual(result.choice_accuracy, 0.5)
         self.assertAlmostEqual(result.mean_chosen_lowest, 0.65)
         np.testing.assert_array_equal(predicted_future_option_choices(dataset), [1, 2])
+        np.testing.assert_allclose(
+            predicted_future_option_scores(dataset),
+            np.array(
+                [
+                    [0.2, 0.8, 0.2, 0.2, 0.2],
+                    [0.2, 0.2, 0.9, 0.2, 0.2],
+                ],
+                dtype=np.float32,
+            ),
+        )
         with self.assertRaises(ValueError):
             predicted_future_option_result(_dataset([0], feature_width=4))
 
@@ -217,6 +228,36 @@ class OptionMediationTests(unittest.TestCase):
 
         self.assertEqual(result.samples, 5)
         self.assertGreaterEqual(result.message_codes_used, 1)
+
+    def test_train_option_mediator_accepts_score_reconstruction(self):
+        dataset = _dataset([0, 1, 2, 3, 4])
+        score_targets = np.asarray(dataset.option_values, dtype=np.float32)
+
+        trained = train_option_mediator(
+            dataset,
+            hidden_size=12,
+            receiver_size=12,
+            epochs=1,
+            batch_size=5,
+            score_targets=score_targets,
+            score_reconstruction_weight=0.1,
+            seed=5,
+        )
+        result = evaluate_option_mediator(
+            trained,
+            dataset,
+            model_control="trained",
+            intervention="original",
+        )
+
+        self.assertEqual(result.samples, 5)
+        with self.assertRaises(ValueError):
+            train_option_mediator(
+                dataset,
+                epochs=1,
+                score_targets=score_targets[:2],
+                score_reconstruction_weight=0.1,
+            )
 
     def test_target_count_string_uses_stable_option_names(self):
         self.assertEqual(

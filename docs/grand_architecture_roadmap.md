@@ -273,6 +273,8 @@ Completed:
 - soft-message training support for option mediation; first temperatures
   (`0.8`, `0.35`) underperformed hard straight-through training when evaluated
   with hard messages.
+- hard-message score reconstruction support; first weights (`0.1`, `0.03`)
+  kept random controlled but did not beat the self-model-target baseline.
 
 Not yet passed:
 
@@ -298,6 +300,8 @@ Not yet passed:
   because naive capacity increases did not improve self-model-targeted choice,
 - auxiliary semantic losses for hard messages, because pure soft-message
   training introduced a soft-to-hard evaluation gap,
+- staged hard-message distillation or sender pretraining, because a simple
+  receiver-side score reconstruction head did not close the expression gap,
 - stronger rank-plus-dynamics training that recovers the old world-trend metric
   closer to pre-rank levels while keeping direct branch choice above `0.62`,
 - message bottleneck improvements so compact communication can express the

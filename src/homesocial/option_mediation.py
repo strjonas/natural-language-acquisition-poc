@@ -100,6 +100,7 @@ class OptionMediationProtocol(nn.Module):
         self.receiver = nn.Linear(receiver_input, receiver_size)
         self.receiver_hidden = nn.Linear(receiver_size, receiver_size)
         self.choice = nn.Linear(receiver_size, option_count)
+        self.score = nn.Linear(receiver_size, option_count)
 
     def message(
         self,
@@ -128,15 +129,20 @@ class OptionMediationProtocol(nn.Module):
             messages.append(mx.reshape(message, (batch_size, option_count, -1)))
         return messages, probabilities
 
-    def receive(self, messages: list[mx.array]) -> mx.array:
+    def receive_hidden(self, messages: list[mx.array]) -> mx.array:
         flat_messages = [
             mx.reshape(message, (message.shape[0], -1))
             for message in messages
         ]
         inputs = mx.concatenate(flat_messages, axis=-1)
         hidden = nn.relu(self.receiver(inputs))
-        hidden = hidden + nn.relu(self.receiver_hidden(hidden))
-        return self.choice(hidden)
+        return hidden + nn.relu(self.receiver_hidden(hidden))
+
+    def receive(self, messages: list[mx.array]) -> mx.array:
+        return self.choice(self.receive_hidden(messages))
+
+    def score_messages(self, messages: list[mx.array]) -> mx.array:
+        return self.score(self.receive_hidden(messages))
 
     def __call__(self, features: mx.array) -> tuple[mx.array, list[mx.array]]:
         messages, probabilities = self.message(features, hard=True)
@@ -408,6 +414,8 @@ def train_option_mediator(
     entropy_weight: float = 0.0,
     message_temperature: float = 0.6,
     soft_message_training: bool = False,
+    score_targets: np.ndarray | None = None,
+    score_reconstruction_weight: float = 0.0,
     seed: int = 1,
 ) -> TrainedOptionMediator:
     rng = np.random.default_rng(seed)
@@ -430,8 +438,25 @@ def train_option_mediator(
     )
     optimizer = optim.Adam(learning_rate=learning_rate)
     indices = np.arange(sample_count)
+    normalized_score_targets: mx.array | None = None
+    if score_reconstruction_weight > 0.0:
+        if score_targets is None:
+            raise ValueError("Score reconstruction requires score targets.")
+        score_array = np.asarray(score_targets, dtype=np.float32)
+        if score_array.shape != (sample_count, option_count):
+            raise ValueError("Score targets must have shape (samples, options).")
+        score_mean = np.mean(score_array)
+        score_std = float(np.std(score_array) + 1e-6)
+        normalized_score_targets = mx.array(
+            (score_array - score_mean) / score_std,
+            dtype=mx.float32,
+        )
 
-    def loss_fn(batch_features: mx.array, batch_targets: mx.array) -> mx.array:
+    def loss_fn(
+        batch_features: mx.array,
+        batch_targets: mx.array,
+        batch_score_targets: mx.array,
+    ) -> mx.array:
         messages, probabilities = model.message(
             batch_features,
             temperature=message_temperature,
@@ -454,7 +479,16 @@ def train_option_mediator(
             )
         balance_loss = balance_loss / len(probabilities)
         entropy = entropy / len(probabilities)
-        return choice_loss + balance_weight * balance_loss + entropy_weight * entropy
+        score_loss = mx.array(0.0)
+        if score_reconstruction_weight > 0.0:
+            predicted_scores = model.score_messages(messages)
+            score_loss = mx.mean((predicted_scores - batch_score_targets) ** 2)
+        return (
+            choice_loss
+            + balance_weight * balance_loss
+            + entropy_weight * entropy
+            + score_reconstruction_weight * score_loss
+        )
 
     loss_and_grad = nn.value_and_grad(model, loss_fn)
     for _epoch in range(max(1, epochs)):
@@ -464,7 +498,16 @@ def train_option_mediator(
                 indices[start : start + max(1, batch_size)],
                 dtype=mx.int32,
             )
-            loss, grads = loss_and_grad(features[batch], dataset.target_options[batch])
+            batch_score_targets = (
+                mx.zeros((batch.shape[0], option_count), dtype=mx.float32)
+                if normalized_score_targets is None
+                else normalized_score_targets[batch]
+            )
+            loss, grads = loss_and_grad(
+                features[batch],
+                dataset.target_options[batch],
+                batch_score_targets,
+            )
             optimizer.update(model, grads)
             mx.eval(model.parameters(), optimizer.state, loss)
 
@@ -563,12 +606,16 @@ def predicted_future_option_result(
 
 
 def predicted_future_option_choices(dataset: OptionMediationDataset) -> np.ndarray:
+    predicted_scores = predicted_future_option_scores(dataset)
+    return np.asarray(np.argmax(predicted_scores, axis=-1), dtype=np.int32)
+
+
+def predicted_future_option_scores(dataset: OptionMediationDataset) -> np.ndarray:
     features = np.asarray(dataset.features, dtype=np.float32)
     if features.shape[-1] != 12:
         raise ValueError("Predicted-future control requires latent_current features.")
     predicted_future = features[:, :, 4:8]
-    predicted_scores = np.min(predicted_future, axis=-1)
-    return np.asarray(np.argmax(predicted_scores, axis=-1), dtype=np.int32)
+    return np.min(predicted_future, axis=-1).astype(np.float32)
 
 
 def option_mediation_dataset_with_targets(
@@ -813,6 +860,19 @@ def main() -> None:
                 train_dataset,
                 predicted_future_option_choices(rank_train_dataset),
             )
+        score_targets = None
+        if args.score_reconstruction_weight > 0.0:
+            rank_score_dataset = (
+                train_dataset
+                if args.feature_mode == "latent_current"
+                else option_mediation_dataset_from_source(
+                    train_source,
+                    base_model,
+                    feature_mode="latent_current",
+                    rollout_mode="latent_current",
+                )
+            )
+            score_targets = predicted_future_option_scores(rank_score_dataset)
         trained = train_option_mediator(
             training_dataset,
             hidden_size=args.hidden_size,
@@ -826,6 +886,8 @@ def main() -> None:
             entropy_weight=args.entropy_weight,
             message_temperature=args.message_temperature,
             soft_message_training=args.soft_message_training,
+            score_targets=score_targets,
+            score_reconstruction_weight=args.score_reconstruction_weight,
             seed=args.seed,
         )
         for intervention in args.interventions:
@@ -944,6 +1006,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--entropy-weight", type=float, default=0.0)
     parser.add_argument("--message-temperature", type=float, default=0.6)
     parser.add_argument("--soft-message-training", action="store_true")
+    parser.add_argument("--score-reconstruction-weight", type=float, default=0.0)
     parser.add_argument(
         "--interventions",
         nargs="+",

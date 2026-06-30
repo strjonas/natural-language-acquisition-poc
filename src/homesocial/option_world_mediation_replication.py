@@ -26,6 +26,7 @@ from .option_mediation import (
     option_mediation_dataset_with_targets,
     option_mediation_dataset_from_source,
     predicted_future_option_choices,
+    predicted_future_option_scores,
     predicted_future_option_result,
     train_option_mediator,
 )
@@ -519,6 +520,18 @@ def _mediation_rows(
             train_dataset,
             predicted_future_option_choices(rank_train_dataset),
         )
+    score_targets = None
+    if args.score_reconstruction_weight > 0.0:
+        rank_score_dataset = (
+            train_dataset
+            if args.feature_mode == "latent_current"
+            else option_mediation_dataset_from_source(
+                train_source,
+                base_model,
+                feature_mode="latent_current",
+            )
+        )
+        score_targets = predicted_future_option_scores(rank_score_dataset)
     trained = train_option_mediator(
         training_dataset,
         hidden_size=args.hidden_size,
@@ -532,6 +545,8 @@ def _mediation_rows(
         entropy_weight=args.mediation_entropy_weight,
         message_temperature=args.message_temperature,
         soft_message_training=args.soft_message_training,
+        score_targets=score_targets,
+        score_reconstruction_weight=args.score_reconstruction_weight,
         seed=seed,
     )
 
@@ -729,6 +744,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--mediation-entropy-weight", type=float, default=0.0)
     parser.add_argument("--message-temperature", type=float, default=0.6)
     parser.add_argument("--soft-message-training", action="store_true")
+    parser.add_argument("--score-reconstruction-weight", type=float, default=0.0)
     return parser.parse_args()
 
 
