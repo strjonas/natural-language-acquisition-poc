@@ -267,6 +267,9 @@ Completed:
   model's own predicted best future self-state keeps trained choice useful
   (`0.5631`) while dropping random message choice to `0.1775`; direct trained
   self-model rank remains `0.6288`.
+- configurable discrete message capacity for option mediation; initial 3-slot,
+  8-symbol, and longer-training probes did not beat the 2-slot/4-symbol
+  self-model-target baseline.
 
 Not yet passed:
 
@@ -288,6 +291,8 @@ Not yet passed:
   reintroducing control leakage or weakening the negated-delta gate,
 - message compression improvements so self-model-targeted messages close the
   gap to direct self-model rank (`0.5631` message versus `0.6288` direct),
+- better discrete message training, not just larger vocabularies or more slots,
+  because naive capacity increases did not improve self-model-targeted choice,
 - stronger rank-plus-dynamics training that recovers the old world-trend metric
   closer to pre-rank levels while keeping direct branch choice above `0.62`,
 - message bottleneck improvements so compact communication can express the

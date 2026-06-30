@@ -16,7 +16,9 @@ from .option_feature_intervention import OPTION_FEATURE_INTERVENTIONS
 from .option_mediation import (
     OPTION_MEDIATION_BALANCE_TARGETS,
     OPTION_MEDIATION_FEATURE_MODES,
+    OPTION_MEDIATION_SLOTS,
     OPTION_MEDIATION_TARGET_MODES,
+    OPTION_MEDIATION_VOCABULARY,
     collect_option_mediation_source,
     evaluate_option_mediator,
     intervene_option_mediation_features,
@@ -521,6 +523,8 @@ def _mediation_rows(
         training_dataset,
         hidden_size=args.hidden_size,
         receiver_size=args.receiver_size,
+        slots=args.message_slots,
+        vocabulary_size=args.message_vocabulary,
         epochs=args.mediation_epochs,
         batch_size=args.mediation_batch_size,
         learning_rate=args.mediation_learning_rate,
@@ -710,6 +714,12 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--hidden-size", type=int, default=96)
     parser.add_argument("--receiver-size", type=int, default=96)
+    parser.add_argument("--message-slots", type=int, default=OPTION_MEDIATION_SLOTS)
+    parser.add_argument(
+        "--message-vocabulary",
+        type=int,
+        default=OPTION_MEDIATION_VOCABULARY,
+    )
     parser.add_argument("--mediation-epochs", type=int, default=100)
     parser.add_argument("--mediation-batch-size", type=int, default=128)
     parser.add_argument("--mediation-learning-rate", type=float, default=1e-3)

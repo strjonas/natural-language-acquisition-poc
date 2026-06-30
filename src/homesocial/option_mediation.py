@@ -399,6 +399,8 @@ def train_option_mediator(
     *,
     hidden_size: int = 96,
     receiver_size: int = 96,
+    slots: int = OPTION_MEDIATION_SLOTS,
+    vocabulary_size: int = OPTION_MEDIATION_VOCABULARY,
     epochs: int = 80,
     batch_size: int = 128,
     learning_rate: float = 1e-3,
@@ -421,6 +423,8 @@ def train_option_mediator(
         option_count,
         hidden_size=hidden_size,
         receiver_size=receiver_size,
+        slots=slots,
+        vocabulary_size=vocabulary_size,
     )
     optimizer = optim.Adam(learning_rate=learning_rate)
     indices = np.arange(sample_count)
@@ -430,7 +434,7 @@ def train_option_mediator(
         log_probs = logits - mx.logsumexp(logits, axis=-1, keepdims=True)
         selected = mx.sum(log_probs * mx.eye(option_count)[batch_targets], axis=-1)
         choice_loss = -mx.mean(selected)
-        uniform = 1.0 / OPTION_MEDIATION_VOCABULARY
+        uniform = 1.0 / vocabulary_size
         balance_loss = mx.array(0.0)
         entropy = mx.array(0.0)
         for probs in probabilities:
@@ -806,6 +810,8 @@ def main() -> None:
             training_dataset,
             hidden_size=args.hidden_size,
             receiver_size=args.receiver_size,
+            slots=args.message_slots,
+            vocabulary_size=args.message_vocabulary,
             epochs=args.epochs,
             batch_size=args.batch_size,
             learning_rate=args.learning_rate,
@@ -916,6 +922,12 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--hidden-size", type=int, default=96)
     parser.add_argument("--receiver-size", type=int, default=96)
+    parser.add_argument("--message-slots", type=int, default=OPTION_MEDIATION_SLOTS)
+    parser.add_argument(
+        "--message-vocabulary",
+        type=int,
+        default=OPTION_MEDIATION_VOCABULARY,
+    )
     parser.add_argument("--epochs", type=int, default=100)
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--learning-rate", type=float, default=1e-3)

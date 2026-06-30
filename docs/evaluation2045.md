@@ -375,6 +375,15 @@ now tied to the agent's self-model forecast rather than a supervised answer key.
 The remaining gap is expressivity/compression: trained messages still trail the
 direct self-model rank by about `0.066`.
 
+The first message-capacity sweep did not close that gap. Configurable
+`--message-slots` and `--message-vocabulary` now exist, but one-seed probes with
+3 slots, 8-symbol vocabulary, and doubled mediation epochs all stayed below the
+2-slot/4-symbol self-model-target baseline (`0.5631`). Random remained mostly
+controlled, so the failure is not shortcut leakage; it is likely discrete
+sender/receiver optimization. The next communication step should change the
+training procedure, for example soft-message distillation or an auxiliary
+self-score reconstruction loss, rather than simply adding symbols.
+
 ---
 
 ## M6: Reflective Report With Parrot Guards
