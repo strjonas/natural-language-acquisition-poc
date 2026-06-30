@@ -8,6 +8,7 @@ from .option_feature_intervention import OPTION_FEATURE_INTERVENTIONS
 from .option_mediation import (
     OPTION_MEDIATION_BALANCE_TARGETS,
     OPTION_MEDIATION_FEATURE_MODES,
+    OPTION_MEDIATION_TARGET_MODES,
 )
 from .option_world_mediation_replication import (
     format_row,
@@ -91,6 +92,11 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--random-model-control", action="store_true")
     parser.add_argument("--self-model-rank-control", action="store_true")
+    parser.add_argument(
+        "--mediation-target-mode",
+        choices=OPTION_MEDIATION_TARGET_MODES,
+        default="oracle",
+    )
 
     parser.add_argument("--world-train-episodes", type=int, default=1000)
     parser.add_argument("--world-eval-episodes", type=int, default=500)

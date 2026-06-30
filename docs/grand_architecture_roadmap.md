@@ -263,6 +263,10 @@ Completed:
 - rank fine-tuning with dynamics replay: direct trained self-model choice
   remains high (`0.6207`), world-trend accuracy improves from `0.5130` to
   `0.6175`, and negated-delta trained message choice falls to `0.0660`.
+- self-model-targeted communication: training messages to communicate the
+  model's own predicted best future self-state keeps trained choice useful
+  (`0.5631`) while dropping random message choice to `0.1775`; direct trained
+  self-model rank remains `0.6288`.
 
 Not yet passed:
 
@@ -282,8 +286,8 @@ Not yet passed:
 - a better noisy-world objective: larger value-gap filtering, doubled world
   training, and split world/mediation noise did not recover high choice without
   reintroducing control leakage or weakening the negated-delta gate,
-- anti-leakage receiver objectives that suppress random receiver regularities
-  without discarding the trained self-change signal,
+- message compression improvements so self-model-targeted messages close the
+  gap to direct self-model rank (`0.5631` message versus `0.6288` direct),
 - stronger rank-plus-dynamics training that recovers the old world-trend metric
   closer to pre-rank levels while keeping direct branch choice above `0.62`,
 - message bottleneck improvements so compact communication can express the

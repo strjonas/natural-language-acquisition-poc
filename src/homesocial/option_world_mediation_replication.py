@@ -16,11 +16,14 @@ from .option_feature_intervention import OPTION_FEATURE_INTERVENTIONS
 from .option_mediation import (
     OPTION_MEDIATION_BALANCE_TARGETS,
     OPTION_MEDIATION_FEATURE_MODES,
+    OPTION_MEDIATION_TARGET_MODES,
     collect_option_mediation_source,
     evaluate_option_mediator,
     intervene_option_mediation_features,
     majority_option_result,
+    option_mediation_dataset_with_targets,
     option_mediation_dataset_from_source,
+    predicted_future_option_choices,
     predicted_future_option_result,
     train_option_mediator,
 )
@@ -499,8 +502,23 @@ def _mediation_rows(
         base_model,
         feature_mode=args.feature_mode,
     )
+    training_dataset = train_dataset
+    if args.mediation_target_mode == "self_model":
+        rank_train_dataset = (
+            train_dataset
+            if args.feature_mode == "latent_current"
+            else option_mediation_dataset_from_source(
+                train_source,
+                base_model,
+                feature_mode="latent_current",
+            )
+        )
+        training_dataset = option_mediation_dataset_with_targets(
+            train_dataset,
+            predicted_future_option_choices(rank_train_dataset),
+        )
     trained = train_option_mediator(
-        train_dataset,
+        training_dataset,
         hidden_size=args.hidden_size,
         receiver_size=args.receiver_size,
         epochs=args.mediation_epochs,
@@ -656,6 +674,11 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--random-model-control", action="store_true")
     parser.add_argument("--self-model-rank-control", action="store_true")
+    parser.add_argument(
+        "--mediation-target-mode",
+        choices=OPTION_MEDIATION_TARGET_MODES,
+        default="oracle",
+    )
 
     parser.add_argument("--world-train-episodes", type=int, default=1000)
     parser.add_argument("--world-eval-episodes", type=int, default=500)

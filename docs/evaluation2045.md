@@ -364,6 +364,17 @@ held at `0.5867`, and negated-delta trained choice collapsed further (`0.0660`).
 The tradeoff is that random message choice rose to `0.3709`, so dynamics replay
 helps preserve self/world calibration but does not solve receiver leakage.
 
+Self-model-targeted communication addresses that leakage directly. Instead of
+training the message receiver on the oracle best branch, `--mediation-target-mode
+self_model` trains it to communicate the model's own predicted best future
+self-state. With rank fine-tuning plus dynamics replay, trained message choice
+stayed useful (`0.5631`), direct trained self-model rank stayed high (`0.6288`),
+and random message choice fell from the oracle-target `0.3709` to `0.1775`.
+This is the strongest anti-leakage communication result so far: the message is
+now tied to the agent's self-model forecast rather than a supervised answer key.
+The remaining gap is expressivity/compression: trained messages still trail the
+direct self-model rank by about `0.066`.
+
 ---
 
 ## M6: Reflective Report With Parrot Guards

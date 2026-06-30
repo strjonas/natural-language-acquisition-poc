@@ -27,6 +27,7 @@ from .teachers import build_teacher, masks_language, normalize_teacher_mode
 
 OPTION_MEDIATION_BALANCE_TARGETS = ("none", "target_option")
 OPTION_MEDIATION_FEATURE_MODES = ("latent_current", "delta")
+OPTION_MEDIATION_TARGET_MODES = ("oracle", "self_model")
 OPTION_MEDIATION_SLOTS = 2
 OPTION_MEDIATION_VOCABULARY = 4
 
@@ -529,12 +530,7 @@ def predicted_future_option_result(
     *,
     model_control: str = "predicted_future",
 ) -> OptionMediationResult:
-    features = np.asarray(dataset.features, dtype=np.float32)
-    if features.shape[-1] != 12:
-        raise ValueError("Predicted-future control requires latent_current features.")
-    predicted_future = features[:, :, 4:8]
-    predicted_scores = np.min(predicted_future, axis=-1)
-    choices = np.asarray(np.argmax(predicted_scores, axis=-1), dtype=np.int32)
+    choices = predicted_future_option_choices(dataset)
     targets = np.asarray(dataset.target_options, dtype=np.int32)
     values = np.asarray(dataset.option_values, dtype=np.float32)
     current = np.asarray(dataset.current_lowest, dtype=np.float32)
@@ -552,6 +548,30 @@ def predicted_future_option_result(
         mean_oracle_delta=float(np.mean(oracle_values - current)),
         message_codes_used=0,
         target_counts=target_count_string(dataset),
+    )
+
+
+def predicted_future_option_choices(dataset: OptionMediationDataset) -> np.ndarray:
+    features = np.asarray(dataset.features, dtype=np.float32)
+    if features.shape[-1] != 12:
+        raise ValueError("Predicted-future control requires latent_current features.")
+    predicted_future = features[:, :, 4:8]
+    predicted_scores = np.min(predicted_future, axis=-1)
+    return np.asarray(np.argmax(predicted_scores, axis=-1), dtype=np.int32)
+
+
+def option_mediation_dataset_with_targets(
+    dataset: OptionMediationDataset,
+    target_options: np.ndarray,
+) -> OptionMediationDataset:
+    targets = np.asarray(target_options, dtype=np.int32)
+    if targets.shape[0] != int(dataset.features.shape[0]):
+        raise ValueError("Replacement targets must match dataset sample count.")
+    return OptionMediationDataset(
+        features=dataset.features,
+        option_values=dataset.option_values,
+        target_options=mx.array(targets, dtype=mx.int32),
+        current_lowest=dataset.current_lowest,
     )
 
 
@@ -766,8 +786,24 @@ def main() -> None:
             feature_mode=args.feature_mode,
             rollout_mode="latent_current",
         )
+        training_dataset = train_dataset
+        if args.target_mode == "self_model":
+            rank_train_dataset = (
+                train_dataset
+                if args.feature_mode == "latent_current"
+                else option_mediation_dataset_from_source(
+                    train_source,
+                    base_model,
+                    feature_mode="latent_current",
+                    rollout_mode="latent_current",
+                )
+            )
+            training_dataset = option_mediation_dataset_with_targets(
+                train_dataset,
+                predicted_future_option_choices(rank_train_dataset),
+            )
         trained = train_option_mediator(
-            train_dataset,
+            training_dataset,
             hidden_size=args.hidden_size,
             receiver_size=args.receiver_size,
             epochs=args.epochs,
@@ -893,6 +929,11 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--random-model-control", action="store_true")
     parser.add_argument("--self-model-rank-control", action="store_true")
+    parser.add_argument(
+        "--target-mode",
+        choices=OPTION_MEDIATION_TARGET_MODES,
+        default="oracle",
+    )
     return parser.parse_args()
 
 

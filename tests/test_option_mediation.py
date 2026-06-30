@@ -9,7 +9,9 @@ from homesocial.option_mediation import (
     collect_option_mediation_source,
     intervene_option_mediation_features,
     majority_option_result,
+    option_mediation_dataset_with_targets,
     option_mediation_dataset_from_source,
+    predicted_future_option_choices,
     predicted_future_option_result,
     target_count_string,
 )
@@ -147,8 +149,25 @@ class OptionMediationTests(unittest.TestCase):
         self.assertEqual(result.intervention, "predicted_future")
         self.assertAlmostEqual(result.choice_accuracy, 0.5)
         self.assertAlmostEqual(result.mean_chosen_lowest, 0.65)
+        np.testing.assert_array_equal(predicted_future_option_choices(dataset), [1, 2])
         with self.assertRaises(ValueError):
             predicted_future_option_result(_dataset([0], feature_width=4))
+
+    def test_option_mediation_dataset_with_targets_replaces_only_targets(self):
+        dataset = _dataset([0, 1])
+
+        retargeted = option_mediation_dataset_with_targets(
+            dataset,
+            np.array([2, 3], dtype=np.int32),
+        )
+
+        np.testing.assert_array_equal(np.asarray(retargeted.target_options), [2, 3])
+        np.testing.assert_array_equal(
+            np.asarray(retargeted.features),
+            np.asarray(dataset.features),
+        )
+        with self.assertRaises(ValueError):
+            option_mediation_dataset_with_targets(dataset, np.array([1]))
 
     def test_target_count_string_uses_stable_option_names(self):
         self.assertEqual(
