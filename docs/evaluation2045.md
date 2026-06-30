@@ -401,6 +401,14 @@ missing score supervision at the receiver hidden state. The next communication
 attempt should be staged: pretrain or distill a hard-message code against
 self-model scores, then fine-tune the choice receiver.
 
+Staged hard-message score pretraining is the first promising version of that
+idea. Pretraining discrete messages to reconstruct self-model option scores
+before choice training reached `0.5851` and `0.5813` trained-message choice on
+two probes, above the prior `0.5631` hard-message baseline, while negated-delta
+choice still collapsed. A second 40-epoch seed landed at `0.5368`, so this is a
+real lead but not yet a stable solution. The next gate is paired no-pretrain
+controls on the same seeds and a small pretrain-length sweep.
+
 ---
 
 ## M6: Reflective Report With Parrot Guards

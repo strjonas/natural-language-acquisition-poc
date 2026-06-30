@@ -415,6 +415,7 @@ def train_option_mediator(
     message_temperature: float = 0.6,
     soft_message_training: bool = False,
     score_targets: np.ndarray | None = None,
+    score_pretrain_epochs: int = 0,
     score_reconstruction_weight: float = 0.0,
     seed: int = 1,
 ) -> TrainedOptionMediator:
@@ -439,9 +440,9 @@ def train_option_mediator(
     optimizer = optim.Adam(learning_rate=learning_rate)
     indices = np.arange(sample_count)
     normalized_score_targets: mx.array | None = None
-    if score_reconstruction_weight > 0.0:
+    if score_reconstruction_weight > 0.0 or score_pretrain_epochs > 0:
         if score_targets is None:
-            raise ValueError("Score reconstruction requires score targets.")
+            raise ValueError("Score supervision requires score targets.")
         score_array = np.asarray(score_targets, dtype=np.float32)
         if score_array.shape != (sample_count, option_count):
             raise ValueError("Score targets must have shape (samples, options).")
@@ -451,6 +452,26 @@ def train_option_mediator(
             (score_array - score_mean) / score_std,
             dtype=mx.float32,
         )
+
+    def score_pretrain_loss_fn(
+        batch_features: mx.array,
+        batch_score_targets: mx.array,
+    ) -> mx.array:
+        messages, probabilities = model.message(
+            batch_features,
+            temperature=message_temperature,
+            hard=True,
+        )
+        predicted_scores = model.score_messages(messages)
+        score_loss = mx.mean((predicted_scores - batch_score_targets) ** 2)
+        uniform = 1.0 / vocabulary_size
+        balance_loss = mx.array(0.0)
+        for probs in probabilities:
+            flat_probs = mx.reshape(probs, (-1, probs.shape[-1]))
+            balance_loss = balance_loss + mx.sum(
+                (mx.mean(flat_probs, axis=0) - uniform) ** 2
+            )
+        return score_loss + balance_weight * balance_loss / len(probabilities)
 
     def loss_fn(
         batch_features: mx.array,
@@ -489,6 +510,21 @@ def train_option_mediator(
             + entropy_weight * entropy
             + score_reconstruction_weight * score_loss
         )
+
+    score_pretrain_loss_and_grad = nn.value_and_grad(model, score_pretrain_loss_fn)
+    for _epoch in range(max(0, score_pretrain_epochs)):
+        rng.shuffle(indices)
+        for start in range(0, sample_count, max(1, batch_size)):
+            batch = mx.array(
+                indices[start : start + max(1, batch_size)],
+                dtype=mx.int32,
+            )
+            loss, grads = score_pretrain_loss_and_grad(
+                features[batch],
+                normalized_score_targets[batch],
+            )
+            optimizer.update(model, grads)
+            mx.eval(model.parameters(), optimizer.state, loss)
 
     loss_and_grad = nn.value_and_grad(model, loss_fn)
     for _epoch in range(max(1, epochs)):
@@ -861,7 +897,7 @@ def main() -> None:
                 predicted_future_option_choices(rank_train_dataset),
             )
         score_targets = None
-        if args.score_reconstruction_weight > 0.0:
+        if args.score_reconstruction_weight > 0.0 or args.score_pretrain_epochs > 0:
             rank_score_dataset = (
                 train_dataset
                 if args.feature_mode == "latent_current"
@@ -887,6 +923,7 @@ def main() -> None:
             message_temperature=args.message_temperature,
             soft_message_training=args.soft_message_training,
             score_targets=score_targets,
+            score_pretrain_epochs=args.score_pretrain_epochs,
             score_reconstruction_weight=args.score_reconstruction_weight,
             seed=args.seed,
         )
@@ -1006,6 +1043,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--entropy-weight", type=float, default=0.0)
     parser.add_argument("--message-temperature", type=float, default=0.6)
     parser.add_argument("--soft-message-training", action="store_true")
+    parser.add_argument("--score-pretrain-epochs", type=int, default=0)
     parser.add_argument("--score-reconstruction-weight", type=float, default=0.0)
     parser.add_argument(
         "--interventions",

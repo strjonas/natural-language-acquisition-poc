@@ -259,6 +259,35 @@ class OptionMediationTests(unittest.TestCase):
                 score_reconstruction_weight=0.1,
             )
 
+    def test_train_option_mediator_accepts_score_pretraining(self):
+        dataset = _dataset([0, 1, 2, 3, 4])
+        score_targets = np.asarray(dataset.option_values, dtype=np.float32)
+
+        trained = train_option_mediator(
+            dataset,
+            hidden_size=12,
+            receiver_size=12,
+            epochs=1,
+            batch_size=5,
+            score_targets=score_targets,
+            score_pretrain_epochs=1,
+            seed=6,
+        )
+        result = evaluate_option_mediator(
+            trained,
+            dataset,
+            model_control="trained",
+            intervention="original",
+        )
+
+        self.assertEqual(result.samples, 5)
+        with self.assertRaises(ValueError):
+            train_option_mediator(
+                dataset,
+                epochs=1,
+                score_pretrain_epochs=1,
+            )
+
     def test_target_count_string_uses_stable_option_names(self):
         self.assertEqual(
             target_count_string(_dataset([0, 0, 2, 4])),
