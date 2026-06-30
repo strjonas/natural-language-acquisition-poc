@@ -530,6 +530,8 @@ def _mediation_rows(
         learning_rate=args.mediation_learning_rate,
         balance_weight=args.mediation_balance_weight,
         entropy_weight=args.mediation_entropy_weight,
+        message_temperature=args.message_temperature,
+        soft_message_training=args.soft_message_training,
         seed=seed,
     )
 
@@ -725,6 +727,8 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--mediation-learning-rate", type=float, default=1e-3)
     parser.add_argument("--mediation-balance-weight", type=float, default=0.02)
     parser.add_argument("--mediation-entropy-weight", type=float, default=0.0)
+    parser.add_argument("--message-temperature", type=float, default=0.6)
+    parser.add_argument("--soft-message-training", action="store_true")
     return parser.parse_args()
 
 

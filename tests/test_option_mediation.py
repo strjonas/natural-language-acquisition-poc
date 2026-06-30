@@ -195,6 +195,29 @@ class OptionMediationTests(unittest.TestCase):
         self.assertEqual(trained.model.vocabulary_size, 5)
         self.assertGreaterEqual(result.message_codes_used, 1)
 
+    def test_train_option_mediator_accepts_soft_message_training(self):
+        dataset = _dataset([0, 1, 2, 3, 4])
+
+        trained = train_option_mediator(
+            dataset,
+            hidden_size=12,
+            receiver_size=12,
+            epochs=1,
+            batch_size=5,
+            message_temperature=0.9,
+            soft_message_training=True,
+            seed=4,
+        )
+        result = evaluate_option_mediator(
+            trained,
+            dataset,
+            model_control="trained",
+            intervention="original",
+        )
+
+        self.assertEqual(result.samples, 5)
+        self.assertGreaterEqual(result.message_codes_used, 1)
+
     def test_target_count_string_uses_stable_option_names(self):
         self.assertEqual(
             target_count_string(_dataset([0, 0, 2, 4])),

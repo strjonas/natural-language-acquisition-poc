@@ -315,6 +315,12 @@ Vary the discrete message capacity for compression probes:
 PYTHONPATH=src python3 -m homesocial.option_world_mediation_replication --checkpoint runs/bc_stochastic_body.weights.npz --seeds 10011 --horizon 6 --state-policy cycle --resource-ecology rich --feature-mode delta --option-action-noise 0.15 --mediation-target-mode self_model --message-slots 3 --message-vocabulary 4 --rank-finetune-epochs 4 --rank-finetune-dynamics-weight 0.25 --self-model-rank-control --random-model-control
 ```
 
+Train with soft message probabilities but still evaluate hard discrete messages:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.option_world_mediation_replication --checkpoint runs/bc_stochastic_body.weights.npz --seeds 10021 --horizon 6 --state-policy cycle --resource-ecology rich --feature-mode delta --option-action-noise 0.15 --mediation-target-mode self_model --soft-message-training --message-temperature 0.8 --rank-finetune-epochs 4 --rank-finetune-dynamics-weight 0.25 --self-model-rank-control --random-model-control
+```
+
 Train a fresh option-world model per seed, then test whether option mediation
 still works on those independently trained world-model heads:
 

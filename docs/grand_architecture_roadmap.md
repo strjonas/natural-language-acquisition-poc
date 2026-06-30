@@ -270,6 +270,9 @@ Completed:
 - configurable discrete message capacity for option mediation; initial 3-slot,
   8-symbol, and longer-training probes did not beat the 2-slot/4-symbol
   self-model-target baseline.
+- soft-message training support for option mediation; first temperatures
+  (`0.8`, `0.35`) underperformed hard straight-through training when evaluated
+  with hard messages.
 
 Not yet passed:
 
@@ -293,6 +296,8 @@ Not yet passed:
   gap to direct self-model rank (`0.5631` message versus `0.6288` direct),
 - better discrete message training, not just larger vocabularies or more slots,
   because naive capacity increases did not improve self-model-targeted choice,
+- auxiliary semantic losses for hard messages, because pure soft-message
+  training introduced a soft-to-hard evaluation gap,
 - stronger rank-plus-dynamics training that recovers the old world-trend metric
   closer to pre-rank levels while keeping direct branch choice above `0.62`,
 - message bottleneck improvements so compact communication can express the

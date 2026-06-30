@@ -384,6 +384,14 @@ sender/receiver optimization. The next communication step should change the
 training procedure, for example soft-message distillation or an auxiliary
 self-score reconstruction loss, rather than simply adding symbols.
 
+Soft-message training was the first such procedure tested. It trains through
+probability messages and still evaluates hard messages. At temperature `0.8`,
+trained hard-message choice fell to `0.4709`; at `0.35`, it reached only
+`0.5096`, both below the hard straight-through baseline. Random stayed low, so
+the issue is a soft-to-hard mismatch rather than leakage. The next attempt
+should preserve hard-message training while adding an auxiliary semantic loss
+that forces messages to carry self-score structure.
+
 ---
 
 ## M6: Reflective Report With Parrot Guards

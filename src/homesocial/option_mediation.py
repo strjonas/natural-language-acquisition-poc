@@ -406,6 +406,8 @@ def train_option_mediator(
     learning_rate: float = 1e-3,
     balance_weight: float = 0.02,
     entropy_weight: float = 0.0,
+    message_temperature: float = 0.6,
+    soft_message_training: bool = False,
     seed: int = 1,
 ) -> TrainedOptionMediator:
     rng = np.random.default_rng(seed)
@@ -430,7 +432,12 @@ def train_option_mediator(
     indices = np.arange(sample_count)
 
     def loss_fn(batch_features: mx.array, batch_targets: mx.array) -> mx.array:
-        logits, probabilities = model(batch_features)
+        messages, probabilities = model.message(
+            batch_features,
+            temperature=message_temperature,
+            hard=not soft_message_training,
+        )
+        logits = model.receive(messages)
         log_probs = logits - mx.logsumexp(logits, axis=-1, keepdims=True)
         selected = mx.sum(log_probs * mx.eye(option_count)[batch_targets], axis=-1)
         choice_loss = -mx.mean(selected)
@@ -817,6 +824,8 @@ def main() -> None:
             learning_rate=args.learning_rate,
             balance_weight=args.balance_weight,
             entropy_weight=args.entropy_weight,
+            message_temperature=args.message_temperature,
+            soft_message_training=args.soft_message_training,
             seed=args.seed,
         )
         for intervention in args.interventions:
@@ -933,6 +942,8 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--learning-rate", type=float, default=1e-3)
     parser.add_argument("--balance-weight", type=float, default=0.02)
     parser.add_argument("--entropy-weight", type=float, default=0.0)
+    parser.add_argument("--message-temperature", type=float, default=0.6)
+    parser.add_argument("--soft-message-training", action="store_true")
     parser.add_argument(
         "--interventions",
         nargs="+",
