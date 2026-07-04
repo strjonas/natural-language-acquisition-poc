@@ -417,6 +417,7 @@ def train_option_mediator(
     soft_message_training: bool = False,
     score_targets: np.ndarray | None = None,
     score_pretrain_epochs: int = 0,
+    score_pretrain_commitment_weight: float | None = None,
     frozen_receiver_epochs: int = 0,
     score_distillation_weight: float = 0.0,
     score_distillation_temperature: float = 1.0,
@@ -444,6 +445,11 @@ def train_option_mediator(
     )
     optimizer = optim.Adam(learning_rate=learning_rate)
     indices = np.arange(sample_count)
+    pretrain_commitment_weight = (
+        message_commitment_weight
+        if score_pretrain_commitment_weight is None
+        else score_pretrain_commitment_weight
+    )
     normalized_score_targets: mx.array | None = None
     if (
         score_reconstruction_weight > 0.0
@@ -510,7 +516,7 @@ def train_option_mediator(
             score_loss
             + score_rank_weight * rank_loss
             + balance_weight * balance_loss / len(probabilities)
-            + message_commitment_weight * message_commitment_loss(probabilities)
+            + pretrain_commitment_weight * message_commitment_loss(probabilities)
         )
 
     def loss_fn(
@@ -1033,6 +1039,7 @@ def main() -> None:
             soft_message_training=args.soft_message_training,
             score_targets=score_targets,
             score_pretrain_epochs=args.score_pretrain_epochs,
+            score_pretrain_commitment_weight=args.score_pretrain_commitment_weight,
             frozen_receiver_epochs=args.frozen_receiver_epochs,
             score_distillation_weight=args.score_distillation_weight,
             score_distillation_temperature=args.score_distillation_temperature,
@@ -1158,6 +1165,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--message-temperature", type=float, default=0.6)
     parser.add_argument("--soft-message-training", action="store_true")
     parser.add_argument("--score-pretrain-epochs", type=int, default=0)
+    parser.add_argument("--score-pretrain-commitment-weight", type=float, default=None)
     parser.add_argument("--frozen-receiver-epochs", type=int, default=0)
     parser.add_argument("--score-distillation-weight", type=float, default=0.0)
     parser.add_argument("--score-distillation-temperature", type=float, default=1.0)

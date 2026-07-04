@@ -145,6 +145,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--message-temperature", type=float, default=0.6)
     parser.add_argument("--soft-message-training", action="store_true")
     parser.add_argument("--score-pretrain-epochs", type=int, default=0)
+    parser.add_argument("--score-pretrain-commitment-weight", type=float, default=None)
     parser.add_argument("--frozen-receiver-epochs", type=int, default=0)
     parser.add_argument("--score-distillation-weight", type=float, default=0.0)
     parser.add_argument("--score-distillation-temperature", type=float, default=1.0)

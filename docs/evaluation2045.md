@@ -452,6 +452,15 @@ best m11 seed: 2x4 commitment reached `0.5906`, while 3x4 fell to `0.5781` and
 2x8 fell to `0.5375`. The bottleneck is therefore not the number of symbols
 alone. It is how the sender learns a stable, usable discrete code.
 
+Commitment timing was also tested. Late-only commitment underperformed on seed
+`10043` (`0.5766`), while pretrain-only commitment reached `0.6031` on that
+seed, the best single compact-message result so far. Across the three paired
+m11 seeds, pretrain-only and constant commitment were essentially tied
+(`0.5779` versus `0.5776`), with pretrain-only slightly better on regret but
+worse on the negated-delta collapse. This suggests commitment is most useful
+while shaping the self-score code, but retaining it during choice training gives
+cleaner causal intervention behavior.
+
 ---
 
 ## M6: Reflective Report With Parrot Guards
