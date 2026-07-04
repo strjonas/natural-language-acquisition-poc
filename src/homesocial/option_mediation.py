@@ -416,6 +416,7 @@ def train_option_mediator(
     soft_message_training: bool = False,
     score_targets: np.ndarray | None = None,
     score_pretrain_epochs: int = 0,
+    frozen_receiver_epochs: int = 0,
     score_distillation_weight: float = 0.0,
     score_distillation_temperature: float = 1.0,
     score_rank_weight: float = 0.0,
@@ -552,6 +553,24 @@ def train_option_mediator(
             + score_rank_weight * rank_loss
         )
 
+    def frozen_receiver_loss_fn(
+        batch_messages: list[mx.array],
+        batch_targets: mx.array,
+        batch_score_targets: mx.array,
+    ) -> mx.array:
+        logits = model.receive(batch_messages)
+        log_probs = logits - mx.logsumexp(logits, axis=-1, keepdims=True)
+        selected = mx.sum(log_probs * mx.eye(option_count)[batch_targets], axis=-1)
+        choice_loss = -mx.mean(selected)
+        if score_distillation_weight <= 0.0:
+            return choice_loss
+        target_probs = mx.softmax(
+            batch_score_targets / max(1e-6, score_distillation_temperature),
+            axis=-1,
+        )
+        distillation_loss = -mx.mean(mx.sum(target_probs * log_probs, axis=-1))
+        return choice_loss + score_distillation_weight * distillation_loss
+
     score_pretrain_loss_and_grad = nn.value_and_grad(model, score_pretrain_loss_fn)
     for _epoch in range(max(0, score_pretrain_epochs)):
         rng.shuffle(indices)
@@ -566,6 +585,34 @@ def train_option_mediator(
             )
             optimizer.update(model, grads)
             mx.eval(model.parameters(), optimizer.state, loss)
+
+    frozen_receiver_loss_and_grad = nn.value_and_grad(model, frozen_receiver_loss_fn)
+    if frozen_receiver_epochs > 0:
+        frozen_messages, _probabilities = model.message(
+            features,
+            temperature=message_temperature,
+            hard=True,
+        )
+        frozen_messages = [mx.stop_gradient(message) for message in frozen_messages]
+        for _epoch in range(frozen_receiver_epochs):
+            rng.shuffle(indices)
+            for start in range(0, sample_count, max(1, batch_size)):
+                batch = mx.array(
+                    indices[start : start + max(1, batch_size)],
+                    dtype=mx.int32,
+                )
+                batch_score_targets = (
+                    mx.zeros((batch.shape[0], option_count), dtype=mx.float32)
+                    if normalized_score_targets is None
+                    else normalized_score_targets[batch]
+                )
+                loss, grads = frozen_receiver_loss_and_grad(
+                    [message[batch] for message in frozen_messages],
+                    dataset.target_options[batch],
+                    batch_score_targets,
+                )
+                optimizer.update(model, grads)
+                mx.eval(model.parameters(), optimizer.state, loss)
 
     loss_and_grad = nn.value_and_grad(model, loss_fn)
     for _epoch in range(max(1, epochs)):
@@ -970,6 +1017,7 @@ def main() -> None:
             soft_message_training=args.soft_message_training,
             score_targets=score_targets,
             score_pretrain_epochs=args.score_pretrain_epochs,
+            frozen_receiver_epochs=args.frozen_receiver_epochs,
             score_distillation_weight=args.score_distillation_weight,
             score_distillation_temperature=args.score_distillation_temperature,
             score_rank_weight=args.score_rank_weight,
@@ -1093,6 +1141,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--message-temperature", type=float, default=0.6)
     parser.add_argument("--soft-message-training", action="store_true")
     parser.add_argument("--score-pretrain-epochs", type=int, default=0)
+    parser.add_argument("--frozen-receiver-epochs", type=int, default=0)
     parser.add_argument("--score-distillation-weight", type=float, default=0.0)
     parser.add_argument("--score-distillation-temperature", type=float, default=1.0)
     parser.add_argument("--score-rank-weight", type=float, default=0.0)

@@ -348,6 +348,28 @@ class OptionMediationTests(unittest.TestCase):
                 score_distillation_weight=0.2,
             )
 
+    def test_train_option_mediator_accepts_frozen_receiver_warmup(self):
+        dataset = _dataset([0, 1, 2, 3, 4])
+
+        trained = train_option_mediator(
+            dataset,
+            hidden_size=12,
+            receiver_size=12,
+            epochs=1,
+            batch_size=5,
+            frozen_receiver_epochs=1,
+            seed=9,
+        )
+        result = evaluate_option_mediator(
+            trained,
+            dataset,
+            model_control="trained",
+            intervention="original",
+        )
+
+        self.assertEqual(result.samples, 5)
+        self.assertGreaterEqual(result.message_codes_used, 1)
+
     def test_target_count_string_uses_stable_option_names(self):
         self.assertEqual(
             target_count_string(_dataset([0, 0, 2, 4])),

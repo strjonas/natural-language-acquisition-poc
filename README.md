@@ -355,6 +355,12 @@ distribution:
 PYTHONPATH=src python3 -m homesocial.option_world_mediation_replication --checkpoint runs/bc_stochastic_body.weights.npz --seeds 10043 --horizon 6 --state-policy cycle --resource-ecology rich --feature-mode delta --option-action-noise 0.15 --mediation-target-mode self_model --score-pretrain-epochs 15 --score-distillation-weight 0.2 --score-distillation-temperature 0.7 --rank-finetune-epochs 4 --rank-finetune-dynamics-weight 0.25 --self-model-rank-control --random-model-control
 ```
 
+Warm up the receiver on a fixed hard message code after score pretraining:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.option_world_mediation_replication --checkpoint runs/bc_stochastic_body.weights.npz --seeds 10043 --horizon 6 --state-policy cycle --resource-ecology rich --feature-mode delta --option-action-noise 0.15 --mediation-target-mode self_model --score-pretrain-epochs 15 --frozen-receiver-epochs 5 --rank-finetune-epochs 4 --rank-finetune-dynamics-weight 0.25 --self-model-rank-control --random-model-control
+```
+
 Train a fresh option-world model per seed, then test whether option mediation
 still works on those independently trained world-model heads:
 

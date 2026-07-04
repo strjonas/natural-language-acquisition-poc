@@ -423,6 +423,12 @@ Receiver score-distribution distillation was then tested with
 current evidence points away from simple simultaneous auxiliary losses and
 toward staged or discrete-code-specific optimization.
 
+The first staged structural alternative, `--frozen-receiver-epochs`, also failed
+on seed `10043`: five frozen-code receiver epochs reached `0.5625`, and thirty
+epochs reached `0.5484`, both below scorepre15. The next useful change should
+constrain message-code stability itself rather than only changing the receiver
+schedule.
+
 ---
 
 ## M6: Reflective Report With Parrot Guards
