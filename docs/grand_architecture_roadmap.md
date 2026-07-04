@@ -277,8 +277,8 @@ Completed:
   kept random controlled but did not beat the self-model-target baseline.
 - staged hard-message score pretraining, where discrete messages are first
   trained to reconstruct predicted self-model option scores before choice
-  training. First probes reached `0.5851` and `0.5813` trained-message choice,
-  above the previous `0.5631` baseline, but one seed landed lower at `0.5368`.
+  training. Paired controls averaged `0.5677` selected-pretrain choice versus
+  `0.5547` without pretraining, with a same-seed sweep peaking at 15 epochs.
 
 Not yet passed:
 
@@ -304,9 +304,8 @@ Not yet passed:
   because naive capacity increases did not improve self-model-targeted choice,
 - auxiliary semantic losses for hard messages, because pure soft-message
   training introduced a soft-to-hard evaluation gap,
-- paired staged-pretraining controls and a small pretrain-length sweep, because
-  first staged hard-message score pretraining results are promising but
-  seed-variable,
+- a stronger message-shaping objective, because staged score pretraining gives
+  only a modest seed-variable gain and still trails direct self-model rank,
 - stronger rank-plus-dynamics training that recovers the old world-trend metric
   closer to pre-rank levels while keeping direct branch choice above `0.62`,
 - message bottleneck improvements so compact communication can express the

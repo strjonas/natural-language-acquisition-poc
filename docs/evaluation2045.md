@@ -406,8 +406,12 @@ idea. Pretraining discrete messages to reconstruct self-model option scores
 before choice training reached `0.5851` and `0.5813` trained-message choice on
 two probes, above the prior `0.5631` hard-message baseline, while negated-delta
 choice still collapsed. A second 40-epoch seed landed at `0.5368`, so this is a
-real lead but not yet a stable solution. The next gate is paired no-pretrain
-controls on the same seeds and a small pretrain-length sweep.
+real lead but not yet a stable solution. Paired no-pretrain controls now put
+the selected pretrain average at `0.5677` versus `0.5547` without pretraining.
+On seed `10043`, 15 pretrain epochs beat 0, 5, and 30 epochs (`0.5813` versus
+`0.5469`, `0.5547`, and `0.5703`). This supports staged shaping of the message
+code, but the effect is too small and seed-variable to treat as the final
+communication mechanism.
 
 ---
 
