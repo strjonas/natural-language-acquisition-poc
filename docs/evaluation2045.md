@@ -439,6 +439,14 @@ trained choice and `0.1494` random choice. A larger weight `0.02` hurt, so the
 useful regime is narrow. This is the closest compact self-message result so
 far, though it still trails direct self-rank.
 
+The commitment effect also survives a stricter independent-body check on two
+older m8 stochastic body checkpoints. Matched noisy self-model-targeted runs
+improved from `0.5382` to `0.5459` trained-message choice and lowered random
+choice from `0.2208` to `0.2131`. The gain is small and regret did not improve,
+while direct self-rank stayed much higher at `0.6295`. This confirms that
+commitment helps directionally, but the cross-body bottleneck is now compact
+message expressivity/stability rather than self-model ranking.
+
 ---
 
 ## M6: Reflective Report With Parrot Guards

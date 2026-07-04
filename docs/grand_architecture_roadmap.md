@@ -288,6 +288,9 @@ Completed:
 - light hard-message commitment pressure via `--message-commitment-weight`;
   weight `0.005` improved all three paired seeds, raising trained choice from
   `0.5677` to `0.5776` while lowering random choice from `0.1602` to `0.1494`.
+- independent-body check of light commitment on two older m8 stochastic bodies;
+  trained choice improved from `0.5382` to `0.5459` and random choice fell from
+  `0.2208` to `0.2131`, but direct self-rank remained `0.6295`.
 
 Not yet passed:
 
@@ -318,8 +321,9 @@ Not yet passed:
 - staged or discrete-code-specific sender/receiver optimization, because
   pairwise rank pressure and receiver-logit distillation did not close the
   message bottleneck as simultaneous auxiliary losses,
-- replication of light message commitment pressure across independent
-  body/world checkpoints,
+- stronger compact-message expressivity/stability across independent bodies,
+  because m8 direct self-rank remains high while committed messages stay near
+  `0.546`,
 - stronger rank-plus-dynamics training that recovers the old world-trend metric
   closer to pre-rank levels while keeping direct branch choice above `0.62`,
 - message bottleneck improvements so compact communication can express the
