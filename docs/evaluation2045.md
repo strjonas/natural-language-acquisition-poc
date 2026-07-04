@@ -447,6 +447,11 @@ while direct self-rank stayed much higher at `0.6295`. This confirms that
 commitment helps directionally, but the cross-body bottleneck is now compact
 message expressivity/stability rather than self-model ranking.
 
+Adding raw message capacity on top of commitment was tested and failed on the
+best m11 seed: 2x4 commitment reached `0.5906`, while 3x4 fell to `0.5781` and
+2x8 fell to `0.5375`. The bottleneck is therefore not the number of symbols
+alone. It is how the sender learns a stable, usable discrete code.
+
 ---
 
 ## M6: Reflective Report With Parrot Guards

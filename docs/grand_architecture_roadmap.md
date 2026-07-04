@@ -291,6 +291,8 @@ Completed:
 - independent-body check of light commitment on two older m8 stochastic bodies;
   trained choice improved from `0.5382` to `0.5459` and random choice fell from
   `0.2208` to `0.2131`, but direct self-rank remained `0.6295`.
+- capacity-plus-commitment probes: on m11 seed `10043`, 3x4 and 2x8 messages
+  both underperformed the 2x4 committed baseline.
 
 Not yet passed:
 
@@ -324,6 +326,8 @@ Not yet passed:
 - stronger compact-message expressivity/stability across independent bodies,
   because m8 direct self-rank remains high while committed messages stay near
   `0.546`,
+- better discrete-code training rather than raw capacity increases, because
+  extra committed slots/vocabulary hurt the current receiver,
 - stronger rank-plus-dynamics training that recovers the old world-trend metric
   closer to pre-rank levels while keeping direct branch choice above `0.62`,
 - message bottleneck improvements so compact communication can express the
