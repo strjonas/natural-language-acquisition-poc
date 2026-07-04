@@ -429,6 +429,13 @@ epochs reached `0.5484`, both below scorepre15. The next useful change should
 constrain message-code stability itself rather than only changing the receiver
 schedule.
 
+Light hard-message commitment pressure is a better lead. With
+`--message-commitment-weight 0.005`, seed `10043` improved from `0.5813` to
+`0.5906`, and seed `10041` improved from the prior `0.5851` scorepre result to
+`0.5934`, while random-message controls fell slightly on both seeds. A larger
+weight `0.02` hurt, so the useful regime is narrow. This is the closest compact
+self-message result so far, though it still trails direct self-rank.
+
 ---
 
 ## M6: Reflective Report With Parrot Guards

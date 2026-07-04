@@ -412,6 +412,7 @@ def train_option_mediator(
     learning_rate: float = 1e-3,
     balance_weight: float = 0.02,
     entropy_weight: float = 0.0,
+    message_commitment_weight: float = 0.0,
     message_temperature: float = 0.6,
     soft_message_training: bool = False,
     score_targets: np.ndarray | None = None,
@@ -474,6 +475,18 @@ def train_option_mediator(
         pair_loss = mx.logaddexp(mx.array(0.0), -direction * predicted_diff)
         return mx.sum(pair_loss * pair_weight) / (mx.sum(pair_weight) + 1e-6)
 
+    def message_commitment_loss(probabilities: list[mx.array]) -> mx.array:
+        commitment = mx.array(0.0)
+        for probs in probabilities:
+            flat_probs = mx.reshape(probs, (-1, probs.shape[-1]))
+            hard_targets = mx.stop_gradient(
+                mx.eye(vocabulary_size)[mx.argmax(flat_probs, axis=-1)]
+            )
+            commitment = commitment - mx.mean(
+                mx.sum(hard_targets * mx.log(flat_probs + 1e-8), axis=-1)
+            )
+        return commitment / len(probabilities)
+
     def score_pretrain_loss_fn(
         batch_features: mx.array,
         batch_score_targets: mx.array,
@@ -497,6 +510,7 @@ def train_option_mediator(
             score_loss
             + score_rank_weight * rank_loss
             + balance_weight * balance_loss / len(probabilities)
+            + message_commitment_weight * message_commitment_loss(probabilities)
         )
 
     def loss_fn(
@@ -549,6 +563,7 @@ def train_option_mediator(
             + score_distillation_weight * distillation_loss
             + balance_weight * balance_loss
             + entropy_weight * entropy
+            + message_commitment_weight * message_commitment_loss(probabilities)
             + score_reconstruction_weight * score_loss
             + score_rank_weight * rank_loss
         )
@@ -1013,6 +1028,7 @@ def main() -> None:
             learning_rate=args.learning_rate,
             balance_weight=args.balance_weight,
             entropy_weight=args.entropy_weight,
+            message_commitment_weight=args.message_commitment_weight,
             message_temperature=args.message_temperature,
             soft_message_training=args.soft_message_training,
             score_targets=score_targets,
@@ -1138,6 +1154,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--learning-rate", type=float, default=1e-3)
     parser.add_argument("--balance-weight", type=float, default=0.02)
     parser.add_argument("--entropy-weight", type=float, default=0.0)
+    parser.add_argument("--message-commitment-weight", type=float, default=0.0)
     parser.add_argument("--message-temperature", type=float, default=0.6)
     parser.add_argument("--soft-message-training", action="store_true")
     parser.add_argument("--score-pretrain-epochs", type=int, default=0)

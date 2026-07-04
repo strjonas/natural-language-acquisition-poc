@@ -141,6 +141,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--mediation-learning-rate", type=float, default=1e-3)
     parser.add_argument("--mediation-balance-weight", type=float, default=0.02)
     parser.add_argument("--mediation-entropy-weight", type=float, default=0.0)
+    parser.add_argument("--message-commitment-weight", type=float, default=0.0)
     parser.add_argument("--message-temperature", type=float, default=0.6)
     parser.add_argument("--soft-message-training", action="store_true")
     parser.add_argument("--score-pretrain-epochs", type=int, default=0)
