@@ -288,6 +288,66 @@ class OptionMediationTests(unittest.TestCase):
                 score_pretrain_epochs=1,
             )
 
+    def test_train_option_mediator_accepts_score_rank_loss(self):
+        dataset = _dataset([0, 1, 2, 3, 4])
+        score_targets = np.asarray(dataset.option_values, dtype=np.float32)
+
+        trained = train_option_mediator(
+            dataset,
+            hidden_size=12,
+            receiver_size=12,
+            epochs=1,
+            batch_size=5,
+            score_targets=score_targets,
+            score_pretrain_epochs=1,
+            score_rank_weight=0.2,
+            seed=7,
+        )
+        result = evaluate_option_mediator(
+            trained,
+            dataset,
+            model_control="trained",
+            intervention="original",
+        )
+
+        self.assertEqual(result.samples, 5)
+        with self.assertRaises(ValueError):
+            train_option_mediator(
+                dataset,
+                epochs=1,
+                score_rank_weight=0.2,
+            )
+
+    def test_train_option_mediator_accepts_score_distillation(self):
+        dataset = _dataset([0, 1, 2, 3, 4])
+        score_targets = np.asarray(dataset.option_values, dtype=np.float32)
+
+        trained = train_option_mediator(
+            dataset,
+            hidden_size=12,
+            receiver_size=12,
+            epochs=1,
+            batch_size=5,
+            score_targets=score_targets,
+            score_distillation_weight=0.2,
+            score_distillation_temperature=0.7,
+            seed=8,
+        )
+        result = evaluate_option_mediator(
+            trained,
+            dataset,
+            model_control="trained",
+            intervention="original",
+        )
+
+        self.assertEqual(result.samples, 5)
+        with self.assertRaises(ValueError):
+            train_option_mediator(
+                dataset,
+                epochs=1,
+                score_distillation_weight=0.2,
+            )
+
     def test_target_count_string_uses_stable_option_names(self):
         self.assertEqual(
             target_count_string(_dataset([0, 0, 2, 4])),

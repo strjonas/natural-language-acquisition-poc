@@ -521,7 +521,12 @@ def _mediation_rows(
             predicted_future_option_choices(rank_train_dataset),
         )
     score_targets = None
-    if args.score_reconstruction_weight > 0.0 or args.score_pretrain_epochs > 0:
+    if (
+        args.score_reconstruction_weight > 0.0
+        or args.score_pretrain_epochs > 0
+        or args.score_distillation_weight > 0.0
+        or args.score_rank_weight > 0.0
+    ):
         rank_score_dataset = (
             train_dataset
             if args.feature_mode == "latent_current"
@@ -547,6 +552,9 @@ def _mediation_rows(
         soft_message_training=args.soft_message_training,
         score_targets=score_targets,
         score_pretrain_epochs=args.score_pretrain_epochs,
+        score_distillation_weight=args.score_distillation_weight,
+        score_distillation_temperature=args.score_distillation_temperature,
+        score_rank_weight=args.score_rank_weight,
         score_reconstruction_weight=args.score_reconstruction_weight,
         seed=seed,
     )
@@ -746,6 +754,9 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--message-temperature", type=float, default=0.6)
     parser.add_argument("--soft-message-training", action="store_true")
     parser.add_argument("--score-pretrain-epochs", type=int, default=0)
+    parser.add_argument("--score-distillation-weight", type=float, default=0.0)
+    parser.add_argument("--score-distillation-temperature", type=float, default=1.0)
+    parser.add_argument("--score-rank-weight", type=float, default=0.0)
     parser.add_argument("--score-reconstruction-weight", type=float, default=0.0)
     return parser.parse_args()
 

@@ -413,6 +413,16 @@ On seed `10043`, 15 pretrain epochs beat 0, 5, and 30 epochs (`0.5813` versus
 code, but the effect is too small and seed-variable to treat as the final
 communication mechanism.
 
+Pairwise score-rank shaping was tested next with `--score-rank-weight`. It did
+not solve the bottleneck: rank weight `0.2` hurt seed `10043` (`0.5516`), and
+rank weight `0.05` reached `0.5750` on seed `10043` and `0.5868` on seed
+`10041`, roughly matching but not beating score pretraining in a robust way.
+Receiver score-distribution distillation was then tested with
+`--score-distillation-weight`; it also stayed below scorepre15 on seed `10043`
+(`0.5781` at weight `0.2`, `0.5719` at weight `0.05`, versus `0.5813`). The
+current evidence points away from simple simultaneous auxiliary losses and
+toward staged or discrete-code-specific optimization.
+
 ---
 
 ## M6: Reflective Report With Parrot Guards

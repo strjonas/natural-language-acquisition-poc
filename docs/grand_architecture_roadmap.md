@@ -279,6 +279,10 @@ Completed:
   trained to reconstruct predicted self-model option scores before choice
   training. Paired controls averaged `0.5677` selected-pretrain choice versus
   `0.5547` without pretraining, with a same-seed sweep peaking at 15 epochs.
+- pairwise score-rank message shaping via `--score-rank-weight`; first probes
+  roughly matched but did not robustly beat staged score pretraining.
+- receiver score-distribution distillation via `--score-distillation-weight`;
+  first probes also stayed below scorepre15 on the tested seed.
 
 Not yet passed:
 
@@ -306,6 +310,9 @@ Not yet passed:
   training introduced a soft-to-hard evaluation gap,
 - a stronger message-shaping objective, because staged score pretraining gives
   only a modest seed-variable gain and still trails direct self-model rank,
+- staged or discrete-code-specific sender/receiver optimization, because
+  pairwise rank pressure and receiver-logit distillation did not close the
+  message bottleneck as simultaneous auxiliary losses,
 - stronger rank-plus-dynamics training that recovers the old world-trend metric
   closer to pre-rank levels while keeping direct branch choice above `0.62`,
 - message bottleneck improvements so compact communication can express the

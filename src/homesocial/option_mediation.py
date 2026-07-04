@@ -416,6 +416,9 @@ def train_option_mediator(
     soft_message_training: bool = False,
     score_targets: np.ndarray | None = None,
     score_pretrain_epochs: int = 0,
+    score_distillation_weight: float = 0.0,
+    score_distillation_temperature: float = 1.0,
+    score_rank_weight: float = 0.0,
     score_reconstruction_weight: float = 0.0,
     seed: int = 1,
 ) -> TrainedOptionMediator:
@@ -440,7 +443,12 @@ def train_option_mediator(
     optimizer = optim.Adam(learning_rate=learning_rate)
     indices = np.arange(sample_count)
     normalized_score_targets: mx.array | None = None
-    if score_reconstruction_weight > 0.0 or score_pretrain_epochs > 0:
+    if (
+        score_reconstruction_weight > 0.0
+        or score_pretrain_epochs > 0
+        or score_distillation_weight > 0.0
+        or score_rank_weight > 0.0
+    ):
         if score_targets is None:
             raise ValueError("Score supervision requires score targets.")
         score_array = np.asarray(score_targets, dtype=np.float32)
@@ -453,6 +461,18 @@ def train_option_mediator(
             dtype=mx.float32,
         )
 
+    def pairwise_score_rank_loss(
+        predicted_scores: mx.array,
+        batch_score_targets: mx.array,
+    ) -> mx.array:
+        predicted_diff = predicted_scores[:, :, None] - predicted_scores[:, None, :]
+        target_diff = batch_score_targets[:, :, None] - batch_score_targets[:, None, :]
+        target_abs = mx.abs(target_diff)
+        direction = mx.where(target_diff >= 0.0, 1.0, -1.0)
+        pair_weight = mx.where(target_abs > 1e-6, target_abs, 0.0)
+        pair_loss = mx.logaddexp(mx.array(0.0), -direction * predicted_diff)
+        return mx.sum(pair_loss * pair_weight) / (mx.sum(pair_weight) + 1e-6)
+
     def score_pretrain_loss_fn(
         batch_features: mx.array,
         batch_score_targets: mx.array,
@@ -464,6 +484,7 @@ def train_option_mediator(
         )
         predicted_scores = model.score_messages(messages)
         score_loss = mx.mean((predicted_scores - batch_score_targets) ** 2)
+        rank_loss = pairwise_score_rank_loss(predicted_scores, batch_score_targets)
         uniform = 1.0 / vocabulary_size
         balance_loss = mx.array(0.0)
         for probs in probabilities:
@@ -471,7 +492,11 @@ def train_option_mediator(
             balance_loss = balance_loss + mx.sum(
                 (mx.mean(flat_probs, axis=0) - uniform) ** 2
             )
-        return score_loss + balance_weight * balance_loss / len(probabilities)
+        return (
+            score_loss
+            + score_rank_weight * rank_loss
+            + balance_weight * balance_loss / len(probabilities)
+        )
 
     def loss_fn(
         batch_features: mx.array,
@@ -487,6 +512,13 @@ def train_option_mediator(
         log_probs = logits - mx.logsumexp(logits, axis=-1, keepdims=True)
         selected = mx.sum(log_probs * mx.eye(option_count)[batch_targets], axis=-1)
         choice_loss = -mx.mean(selected)
+        distillation_loss = mx.array(0.0)
+        if score_distillation_weight > 0.0:
+            target_probs = mx.softmax(
+                batch_score_targets / max(1e-6, score_distillation_temperature),
+                axis=-1,
+            )
+            distillation_loss = -mx.mean(mx.sum(target_probs * log_probs, axis=-1))
         uniform = 1.0 / vocabulary_size
         balance_loss = mx.array(0.0)
         entropy = mx.array(0.0)
@@ -501,14 +533,23 @@ def train_option_mediator(
         balance_loss = balance_loss / len(probabilities)
         entropy = entropy / len(probabilities)
         score_loss = mx.array(0.0)
-        if score_reconstruction_weight > 0.0:
+        rank_loss = mx.array(0.0)
+        if score_reconstruction_weight > 0.0 or score_rank_weight > 0.0:
             predicted_scores = model.score_messages(messages)
-            score_loss = mx.mean((predicted_scores - batch_score_targets) ** 2)
+            if score_reconstruction_weight > 0.0:
+                score_loss = mx.mean((predicted_scores - batch_score_targets) ** 2)
+            if score_rank_weight > 0.0:
+                rank_loss = pairwise_score_rank_loss(
+                    predicted_scores,
+                    batch_score_targets,
+                )
         return (
             choice_loss
+            + score_distillation_weight * distillation_loss
             + balance_weight * balance_loss
             + entropy_weight * entropy
             + score_reconstruction_weight * score_loss
+            + score_rank_weight * rank_loss
         )
 
     score_pretrain_loss_and_grad = nn.value_and_grad(model, score_pretrain_loss_fn)
@@ -897,7 +938,12 @@ def main() -> None:
                 predicted_future_option_choices(rank_train_dataset),
             )
         score_targets = None
-        if args.score_reconstruction_weight > 0.0 or args.score_pretrain_epochs > 0:
+        if (
+            args.score_reconstruction_weight > 0.0
+            or args.score_pretrain_epochs > 0
+            or args.score_distillation_weight > 0.0
+            or args.score_rank_weight > 0.0
+        ):
             rank_score_dataset = (
                 train_dataset
                 if args.feature_mode == "latent_current"
@@ -924,6 +970,9 @@ def main() -> None:
             soft_message_training=args.soft_message_training,
             score_targets=score_targets,
             score_pretrain_epochs=args.score_pretrain_epochs,
+            score_distillation_weight=args.score_distillation_weight,
+            score_distillation_temperature=args.score_distillation_temperature,
+            score_rank_weight=args.score_rank_weight,
             score_reconstruction_weight=args.score_reconstruction_weight,
             seed=args.seed,
         )
@@ -1044,6 +1093,9 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--message-temperature", type=float, default=0.6)
     parser.add_argument("--soft-message-training", action="store_true")
     parser.add_argument("--score-pretrain-epochs", type=int, default=0)
+    parser.add_argument("--score-distillation-weight", type=float, default=0.0)
+    parser.add_argument("--score-distillation-temperature", type=float, default=1.0)
+    parser.add_argument("--score-rank-weight", type=float, default=0.0)
     parser.add_argument("--score-reconstruction-weight", type=float, default=0.0)
     parser.add_argument(
         "--interventions",
