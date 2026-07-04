@@ -432,9 +432,12 @@ schedule.
 Light hard-message commitment pressure is a better lead. With
 `--message-commitment-weight 0.005`, seed `10043` improved from `0.5813` to
 `0.5906`, and seed `10041` improved from the prior `0.5851` scorepre result to
-`0.5934`, while random-message controls fell slightly on both seeds. A larger
-weight `0.02` hurt, so the useful regime is narrow. This is the closest compact
-self-message result so far, though it still trails direct self-rank.
+`0.5934`. The remaining paired seed `10042` also improved from `0.5368` to
+`0.5487`. Across the three paired seeds, selected scorepre averaged `0.5677`
+trained choice and `0.1602` random choice; commitment `0.005` averaged `0.5776`
+trained choice and `0.1494` random choice. A larger weight `0.02` hurt, so the
+useful regime is narrow. This is the closest compact self-message result so
+far, though it still trails direct self-rank.
 
 ---
 

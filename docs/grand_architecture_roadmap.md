@@ -286,8 +286,8 @@ Completed:
 - frozen-code receiver warmup via `--frozen-receiver-epochs`; first probes
   underperformed scorepre15, so receiver scheduling alone is not enough.
 - light hard-message commitment pressure via `--message-commitment-weight`;
-  weight `0.005` improved two tested seeds and narrowed the compact-message gap
-  to direct self-rank.
+  weight `0.005` improved all three paired seeds, raising trained choice from
+  `0.5677` to `0.5776` while lowering random choice from `0.1602` to `0.1494`.
 
 Not yet passed:
 
@@ -318,8 +318,8 @@ Not yet passed:
 - staged or discrete-code-specific sender/receiver optimization, because
   pairwise rank pressure and receiver-logit distillation did not close the
   message bottleneck as simultaneous auxiliary losses,
-- replication of light message commitment pressure across the remaining paired
-  seed and independent body/world checkpoints,
+- replication of light message commitment pressure across independent
+  body/world checkpoints,
 - stronger rank-plus-dynamics training that recovers the old world-trend metric
   closer to pre-rank levels while keeping direct branch choice above `0.62`,
 - message bottleneck improvements so compact communication can express the
