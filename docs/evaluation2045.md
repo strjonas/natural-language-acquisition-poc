@@ -493,6 +493,12 @@ receiver and `0.2109` for a random frozen sender. The code is therefore
 learnable by another receiver, but still not as reusable as a stable convention
 should be.
 
+Training several receiver heads against one sender with `--receiver-copies` was
+also tested. Two and three receiver copies reduced primary accuracy to `0.5625`
+and `0.5594`, and held-out transfer stayed near `0.567` rather than improving
+over the single-receiver held-out result. This argues against simple
+multi-receiver pressure as the next convention solution.
+
 ---
 
 ## M6: Reflective Report With Parrot Guards

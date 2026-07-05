@@ -565,6 +565,7 @@ def _mediation_rows(
         training_dataset,
         hidden_size=args.hidden_size,
         receiver_size=args.receiver_size,
+        receiver_copies=args.receiver_copies,
         slots=args.message_slots,
         vocabulary_size=args.message_vocabulary,
         epochs=args.mediation_epochs,
@@ -815,6 +816,7 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--hidden-size", type=int, default=96)
     parser.add_argument("--receiver-size", type=int, default=96)
+    parser.add_argument("--receiver-copies", type=int, default=1)
     parser.add_argument("--message-slots", type=int, default=OPTION_MEDIATION_SLOTS)
     parser.add_argument(
         "--message-vocabulary",

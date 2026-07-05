@@ -99,11 +99,13 @@ class OptionMediationProtocol(nn.Module):
         receiver_size: int = 96,
         slots: int = OPTION_MEDIATION_SLOTS,
         vocabulary_size: int = OPTION_MEDIATION_VOCABULARY,
+        receiver_copies: int = 1,
     ) -> None:
         super().__init__()
         self.option_count = option_count
         self.slots = slots
         self.vocabulary_size = vocabulary_size
+        self.receiver_copies = max(1, receiver_copies)
         self.sender = nn.Linear(input_size, hidden_size)
         self.sender_hidden = nn.Linear(hidden_size, hidden_size)
         self.tokens = [
@@ -115,6 +117,18 @@ class OptionMediationProtocol(nn.Module):
         self.choice = nn.Linear(receiver_size, option_count)
         self.score = nn.Linear(receiver_size, option_count)
         self.code_target = nn.Linear(slots * vocabulary_size, 1)
+        self.extra_receivers = [
+            nn.Linear(receiver_input, receiver_size)
+            for _copy in range(self.receiver_copies - 1)
+        ]
+        self.extra_receiver_hiddens = [
+            nn.Linear(receiver_size, receiver_size)
+            for _copy in range(self.receiver_copies - 1)
+        ]
+        self.extra_choices = [
+            nn.Linear(receiver_size, option_count)
+            for _copy in range(self.receiver_copies - 1)
+        ]
 
     def message(
         self,
@@ -143,17 +157,40 @@ class OptionMediationProtocol(nn.Module):
             messages.append(mx.reshape(message, (batch_size, option_count, -1)))
         return messages, probabilities
 
-    def receive_hidden(self, messages: list[mx.array]) -> mx.array:
+    def receive_hidden(
+        self,
+        messages: list[mx.array],
+        *,
+        receiver_index: int = 0,
+    ) -> mx.array:
         flat_messages = [
             mx.reshape(message, (message.shape[0], -1))
             for message in messages
         ]
         inputs = mx.concatenate(flat_messages, axis=-1)
-        hidden = nn.relu(self.receiver(inputs))
-        return hidden + nn.relu(self.receiver_hidden(hidden))
+        if receiver_index == 0:
+            hidden = nn.relu(self.receiver(inputs))
+            return hidden + nn.relu(self.receiver_hidden(hidden))
+        extra_index = receiver_index - 1
+        hidden = nn.relu(self.extra_receivers[extra_index](inputs))
+        return hidden + nn.relu(self.extra_receiver_hiddens[extra_index](hidden))
 
-    def receive(self, messages: list[mx.array]) -> mx.array:
-        return self.choice(self.receive_hidden(messages))
+    def receive(
+        self,
+        messages: list[mx.array],
+        *,
+        receiver_index: int = 0,
+    ) -> mx.array:
+        hidden = self.receive_hidden(messages, receiver_index=receiver_index)
+        if receiver_index == 0:
+            return self.choice(hidden)
+        return self.extra_choices[receiver_index - 1](hidden)
+
+    def receive_all(self, messages: list[mx.array]) -> list[mx.array]:
+        return [
+            self.receive(messages, receiver_index=receiver_index)
+            for receiver_index in range(self.receiver_copies)
+        ]
 
     def score_messages(self, messages: list[mx.array]) -> mx.array:
         return self.score(self.receive_hidden(messages))
@@ -457,6 +494,7 @@ def train_option_mediator(
     *,
     hidden_size: int = 96,
     receiver_size: int = 96,
+    receiver_copies: int = 1,
     slots: int = OPTION_MEDIATION_SLOTS,
     vocabulary_size: int = OPTION_MEDIATION_VOCABULARY,
     epochs: int = 80,
@@ -494,6 +532,7 @@ def train_option_mediator(
         option_count,
         hidden_size=hidden_size,
         receiver_size=receiver_size,
+        receiver_copies=receiver_copies,
         slots=slots,
         vocabulary_size=vocabulary_size,
     )
@@ -608,17 +647,26 @@ def train_option_mediator(
             temperature=message_temperature,
             hard=not soft_message_training,
         )
-        logits = model.receive(messages)
-        log_probs = logits - mx.logsumexp(logits, axis=-1, keepdims=True)
-        selected = mx.sum(log_probs * mx.eye(option_count)[batch_targets], axis=-1)
-        choice_loss = -mx.mean(selected)
+        receiver_logits = model.receive_all(messages)
+        choice_loss = mx.array(0.0)
         distillation_loss = mx.array(0.0)
-        if score_distillation_weight > 0.0:
-            target_probs = mx.softmax(
-                batch_score_targets / max(1e-6, score_distillation_temperature),
+        for logits in receiver_logits:
+            log_probs = logits - mx.logsumexp(logits, axis=-1, keepdims=True)
+            selected = mx.sum(
+                log_probs * mx.eye(option_count)[batch_targets],
                 axis=-1,
             )
-            distillation_loss = -mx.mean(mx.sum(target_probs * log_probs, axis=-1))
+            choice_loss = choice_loss - mx.mean(selected)
+            if score_distillation_weight > 0.0:
+                target_probs = mx.softmax(
+                    batch_score_targets / max(1e-6, score_distillation_temperature),
+                    axis=-1,
+                )
+                distillation_loss = distillation_loss - mx.mean(
+                    mx.sum(target_probs * log_probs, axis=-1)
+                )
+        choice_loss = choice_loss / len(receiver_logits)
+        distillation_loss = distillation_loss / len(receiver_logits)
         uniform = 1.0 / vocabulary_size
         balance_loss = mx.array(0.0)
         entropy = mx.array(0.0)
@@ -661,17 +709,25 @@ def train_option_mediator(
         batch_targets: mx.array,
         batch_score_targets: mx.array,
     ) -> mx.array:
-        logits = model.receive(batch_messages)
-        log_probs = logits - mx.logsumexp(logits, axis=-1, keepdims=True)
-        selected = mx.sum(log_probs * mx.eye(option_count)[batch_targets], axis=-1)
-        choice_loss = -mx.mean(selected)
-        if score_distillation_weight <= 0.0:
-            return choice_loss
-        target_probs = mx.softmax(
-            batch_score_targets / max(1e-6, score_distillation_temperature),
-            axis=-1,
-        )
-        distillation_loss = -mx.mean(mx.sum(target_probs * log_probs, axis=-1))
+        choice_loss = mx.array(0.0)
+        distillation_loss = mx.array(0.0)
+        for logits in model.receive_all(batch_messages):
+            log_probs = logits - mx.logsumexp(logits, axis=-1, keepdims=True)
+            selected = mx.sum(
+                log_probs * mx.eye(option_count)[batch_targets],
+                axis=-1,
+            )
+            choice_loss = choice_loss - mx.mean(selected)
+            if score_distillation_weight > 0.0:
+                target_probs = mx.softmax(
+                    batch_score_targets / max(1e-6, score_distillation_temperature),
+                    axis=-1,
+                )
+                distillation_loss = distillation_loss - mx.mean(
+                    mx.sum(target_probs * log_probs, axis=-1)
+                )
+        choice_loss = choice_loss / model.receiver_copies
+        distillation_loss = distillation_loss / model.receiver_copies
         return choice_loss + score_distillation_weight * distillation_loss
 
     score_pretrain_loss_and_grad = nn.value_and_grad(model, score_pretrain_loss_fn)
@@ -1350,6 +1406,7 @@ def main() -> None:
             training_dataset,
             hidden_size=args.hidden_size,
             receiver_size=args.receiver_size,
+            receiver_copies=args.receiver_copies,
             slots=args.message_slots,
             vocabulary_size=args.message_vocabulary,
             epochs=args.epochs,
@@ -1475,6 +1532,7 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--hidden-size", type=int, default=96)
     parser.add_argument("--receiver-size", type=int, default=96)
+    parser.add_argument("--receiver-copies", type=int, default=1)
     parser.add_argument("--message-slots", type=int, default=OPTION_MEDIATION_SLOTS)
     parser.add_argument(
         "--message-vocabulary",

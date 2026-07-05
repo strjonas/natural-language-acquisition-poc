@@ -310,6 +310,8 @@ Completed:
 - held-out receiver transfer for option mediation, showing that a fresh
   receiver can learn the frozen trained sender above random-sender control but
   still trails the co-trained receiver.
+- multi-receiver convention pressure via `--receiver-copies`, which did not
+  improve held-out receiver transfer and reduced primary receiver accuracy.
 
 Not yet passed:
 
@@ -348,8 +350,9 @@ Not yet passed:
 - code semantics and receiver/code alignment diagnostics, because active code
   usage is already broad while compact-message accuracy still trails direct
   self-rank,
-- easier-to-learn sender conventions for held-out receivers, because transfer
-  is partially positive but still trails the co-trained receiver,
+- simpler or more discretely stable sender conventions for held-out receivers,
+  because transfer is partially positive but multi-receiver pressure did not
+  close the gap,
 - explicit code stability diagnostics across seeds and independently trained
   bodies, because the current semantics check is still a single-seed comparison,
 - stronger rank-plus-dynamics training that recovers the old world-trend metric
