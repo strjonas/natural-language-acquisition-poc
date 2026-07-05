@@ -649,6 +649,9 @@ class OptionMediationTests(unittest.TestCase):
             receiver_size=12,
             epochs=1,
             batch_size=5,
+            transfer_receiver_count=1,
+            transfer_receiver_epochs=1,
+            transfer_receiver_weight=0.1,
             seed=24,
         )
         base_result = evaluate_option_population_mediator(

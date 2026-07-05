@@ -545,6 +545,14 @@ longer new-sender training worsens both primary and held-out transfer. The next
 variant should add explicit transfer pressure while introducing new senders,
 for example a small receiver ensemble or periodic fresh-receiver distillation.
 
+The first staged transfer-pressure variant improved the specific weak point.
+Training the new sender through two auxiliary receivers learned from the base
+sender raised new-sender held-out transfer from `0.5359` to `0.5516` while
+leaving the base sender at `0.6031`/`0.5734`. Stronger transfer weight and a
+larger four-receiver ensemble were worse. This is not solved, but it is the
+first sign that explicit transfer pressure can move new senders toward a more
+receiver-independent self-message convention.
+
 ---
 
 ## M6: Reflective Report With Parrot Guards

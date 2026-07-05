@@ -335,6 +335,10 @@ Completed:
   preserved the base convention exactly and let a new sender use the fixed
   receiver, but the new sender still transferred poorly to a fresh receiver, so
   staged sender introduction needs explicit transfer pressure.
+- staged sender introduction with auxiliary transfer receivers; a two-receiver
+  ensemble improved the new sender's held-out transfer from `0.5359` to
+  `0.5516`, while stronger or larger ensembles hurt, leaving staged transfer
+  pressure as the current most promising convention path.
 
 Not yet passed:
 

@@ -1348,6 +1348,9 @@ def staged_option_population_from_mediator(
     balance_weight: float = 0.02,
     entropy_weight: float = 0.0,
     message_commitment_weight: float = 0.0,
+    transfer_receiver_count: int = 0,
+    transfer_receiver_epochs: int = 40,
+    transfer_receiver_weight: float = 0.0,
     seed: int = 1,
 ) -> TrainedOptionPopulationMediator:
     rng = np.random.default_rng(seed)
@@ -1372,6 +1375,20 @@ def staged_option_population_from_mediator(
     model.choice = trained_base.model.choice
     model.score = trained_base.model.score
     indices = np.arange(sample_count)
+    transfer_receivers: list[TrainedOptionReceiver] = []
+    if transfer_receiver_count > 0 and transfer_receiver_weight > 0.0:
+        for receiver_index in range(transfer_receiver_count):
+            transfer_receivers.append(
+                train_option_receiver_for_sender(
+                    trained_base,
+                    dataset,
+                    receiver_size=receiver_size,
+                    epochs=transfer_receiver_epochs,
+                    batch_size=batch_size,
+                    learning_rate=learning_rate,
+                    seed=seed + 10_000 + receiver_index,
+                )
+            )
 
     def sender_regularizer_loss(probabilities: list[mx.array]) -> mx.array:
         uniform = 1.0 / trained_base.model.vocabulary_size
@@ -1414,7 +1431,26 @@ def staged_option_population_from_mediator(
             logits = model.receive(messages)
             log_probs = logits - mx.logsumexp(logits, axis=-1, keepdims=True)
             selected = mx.sum(log_probs * mx.eye(option_count)[batch_targets], axis=-1)
-            return -mx.mean(selected) + sender_regularizer_loss(probabilities)
+            transfer_loss = mx.array(0.0)
+            for receiver in transfer_receivers:
+                receiver_logits = receiver.model.receive(messages)
+                receiver_log_probs = receiver_logits - mx.logsumexp(
+                    receiver_logits,
+                    axis=-1,
+                    keepdims=True,
+                )
+                receiver_selected = mx.sum(
+                    receiver_log_probs * mx.eye(option_count)[batch_targets],
+                    axis=-1,
+                )
+                transfer_loss = transfer_loss - mx.mean(receiver_selected)
+            if transfer_receivers:
+                transfer_loss = transfer_loss / len(transfer_receivers)
+            return (
+                -mx.mean(selected)
+                + transfer_receiver_weight * transfer_loss
+                + sender_regularizer_loss(probabilities)
+            )
 
         loss_and_grad = nn.value_and_grad(model.senders[sender_index], loss_fn)
         for _epoch in range(max(1, epochs)):
