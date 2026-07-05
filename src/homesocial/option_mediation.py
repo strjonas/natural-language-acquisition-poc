@@ -443,6 +443,7 @@ def train_option_mediator(
     score_rank_weight: float = 0.0,
     score_reconstruction_weight: float = 0.0,
     code_target_weight: float = 0.0,
+    message_replay_weight: float = 0.0,
     seed: int = 1,
 ) -> TrainedOptionMediator:
     rng = np.random.default_rng(seed)
@@ -521,6 +522,20 @@ def train_option_mediator(
         losses = mx.logaddexp(mx.array(0.0), logits) - labels * logits
         return mx.sum(weights * losses) / (mx.sum(weights) + 1e-6)
 
+    def message_replay_loss(
+        probabilities: list[mx.array],
+        replay_targets: list[mx.array],
+    ) -> mx.array:
+        replay_loss = mx.array(0.0)
+        for probs, targets in zip(probabilities, replay_targets):
+            flat_probs = mx.reshape(probs, (-1, probs.shape[-1]))
+            flat_targets = mx.reshape(targets, (-1,))
+            target_one_hot = mx.eye(vocabulary_size)[flat_targets]
+            replay_loss = replay_loss - mx.mean(
+                mx.sum(target_one_hot * mx.log(flat_probs + 1e-8), axis=-1)
+            )
+        return replay_loss / len(probabilities)
+
     def score_pretrain_loss_fn(
         batch_features: mx.array,
         batch_score_targets: mx.array,
@@ -553,6 +568,7 @@ def train_option_mediator(
         batch_features: mx.array,
         batch_targets: mx.array,
         batch_score_targets: mx.array,
+        batch_replay_targets: list[mx.array],
     ) -> mx.array:
         messages, probabilities = model.message(
             batch_features,
@@ -603,6 +619,8 @@ def train_option_mediator(
             + score_reconstruction_weight * score_loss
             + score_rank_weight * rank_loss
             + code_target_weight * code_target_loss(messages, batch_targets)
+            + message_replay_weight
+            * message_replay_loss(probabilities, batch_replay_targets)
         )
 
     def frozen_receiver_loss_fn(
@@ -638,6 +656,22 @@ def train_option_mediator(
             )
             optimizer.update(model, grads)
             mx.eval(model.parameters(), optimizer.state, loss)
+
+    replay_targets = [
+        mx.zeros((sample_count, option_count), dtype=mx.int32)
+        for _slot in range(slots)
+    ]
+    if message_replay_weight > 0.0:
+        _replay_messages, replay_probabilities = model.message(
+            features,
+            temperature=message_temperature,
+            hard=True,
+        )
+        replay_targets = [
+            mx.stop_gradient(mx.argmax(probabilities, axis=-1))
+            for probabilities in replay_probabilities
+        ]
+        mx.eval(*replay_targets)
 
     frozen_receiver_loss_and_grad = nn.value_and_grad(model, frozen_receiver_loss_fn)
     if frozen_receiver_epochs > 0:
@@ -684,6 +718,7 @@ def train_option_mediator(
                 features[batch],
                 dataset.target_options[batch],
                 batch_score_targets,
+                [targets[batch] for targets in replay_targets],
             )
             optimizer.update(model, grads)
             mx.eval(model.parameters(), optimizer.state, loss)
@@ -1207,6 +1242,7 @@ def main() -> None:
             score_rank_weight=args.score_rank_weight,
             score_reconstruction_weight=args.score_reconstruction_weight,
             code_target_weight=args.code_target_weight,
+            message_replay_weight=args.message_replay_weight,
             seed=args.seed,
         )
         for intervention in args.interventions:
@@ -1334,6 +1370,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--score-rank-weight", type=float, default=0.0)
     parser.add_argument("--score-reconstruction-weight", type=float, default=0.0)
     parser.add_argument("--code-target-weight", type=float, default=0.0)
+    parser.add_argument("--message-replay-weight", type=float, default=0.0)
     parser.add_argument(
         "--interventions",
         nargs="+",

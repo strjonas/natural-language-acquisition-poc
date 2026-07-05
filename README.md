@@ -382,6 +382,9 @@ Mediation CSVs include `message_codes_used`, `message_code_entropy`,
 distinguish code collapse, weak sender/receiver semantics, and one-off pattern
 memorization.
 
+`--message-replay-weight` snapshots score-pretrained hard message tokens and
+penalizes later sender drift during choice training.
+
 Replicate the strict self-model-targeted commitment setting across independent
 base body checkpoints:
 

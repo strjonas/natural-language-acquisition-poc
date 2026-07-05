@@ -582,6 +582,7 @@ def _mediation_rows(
         score_rank_weight=args.score_rank_weight,
         score_reconstruction_weight=args.score_reconstruction_weight,
         code_target_weight=args.code_target_weight,
+        message_replay_weight=args.message_replay_weight,
         seed=seed,
     )
 
@@ -797,6 +798,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--score-rank-weight", type=float, default=0.0)
     parser.add_argument("--score-reconstruction-weight", type=float, default=0.0)
     parser.add_argument("--code-target-weight", type=float, default=0.0)
+    parser.add_argument("--message-replay-weight", type=float, default=0.0)
     return parser.parse_args()
 
 

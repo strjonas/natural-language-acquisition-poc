@@ -480,6 +480,12 @@ control had high target-pattern MI despite only `0.2203` accuracy. The next
 useful direction is stable codebook/replay or transfer-style receiver alignment,
 not more direct branch-target BCE shaping.
 
+Simple score-codebook replay was then tested with `--message-replay-weight`.
+Weights `0.005` and `0.001` reached `0.5797` and `0.5766` accuracy, below the
+`0.6031` pretrain-only baseline. This suggests that the issue is not merely
+sender drift after score pretraining; the receiver still needs a better
+alignment or transfer objective.
+
 ---
 
 ## M6: Reflective Report With Parrot Guards

@@ -304,6 +304,9 @@ Completed:
   stable shared convention.
 - branch-code target auxiliary loss via `--code-target-weight`, which failed to
   improve the best pretrain-only compact-message seed.
+- score-codebook replay via `--message-replay-weight`, which pinned
+  score-pretrained hard codes during choice training but did not beat the
+  pretrain-only baseline.
 
 Not yet passed:
 
@@ -342,8 +345,9 @@ Not yet passed:
 - code semantics and receiver/code alignment diagnostics, because active code
   usage is already broad while compact-message accuracy still trails direct
   self-rank,
-- stable codebook replay or transfer-style receiver alignment, because direct
-  branch-target BCE shaping did not improve code semantics,
+- transfer-style receiver alignment or held-out receiver tests, because direct
+  branch-target BCE shaping and simple score-codebook replay did not improve
+  code semantics,
 - explicit code stability diagnostics across seeds and independently trained
   bodies, because the current semantics check is still a single-seed comparison,
 - stronger rank-plus-dynamics training that recovers the old world-trend metric

@@ -423,6 +423,32 @@ class OptionMediationTests(unittest.TestCase):
         self.assertGreaterEqual(result.message_codes_used, 1)
         self.assertGreaterEqual(result.target_code_mutual_information, 0.0)
 
+    def test_train_option_mediator_accepts_message_replay(self):
+        dataset = _dataset([0, 1, 2, 3, 4])
+        score_targets = np.asarray(dataset.option_values, dtype=np.float32)
+
+        trained = train_option_mediator(
+            dataset,
+            hidden_size=12,
+            receiver_size=12,
+            epochs=1,
+            batch_size=5,
+            score_targets=score_targets,
+            score_pretrain_epochs=1,
+            score_pretrain_commitment_weight=0.05,
+            message_replay_weight=0.1,
+            seed=13,
+        )
+        result = evaluate_option_mediator(
+            trained,
+            dataset,
+            model_control="trained",
+            intervention="original",
+        )
+
+        self.assertEqual(result.samples, 5)
+        self.assertGreaterEqual(result.message_codes_used, 1)
+
     def test_train_option_mediator_accepts_late_message_commitment(self):
         dataset = _dataset([0, 1, 2, 3, 4])
         score_targets = np.asarray(dataset.option_values, dtype=np.float32)
