@@ -1351,6 +1351,7 @@ def staged_option_population_from_mediator(
     transfer_receiver_count: int = 0,
     transfer_receiver_epochs: int = 40,
     transfer_receiver_weight: float = 0.0,
+    sender_imitation_weight: float = 0.0,
     seed: int = 1,
 ) -> TrainedOptionPopulationMediator:
     rng = np.random.default_rng(seed)
@@ -1389,6 +1390,12 @@ def staged_option_population_from_mediator(
                     seed=seed + 10_000 + receiver_index,
                 )
             )
+    base_messages, _base_probabilities = trained_base.model.message(features, hard=True)
+    base_message_targets = [
+        mx.stop_gradient(mx.argmax(message, axis=-1))
+        for message in base_messages
+    ]
+    mx.eval(*base_message_targets)
 
     def sender_regularizer_loss(probabilities: list[mx.array]) -> mx.array:
         uniform = 1.0 / trained_base.model.vocabulary_size
@@ -1421,7 +1428,11 @@ def staged_option_population_from_mediator(
     for sender_index in range(1, model.population_size):
         optimizer = optim.Adam(learning_rate=learning_rate)
 
-        def loss_fn(batch_features: mx.array, batch_targets: mx.array) -> mx.array:
+        def loss_fn(
+            batch_features: mx.array,
+            batch_targets: mx.array,
+            batch_imitation_targets: list[mx.array],
+        ) -> mx.array:
             messages, probabilities = model.message(
                 sender_index,
                 batch_features,
@@ -1446,9 +1457,22 @@ def staged_option_population_from_mediator(
                 transfer_loss = transfer_loss - mx.mean(receiver_selected)
             if transfer_receivers:
                 transfer_loss = transfer_loss / len(transfer_receivers)
+            imitation_loss = mx.array(0.0)
+            if sender_imitation_weight > 0.0:
+                for probs, targets in zip(probabilities, batch_imitation_targets):
+                    flat_probs = mx.reshape(probs, (-1, probs.shape[-1]))
+                    flat_targets = mx.reshape(targets, (-1,))
+                    target_one_hot = mx.eye(trained_base.model.vocabulary_size)[
+                        flat_targets
+                    ]
+                    imitation_loss = imitation_loss - mx.mean(
+                        mx.sum(target_one_hot * mx.log(flat_probs + 1e-8), axis=-1)
+                    )
+                imitation_loss = imitation_loss / len(probabilities)
             return (
                 -mx.mean(selected)
                 + transfer_receiver_weight * transfer_loss
+                + sender_imitation_weight * imitation_loss
                 + sender_regularizer_loss(probabilities)
             )
 
@@ -1463,6 +1487,7 @@ def staged_option_population_from_mediator(
                 loss, grads = loss_and_grad(
                     features[batch],
                     dataset.target_options[batch],
+                    [targets[batch] for targets in base_message_targets],
                 )
                 optimizer.update(model.senders[sender_index], grads)
                 mx.eval(model.senders[sender_index].parameters(), optimizer.state, loss)

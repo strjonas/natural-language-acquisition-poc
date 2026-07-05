@@ -339,6 +339,10 @@ Completed:
   ensemble improved the new sender's held-out transfer from `0.5359` to
   `0.5516`, while stronger or larger ensembles hurt, leaving staged transfer
   pressure as the current most promising convention path.
+- base-sender token imitation for staged new senders; this improved use of the
+  fixed receiver but did not independently solve fresh-receiver transfer, while
+  combining imitation with transfer pressure gave the best accuracy/transfer
+  balance so far for the new sender.
 
 Not yet passed:
 

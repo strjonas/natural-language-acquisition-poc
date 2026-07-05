@@ -553,6 +553,14 @@ larger four-receiver ensemble were worse. This is not solved, but it is the
 first sign that explicit transfer pressure can move new senders toward a more
 receiver-independent self-message convention.
 
+Base-sender token imitation was tested as a complementary convention-learning
+pressure. Imitation alone improved the new sender's fixed-receiver accuracy to
+`0.5828` but reduced fresh-receiver transfer to `0.5266`. Combining imitation
+with the two-receiver transfer ensemble gave a better balance (`0.5766`
+primary, `0.5500` held-out), close to the transfer-only held-out result while
+keeping more task accuracy. The convention is still not fully shared; the next
+step should improve transfer without merely copying surface tokens.
+
 ---
 
 ## M6: Reflective Report With Parrot Guards
