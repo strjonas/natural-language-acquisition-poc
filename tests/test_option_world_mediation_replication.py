@@ -10,6 +10,7 @@ from homesocial.option_world_mediation_replication import (
     format_row,
     header,
     pad_option_rank_samples,
+    resolved_mediation_balance_targets,
     resolved_option_action_noises,
 )
 
@@ -89,6 +90,28 @@ class OptionWorldMediationReplicationTests(unittest.TestCase):
                 )
             ),
             (0.3, 0.1),
+        )
+
+    def test_balance_overrides_fall_back_to_shared_value(self):
+        self.assertEqual(
+            resolved_mediation_balance_targets(
+                Namespace(
+                    mediation_balance_target="target_option",
+                    mediation_train_balance_target=None,
+                    mediation_eval_balance_target=None,
+                )
+            ),
+            ("target_option", "target_option"),
+        )
+        self.assertEqual(
+            resolved_mediation_balance_targets(
+                Namespace(
+                    mediation_balance_target="target_option",
+                    mediation_train_balance_target="target_option_resample",
+                    mediation_eval_balance_target="none",
+                )
+            ),
+            ("target_option_resample", "none"),
         )
 
     def test_pad_option_rank_samples_preserves_grouped_actions_and_targets(self):

@@ -607,7 +607,12 @@ Next concrete implementation:
    deltas for both a staged new sender and a fresh receiver, while delta
    interventions collapsed below zero. The remaining weakness is target
    imbalance, so the next version should use stratified or weighted opportunity
-   sampling rather than hard balancing or raw natural frequencies.
+   sampling rather than hard balancing or raw natural frequencies. A first
+   stratified training version (`target_option_resample` for training, natural
+   evaluation) removes the majority-target shortcut and preserves positive
+   held-out receiver deltas, but reduces raw accuracy and leaves negated-delta
+   controls imperfect. The next improvement should broaden opportunity
+   diversity and tighten intervention robustness.
 7. Decide whether to scale the environment to Crafter before adding large
    language generation.
 

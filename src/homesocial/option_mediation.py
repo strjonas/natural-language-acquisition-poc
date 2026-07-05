@@ -25,7 +25,11 @@ from .recurrent_ac import RecurrentActorCritic, RecurrentConfig, action_mask
 from .teachers import build_teacher, masks_language, normalize_teacher_mode
 
 
-OPTION_MEDIATION_BALANCE_TARGETS = ("none", "target_option")
+OPTION_MEDIATION_BALANCE_TARGETS = (
+    "none",
+    "target_option",
+    "target_option_resample",
+)
 OPTION_MEDIATION_FEATURE_MODES = ("latent_current", "delta")
 OPTION_MEDIATION_TARGET_MODES = ("oracle", "self_model")
 OPTION_MEDIATION_SLOTS = 2
@@ -613,6 +617,8 @@ def collect_option_mediation_source(
     indices = np.arange(len(samples))
     if balance_target == "target_option":
         indices = _balanced_target_option_indices(target_options, rng)
+    elif balance_target == "target_option_resample":
+        indices = _resampled_target_option_indices(target_options, rng)
 
     return OptionMediationSourceDataset(
         samples=tuple(samples[int(index)] for index in indices)
@@ -2656,6 +2662,31 @@ def _balanced_target_option_indices(
     target = min(len(bucket) for bucket in non_empty)
     indices = np.concatenate(
         [rng.choice(bucket, size=target, replace=False) for bucket in non_empty]
+    )
+    rng.shuffle(indices)
+    return indices
+
+
+def _resampled_target_option_indices(
+    target_options: list[int],
+    rng: np.random.Generator,
+) -> np.ndarray:
+    buckets = [
+        np.array(
+            [index for index, target in enumerate(target_options) if target == option],
+            dtype=np.int64,
+        )
+        for option in range(len(OPTION_NAMES))
+    ]
+    non_empty = [bucket for bucket in buckets if len(bucket) > 0]
+    if not non_empty:
+        return np.arange(len(target_options))
+    target = int(np.ceil(len(target_options) / len(non_empty)))
+    indices = np.concatenate(
+        [
+            rng.choice(bucket, size=target, replace=len(bucket) < target)
+            for bucket in non_empty
+        ]
     )
     rng.shuffle(indices)
     return indices

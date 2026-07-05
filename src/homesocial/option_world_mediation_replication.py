@@ -178,6 +178,16 @@ def resolved_option_action_noises(args: argparse.Namespace) -> tuple[float, floa
     )
 
 
+def resolved_mediation_balance_targets(args: argparse.Namespace) -> tuple[str, str]:
+    shared_target = str(args.mediation_balance_target)
+    train_target = getattr(args, "mediation_train_balance_target", None)
+    eval_target = getattr(args, "mediation_eval_balance_target", None)
+    return (
+        shared_target if train_target is None else str(train_target),
+        shared_target if eval_target is None else str(eval_target),
+    )
+
+
 def train_option_rank_finetune(
     model: RecurrentActorCritic,
     source,
@@ -403,6 +413,9 @@ def run_replication_seed(
     if args.resource_ecology is not None:
         config = replace(config, resource_ecology=args.resource_ecology)
     world_noise, mediation_noise = resolved_option_action_noises(args)
+    train_balance_target, eval_balance_target = resolved_mediation_balance_targets(
+        args
+    )
 
     train_branches = collect_option_branch_dataset(
         config,
@@ -456,7 +469,7 @@ def run_replication_seed(
         teacher_mode=args.teacher_mode,
         horizon=args.horizon,
         state_policy=args.state_policy,
-        balance_target=args.mediation_balance_target,
+        balance_target=train_balance_target,
         max_states=args.max_mediation_train_states,
         min_value_gap=args.min_value_gap,
         min_positive_delta=args.min_positive_delta,
@@ -469,7 +482,7 @@ def run_replication_seed(
         teacher_mode=args.teacher_mode,
         horizon=args.horizon,
         state_policy=args.state_policy,
-        balance_target=args.mediation_balance_target,
+        balance_target=eval_balance_target,
         max_states=args.max_mediation_eval_states,
         min_value_gap=args.min_value_gap,
         min_positive_delta=args.min_positive_delta,
@@ -1131,6 +1144,16 @@ def _parse_args() -> argparse.Namespace:
         "--mediation-balance-target",
         choices=OPTION_MEDIATION_BALANCE_TARGETS,
         default="target_option",
+    )
+    parser.add_argument(
+        "--mediation-train-balance-target",
+        choices=OPTION_MEDIATION_BALANCE_TARGETS,
+        default=None,
+    )
+    parser.add_argument(
+        "--mediation-eval-balance-target",
+        choices=OPTION_MEDIATION_BALANCE_TARGETS,
+        default=None,
     )
     parser.add_argument(
         "--interventions",

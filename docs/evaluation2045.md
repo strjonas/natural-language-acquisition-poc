@@ -655,6 +655,14 @@ below zero. The limitation is target imbalance: target-majority already reaches
 `0.8315` and `+0.1075`, while hard target balancing leaves too few opportunity
 states. The next step is opportunity-rich but stratified/weighted interaction,
 not abandoning the opportunity focus.
+That next step is partially implemented with `target_option_resample` and
+separate train/eval balance targets. Stratified opportunity training with
+natural evaluation reduces target-majority to `0.0267` while preserving useful
+new-sender and held-out receiver deltas (`+0.1200` / `+0.1212`, oracle
+`+0.1517`). This is a cleaner control substrate than natural imbalance, but it
+also lowers raw accuracy and leaves negated-delta less destructive than desired,
+so the next gate should strengthen intervention robustness across more diverse
+opportunity ecologies.
 
 ## Commands
 

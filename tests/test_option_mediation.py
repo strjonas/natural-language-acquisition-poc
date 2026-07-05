@@ -6,6 +6,7 @@ import numpy as np
 from homesocial.option_mediation import (
     OptionMediationDataset,
     _balanced_target_option_indices,
+    _resampled_target_option_indices,
     _should_keep_option_mediation_sample,
     collect_option_mediation_source,
     intervene_option_mediation_features,
@@ -69,6 +70,21 @@ class OptionMediationTests(unittest.TestCase):
             [int(np.sum(selected == option)) for option in range(3)],
             [1, 1, 1],
         )
+
+    def test_resampled_target_option_indices_balances_without_shrinking(self):
+        targets = np.array([0, 0, 0, 0, 1, 2], dtype=np.int32)
+        indices = _resampled_target_option_indices(
+            targets.tolist(),
+            np.random.default_rng(2),
+        )
+
+        selected = targets[indices]
+        self.assertEqual(len(indices), 6)
+        self.assertEqual(
+            [int(np.sum(selected == option)) for option in range(3)],
+            [2, 2, 2],
+        )
+        self.assertGreater(int(np.sum(indices == 4)), 1)
 
     def test_option_mediation_sample_filter_can_require_positive_delta(self):
         self.assertFalse(
