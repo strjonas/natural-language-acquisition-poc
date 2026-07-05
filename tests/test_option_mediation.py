@@ -360,6 +360,38 @@ class OptionMediationTests(unittest.TestCase):
                 score_rank_code_slot=3,
             )
 
+    def test_train_option_mediator_accepts_score_value_code_loss(self):
+        dataset = _dataset([0, 1, 2, 3, 4])
+        score_targets = np.asarray(dataset.option_values, dtype=np.float32)
+
+        trained = train_option_mediator(
+            dataset,
+            hidden_size=12,
+            receiver_size=12,
+            epochs=1,
+            batch_size=5,
+            score_targets=score_targets,
+            score_value_code_weight=0.1,
+            score_value_code_slot=1,
+            seed=18,
+        )
+        result = evaluate_option_mediator(
+            trained,
+            dataset,
+            model_control="trained",
+            intervention="original",
+        )
+
+        self.assertEqual(result.samples, 5)
+        with self.assertRaises(ValueError):
+            train_option_mediator(
+                dataset,
+                epochs=1,
+                score_targets=score_targets,
+                score_value_code_weight=0.1,
+                score_value_code_slot=3,
+            )
+
     def test_train_option_mediator_accepts_score_distillation(self):
         dataset = _dataset([0, 1, 2, 3, 4])
         score_targets = np.asarray(dataset.option_values, dtype=np.float32)
@@ -508,6 +540,7 @@ class OptionMediationTests(unittest.TestCase):
 
     def test_train_option_receiver_for_sender_runs(self):
         dataset = _dataset([0, 1, 2, 3, 4])
+        score_targets = np.asarray(dataset.option_values, dtype=np.float32)
         trained = train_option_mediator(
             dataset,
             hidden_size=12,
@@ -524,6 +557,9 @@ class OptionMediationTests(unittest.TestCase):
             epochs=1,
             batch_size=5,
             max_samples=3,
+            score_targets=score_targets,
+            score_distillation_weight=0.2,
+            score_distillation_temperature=0.7,
             seed=15,
         )
         result = evaluate_option_receiver_transfer(
@@ -537,6 +573,15 @@ class OptionMediationTests(unittest.TestCase):
         self.assertEqual(result.samples, 5)
         self.assertEqual(result.model_control, "heldout_receiver")
         self.assertGreaterEqual(result.message_codes_used, 1)
+        with self.assertRaises(ValueError):
+            train_option_receiver_for_sender(
+                trained,
+                dataset,
+                receiver_size=12,
+                epochs=1,
+                batch_size=5,
+                score_distillation_weight=0.2,
+            )
 
     def test_train_option_mediator_accepts_late_message_commitment(self):
         dataset = _dataset([0, 1, 2, 3, 4])

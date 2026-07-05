@@ -551,6 +551,8 @@ def _mediation_rows(
         or args.score_distillation_weight > 0.0
         or args.score_rank_weight > 0.0
         or args.score_rank_code_weight > 0.0
+        or args.score_value_code_weight > 0.0
+        or args.heldout_receiver_score_distillation_weight > 0.0
     ):
         rank_score_dataset = (
             train_dataset
@@ -589,6 +591,8 @@ def _mediation_rows(
         message_replay_weight=args.message_replay_weight,
         score_rank_code_weight=args.score_rank_code_weight,
         score_rank_code_slot=args.score_rank_code_slot,
+        score_value_code_weight=args.score_value_code_weight,
+        score_value_code_slot=args.score_value_code_slot,
         seed=seed,
     )
 
@@ -627,6 +631,13 @@ def _mediation_rows(
             batch_size=args.mediation_batch_size,
             learning_rate=args.mediation_learning_rate,
             max_samples=args.heldout_receiver_samples,
+            score_targets=score_targets,
+            score_distillation_weight=(
+                args.heldout_receiver_score_distillation_weight
+            ),
+            score_distillation_temperature=(
+                args.heldout_receiver_score_distillation_temperature
+            ),
             seed=seed + 70_000,
         )
         for intervention in args.interventions:
@@ -845,8 +856,20 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--message-replay-weight", type=float, default=0.0)
     parser.add_argument("--score-rank-code-weight", type=float, default=0.0)
     parser.add_argument("--score-rank-code-slot", type=int, default=0)
+    parser.add_argument("--score-value-code-weight", type=float, default=0.0)
+    parser.add_argument("--score-value-code-slot", type=int, default=1)
     parser.add_argument("--heldout-receiver-epochs", type=int, default=0)
     parser.add_argument("--heldout-receiver-samples", type=int, default=None)
+    parser.add_argument(
+        "--heldout-receiver-score-distillation-weight",
+        type=float,
+        default=0.0,
+    )
+    parser.add_argument(
+        "--heldout-receiver-score-distillation-temperature",
+        type=float,
+        default=1.0,
+    )
     return parser.parse_args()
 
 

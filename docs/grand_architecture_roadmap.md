@@ -318,6 +318,10 @@ Completed:
 - score-rank code pressure via `--score-rank-code-weight`, which forced one
   slot toward self-model rank buckets but still reduced primary and held-out
   receiver accuracy.
+- receiver bottleneck, held-out receiver score-distillation, sender value-code,
+  and sender score-distillation probes; all failed to close the held-out
+  transfer gap, narrowing the next convention step to interaction-structure
+  changes rather than more single sender/receiver auxiliary losses.
 
 Not yet passed:
 
@@ -326,6 +330,8 @@ Not yet passed:
 - learned multi-step cause attribution for bodily events rather than symbolic
   rendering of the latest event,
 - zero-shot convention alignment between independently initialized agents,
+- stable option-message conventions under partner turnover or cross-sender
+  training,
 - replicated self-request language across body-model seeds,
 - replicated multi-aspect self-state language across body-model seeds,
 - wider counterfactual environments where action-conditioned trend cannot be

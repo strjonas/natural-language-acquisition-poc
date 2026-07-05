@@ -511,6 +511,17 @@ Directly imposing reusable rank symbols was also tested with
 preserved target-code information better than the `1x8` simplification but did
 not close the transfer gap.
 
+Several follow-up convention probes were negative. Reducing receiver capacity
+to 32 or 64 hidden units dropped held-out transfer to `0.5437` and `0.5500`.
+Training the fresh receiver with score-distribution distillation reached
+`0.5703`, roughly matching longer receiver training but not beating the
+`0.5734` baseline. New sender-side value-code and score-distillation pressures
+also underperformed: `0.5547`/`0.5266` and `0.5828`/`0.5531`
+primary/held-out accuracy. These failures are useful: the bottleneck is not raw
+receiver capacity or a missing scalar-value auxiliary loss. The next meaningful
+step should change the interaction structure so conventions must survive across
+independent senders/receivers or repeated partner turnover.
+
 ---
 
 ## M6: Reflective Report With Parrot Guards
