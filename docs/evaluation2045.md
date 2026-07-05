@@ -499,6 +499,12 @@ and `0.5594`, and held-out transfer stayed near `0.567` rather than improving
 over the single-receiver held-out result. This argues against simple
 multi-receiver pressure as the next convention solution.
 
+Simplifying the code directly also exposed a tradeoff. Lowering balance pressure
+to `0.005` dropped primary/held-out accuracy to `0.5563`/`0.5297`. A single-slot
+`1x8` code increased row-pattern reuse from `0.181` to `0.572`, but accuracy was
+only `0.5641` primary and `0.5453` held-out. The issue is therefore not just
+reuse; reusable symbols must preserve the self-model ranking semantics.
+
 ---
 
 ## M6: Reflective Report With Parrot Guards
