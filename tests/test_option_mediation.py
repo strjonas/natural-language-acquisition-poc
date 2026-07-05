@@ -538,6 +538,29 @@ class OptionMediationTests(unittest.TestCase):
         self.assertEqual(result.samples, 5)
         self.assertGreaterEqual(result.message_codes_used, 1)
 
+    def test_train_option_mediator_accepts_receiver_turnover(self):
+        dataset = _dataset([0, 1, 2, 3, 4])
+
+        trained = train_option_mediator(
+            dataset,
+            hidden_size=12,
+            receiver_size=12,
+            receiver_turnover_interval=1,
+            epochs=2,
+            batch_size=5,
+            seed=19,
+        )
+        result = evaluate_option_mediator(
+            trained,
+            dataset,
+            model_control="trained",
+            intervention="original",
+        )
+
+        self.assertEqual(result.samples, 5)
+        self.assertEqual(trained.model.receiver_copies, 1)
+        self.assertGreaterEqual(result.message_codes_used, 1)
+
     def test_train_option_receiver_for_sender_runs(self):
         dataset = _dataset([0, 1, 2, 3, 4])
         score_targets = np.asarray(dataset.option_values, dtype=np.float32)

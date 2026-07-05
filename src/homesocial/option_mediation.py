@@ -106,13 +106,15 @@ class OptionMediationProtocol(nn.Module):
         self.slots = slots
         self.vocabulary_size = vocabulary_size
         self.receiver_copies = max(1, receiver_copies)
+        self.receiver_input_size = option_count * slots * vocabulary_size
+        self.receiver_size = receiver_size
         self.sender = nn.Linear(input_size, hidden_size)
         self.sender_hidden = nn.Linear(hidden_size, hidden_size)
         self.tokens = [
             nn.Linear(hidden_size, vocabulary_size) for _ in range(slots)
         ]
-        receiver_input = option_count * slots * vocabulary_size
-        self.receiver = nn.Linear(receiver_input, receiver_size)
+        receiver_input = self.receiver_input_size
+        self.receiver = nn.Linear(receiver_input, self.receiver_size)
         self.receiver_hidden = nn.Linear(receiver_size, receiver_size)
         self.choice = nn.Linear(receiver_size, option_count)
         self.score = nn.Linear(receiver_size, option_count)
@@ -127,6 +129,26 @@ class OptionMediationProtocol(nn.Module):
         ]
         self.extra_choices = [
             nn.Linear(receiver_size, option_count)
+            for _copy in range(self.receiver_copies - 1)
+        ]
+
+    def reset_receivers(self) -> None:
+        receiver_input = self.receiver_input_size
+        receiver_size = self.receiver_size
+        self.receiver = nn.Linear(receiver_input, receiver_size)
+        self.receiver_hidden = nn.Linear(receiver_size, receiver_size)
+        self.choice = nn.Linear(receiver_size, self.option_count)
+        self.score = nn.Linear(receiver_size, self.option_count)
+        self.extra_receivers = [
+            nn.Linear(receiver_input, receiver_size)
+            for _copy in range(self.receiver_copies - 1)
+        ]
+        self.extra_receiver_hiddens = [
+            nn.Linear(receiver_size, receiver_size)
+            for _copy in range(self.receiver_copies - 1)
+        ]
+        self.extra_choices = [
+            nn.Linear(receiver_size, self.option_count)
             for _copy in range(self.receiver_copies - 1)
         ]
 
@@ -495,6 +517,7 @@ def train_option_mediator(
     hidden_size: int = 96,
     receiver_size: int = 96,
     receiver_copies: int = 1,
+    receiver_turnover_interval: int = 0,
     slots: int = OPTION_MEDIATION_SLOTS,
     vocabulary_size: int = OPTION_MEDIATION_VOCABULARY,
     epochs: int = 80,
@@ -875,7 +898,16 @@ def train_option_mediator(
                 mx.eval(model.parameters(), optimizer.state, loss)
 
     loss_and_grad = nn.value_and_grad(model, loss_fn)
-    for _epoch in range(max(1, epochs)):
+    for epoch in range(max(1, epochs)):
+        if (
+            receiver_turnover_interval > 0
+            and epoch > 0
+            and epoch % receiver_turnover_interval == 0
+        ):
+            mx.random.seed(seed + 900_000 + epoch)
+            model.reset_receivers()
+            optimizer = optim.Adam(learning_rate=learning_rate)
+            loss_and_grad = nn.value_and_grad(model, loss_fn)
         rng.shuffle(indices)
         for start in range(0, sample_count, max(1, batch_size)):
             batch = mx.array(
@@ -1523,6 +1555,7 @@ def main() -> None:
             hidden_size=args.hidden_size,
             receiver_size=args.receiver_size,
             receiver_copies=args.receiver_copies,
+            receiver_turnover_interval=args.receiver_turnover_interval,
             slots=args.message_slots,
             vocabulary_size=args.message_vocabulary,
             epochs=args.epochs,
@@ -1653,6 +1686,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--hidden-size", type=int, default=96)
     parser.add_argument("--receiver-size", type=int, default=96)
     parser.add_argument("--receiver-copies", type=int, default=1)
+    parser.add_argument("--receiver-turnover-interval", type=int, default=0)
     parser.add_argument("--message-slots", type=int, default=OPTION_MEDIATION_SLOTS)
     parser.add_argument(
         "--message-vocabulary",

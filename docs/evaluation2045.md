@@ -520,7 +520,13 @@ also underperformed: `0.5547`/`0.5266` and `0.5828`/`0.5531`
 primary/held-out accuracy. These failures are useful: the bottleneck is not raw
 receiver capacity or a missing scalar-value auxiliary loss. The next meaningful
 step should change the interaction structure so conventions must survive across
-independent senders/receivers or repeated partner turnover.
+independent senders/receivers. A first repeated-partner-turnover implementation
+was also negative: resetting receivers every 10 epochs reached only
+`0.5547`/`0.4953` primary/held-out accuracy, and one mid-run reset reached
+`0.5578`/`0.5344`. Resetting the same receiver pathway is therefore too
+destabilizing; the next test should be a true population option game with
+several independent senders and a shared receiver, plus held-out sender/receiver
+transfer.
 
 ---
 

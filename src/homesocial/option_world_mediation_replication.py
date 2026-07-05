@@ -569,6 +569,7 @@ def _mediation_rows(
         hidden_size=args.hidden_size,
         receiver_size=args.receiver_size,
         receiver_copies=args.receiver_copies,
+        receiver_turnover_interval=args.receiver_turnover_interval,
         slots=args.message_slots,
         vocabulary_size=args.message_vocabulary,
         epochs=args.mediation_epochs,
@@ -831,6 +832,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--hidden-size", type=int, default=96)
     parser.add_argument("--receiver-size", type=int, default=96)
     parser.add_argument("--receiver-copies", type=int, default=1)
+    parser.add_argument("--receiver-turnover-interval", type=int, default=0)
     parser.add_argument("--message-slots", type=int, default=OPTION_MEDIATION_SLOTS)
     parser.add_argument(
         "--message-vocabulary",

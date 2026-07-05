@@ -322,6 +322,10 @@ Completed:
   and sender score-distillation probes; all failed to close the held-out
   transfer gap, narrowing the next convention step to interaction-structure
   changes rather than more single sender/receiver auxiliary losses.
+- receiver-turnover option mediation via `--receiver-turnover-interval`; both
+  frequent and mid-run receiver resets underperformed, so the next convention
+  test should be a true multi-sender/shared-receiver option game rather than
+  resetting one receiver pathway.
 
 Not yet passed:
 
