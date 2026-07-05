@@ -17,8 +17,12 @@ from homesocial.option_mediation import (
     target_count_string,
     train_option_mediator,
     evaluate_option_mediator,
+    evaluate_option_population_mediator,
+    evaluate_option_population_receiver_transfer,
     evaluate_option_receiver_transfer,
+    train_option_population_mediator,
     train_option_receiver_for_sender,
+    train_option_receiver_for_population_sender,
 )
 from homesocial.env import LANGUAGE_NECESSARY_MODE, STOCHASTIC_BODY, Action
 from homesocial.observations import MASKED_INTEROCEPTION, observation_vector_size
@@ -559,6 +563,70 @@ class OptionMediationTests(unittest.TestCase):
 
         self.assertEqual(result.samples, 5)
         self.assertEqual(trained.model.receiver_copies, 1)
+        self.assertGreaterEqual(result.message_codes_used, 1)
+
+    def test_train_option_population_mediator_runs(self):
+        dataset = _dataset([0, 1, 2, 3, 4])
+        score_targets = np.asarray(dataset.option_values, dtype=np.float32)
+
+        trained = train_option_population_mediator(
+            dataset,
+            population_size=2,
+            hidden_size=12,
+            receiver_size=12,
+            epochs=1,
+            batch_size=5,
+            score_targets=score_targets,
+            score_pretrain_epochs=1,
+            sender_agreement_weight=0.01,
+            seed=20,
+        )
+        result = evaluate_option_population_mediator(
+            trained,
+            dataset,
+            sender_index=1,
+            model_control="population_s1",
+            intervention="original",
+        )
+
+        self.assertEqual(trained.model.population_size, 2)
+        self.assertEqual(result.samples, 5)
+        self.assertEqual(result.model_control, "population_s1")
+        self.assertGreaterEqual(result.message_codes_used, 1)
+
+    def test_train_option_population_receiver_transfer_runs(self):
+        dataset = _dataset([0, 1, 2, 3, 4])
+        trained = train_option_population_mediator(
+            dataset,
+            population_size=2,
+            hidden_size=12,
+            receiver_size=12,
+            epochs=1,
+            batch_size=5,
+            seed=21,
+        )
+
+        receiver = train_option_receiver_for_population_sender(
+            trained,
+            dataset,
+            sender_index=0,
+            receiver_size=12,
+            epochs=1,
+            batch_size=5,
+            max_samples=3,
+            seed=22,
+        )
+        result = evaluate_option_population_receiver_transfer(
+            trained,
+            receiver,
+            dataset,
+            sender_index=0,
+            model_control="population_heldout_receiver_s0",
+            intervention="original",
+        )
+
+        self.assertEqual(result.samples, 5)
+        self.assertEqual(result.model_control, "population_heldout_receiver_s0")
         self.assertGreaterEqual(result.message_codes_used, 1)
 
     def test_train_option_receiver_for_sender_runs(self):

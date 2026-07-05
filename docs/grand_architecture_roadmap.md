@@ -326,6 +326,11 @@ Completed:
   frequent and mid-run receiver resets underperformed, so the next convention
   test should be a true multi-sender/shared-receiver option game rather than
   resetting one receiver pathway.
+- true option population mediation with multiple independent senders and one
+  shared receiver; naive simultaneous training, explicit sender agreement, a
+  smaller two-sender population, and longer population training all failed to
+  improve held-out transfer, so the next variant should stage sender/receiver
+  introduction instead of training all partners from scratch together.
 
 Not yet passed:
 
@@ -334,8 +339,8 @@ Not yet passed:
 - learned multi-step cause attribution for bodily events rather than symbolic
   rendering of the latest event,
 - zero-shot convention alignment between independently initialized agents,
-- stable option-message conventions under partner turnover or cross-sender
-  training,
+- stable option-message conventions under partner turnover, cross-sender
+  training, or staged population training,
 - replicated self-request language across body-model seeds,
 - replicated multi-aspect self-state language across body-model seeds,
 - wider counterfactual environments where action-conditioned trend cannot be

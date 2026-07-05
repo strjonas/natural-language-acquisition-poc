@@ -528,6 +528,15 @@ destabilizing; the next test should be a true population option game with
 several independent senders and a shared receiver, plus held-out sender/receiver
 transfer.
 
+That true population option game was implemented next and was also negative in
+its naive form. Four independent senders trained against one shared receiver
+reached `0.5422-0.5750` primary accuracy and `0.5312-0.5516` held-out receiver
+accuracy, below the `0.6031`/`0.5734` single-sender baseline. Sender agreement
+pressure worsened accuracy, a two-sender population still underperformed, and
+doubling mediation epochs did not recover the baseline. The next attempt should
+be staged population training: preserve a competent sender/receiver convention
+first, then introduce new senders or receivers gradually.
+
 ---
 
 ## M6: Reflective Report With Parrot Guards

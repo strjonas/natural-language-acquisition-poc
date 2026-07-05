@@ -67,6 +67,13 @@ class TrainedOptionReceiver:
 
 
 @dataclass(frozen=True)
+class TrainedOptionPopulationMediator:
+    model: "OptionPopulationMediationProtocol"
+    feature_mean: mx.array
+    feature_std: mx.array
+
+
+@dataclass(frozen=True)
 class OptionMediationResult:
     model_control: str
     intervention: str
@@ -230,6 +237,113 @@ class OptionMediationProtocol(nn.Module):
     def __call__(self, features: mx.array) -> tuple[mx.array, list[mx.array]]:
         messages, probabilities = self.message(features, hard=True)
         return self.receive(messages), probabilities
+
+
+class OptionMediationSender(nn.Module):
+    def __init__(
+        self,
+        input_size: int,
+        *,
+        hidden_size: int = 96,
+        slots: int = OPTION_MEDIATION_SLOTS,
+        vocabulary_size: int = OPTION_MEDIATION_VOCABULARY,
+    ) -> None:
+        super().__init__()
+        self.slots = slots
+        self.vocabulary_size = vocabulary_size
+        self.sender = nn.Linear(input_size, hidden_size)
+        self.sender_hidden = nn.Linear(hidden_size, hidden_size)
+        self.tokens = [
+            nn.Linear(hidden_size, vocabulary_size) for _slot in range(slots)
+        ]
+
+    def __call__(
+        self,
+        features: mx.array,
+        *,
+        temperature: float = 0.6,
+        hard: bool = True,
+    ) -> tuple[list[mx.array], list[mx.array]]:
+        batch_size, option_count, feature_size = features.shape
+        flat = mx.reshape(features, (batch_size * option_count, feature_size))
+        hidden = nn.relu(self.sender(flat))
+        hidden = hidden + nn.relu(self.sender_hidden(hidden))
+        messages: list[mx.array] = []
+        probabilities: list[mx.array] = []
+        for token in self.tokens:
+            logits = token(hidden)
+            probs = mx.softmax(logits / temperature, axis=-1)
+            probabilities.append(mx.reshape(probs, (batch_size, option_count, -1)))
+            if hard:
+                hard_message = mx.eye(self.vocabulary_size)[
+                    mx.argmax(probs, axis=-1)
+                ]
+                message = hard_message + probs - mx.stop_gradient(probs)
+            else:
+                message = probs
+            messages.append(mx.reshape(message, (batch_size, option_count, -1)))
+        return messages, probabilities
+
+
+class OptionPopulationMediationProtocol(nn.Module):
+    def __init__(
+        self,
+        input_size: int,
+        option_count: int,
+        *,
+        population_size: int = 4,
+        hidden_size: int = 96,
+        receiver_size: int = 96,
+        slots: int = OPTION_MEDIATION_SLOTS,
+        vocabulary_size: int = OPTION_MEDIATION_VOCABULARY,
+    ) -> None:
+        super().__init__()
+        self.population_size = max(1, population_size)
+        self.option_count = option_count
+        self.slots = slots
+        self.vocabulary_size = vocabulary_size
+        self.senders = [
+            OptionMediationSender(
+                input_size,
+                hidden_size=hidden_size,
+                slots=slots,
+                vocabulary_size=vocabulary_size,
+            )
+            for _sender in range(self.population_size)
+        ]
+        receiver_input = option_count * slots * vocabulary_size
+        self.receiver = nn.Linear(receiver_input, receiver_size)
+        self.receiver_hidden = nn.Linear(receiver_size, receiver_size)
+        self.choice = nn.Linear(receiver_size, option_count)
+        self.score = nn.Linear(receiver_size, option_count)
+
+    def message(
+        self,
+        sender_index: int,
+        features: mx.array,
+        *,
+        temperature: float = 0.6,
+        hard: bool = True,
+    ) -> tuple[list[mx.array], list[mx.array]]:
+        return self.senders[sender_index](
+            features,
+            temperature=temperature,
+            hard=hard,
+        )
+
+    def receive_hidden(self, messages: list[mx.array]) -> mx.array:
+        inputs = mx.concatenate(
+            [mx.reshape(message, (message.shape[0], -1)) for message in messages],
+            axis=-1,
+        )
+        hidden = nn.relu(self.receiver(inputs))
+        return hidden + nn.relu(self.receiver_hidden(hidden))
+
+    def receive(self, messages: list[mx.array]) -> mx.array:
+        return self.choice(self.receive_hidden(messages))
+
+    def score_messages(self, messages: list[mx.array]) -> mx.array:
+        return self.score(self.receive_hidden(messages))
 
 
 class OptionMediationReceiver(nn.Module):
@@ -1020,6 +1134,206 @@ def train_option_receiver_for_sender(
     return TrainedOptionReceiver(model=receiver)
 
 
+def train_option_population_mediator(
+    dataset: OptionMediationDataset,
+    *,
+    population_size: int = 4,
+    hidden_size: int = 96,
+    receiver_size: int = 96,
+    slots: int = OPTION_MEDIATION_SLOTS,
+    vocabulary_size: int = OPTION_MEDIATION_VOCABULARY,
+    epochs: int = 80,
+    batch_size: int = 128,
+    learning_rate: float = 1e-3,
+    balance_weight: float = 0.02,
+    entropy_weight: float = 0.0,
+    message_commitment_weight: float = 0.0,
+    message_temperature: float = 0.6,
+    score_targets: np.ndarray | None = None,
+    score_pretrain_epochs: int = 0,
+    score_pretrain_commitment_weight: float | None = None,
+    sender_agreement_weight: float = 0.0,
+    seed: int = 1,
+) -> TrainedOptionPopulationMediator:
+    rng = np.random.default_rng(seed)
+    mx.random.seed(seed)
+    feature_mean = mx.mean(dataset.features, axis=(0, 1), keepdims=True)
+    feature_std = mx.sqrt(
+        mx.mean((dataset.features - feature_mean) ** 2, axis=(0, 1), keepdims=True)
+        + 1e-6
+    )
+    features = (dataset.features - feature_mean) / feature_std
+    sample_count = int(features.shape[0])
+    option_count = int(features.shape[1])
+    model = OptionPopulationMediationProtocol(
+        int(features.shape[-1]),
+        option_count,
+        population_size=population_size,
+        hidden_size=hidden_size,
+        receiver_size=receiver_size,
+        slots=slots,
+        vocabulary_size=vocabulary_size,
+    )
+    optimizer = optim.Adam(learning_rate=learning_rate)
+    indices = np.arange(sample_count)
+    normalized_score_targets: mx.array | None = None
+    if score_pretrain_epochs > 0:
+        if score_targets is None:
+            raise ValueError("Population score pretraining requires score targets.")
+        score_array = np.asarray(score_targets, dtype=np.float32)
+        if score_array.shape != (sample_count, option_count):
+            raise ValueError("Score targets must have shape (samples, options).")
+        score_mean = np.mean(score_array)
+        score_std = float(np.std(score_array) + 1e-6)
+        normalized_score_targets = mx.array(
+            (score_array - score_mean) / score_std,
+            dtype=mx.float32,
+        )
+    pretrain_commitment_weight = (
+        message_commitment_weight
+        if score_pretrain_commitment_weight is None
+        else score_pretrain_commitment_weight
+    )
+
+    def message_commitment_loss(probabilities: list[mx.array]) -> mx.array:
+        commitment = mx.array(0.0)
+        for probs in probabilities:
+            flat_probs = mx.reshape(probs, (-1, probs.shape[-1]))
+            hard_targets = mx.stop_gradient(
+                mx.eye(vocabulary_size)[mx.argmax(flat_probs, axis=-1)]
+            )
+            commitment = commitment - mx.mean(
+                mx.sum(hard_targets * mx.log(flat_probs + 1e-8), axis=-1)
+            )
+        return commitment / len(probabilities)
+
+    def sender_agreement_loss(sender_probabilities: list[list[mx.array]]) -> mx.array:
+        if len(sender_probabilities) <= 1:
+            return mx.array(0.0)
+        agreement = mx.array(0.0)
+        for slot in range(slots):
+            slot_probs = [sender_probs[slot] for sender_probs in sender_probabilities]
+            mean_probs = slot_probs[0]
+            for probs in slot_probs[1:]:
+                mean_probs = mean_probs + probs
+            mean_probs = mean_probs / len(slot_probs)
+            for probs in slot_probs:
+                agreement = agreement + mx.mean(
+                    (probs - mx.stop_gradient(mean_probs)) ** 2
+                )
+        return agreement / (slots * len(sender_probabilities))
+
+    def regularizer_loss(
+        sender_probabilities: list[list[mx.array]],
+        *,
+        commitment_weight: float,
+    ) -> mx.array:
+        uniform = 1.0 / vocabulary_size
+        balance_loss = mx.array(0.0)
+        entropy = mx.array(0.0)
+        commitment = mx.array(0.0)
+        for probabilities in sender_probabilities:
+            commitment = commitment + message_commitment_loss(probabilities)
+            for probs in probabilities:
+                flat_probs = mx.reshape(probs, (-1, probs.shape[-1]))
+                balance_loss = balance_loss + mx.sum(
+                    (mx.mean(flat_probs, axis=0) - uniform) ** 2
+                )
+                entropy = entropy - mx.mean(
+                    mx.sum(flat_probs * mx.log(flat_probs + 1e-8), axis=-1)
+                )
+        scale = len(sender_probabilities) * slots
+        return (
+            balance_weight * balance_loss / scale
+            + entropy_weight * entropy / scale
+            + commitment_weight * commitment / len(sender_probabilities)
+            + sender_agreement_weight * sender_agreement_loss(sender_probabilities)
+        )
+
+    def score_pretrain_loss_fn(
+        batch_features: mx.array,
+        batch_score_targets: mx.array,
+    ) -> mx.array:
+        score_loss = mx.array(0.0)
+        sender_probabilities: list[list[mx.array]] = []
+        for sender_index in range(model.population_size):
+            messages, probabilities = model.message(
+                sender_index,
+                batch_features,
+                temperature=message_temperature,
+                hard=True,
+            )
+            sender_probabilities.append(probabilities)
+            predicted_scores = model.score_messages(messages)
+            score_loss = score_loss + mx.mean(
+                (predicted_scores - batch_score_targets) ** 2
+            )
+        return score_loss / model.population_size + regularizer_loss(
+            sender_probabilities,
+            commitment_weight=pretrain_commitment_weight,
+        )
+
+    def loss_fn(batch_features: mx.array, batch_targets: mx.array) -> mx.array:
+        choice_loss = mx.array(0.0)
+        sender_probabilities: list[list[mx.array]] = []
+        for sender_index in range(model.population_size):
+            messages, probabilities = model.message(
+                sender_index,
+                batch_features,
+                temperature=message_temperature,
+                hard=True,
+            )
+            sender_probabilities.append(probabilities)
+            logits = model.receive(messages)
+            log_probs = logits - mx.logsumexp(logits, axis=-1, keepdims=True)
+            selected = mx.sum(
+                log_probs * mx.eye(option_count)[batch_targets],
+                axis=-1,
+            )
+            choice_loss = choice_loss - mx.mean(selected)
+        return choice_loss / model.population_size + regularizer_loss(
+            sender_probabilities,
+            commitment_weight=message_commitment_weight,
+        )
+
+    if score_pretrain_epochs > 0:
+        score_pretrain_loss_and_grad = nn.value_and_grad(model, score_pretrain_loss_fn)
+        for _epoch in range(score_pretrain_epochs):
+            rng.shuffle(indices)
+            for start in range(0, sample_count, max(1, batch_size)):
+                batch = mx.array(
+                    indices[start : start + max(1, batch_size)],
+                    dtype=mx.int32,
+                )
+                loss, grads = score_pretrain_loss_and_grad(
+                    features[batch],
+                    normalized_score_targets[batch],
+                )
+                optimizer.update(model, grads)
+                mx.eval(model.parameters(), optimizer.state, loss)
+
+    loss_and_grad = nn.value_and_grad(model, loss_fn)
+    for _epoch in range(max(1, epochs)):
+        rng.shuffle(indices)
+        for start in range(0, sample_count, max(1, batch_size)):
+            batch = mx.array(
+                indices[start : start + max(1, batch_size)],
+                dtype=mx.int32,
+            )
+            loss, grads = loss_and_grad(
+                features[batch],
+                dataset.target_options[batch],
+            )
+            optimizer.update(model, grads)
+            mx.eval(model.parameters(), optimizer.state, loss)
+
+    return TrainedOptionPopulationMediator(
+        model=model,
+        feature_mean=feature_mean,
+        feature_std=feature_std,
+    )
+
+
 def evaluate_option_mediator(
     trained: TrainedOptionMediator,
     dataset: OptionMediationDataset,
@@ -1029,6 +1343,26 @@ def evaluate_option_mediator(
 ) -> OptionMediationResult:
     features = (dataset.features - trained.feature_mean) / trained.feature_std
     messages, _probabilities = trained.model.message(features, hard=True)
+    logits = trained.model.receive(messages)
+    return _option_mediation_result_from_messages(
+        messages,
+        logits,
+        dataset,
+        model_control=model_control,
+        intervention=intervention,
+    )
+
+
+def evaluate_option_population_mediator(
+    trained: TrainedOptionPopulationMediator,
+    dataset: OptionMediationDataset,
+    *,
+    sender_index: int,
+    model_control: str,
+    intervention: str,
+) -> OptionMediationResult:
+    features = (dataset.features - trained.feature_mean) / trained.feature_std
+    messages, _probabilities = trained.model.message(sender_index, features, hard=True)
     logits = trained.model.receive(messages)
     return _option_mediation_result_from_messages(
         messages,
@@ -1051,6 +1385,93 @@ def evaluate_option_receiver_transfer(
         dataset.features - trained_sender.feature_mean
     ) / trained_sender.feature_std
     messages, _probabilities = trained_sender.model.message(features, hard=True)
+    logits = trained_receiver.model.receive(messages)
+    return _option_mediation_result_from_messages(
+        messages,
+        logits,
+        dataset,
+        model_control=model_control,
+        intervention=intervention,
+    )
+
+
+def train_option_receiver_for_population_sender(
+    trained_sender: TrainedOptionPopulationMediator,
+    dataset: OptionMediationDataset,
+    *,
+    sender_index: int,
+    receiver_size: int = 96,
+    epochs: int = 40,
+    batch_size: int = 128,
+    learning_rate: float = 1e-3,
+    max_samples: int | None = None,
+    seed: int = 1,
+) -> TrainedOptionReceiver:
+    rng = np.random.default_rng(seed)
+    mx.random.seed(seed)
+    features = (
+        dataset.features - trained_sender.feature_mean
+    ) / trained_sender.feature_std
+    messages, _probabilities = trained_sender.model.message(
+        sender_index,
+        features,
+        hard=True,
+    )
+    frozen_messages = [mx.stop_gradient(message) for message in messages]
+    sample_count = int(features.shape[0])
+    train_indices = np.arange(sample_count)
+    if max_samples is not None and max_samples > 0 and max_samples < sample_count:
+        train_indices = rng.choice(train_indices, size=max_samples, replace=False)
+    option_count = int(dataset.features.shape[1])
+    receiver = OptionMediationReceiver(
+        option_count,
+        receiver_size=receiver_size,
+        slots=trained_sender.model.slots,
+        vocabulary_size=trained_sender.model.vocabulary_size,
+    )
+    optimizer = optim.Adam(learning_rate=learning_rate)
+
+    def loss_fn(batch_messages: list[mx.array], batch_targets: mx.array) -> mx.array:
+        logits = receiver.receive(batch_messages)
+        log_probs = logits - mx.logsumexp(logits, axis=-1, keepdims=True)
+        selected = mx.sum(log_probs * mx.eye(option_count)[batch_targets], axis=-1)
+        return -mx.mean(selected)
+
+    loss_and_grad = nn.value_and_grad(receiver, loss_fn)
+    for _epoch in range(max(1, epochs)):
+        rng.shuffle(train_indices)
+        for start in range(0, len(train_indices), max(1, batch_size)):
+            batch = mx.array(
+                train_indices[start : start + max(1, batch_size)],
+                dtype=mx.int32,
+            )
+            loss, grads = loss_and_grad(
+                [message[batch] for message in frozen_messages],
+                dataset.target_options[batch],
+            )
+            optimizer.update(receiver, grads)
+            mx.eval(receiver.parameters(), optimizer.state, loss)
+
+    return TrainedOptionReceiver(model=receiver)
+
+
+def evaluate_option_population_receiver_transfer(
+    trained_sender: TrainedOptionPopulationMediator,
+    trained_receiver: TrainedOptionReceiver,
+    dataset: OptionMediationDataset,
+    *,
+    sender_index: int,
+    model_control: str,
+    intervention: str,
+) -> OptionMediationResult:
+    features = (
+        dataset.features - trained_sender.feature_mean
+    ) / trained_sender.feature_std
+    messages, _probabilities = trained_sender.model.message(
+        sender_index,
+        features,
+        hard=True,
+    )
     logits = trained_receiver.model.receive(messages)
     return _option_mediation_result_from_messages(
         messages,
