@@ -20,6 +20,7 @@ from .option_mediation import (
     OPTION_MEDIATION_TARGET_MODES,
     OPTION_MEDIATION_VOCABULARY,
     collect_option_mediation_source,
+    evaluate_option_field_use_for_population_sender,
     evaluate_option_mediator,
     evaluate_option_population_mediator,
     evaluate_option_population_receiver_transfer,
@@ -32,6 +33,7 @@ from .option_mediation import (
     predicted_future_option_scores,
     predicted_future_option_result,
     staged_option_population_from_mediator,
+    train_option_field_action_receiver_for_population_sender,
     train_option_population_mediator,
     train_option_receiver_for_sender,
     train_option_receiver_for_population_sender,
@@ -77,6 +79,10 @@ class OptionWorldMediationReplicationRow:
     trained_world_final_need_mse_after: float
     trained_world_trend_before: float
     trained_world_trend_after: float
+    field_use_mean_accuracy: float
+    field_use_positive_delta_accuracy: float
+    field_use_relative_value_accuracy: float
+    field_use_mean_selected_delta: float
 
 
 @dataclass(frozen=True)
@@ -102,7 +108,9 @@ def header() -> str:
         "relative_value_pattern_mutual_information,"
         "world_final_need_mse,world_trend_accuracy,trained_world_final_need_mse_before,"
         "trained_world_final_need_mse_after,trained_world_trend_before,"
-        "trained_world_trend_after"
+        "trained_world_trend_after,field_use_mean_accuracy,"
+        "field_use_positive_delta_accuracy,field_use_relative_value_accuracy,"
+        "field_use_mean_selected_delta"
     )
 
 
@@ -136,6 +144,10 @@ def format_row(row: OptionWorldMediationReplicationRow) -> str:
             f"{row.trained_world_final_need_mse_after:.6f}",
             f"{row.trained_world_trend_before:.4f}",
             f"{row.trained_world_trend_after:.4f}",
+            f"{row.field_use_mean_accuracy:.4f}",
+            f"{row.field_use_positive_delta_accuracy:.4f}",
+            f"{row.field_use_relative_value_accuracy:.4f}",
+            f"{row.field_use_mean_selected_delta:.6f}",
         ]
     )
 
@@ -680,12 +692,34 @@ def _mediation_rows(
             )
         rows: list[OptionWorldMediationReplicationRow] = []
         for sender_index in range(args.population_size):
+            field_use_result = None
+            if args.field_use_receiver_epochs > 0:
+                field_use_receiver = train_option_field_action_receiver_for_population_sender(
+                    trained_population,
+                    training_dataset,
+                    sender_index=sender_index,
+                    receiver_size=args.receiver_size,
+                    epochs=args.field_use_receiver_epochs,
+                    batch_size=args.mediation_batch_size,
+                    learning_rate=args.mediation_learning_rate,
+                    max_samples=args.field_use_receiver_samples,
+                    seed=seed + 90_000 + sender_index,
+                )
             for intervention in args.interventions:
                 intervened = intervene_option_mediation_features(
                     eval_dataset,
                     intervention=intervention,
                     seed=seed + 20_000,
                 )
+                field_use_result = None
+                if args.field_use_receiver_epochs > 0:
+                    field_use_result = evaluate_option_field_use_for_population_sender(
+                        trained_population,
+                        field_use_receiver,
+                        intervened,
+                        sender_index=sender_index,
+                        model_control=f"{model_control}_field_use_s{sender_index}",
+                    )
                 result = evaluate_option_population_mediator(
                     trained_population,
                     intervened,
@@ -703,6 +737,7 @@ def _mediation_rows(
                         after_world_final_need_mse=after_world_final_need_mse,
                         before_world_trend_accuracy=before_world_trend_accuracy,
                         after_world_trend_accuracy=after_world_trend_accuracy,
+                        field_use_result=field_use_result,
                     )
                 )
             if args.heldout_receiver_epochs > 0:
@@ -940,6 +975,7 @@ def _result_row(
     after_world_final_need_mse: float,
     before_world_trend_accuracy: float,
     after_world_trend_accuracy: float,
+    field_use_result=None,
 ) -> OptionWorldMediationReplicationRow:
     return OptionWorldMediationReplicationRow(
         seed=seed,
@@ -977,6 +1013,24 @@ def _result_row(
         trained_world_final_need_mse_after=after_world_final_need_mse,
         trained_world_trend_before=before_world_trend_accuracy,
         trained_world_trend_after=after_world_trend_accuracy,
+        field_use_mean_accuracy=(
+            0.0 if field_use_result is None else field_use_result.mean_accuracy
+        ),
+        field_use_positive_delta_accuracy=(
+            0.0
+            if field_use_result is None
+            else field_use_result.positive_delta_accuracy
+        ),
+        field_use_relative_value_accuracy=(
+            0.0
+            if field_use_result is None
+            else field_use_result.relative_value_accuracy
+        ),
+        field_use_mean_selected_delta=(
+            0.0
+            if field_use_result is None
+            else field_use_result.mean_selected_delta
+        ),
     )
 
 
@@ -1129,6 +1183,8 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--score-value-code-slot", type=int, default=1)
     parser.add_argument("--heldout-receiver-epochs", type=int, default=0)
     parser.add_argument("--heldout-receiver-samples", type=int, default=None)
+    parser.add_argument("--field-use-receiver-epochs", type=int, default=0)
+    parser.add_argument("--field-use-receiver-samples", type=int, default=None)
     parser.add_argument(
         "--heldout-receiver-score-distillation-weight",
         type=float,

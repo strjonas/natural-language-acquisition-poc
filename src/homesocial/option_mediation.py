@@ -105,6 +105,20 @@ class OptionMediationResult:
     target_counts: str
 
 
+@dataclass(frozen=True)
+class OptionFieldUseResult:
+    model_control: str
+    sender_index: int
+    samples: int
+    positive_delta_accuracy: float
+    relative_value_accuracy: float
+    mean_accuracy: float
+    positive_delta_selected_rate: float
+    relative_value_selected_rate: float
+    mean_selected_delta: float
+    mean_oracle_delta: float
+
+
 class OptionMediationProtocol(nn.Module):
     def __init__(
         self,
@@ -411,6 +425,35 @@ class OptionMediationFieldReceiver(nn.Module):
     def receive(self, messages: list[mx.array]) -> tuple[mx.array, mx.array]:
         hidden = self.receive_hidden(messages)
         return self.positive_delta(hidden), self.relative_value(hidden)
+
+
+class OptionFieldActionReceiver(nn.Module):
+    def __init__(
+        self,
+        option_count: int,
+        *,
+        receiver_size: int = 96,
+        slots: int = OPTION_MEDIATION_SLOTS,
+        vocabulary_size: int = OPTION_MEDIATION_VOCABULARY,
+        query_count: int = 2,
+    ) -> None:
+        super().__init__()
+        self.query_count = query_count
+        receiver_input = option_count * slots * vocabulary_size + query_count
+        self.receiver = nn.Linear(receiver_input, receiver_size)
+        self.receiver_hidden = nn.Linear(receiver_size, receiver_size)
+        self.choice = nn.Linear(receiver_size, option_count)
+
+    def receive(self, messages: list[mx.array], queries: mx.array) -> mx.array:
+        flat_messages = [
+            mx.reshape(message, (message.shape[0], -1))
+            for message in messages
+        ]
+        query_features = mx.eye(self.query_count)[queries]
+        inputs = mx.concatenate([*flat_messages, query_features], axis=-1)
+        hidden = nn.relu(self.receiver(inputs))
+        hidden = hidden + nn.relu(self.receiver_hidden(hidden))
+        return self.choice(hidden)
 
 
 def collect_option_mediation_dataset(
@@ -1939,6 +1982,142 @@ def evaluate_option_population_receiver_transfer(
     )
 
 
+def train_option_field_action_receiver_for_population_sender(
+    trained_sender: TrainedOptionPopulationMediator,
+    dataset: OptionMediationDataset,
+    *,
+    sender_index: int,
+    receiver_size: int = 96,
+    epochs: int = 40,
+    batch_size: int = 128,
+    learning_rate: float = 1e-3,
+    max_samples: int | None = None,
+    seed: int = 1,
+) -> OptionFieldActionReceiver:
+    rng = np.random.default_rng(seed)
+    mx.random.seed(seed)
+    features = (
+        dataset.features - trained_sender.feature_mean
+    ) / trained_sender.feature_std
+    messages, _probabilities = trained_sender.model.message(
+        sender_index,
+        features,
+        hard=True,
+    )
+    frozen_messages = [mx.stop_gradient(message) for message in messages]
+    sample_count = int(features.shape[0])
+    option_count = int(dataset.features.shape[1])
+    positive_labels, relative_labels = _option_field_use_labels(dataset)
+    acceptable = np.concatenate([positive_labels, relative_labels], axis=0)
+    query_indices = np.concatenate(
+        [
+            np.zeros((sample_count,), dtype=np.int32),
+            np.ones((sample_count,), dtype=np.int32),
+        ]
+    )
+    sample_indices = np.concatenate(
+        [np.arange(sample_count), np.arange(sample_count)]
+    )
+    train_indices = np.arange(sample_indices.shape[0])
+    if max_samples is not None and max_samples > 0 and max_samples < train_indices.size:
+        train_indices = rng.choice(train_indices, size=max_samples, replace=False)
+    receiver = OptionFieldActionReceiver(
+        option_count,
+        receiver_size=receiver_size,
+        slots=trained_sender.model.slots,
+        vocabulary_size=trained_sender.model.vocabulary_size,
+    )
+    optimizer = optim.Adam(learning_rate=learning_rate)
+    queries = mx.array(query_indices, dtype=mx.int32)
+    sample_lookup = mx.array(sample_indices, dtype=mx.int32)
+    acceptable_targets = mx.array(acceptable.astype(np.float32), dtype=mx.float32)
+
+    def loss_fn(
+        batch_messages: list[mx.array],
+        batch_queries: mx.array,
+        batch_acceptable: mx.array,
+    ) -> mx.array:
+        logits = receiver.receive(batch_messages, batch_queries)
+        log_probs = logits - mx.logsumexp(logits, axis=-1, keepdims=True)
+        masked = mx.where(batch_acceptable > 0.0, log_probs, mx.array(-1e9))
+        return -mx.mean(mx.logsumexp(masked, axis=-1))
+
+    loss_and_grad = nn.value_and_grad(receiver, loss_fn)
+    for _epoch in range(max(1, epochs)):
+        rng.shuffle(train_indices)
+        for start in range(0, len(train_indices), max(1, batch_size)):
+            batch_np = train_indices[start : start + max(1, batch_size)]
+            batch = mx.array(batch_np, dtype=mx.int32)
+            message_batch = sample_lookup[batch]
+            loss, grads = loss_and_grad(
+                [message[message_batch] for message in frozen_messages],
+                queries[batch],
+                acceptable_targets[batch],
+            )
+            optimizer.update(receiver, grads)
+            mx.eval(receiver.parameters(), optimizer.state, loss)
+    return receiver
+
+
+def evaluate_option_field_use_for_population_sender(
+    trained_sender: TrainedOptionPopulationMediator,
+    receiver: OptionFieldActionReceiver,
+    dataset: OptionMediationDataset,
+    *,
+    sender_index: int,
+    model_control: str,
+) -> OptionFieldUseResult:
+    features = (
+        dataset.features - trained_sender.feature_mean
+    ) / trained_sender.feature_std
+    messages, _probabilities = trained_sender.model.message(
+        sender_index,
+        features,
+        hard=True,
+    )
+    sample_count = int(features.shape[0])
+    values = np.asarray(dataset.option_values, dtype=np.float32)
+    current = np.asarray(dataset.current_lowest, dtype=np.float32)
+    positive_labels, relative_labels = _option_field_use_labels(dataset)
+
+    positive_queries = mx.zeros((sample_count,), dtype=mx.int32)
+    relative_queries = mx.ones((sample_count,), dtype=mx.int32)
+    positive_predictions = np.asarray(
+        mx.argmax(receiver.receive(messages, positive_queries), axis=-1),
+        dtype=np.int32,
+    )
+    relative_predictions = np.asarray(
+        mx.argmax(receiver.receive(messages, relative_queries), axis=-1),
+        dtype=np.int32,
+    )
+    rows = np.arange(sample_count)
+    positive_correct = positive_labels[rows, positive_predictions]
+    relative_correct = relative_labels[rows, relative_predictions]
+    selected_positive_values = values[rows, positive_predictions]
+    selected_relative_values = values[rows, relative_predictions]
+    selected_deltas = np.concatenate(
+        [
+            selected_positive_values - current,
+            selected_relative_values - current,
+        ]
+    )
+    oracle_delta = np.max(values, axis=1) - current
+    return OptionFieldUseResult(
+        model_control=model_control,
+        sender_index=sender_index,
+        samples=sample_count,
+        positive_delta_accuracy=float(np.mean(positive_correct)),
+        relative_value_accuracy=float(np.mean(relative_correct)),
+        mean_accuracy=float(
+            0.5 * (np.mean(positive_correct) + np.mean(relative_correct))
+        ),
+        positive_delta_selected_rate=float(np.mean(selected_positive_values > current)),
+        relative_value_selected_rate=float(np.mean(relative_correct)),
+        mean_selected_delta=float(np.mean(selected_deltas)),
+        mean_oracle_delta=float(np.mean(oracle_delta)),
+    )
+
+
 def _option_mediation_result_from_messages(
     messages: list[mx.array],
     logits: mx.array,
@@ -2007,6 +2186,19 @@ def _option_mediation_result_from_messages(
         ),
         target_counts=target_count_string(dataset),
     )
+
+
+def _option_field_use_labels(
+    dataset: OptionMediationDataset,
+) -> tuple[np.ndarray, np.ndarray]:
+    values = np.asarray(dataset.option_values, dtype=np.float32)
+    current = np.asarray(dataset.current_lowest, dtype=np.float32)
+    positive = values > current[:, None]
+    if not np.all(np.any(positive, axis=1)):
+        best = np.argmax(values, axis=1)
+        positive[np.arange(values.shape[0]), best] = True
+    relative = values >= np.median(values, axis=1, keepdims=True)
+    return positive, relative
 
 
 def majority_option_result(

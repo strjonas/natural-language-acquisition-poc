@@ -629,6 +629,12 @@ Receiver-decoded field pressure was also negative: independent field receivers
 trained on the base sender reduced new-sender held-out transfer at weights
 `0.1` and `0.02`. The next version should make these fields operationally useful
 inside the interaction itself, rather than adding auxiliary field losses.
+Added that interaction-level field-use evaluation. A query-conditioned receiver
+can use current staged messages to answer relative-value queries well and its
+performance degrades under `shuffle_delta`/`negate_delta`, but positive
+body-improvement queries remain weak. This is now the next concrete bottleneck:
+messages must support useful self-improvement choices, not only relative option
+ordering.
 
 ## Commands
 

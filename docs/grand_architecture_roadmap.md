@@ -594,6 +594,9 @@ Next concrete implementation:
    hand-assigned code labels. A first auxiliary field-receiver version also
    hurt transfer, which strengthens the case for making field reports causally
    useful in the environment instead of adding another offline decoding loss.
+   A first query-conditioned field-use receiver now measures that directly:
+   current messages support relative-value queries and degrade under delta
+   interventions, but remain weak for positive body-improvement choices.
 7. Decide whether to scale the environment to Crafter before adding large
    language generation.
 

@@ -20,8 +20,10 @@ from homesocial.option_mediation import (
     evaluate_option_mediator,
     evaluate_option_population_mediator,
     evaluate_option_population_receiver_transfer,
+    evaluate_option_field_use_for_population_sender,
     evaluate_option_receiver_transfer,
     train_option_population_mediator,
+    train_option_field_action_receiver_for_population_sender,
     train_option_receiver_for_sender,
     train_option_receiver_for_population_sender,
 )
@@ -629,6 +631,50 @@ class OptionMediationTests(unittest.TestCase):
         self.assertEqual(result.samples, 5)
         self.assertEqual(result.model_control, "population_heldout_receiver_s0")
         self.assertGreaterEqual(result.message_codes_used, 1)
+
+    def test_option_field_action_receiver_for_population_sender_runs(self):
+        values = np.array(
+            [
+                [0.6, 0.2, 0.4, 0.1, 0.3],
+                [0.1, 0.7, 0.2, 0.5, 0.4],
+                [0.2, 0.3, 0.8, 0.1, 0.6],
+                [0.5, 0.2, 0.1, 0.9, 0.4],
+                [0.3, 0.4, 0.1, 0.2, 0.8],
+            ],
+            dtype=np.float32,
+        )
+        dataset = _dataset([0, 1, 2, 3, 4], values=values)
+        trained = train_option_population_mediator(
+            dataset,
+            population_size=2,
+            hidden_size=12,
+            receiver_size=12,
+            epochs=1,
+            batch_size=5,
+            seed=31,
+        )
+        receiver = train_option_field_action_receiver_for_population_sender(
+            trained,
+            dataset,
+            sender_index=0,
+            receiver_size=12,
+            epochs=1,
+            batch_size=5,
+            seed=32,
+        )
+        result = evaluate_option_field_use_for_population_sender(
+            trained,
+            receiver,
+            dataset,
+            sender_index=0,
+            model_control="field_use",
+        )
+
+        self.assertEqual(result.samples, 5)
+        self.assertEqual(result.model_control, "field_use")
+        self.assertGreaterEqual(result.mean_accuracy, 0.0)
+        self.assertLessEqual(result.mean_accuracy, 1.0)
+        self.assertTrue(np.isfinite(result.mean_selected_delta))
 
     def test_staged_option_population_from_mediator_runs(self):
         dataset = _dataset([0, 1, 2, 3, 4])
