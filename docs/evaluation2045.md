@@ -470,6 +470,16 @@ information was nearly identical (`0.069` versus `0.070` nats), while
 choice-code information was only moderately higher (`0.119` versus `0.114`
 nats).
 
+A direct branch-code target auxiliary loss was tested and failed to improve the
+best seed. Balanced `--code-target-weight 0.05` reached only `0.5734` accuracy,
+and `0.005` reached `0.5672`, both below the `0.6031` pretrain-only baseline and
+without improving target-code mutual information. Row-pattern diagnostics also
+showed that full message tuples are mostly one-off patterns: the baseline used
+573 patterns on 640 eval samples with only `0.181` reuse, while a shuffled-delta
+control had high target-pattern MI despite only `0.2203` accuracy. The next
+useful direction is stable codebook/replay or transfer-style receiver alignment,
+not more direct branch-target BCE shaping.
+
 ---
 
 ## M6: Reflective Report With Parrot Guards

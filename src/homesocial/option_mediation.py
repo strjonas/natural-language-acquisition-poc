@@ -77,6 +77,10 @@ class OptionMediationResult:
     dominant_message_code_fraction: float
     target_code_mutual_information: float
     choice_code_mutual_information: float
+    message_patterns_used: int
+    reused_message_pattern_fraction: float
+    target_pattern_mutual_information: float
+    choice_pattern_mutual_information: float
     target_counts: str
 
 
@@ -105,6 +109,7 @@ class OptionMediationProtocol(nn.Module):
         self.receiver_hidden = nn.Linear(receiver_size, receiver_size)
         self.choice = nn.Linear(receiver_size, option_count)
         self.score = nn.Linear(receiver_size, option_count)
+        self.code_target = nn.Linear(slots * vocabulary_size, 1)
 
     def message(
         self,
@@ -147,6 +152,16 @@ class OptionMediationProtocol(nn.Module):
 
     def score_messages(self, messages: list[mx.array]) -> mx.array:
         return self.score(self.receive_hidden(messages))
+
+    def code_target_logits(self, messages: list[mx.array]) -> mx.array:
+        batch_size, option_count = messages[0].shape[:2]
+        branch_messages = [
+            mx.reshape(message, (batch_size * option_count, -1))
+            for message in messages
+        ]
+        inputs = mx.concatenate(branch_messages, axis=-1)
+        logits = self.code_target(inputs)
+        return mx.reshape(logits, (batch_size, option_count))
 
     def __call__(self, features: mx.array) -> tuple[mx.array, list[mx.array]]:
         messages, probabilities = self.message(features, hard=True)
@@ -427,6 +442,7 @@ def train_option_mediator(
     score_distillation_temperature: float = 1.0,
     score_rank_weight: float = 0.0,
     score_reconstruction_weight: float = 0.0,
+    code_target_weight: float = 0.0,
     seed: int = 1,
 ) -> TrainedOptionMediator:
     rng = np.random.default_rng(seed)
@@ -497,9 +513,18 @@ def train_option_mediator(
             )
         return commitment / len(probabilities)
 
+    def code_target_loss(messages: list[mx.array], batch_targets: mx.array) -> mx.array:
+        logits = model.code_target_logits(messages)
+        labels = mx.eye(option_count)[batch_targets]
+        positive_weight = float(max(1, option_count - 1))
+        weights = mx.where(labels > 0.0, positive_weight, 1.0)
+        losses = mx.logaddexp(mx.array(0.0), logits) - labels * logits
+        return mx.sum(weights * losses) / (mx.sum(weights) + 1e-6)
+
     def score_pretrain_loss_fn(
         batch_features: mx.array,
         batch_score_targets: mx.array,
+        batch_targets: mx.array,
     ) -> mx.array:
         messages, probabilities = model.message(
             batch_features,
@@ -521,6 +546,7 @@ def train_option_mediator(
             + score_rank_weight * rank_loss
             + balance_weight * balance_loss / len(probabilities)
             + pretrain_commitment_weight * message_commitment_loss(probabilities)
+            + code_target_weight * code_target_loss(messages, batch_targets)
         )
 
     def loss_fn(
@@ -576,6 +602,7 @@ def train_option_mediator(
             + message_commitment_weight * message_commitment_loss(probabilities)
             + score_reconstruction_weight * score_loss
             + score_rank_weight * rank_loss
+            + code_target_weight * code_target_loss(messages, batch_targets)
         )
 
     def frozen_receiver_loss_fn(
@@ -607,6 +634,7 @@ def train_option_mediator(
             loss, grads = score_pretrain_loss_and_grad(
                 features[batch],
                 normalized_score_targets[batch],
+                dataset.target_options[batch],
             )
             optimizer.update(model, grads)
             mx.eval(model.parameters(), optimizer.state, loss)
@@ -685,6 +713,8 @@ def evaluate_option_mediator(
     oracle_values = np.max(values, axis=1)
     codes = _message_codes(messages)
     code_entropy, dominant_code_fraction = _message_code_stats(codes)
+    pattern_ids, patterns_used = _message_pattern_ids(codes)
+    reused_pattern_fraction = _reused_pattern_fraction(pattern_ids)
     option_indices = np.arange(values.shape[1], dtype=np.int32)[None, :]
     return OptionMediationResult(
         model_control=model_control,
@@ -706,6 +736,16 @@ def evaluate_option_mediator(
         choice_code_mutual_information=_binary_code_mutual_information(
             codes,
             option_indices == choices[:, None],
+        ),
+        message_patterns_used=patterns_used,
+        reused_message_pattern_fraction=reused_pattern_fraction,
+        target_pattern_mutual_information=_categorical_mutual_information(
+            pattern_ids,
+            targets,
+        ),
+        choice_pattern_mutual_information=_categorical_mutual_information(
+            pattern_ids,
+            choices,
         ),
         target_counts=target_count_string(dataset),
     )
@@ -740,6 +780,10 @@ def majority_option_result(
         dominant_message_code_fraction=0.0,
         target_code_mutual_information=0.0,
         choice_code_mutual_information=0.0,
+        message_patterns_used=0,
+        reused_message_pattern_fraction=0.0,
+        target_pattern_mutual_information=0.0,
+        choice_pattern_mutual_information=0.0,
         target_counts=target_count_string(eval_dataset),
     )
 
@@ -770,6 +814,10 @@ def predicted_future_option_result(
         dominant_message_code_fraction=0.0,
         target_code_mutual_information=0.0,
         choice_code_mutual_information=0.0,
+        message_patterns_used=0,
+        reused_message_pattern_fraction=0.0,
+        target_pattern_mutual_information=0.0,
+        choice_pattern_mutual_information=0.0,
         target_counts=target_count_string(dataset),
     )
 
@@ -951,6 +999,23 @@ def _message_code_stats(codes: np.ndarray) -> tuple[float, float]:
     return entropy, dominant_fraction
 
 
+def _message_pattern_ids(codes: np.ndarray) -> tuple[np.ndarray, int]:
+    _patterns, inverse = np.unique(
+        np.asarray(codes, dtype=np.int64),
+        axis=0,
+        return_inverse=True,
+    )
+    return inverse.astype(np.int64), int(len(_patterns))
+
+
+def _reused_pattern_fraction(pattern_ids: np.ndarray) -> float:
+    ids = np.asarray(pattern_ids, dtype=np.int64).reshape(-1)
+    if ids.size == 0:
+        return 0.0
+    counts = np.bincount(ids)
+    return float(np.mean(counts[ids] > 1))
+
+
 def _binary_code_mutual_information(
     codes: np.ndarray,
     positives: np.ndarray,
@@ -976,6 +1041,30 @@ def _binary_code_mutual_information(
     return float(np.sum(joint_probability[mask] * np.log(joint_probability[mask] / independent[mask])))
 
 
+def _categorical_mutual_information(left: np.ndarray, right: np.ndarray) -> float:
+    left_values = np.asarray(left, dtype=np.int64).reshape(-1)
+    right_values = np.asarray(right, dtype=np.int64).reshape(-1)
+    if left_values.size == 0 or left_values.shape != right_values.shape:
+        return 0.0
+    left_ids = np.unique(left_values, return_inverse=True)[1]
+    right_ids = np.unique(right_values, return_inverse=True)[1]
+    left_count = int(np.max(left_ids)) + 1
+    right_count = int(np.max(right_ids)) + 1
+    joint = np.bincount(
+        left_ids * right_count + right_ids,
+        minlength=left_count * right_count,
+    ).reshape((left_count, right_count))
+    total = float(np.sum(joint))
+    if total == 0.0:
+        return 0.0
+    joint_probability = joint / total
+    left_probability = np.sum(joint_probability, axis=1, keepdims=True)
+    right_probability = np.sum(joint_probability, axis=0, keepdims=True)
+    independent = left_probability * right_probability
+    mask = joint_probability > 0.0
+    return float(np.sum(joint_probability[mask] * np.log(joint_probability[mask] / independent[mask])))
+
+
 def _row(result: OptionMediationResult) -> str:
     return ",".join(
         [
@@ -993,6 +1082,10 @@ def _row(result: OptionMediationResult) -> str:
             f"{result.dominant_message_code_fraction:.6f}",
             f"{result.target_code_mutual_information:.6f}",
             f"{result.choice_code_mutual_information:.6f}",
+            str(result.message_patterns_used),
+            f"{result.reused_message_pattern_fraction:.6f}",
+            f"{result.target_pattern_mutual_information:.6f}",
+            f"{result.choice_pattern_mutual_information:.6f}",
             result.target_counts,
         ]
     )
@@ -1011,6 +1104,8 @@ def main() -> None:
         "mean_oracle_lowest,mean_regret,mean_chosen_delta,mean_oracle_delta,"
         "message_codes_used,message_code_entropy,dominant_message_code_fraction,"
         "target_code_mutual_information,choice_code_mutual_information,"
+        "message_patterns_used,reused_message_pattern_fraction,"
+        "target_pattern_mutual_information,choice_pattern_mutual_information,"
         "target_counts"
     )
     train_source = collect_option_mediation_source(
@@ -1111,6 +1206,7 @@ def main() -> None:
             score_distillation_temperature=args.score_distillation_temperature,
             score_rank_weight=args.score_rank_weight,
             score_reconstruction_weight=args.score_reconstruction_weight,
+            code_target_weight=args.code_target_weight,
             seed=args.seed,
         )
         for intervention in args.interventions:
@@ -1237,6 +1333,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--score-distillation-temperature", type=float, default=1.0)
     parser.add_argument("--score-rank-weight", type=float, default=0.0)
     parser.add_argument("--score-reconstruction-weight", type=float, default=0.0)
+    parser.add_argument("--code-target-weight", type=float, default=0.0)
     parser.add_argument(
         "--interventions",
         nargs="+",

@@ -56,6 +56,10 @@ class OptionWorldMediationReplicationRow:
     dominant_message_code_fraction: float
     target_code_mutual_information: float
     choice_code_mutual_information: float
+    message_patterns_used: int
+    reused_message_pattern_fraction: float
+    target_pattern_mutual_information: float
+    choice_pattern_mutual_information: float
     world_final_need_mse: float
     world_trend_accuracy: float
     trained_world_final_need_mse_before: float
@@ -80,6 +84,8 @@ def header() -> str:
         "mean_chosen_delta,mean_oracle_delta,message_codes_used,"
         "message_code_entropy,dominant_message_code_fraction,"
         "target_code_mutual_information,choice_code_mutual_information,"
+        "message_patterns_used,reused_message_pattern_fraction,"
+        "target_pattern_mutual_information,choice_pattern_mutual_information,"
         "world_final_need_mse,world_trend_accuracy,trained_world_final_need_mse_before,"
         "trained_world_final_need_mse_after,trained_world_trend_before,"
         "trained_world_trend_after"
@@ -102,6 +108,10 @@ def format_row(row: OptionWorldMediationReplicationRow) -> str:
             f"{row.dominant_message_code_fraction:.6f}",
             f"{row.target_code_mutual_information:.6f}",
             f"{row.choice_code_mutual_information:.6f}",
+            str(row.message_patterns_used),
+            f"{row.reused_message_pattern_fraction:.6f}",
+            f"{row.target_pattern_mutual_information:.6f}",
+            f"{row.choice_pattern_mutual_information:.6f}",
             f"{row.world_final_need_mse:.6f}",
             f"{row.world_trend_accuracy:.4f}",
             f"{row.trained_world_final_need_mse_before:.6f}",
@@ -571,6 +581,7 @@ def _mediation_rows(
         score_distillation_temperature=args.score_distillation_temperature,
         score_rank_weight=args.score_rank_weight,
         score_reconstruction_weight=args.score_reconstruction_weight,
+        code_target_weight=args.code_target_weight,
         seed=seed,
     )
 
@@ -667,6 +678,10 @@ def _result_row(
         dominant_message_code_fraction=result.dominant_message_code_fraction,
         target_code_mutual_information=result.target_code_mutual_information,
         choice_code_mutual_information=result.choice_code_mutual_information,
+        message_patterns_used=result.message_patterns_used,
+        reused_message_pattern_fraction=result.reused_message_pattern_fraction,
+        target_pattern_mutual_information=result.target_pattern_mutual_information,
+        choice_pattern_mutual_information=result.choice_pattern_mutual_information,
         world_final_need_mse=world_final_need_mse,
         world_trend_accuracy=world_trend_accuracy,
         trained_world_final_need_mse_before=before_world_final_need_mse,
@@ -781,6 +796,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--score-distillation-temperature", type=float, default=1.0)
     parser.add_argument("--score-rank-weight", type=float, default=0.0)
     parser.add_argument("--score-reconstruction-weight", type=float, default=0.0)
+    parser.add_argument("--code-target-weight", type=float, default=0.0)
     return parser.parse_args()
 
 

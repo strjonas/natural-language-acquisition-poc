@@ -209,6 +209,10 @@ class OptionMediationTests(unittest.TestCase):
         self.assertGreater(result.dominant_message_code_fraction, 0.0)
         self.assertGreaterEqual(result.target_code_mutual_information, 0.0)
         self.assertGreaterEqual(result.choice_code_mutual_information, 0.0)
+        self.assertGreaterEqual(result.message_patterns_used, 1)
+        self.assertGreaterEqual(result.reused_message_pattern_fraction, 0.0)
+        self.assertGreaterEqual(result.target_pattern_mutual_information, 0.0)
+        self.assertGreaterEqual(result.choice_pattern_mutual_information, 0.0)
 
     def test_train_option_mediator_accepts_soft_message_training(self):
         dataset = _dataset([0, 1, 2, 3, 4])
@@ -395,6 +399,29 @@ class OptionMediationTests(unittest.TestCase):
 
         self.assertEqual(result.samples, 5)
         self.assertGreaterEqual(result.message_codes_used, 1)
+
+    def test_train_option_mediator_accepts_code_target_loss(self):
+        dataset = _dataset([0, 1, 2, 3, 4])
+
+        trained = train_option_mediator(
+            dataset,
+            hidden_size=12,
+            receiver_size=12,
+            epochs=1,
+            batch_size=5,
+            code_target_weight=0.1,
+            seed=12,
+        )
+        result = evaluate_option_mediator(
+            trained,
+            dataset,
+            model_control="trained",
+            intervention="original",
+        )
+
+        self.assertEqual(result.samples, 5)
+        self.assertGreaterEqual(result.message_codes_used, 1)
+        self.assertGreaterEqual(result.target_code_mutual_information, 0.0)
 
     def test_train_option_mediator_accepts_late_message_commitment(self):
         dataset = _dataset([0, 1, 2, 3, 4])

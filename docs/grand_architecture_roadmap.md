@@ -299,6 +299,11 @@ Completed:
 - message-code diagnostics for mediation CSVs, showing that commitment schedule
   differences are not explained by simple code collapse or target-code mutual
   information on the best m11 seed.
+- row-pattern reuse diagnostics showing that full message tuples are mostly
+  one-off sample patterns, so high row-pattern MI is not yet evidence of a
+  stable shared convention.
+- branch-code target auxiliary loss via `--code-target-weight`, which failed to
+  improve the best pretrain-only compact-message seed.
 
 Not yet passed:
 
@@ -337,6 +342,8 @@ Not yet passed:
 - code semantics and receiver/code alignment diagnostics, because active code
   usage is already broad while compact-message accuracy still trails direct
   self-rank,
+- stable codebook replay or transfer-style receiver alignment, because direct
+  branch-target BCE shaping did not improve code semantics,
 - explicit code stability diagnostics across seeds and independently trained
   bodies, because the current semantics check is still a single-seed comparison,
 - stronger rank-plus-dynamics training that recovers the old world-trend metric

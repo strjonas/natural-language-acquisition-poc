@@ -376,9 +376,11 @@ PYTHONPATH=src python3 -m homesocial.option_world_mediation_replication --checkp
 ```
 
 Mediation CSVs include `message_codes_used`, `message_code_entropy`,
-`dominant_message_code_fraction`, `target_code_mutual_information`, and
-`choice_code_mutual_information` to distinguish code collapse from weak
-sender/receiver semantics.
+`dominant_message_code_fraction`, `target_code_mutual_information`,
+`choice_code_mutual_information`, `message_patterns_used`,
+`reused_message_pattern_fraction`, and row-pattern mutual information fields to
+distinguish code collapse, weak sender/receiver semantics, and one-off pattern
+memorization.
 
 Replicate the strict self-model-targeted commitment setting across independent
 base body checkpoints:
