@@ -1334,6 +1334,110 @@ def train_option_population_mediator(
     )
 
 
+def staged_option_population_from_mediator(
+    trained_base: TrainedOptionMediator,
+    dataset: OptionMediationDataset,
+    *,
+    population_size: int = 2,
+    hidden_size: int = 96,
+    receiver_size: int = 96,
+    epochs: int = 40,
+    batch_size: int = 128,
+    learning_rate: float = 1e-3,
+    message_temperature: float = 0.6,
+    balance_weight: float = 0.02,
+    entropy_weight: float = 0.0,
+    message_commitment_weight: float = 0.0,
+    seed: int = 1,
+) -> TrainedOptionPopulationMediator:
+    rng = np.random.default_rng(seed)
+    mx.random.seed(seed)
+    features = (dataset.features - trained_base.feature_mean) / trained_base.feature_std
+    sample_count = int(features.shape[0])
+    option_count = int(features.shape[1])
+    model = OptionPopulationMediationProtocol(
+        int(features.shape[-1]),
+        option_count,
+        population_size=population_size,
+        hidden_size=hidden_size,
+        receiver_size=receiver_size,
+        slots=trained_base.model.slots,
+        vocabulary_size=trained_base.model.vocabulary_size,
+    )
+    model.senders[0].sender = trained_base.model.sender
+    model.senders[0].sender_hidden = trained_base.model.sender_hidden
+    model.senders[0].tokens = trained_base.model.tokens
+    model.receiver = trained_base.model.receiver
+    model.receiver_hidden = trained_base.model.receiver_hidden
+    model.choice = trained_base.model.choice
+    model.score = trained_base.model.score
+    indices = np.arange(sample_count)
+
+    def sender_regularizer_loss(probabilities: list[mx.array]) -> mx.array:
+        uniform = 1.0 / trained_base.model.vocabulary_size
+        balance_loss = mx.array(0.0)
+        entropy = mx.array(0.0)
+        commitment = mx.array(0.0)
+        for probs in probabilities:
+            flat_probs = mx.reshape(probs, (-1, probs.shape[-1]))
+            balance_loss = balance_loss + mx.sum(
+                (mx.mean(flat_probs, axis=0) - uniform) ** 2
+            )
+            entropy = entropy - mx.mean(
+                mx.sum(flat_probs * mx.log(flat_probs + 1e-8), axis=-1)
+            )
+            hard_targets = mx.stop_gradient(
+                mx.eye(trained_base.model.vocabulary_size)[
+                    mx.argmax(flat_probs, axis=-1)
+                ]
+            )
+            commitment = commitment - mx.mean(
+                mx.sum(hard_targets * mx.log(flat_probs + 1e-8), axis=-1)
+            )
+        scale = len(probabilities)
+        return (
+            balance_weight * balance_loss / scale
+            + entropy_weight * entropy / scale
+            + message_commitment_weight * commitment / scale
+        )
+
+    for sender_index in range(1, model.population_size):
+        optimizer = optim.Adam(learning_rate=learning_rate)
+
+        def loss_fn(batch_features: mx.array, batch_targets: mx.array) -> mx.array:
+            messages, probabilities = model.message(
+                sender_index,
+                batch_features,
+                temperature=message_temperature,
+                hard=True,
+            )
+            logits = model.receive(messages)
+            log_probs = logits - mx.logsumexp(logits, axis=-1, keepdims=True)
+            selected = mx.sum(log_probs * mx.eye(option_count)[batch_targets], axis=-1)
+            return -mx.mean(selected) + sender_regularizer_loss(probabilities)
+
+        loss_and_grad = nn.value_and_grad(model.senders[sender_index], loss_fn)
+        for _epoch in range(max(1, epochs)):
+            rng.shuffle(indices)
+            for start in range(0, sample_count, max(1, batch_size)):
+                batch = mx.array(
+                    indices[start : start + max(1, batch_size)],
+                    dtype=mx.int32,
+                )
+                loss, grads = loss_and_grad(
+                    features[batch],
+                    dataset.target_options[batch],
+                )
+                optimizer.update(model.senders[sender_index], grads)
+                mx.eval(model.senders[sender_index].parameters(), optimizer.state, loss)
+
+    return TrainedOptionPopulationMediator(
+        model=model,
+        feature_mean=trained_base.feature_mean,
+        feature_std=trained_base.feature_std,
+    )
+
+
 def evaluate_option_mediator(
     trained: TrainedOptionMediator,
     dataset: OptionMediationDataset,

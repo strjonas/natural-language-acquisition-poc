@@ -537,6 +537,14 @@ doubling mediation epochs did not recover the baseline. The next attempt should
 be staged population training: preserve a competent sender/receiver convention
 first, then introduce new senders or receivers gradually.
 
+Staged population training is now implemented and is a partial positive. It
+preserves the base sender exactly (`0.6031` primary, `0.5734` held-out), while a
+new sender trained against the fixed receiver reaches `0.5781` primary accuracy.
+However, that new sender transfers poorly to a fresh receiver (`0.5359`), and
+longer new-sender training worsens both primary and held-out transfer. The next
+variant should add explicit transfer pressure while introducing new senders,
+for example a small receiver ensemble or periodic fresh-receiver distillation.
+
 ---
 
 ## M6: Reflective Report With Parrot Guards

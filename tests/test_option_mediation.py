@@ -15,6 +15,7 @@ from homesocial.option_mediation import (
     predicted_future_option_scores,
     predicted_future_option_result,
     target_count_string,
+    staged_option_population_from_mediator,
     train_option_mediator,
     evaluate_option_mediator,
     evaluate_option_population_mediator,
@@ -628,6 +629,48 @@ class OptionMediationTests(unittest.TestCase):
         self.assertEqual(result.samples, 5)
         self.assertEqual(result.model_control, "population_heldout_receiver_s0")
         self.assertGreaterEqual(result.message_codes_used, 1)
+
+    def test_staged_option_population_from_mediator_runs(self):
+        dataset = _dataset([0, 1, 2, 3, 4])
+        base = train_option_mediator(
+            dataset,
+            hidden_size=12,
+            receiver_size=12,
+            epochs=1,
+            batch_size=5,
+            seed=23,
+        )
+
+        staged = staged_option_population_from_mediator(
+            base,
+            dataset,
+            population_size=2,
+            hidden_size=12,
+            receiver_size=12,
+            epochs=1,
+            batch_size=5,
+            seed=24,
+        )
+        base_result = evaluate_option_population_mediator(
+            staged,
+            dataset,
+            sender_index=0,
+            model_control="staged_s0",
+            intervention="original",
+        )
+        new_sender_result = evaluate_option_population_mediator(
+            staged,
+            dataset,
+            sender_index=1,
+            model_control="staged_s1",
+            intervention="original",
+        )
+
+        self.assertEqual(staged.model.population_size, 2)
+        self.assertEqual(base_result.samples, 5)
+        self.assertEqual(new_sender_result.samples, 5)
+        self.assertGreaterEqual(base_result.message_codes_used, 1)
+        self.assertGreaterEqual(new_sender_result.message_codes_used, 1)
 
     def test_train_option_receiver_for_sender_runs(self):
         dataset = _dataset([0, 1, 2, 3, 4])

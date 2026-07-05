@@ -31,6 +31,7 @@ from .option_mediation import (
     predicted_future_option_choices,
     predicted_future_option_scores,
     predicted_future_option_result,
+    staged_option_population_from_mediator,
     train_option_population_mediator,
     train_option_receiver_for_sender,
     train_option_receiver_for_population_sender,
@@ -569,26 +570,75 @@ def _mediation_rows(
         )
         score_targets = predicted_future_option_scores(rank_score_dataset)
     if args.population_size > 1:
-        trained_population = train_option_population_mediator(
-            training_dataset,
-            population_size=args.population_size,
-            hidden_size=args.hidden_size,
-            receiver_size=args.receiver_size,
-            slots=args.message_slots,
-            vocabulary_size=args.message_vocabulary,
-            epochs=args.mediation_epochs,
-            batch_size=args.mediation_batch_size,
-            learning_rate=args.mediation_learning_rate,
-            balance_weight=args.mediation_balance_weight,
-            entropy_weight=args.mediation_entropy_weight,
-            message_commitment_weight=args.message_commitment_weight,
-            message_temperature=args.message_temperature,
-            score_targets=score_targets,
-            score_pretrain_epochs=args.score_pretrain_epochs,
-            score_pretrain_commitment_weight=args.score_pretrain_commitment_weight,
-            sender_agreement_weight=args.sender_agreement_weight,
-            seed=seed,
-        )
+        if args.staged_population_epochs > 0:
+            trained_base = train_option_mediator(
+                training_dataset,
+                hidden_size=args.hidden_size,
+                receiver_size=args.receiver_size,
+                slots=args.message_slots,
+                vocabulary_size=args.message_vocabulary,
+                epochs=args.mediation_epochs,
+                batch_size=args.mediation_batch_size,
+                learning_rate=args.mediation_learning_rate,
+                balance_weight=args.mediation_balance_weight,
+                entropy_weight=args.mediation_entropy_weight,
+                message_commitment_weight=args.message_commitment_weight,
+                message_temperature=args.message_temperature,
+                soft_message_training=args.soft_message_training,
+                score_targets=score_targets,
+                score_pretrain_epochs=args.score_pretrain_epochs,
+                score_pretrain_commitment_weight=(
+                    args.score_pretrain_commitment_weight
+                ),
+                frozen_receiver_epochs=args.frozen_receiver_epochs,
+                score_distillation_weight=args.score_distillation_weight,
+                score_distillation_temperature=args.score_distillation_temperature,
+                score_rank_weight=args.score_rank_weight,
+                score_reconstruction_weight=args.score_reconstruction_weight,
+                code_target_weight=args.code_target_weight,
+                message_replay_weight=args.message_replay_weight,
+                score_rank_code_weight=args.score_rank_code_weight,
+                score_rank_code_slot=args.score_rank_code_slot,
+                score_value_code_weight=args.score_value_code_weight,
+                score_value_code_slot=args.score_value_code_slot,
+                seed=seed,
+            )
+            trained_population = staged_option_population_from_mediator(
+                trained_base,
+                training_dataset,
+                population_size=args.population_size,
+                hidden_size=args.hidden_size,
+                receiver_size=args.receiver_size,
+                epochs=args.staged_population_epochs,
+                batch_size=args.mediation_batch_size,
+                learning_rate=args.mediation_learning_rate,
+                message_temperature=args.message_temperature,
+                balance_weight=args.mediation_balance_weight,
+                entropy_weight=args.mediation_entropy_weight,
+                message_commitment_weight=args.message_commitment_weight,
+                seed=seed + 80_000,
+            )
+        else:
+            trained_population = train_option_population_mediator(
+                training_dataset,
+                population_size=args.population_size,
+                hidden_size=args.hidden_size,
+                receiver_size=args.receiver_size,
+                slots=args.message_slots,
+                vocabulary_size=args.message_vocabulary,
+                epochs=args.mediation_epochs,
+                batch_size=args.mediation_batch_size,
+                learning_rate=args.mediation_learning_rate,
+                balance_weight=args.mediation_balance_weight,
+                entropy_weight=args.mediation_entropy_weight,
+                message_commitment_weight=args.message_commitment_weight,
+                message_temperature=args.message_temperature,
+                score_targets=score_targets,
+                score_pretrain_epochs=args.score_pretrain_epochs,
+                score_pretrain_commitment_weight=args.score_pretrain_commitment_weight,
+                sender_agreement_weight=args.sender_agreement_weight,
+                seed=seed,
+            )
         rows: list[OptionWorldMediationReplicationRow] = []
         for sender_index in range(args.population_size):
             for intervention in args.interventions:
@@ -967,6 +1017,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--receiver-turnover-interval", type=int, default=0)
     parser.add_argument("--population-size", type=int, default=1)
     parser.add_argument("--sender-agreement-weight", type=float, default=0.0)
+    parser.add_argument("--staged-population-epochs", type=int, default=0)
     parser.add_argument("--message-slots", type=int, default=OPTION_MEDIATION_SLOTS)
     parser.add_argument(
         "--message-vocabulary",

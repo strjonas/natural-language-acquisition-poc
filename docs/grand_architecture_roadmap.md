@@ -331,6 +331,10 @@ Completed:
   smaller two-sender population, and longer population training all failed to
   improve held-out transfer, so the next variant should stage sender/receiver
   introduction instead of training all partners from scratch together.
+- staged option population mediation via `--staged-population-epochs`; this
+  preserved the base convention exactly and let a new sender use the fixed
+  receiver, but the new sender still transferred poorly to a fresh receiver, so
+  staged sender introduction needs explicit transfer pressure.
 
 Not yet passed:
 
