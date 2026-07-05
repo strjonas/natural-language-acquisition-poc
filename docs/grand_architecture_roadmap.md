@@ -307,6 +307,9 @@ Completed:
 - score-codebook replay via `--message-replay-weight`, which pinned
   score-pretrained hard codes during choice training but did not beat the
   pretrain-only baseline.
+- held-out receiver transfer for option mediation, showing that a fresh
+  receiver can learn the frozen trained sender above random-sender control but
+  still trails the co-trained receiver.
 
 Not yet passed:
 
@@ -345,9 +348,8 @@ Not yet passed:
 - code semantics and receiver/code alignment diagnostics, because active code
   usage is already broad while compact-message accuracy still trails direct
   self-rank,
-- transfer-style receiver alignment or held-out receiver tests, because direct
-  branch-target BCE shaping and simple score-codebook replay did not improve
-  code semantics,
+- easier-to-learn sender conventions for held-out receivers, because transfer
+  is partially positive but still trails the co-trained receiver,
 - explicit code stability diagnostics across seeds and independently trained
   bodies, because the current semantics check is still a single-seed comparison,
 - stronger rank-plus-dynamics training that recovers the old world-trend metric

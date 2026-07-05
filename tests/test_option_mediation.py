@@ -17,6 +17,8 @@ from homesocial.option_mediation import (
     target_count_string,
     train_option_mediator,
     evaluate_option_mediator,
+    evaluate_option_receiver_transfer,
+    train_option_receiver_for_sender,
 )
 from homesocial.env import LANGUAGE_NECESSARY_MODE, STOCHASTIC_BODY, Action
 from homesocial.observations import MASKED_INTEROCEPTION, observation_vector_size
@@ -447,6 +449,38 @@ class OptionMediationTests(unittest.TestCase):
         )
 
         self.assertEqual(result.samples, 5)
+        self.assertGreaterEqual(result.message_codes_used, 1)
+
+    def test_train_option_receiver_for_sender_runs(self):
+        dataset = _dataset([0, 1, 2, 3, 4])
+        trained = train_option_mediator(
+            dataset,
+            hidden_size=12,
+            receiver_size=12,
+            epochs=1,
+            batch_size=5,
+            seed=14,
+        )
+
+        receiver = train_option_receiver_for_sender(
+            trained,
+            dataset,
+            receiver_size=12,
+            epochs=1,
+            batch_size=5,
+            max_samples=3,
+            seed=15,
+        )
+        result = evaluate_option_receiver_transfer(
+            trained,
+            receiver,
+            dataset,
+            model_control="heldout_receiver",
+            intervention="original",
+        )
+
+        self.assertEqual(result.samples, 5)
+        self.assertEqual(result.model_control, "heldout_receiver")
         self.assertGreaterEqual(result.message_codes_used, 1)
 
     def test_train_option_mediator_accepts_late_message_commitment(self):

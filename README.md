@@ -384,6 +384,8 @@ memorization.
 
 `--message-replay-weight` snapshots score-pretrained hard message tokens and
 penalizes later sender drift during choice training.
+`--heldout-receiver-epochs` trains a fresh receiver against a frozen sender to
+test whether the compact self-code transfers beyond the co-trained receiver.
 
 Replicate the strict self-model-targeted commitment setting across independent
 base body checkpoints:

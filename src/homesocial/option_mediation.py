@@ -62,6 +62,11 @@ class TrainedOptionMediator:
 
 
 @dataclass(frozen=True)
+class TrainedOptionReceiver:
+    model: "OptionMediationReceiver"
+
+
+@dataclass(frozen=True)
 class OptionMediationResult:
     model_control: str
     intervention: str
@@ -166,6 +171,34 @@ class OptionMediationProtocol(nn.Module):
     def __call__(self, features: mx.array) -> tuple[mx.array, list[mx.array]]:
         messages, probabilities = self.message(features, hard=True)
         return self.receive(messages), probabilities
+
+
+class OptionMediationReceiver(nn.Module):
+    def __init__(
+        self,
+        option_count: int,
+        *,
+        receiver_size: int = 96,
+        slots: int = OPTION_MEDIATION_SLOTS,
+        vocabulary_size: int = OPTION_MEDIATION_VOCABULARY,
+    ) -> None:
+        super().__init__()
+        receiver_input = option_count * slots * vocabulary_size
+        self.receiver = nn.Linear(receiver_input, receiver_size)
+        self.receiver_hidden = nn.Linear(receiver_size, receiver_size)
+        self.choice = nn.Linear(receiver_size, option_count)
+
+    def receive_hidden(self, messages: list[mx.array]) -> mx.array:
+        flat_messages = [
+            mx.reshape(message, (message.shape[0], -1))
+            for message in messages
+        ]
+        inputs = mx.concatenate(flat_messages, axis=-1)
+        hidden = nn.relu(self.receiver(inputs))
+        return hidden + nn.relu(self.receiver_hidden(hidden))
+
+    def receive(self, messages: list[mx.array]) -> mx.array:
+        return self.choice(self.receive_hidden(messages))
 
 
 def collect_option_mediation_dataset(
@@ -730,6 +763,61 @@ def train_option_mediator(
     )
 
 
+def train_option_receiver_for_sender(
+    trained_sender: TrainedOptionMediator,
+    dataset: OptionMediationDataset,
+    *,
+    receiver_size: int = 96,
+    epochs: int = 40,
+    batch_size: int = 128,
+    learning_rate: float = 1e-3,
+    max_samples: int | None = None,
+    seed: int = 1,
+) -> TrainedOptionReceiver:
+    rng = np.random.default_rng(seed)
+    mx.random.seed(seed)
+    features = (
+        dataset.features - trained_sender.feature_mean
+    ) / trained_sender.feature_std
+    messages, _probabilities = trained_sender.model.message(features, hard=True)
+    frozen_messages = [mx.stop_gradient(message) for message in messages]
+    sample_count = int(features.shape[0])
+    train_indices = np.arange(sample_count)
+    if max_samples is not None and max_samples > 0 and max_samples < sample_count:
+        train_indices = rng.choice(train_indices, size=max_samples, replace=False)
+    option_count = int(dataset.features.shape[1])
+    receiver = OptionMediationReceiver(
+        option_count,
+        receiver_size=receiver_size,
+        slots=trained_sender.model.slots,
+        vocabulary_size=trained_sender.model.vocabulary_size,
+    )
+    optimizer = optim.Adam(learning_rate=learning_rate)
+
+    def loss_fn(batch_messages: list[mx.array], batch_targets: mx.array) -> mx.array:
+        logits = receiver.receive(batch_messages)
+        log_probs = logits - mx.logsumexp(logits, axis=-1, keepdims=True)
+        selected = mx.sum(log_probs * mx.eye(option_count)[batch_targets], axis=-1)
+        return -mx.mean(selected)
+
+    loss_and_grad = nn.value_and_grad(receiver, loss_fn)
+    for _epoch in range(max(1, epochs)):
+        rng.shuffle(train_indices)
+        for start in range(0, len(train_indices), max(1, batch_size)):
+            batch = mx.array(
+                train_indices[start : start + max(1, batch_size)],
+                dtype=mx.int32,
+            )
+            loss, grads = loss_and_grad(
+                [message[batch] for message in frozen_messages],
+                dataset.target_options[batch],
+            )
+            optimizer.update(receiver, grads)
+            mx.eval(receiver.parameters(), optimizer.state, loss)
+
+    return TrainedOptionReceiver(model=receiver)
+
+
 def evaluate_option_mediator(
     trained: TrainedOptionMediator,
     dataset: OptionMediationDataset,
@@ -740,6 +828,45 @@ def evaluate_option_mediator(
     features = (dataset.features - trained.feature_mean) / trained.feature_std
     messages, _probabilities = trained.model.message(features, hard=True)
     logits = trained.model.receive(messages)
+    return _option_mediation_result_from_messages(
+        messages,
+        logits,
+        dataset,
+        model_control=model_control,
+        intervention=intervention,
+    )
+
+
+def evaluate_option_receiver_transfer(
+    trained_sender: TrainedOptionMediator,
+    trained_receiver: TrainedOptionReceiver,
+    dataset: OptionMediationDataset,
+    *,
+    model_control: str,
+    intervention: str,
+) -> OptionMediationResult:
+    features = (
+        dataset.features - trained_sender.feature_mean
+    ) / trained_sender.feature_std
+    messages, _probabilities = trained_sender.model.message(features, hard=True)
+    logits = trained_receiver.model.receive(messages)
+    return _option_mediation_result_from_messages(
+        messages,
+        logits,
+        dataset,
+        model_control=model_control,
+        intervention=intervention,
+    )
+
+
+def _option_mediation_result_from_messages(
+    messages: list[mx.array],
+    logits: mx.array,
+    dataset: OptionMediationDataset,
+    *,
+    model_control: str,
+    intervention: str,
+) -> OptionMediationResult:
     choices = np.asarray(mx.argmax(logits, axis=-1), dtype=np.int32)
     targets = np.asarray(dataset.target_options, dtype=np.int32)
     values = np.asarray(dataset.option_values, dtype=np.float32)

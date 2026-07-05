@@ -486,6 +486,13 @@ Weights `0.005` and `0.001` reached `0.5797` and `0.5766` accuracy, below the
 sender drift after score pretraining; the receiver still needs a better
 alignment or transfer objective.
 
+The first held-out receiver test is a partial positive transfer result. A fresh
+receiver trained against the frozen best sender reached `0.5734` accuracy after
+70 epochs and `0.5703` after 140 epochs, versus `0.6031` for the co-trained
+receiver and `0.2109` for a random frozen sender. The code is therefore
+learnable by another receiver, but still not as reusable as a stable convention
+should be.
+
 ---
 
 ## M6: Reflective Report With Parrot Guards

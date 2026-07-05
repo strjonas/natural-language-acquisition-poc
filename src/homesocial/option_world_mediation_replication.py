@@ -21,6 +21,7 @@ from .option_mediation import (
     OPTION_MEDIATION_VOCABULARY,
     collect_option_mediation_source,
     evaluate_option_mediator,
+    evaluate_option_receiver_transfer,
     intervene_option_mediation_features,
     majority_option_result,
     option_mediation_dataset_with_targets,
@@ -28,6 +29,7 @@ from .option_mediation import (
     predicted_future_option_choices,
     predicted_future_option_scores,
     predicted_future_option_result,
+    train_option_receiver_for_sender,
     train_option_mediator,
 )
 from .option_world_model import (
@@ -612,6 +614,43 @@ def _mediation_rows(
             )
         )
 
+    if args.heldout_receiver_epochs > 0:
+        heldout_receiver = train_option_receiver_for_sender(
+            trained,
+            training_dataset,
+            receiver_size=args.receiver_size,
+            epochs=args.heldout_receiver_epochs,
+            batch_size=args.mediation_batch_size,
+            learning_rate=args.mediation_learning_rate,
+            max_samples=args.heldout_receiver_samples,
+            seed=seed + 70_000,
+        )
+        for intervention in args.interventions:
+            intervened = intervene_option_mediation_features(
+                eval_dataset,
+                intervention=intervention,
+                seed=seed + 20_000,
+            )
+            result = evaluate_option_receiver_transfer(
+                trained,
+                heldout_receiver,
+                intervened,
+                model_control=f"{model_control}_heldout_receiver",
+                intervention=intervention,
+            )
+            rows.append(
+                _result_row(
+                    seed,
+                    result,
+                    world_final_need_mse=world_final_need_mse,
+                    world_trend_accuracy=world_trend_accuracy,
+                    before_world_final_need_mse=before_world_final_need_mse,
+                    after_world_final_need_mse=after_world_final_need_mse,
+                    before_world_trend_accuracy=before_world_trend_accuracy,
+                    after_world_trend_accuracy=after_world_trend_accuracy,
+                )
+            )
+
     if include_target_majority:
         majority = majority_option_result(train_dataset, eval_dataset)
         rows.append(
@@ -799,6 +838,8 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--score-reconstruction-weight", type=float, default=0.0)
     parser.add_argument("--code-target-weight", type=float, default=0.0)
     parser.add_argument("--message-replay-weight", type=float, default=0.0)
+    parser.add_argument("--heldout-receiver-epochs", type=int, default=0)
+    parser.add_argument("--heldout-receiver-samples", type=int, default=None)
     return parser.parse_args()
 
 
