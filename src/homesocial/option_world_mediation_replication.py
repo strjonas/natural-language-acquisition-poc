@@ -459,6 +459,7 @@ def run_replication_seed(
         balance_target=args.mediation_balance_target,
         max_states=args.max_mediation_train_states,
         min_value_gap=args.min_value_gap,
+        min_positive_delta=args.min_positive_delta,
         option_action_noise=mediation_noise,
     )
     eval_source = collect_option_mediation_source(
@@ -471,6 +472,7 @@ def run_replication_seed(
         balance_target=args.mediation_balance_target,
         max_states=args.max_mediation_eval_states,
         min_value_gap=args.min_value_gap,
+        min_positive_delta=args.min_positive_delta,
         option_action_noise=mediation_noise,
     )
     train_option_rank_finetune(
@@ -1167,6 +1169,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--max-mediation-train-states", type=int, default=12000)
     parser.add_argument("--max-mediation-eval-states", type=int, default=6000)
     parser.add_argument("--min-value-gap", type=float, default=0.005)
+    parser.add_argument("--min-positive-delta", type=float, default=None)
     parser.add_argument(
         "--feature-mode",
         choices=OPTION_MEDIATION_FEATURE_MODES,

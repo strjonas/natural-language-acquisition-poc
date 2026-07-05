@@ -474,6 +474,7 @@ def collect_option_mediation_dataset(
     balance_target: str = "target_option",
     max_states: int = 3000,
     min_value_gap: float = 0.005,
+    min_positive_delta: float | None = None,
     feature_mode: str = "latent_current",
     option_action_noise: float = 0.0,
 ) -> OptionMediationDataset:
@@ -487,6 +488,7 @@ def collect_option_mediation_dataset(
         balance_target=balance_target,
         max_states=max_states,
         min_value_gap=min_value_gap,
+        min_positive_delta=min_positive_delta,
         option_action_noise=option_action_noise,
     )
     return option_mediation_dataset_from_source(
@@ -508,6 +510,7 @@ def collect_option_mediation_source(
     balance_target: str = "target_option",
     max_states: int = 3000,
     min_value_gap: float = 0.005,
+    min_positive_delta: float | None = None,
     option_action_noise: float = 0.0,
 ) -> OptionMediationSourceDataset:
     if state_policy not in STATE_POLICIES:
@@ -561,10 +564,12 @@ def collect_option_mediation_source(
                 rng=rng,
                 option_action_noise=option_action_noise,
             )
-            ordered_values = np.sort(values)
-            if (
-                len(ordered_values) < 2
-                or ordered_values[-1] - ordered_values[-2] >= min_value_gap
+            current_lowest = float(np.min(_needs_array(observation.needs)))
+            if _should_keep_option_mediation_sample(
+                values,
+                current_lowest=current_lowest,
+                min_value_gap=min_value_gap,
+                min_positive_delta=min_positive_delta,
             ):
                 samples.append(
                     OptionMediationSourceSample(
@@ -577,7 +582,7 @@ def collect_option_mediation_source(
                         ),
                         option_values=values.astype(np.float32),
                         target_option=int(np.argmax(values)),
-                        current_lowest=float(np.min(_needs_array(observation.needs))),
+                        current_lowest=current_lowest,
                     )
                 )
 
@@ -2572,6 +2577,24 @@ def _state_option_actions_and_values(
         option_actions.append(actions)
         values.append(float(np.min(_needs_array(branch_observation.needs))))
     return option_actions, np.array(values, dtype=np.float32)
+
+
+def _should_keep_option_mediation_sample(
+    values: np.ndarray,
+    *,
+    current_lowest: float,
+    min_value_gap: float,
+    min_positive_delta: float | None,
+) -> bool:
+    ordered_values = np.sort(np.asarray(values, dtype=np.float32))
+    if (
+        len(ordered_values) >= 2
+        and ordered_values[-1] - ordered_values[-2] < min_value_gap
+    ):
+        return False
+    if min_positive_delta is None:
+        return True
+    return bool(float(ordered_values[-1]) - float(current_lowest) >= min_positive_delta)
 
 
 def _state_option_features_and_values(

@@ -645,6 +645,16 @@ slightly improved opportunity accuracy but reduced held-out listener transfer
 and did not improve selected positive delta. The next intervention should change
 the state distribution or main interaction so positive self-improvement reports
 matter directly.
+That distribution shift is now partially supported: `--min-positive-delta`
+filters option-mediation states to those where some option can improve the
+current weakest body need. With natural target frequencies on seeds
+`10043-10044`, the staged new sender reached mean `0.9123` choice accuracy and
+`+0.1338` chosen body delta versus oracle `+0.1517`; a fresh held-out receiver
+reached `0.9126` and `+0.1334`. Delta shuffling/negation collapsed chosen delta
+below zero. The limitation is target imbalance: target-majority already reaches
+`0.8315` and `+0.1075`, while hard target balancing leaves too few opportunity
+states. The next step is opportunity-rich but stratified/weighted interaction,
+not abandoning the opportunity focus.
 
 ## Commands
 

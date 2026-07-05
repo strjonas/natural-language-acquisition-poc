@@ -6,6 +6,7 @@ import numpy as np
 from homesocial.option_mediation import (
     OptionMediationDataset,
     _balanced_target_option_indices,
+    _should_keep_option_mediation_sample,
     collect_option_mediation_source,
     intervene_option_mediation_features,
     majority_option_result,
@@ -67,6 +68,40 @@ class OptionMediationTests(unittest.TestCase):
         self.assertEqual(
             [int(np.sum(selected == option)) for option in range(3)],
             [1, 1, 1],
+        )
+
+    def test_option_mediation_sample_filter_can_require_positive_delta(self):
+        self.assertFalse(
+            _should_keep_option_mediation_sample(
+                np.array([0.50, 0.51, 0.30], dtype=np.float32),
+                current_lowest=0.40,
+                min_value_gap=0.02,
+                min_positive_delta=None,
+            )
+        )
+        self.assertTrue(
+            _should_keep_option_mediation_sample(
+                np.array([0.50, 0.53, 0.30], dtype=np.float32),
+                current_lowest=0.40,
+                min_value_gap=0.02,
+                min_positive_delta=None,
+            )
+        )
+        self.assertFalse(
+            _should_keep_option_mediation_sample(
+                np.array([0.50, 0.53, 0.30], dtype=np.float32),
+                current_lowest=0.50,
+                min_value_gap=0.02,
+                min_positive_delta=0.04,
+            )
+        )
+        self.assertTrue(
+            _should_keep_option_mediation_sample(
+                np.array([0.50, 0.56, 0.30], dtype=np.float32),
+                current_lowest=0.50,
+                min_value_gap=0.02,
+                min_positive_delta=0.04,
+            )
         )
 
     def test_grouped_delta_intervention_preserves_values_and_targets(self):

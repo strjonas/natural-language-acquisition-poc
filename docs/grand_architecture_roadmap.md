@@ -601,7 +601,13 @@ Next concrete implementation:
    part of the oracle improvement margin. Auxiliary field-action receiver
    pressure improved the narrow decoder metric but hurt held-out listener
    transfer, so the next step should shift the main interaction/state
-   distribution toward positive self-improvement opportunities.
+   distribution toward positive self-improvement opportunities. That shift is
+   now partially implemented with `--min-positive-delta`: on two m11 seeds,
+   natural-frequency opportunity states produced strong positive chosen body
+   deltas for both a staged new sender and a fresh receiver, while delta
+   interventions collapsed below zero. The remaining weakness is target
+   imbalance, so the next version should use stratified or weighted opportunity
+   sampling rather than hard balancing or raw natural frequencies.
 7. Decide whether to scale the environment to Crafter before adding large
    language generation.
 
