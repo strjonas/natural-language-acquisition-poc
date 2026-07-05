@@ -73,6 +73,10 @@ class OptionMediationResult:
     mean_chosen_delta: float
     mean_oracle_delta: float
     message_codes_used: int
+    message_code_entropy: float
+    dominant_message_code_fraction: float
+    target_code_mutual_information: float
+    choice_code_mutual_information: float
     target_counts: str
 
 
@@ -680,6 +684,8 @@ def evaluate_option_mediator(
     chosen_values = values[np.arange(values.shape[0]), choices]
     oracle_values = np.max(values, axis=1)
     codes = _message_codes(messages)
+    code_entropy, dominant_code_fraction = _message_code_stats(codes)
+    option_indices = np.arange(values.shape[1], dtype=np.int32)[None, :]
     return OptionMediationResult(
         model_control=model_control,
         intervention=intervention,
@@ -691,6 +697,16 @@ def evaluate_option_mediator(
         mean_chosen_delta=float(np.mean(chosen_values - current)),
         mean_oracle_delta=float(np.mean(oracle_values - current)),
         message_codes_used=int(len(np.unique(codes))),
+        message_code_entropy=code_entropy,
+        dominant_message_code_fraction=dominant_code_fraction,
+        target_code_mutual_information=_binary_code_mutual_information(
+            codes,
+            option_indices == targets[:, None],
+        ),
+        choice_code_mutual_information=_binary_code_mutual_information(
+            codes,
+            option_indices == choices[:, None],
+        ),
         target_counts=target_count_string(dataset),
     )
 
@@ -720,6 +736,10 @@ def majority_option_result(
         mean_chosen_delta=float(np.mean(chosen_values - current)),
         mean_oracle_delta=float(np.mean(oracle_values - current)),
         message_codes_used=0,
+        message_code_entropy=0.0,
+        dominant_message_code_fraction=0.0,
+        target_code_mutual_information=0.0,
+        choice_code_mutual_information=0.0,
         target_counts=target_count_string(eval_dataset),
     )
 
@@ -746,6 +766,10 @@ def predicted_future_option_result(
         mean_chosen_delta=float(np.mean(chosen_values - current)),
         mean_oracle_delta=float(np.mean(oracle_values - current)),
         message_codes_used=0,
+        message_code_entropy=0.0,
+        dominant_message_code_fraction=0.0,
+        target_code_mutual_information=0.0,
+        choice_code_mutual_information=0.0,
         target_counts=target_count_string(dataset),
     )
 
@@ -912,8 +936,44 @@ def _message_codes(messages: list[mx.array]) -> np.ndarray:
     for message in messages:
         token = np.asarray(mx.argmax(message, axis=-1), dtype=np.int64)
         code += token * multiplier
-        multiplier *= OPTION_MEDIATION_VOCABULARY
+        multiplier *= int(message.shape[-1])
     return code
+
+
+def _message_code_stats(codes: np.ndarray) -> tuple[float, float]:
+    counts = np.bincount(np.asarray(codes, dtype=np.int64).reshape(-1))
+    counts = counts[counts > 0]
+    if counts.size == 0:
+        return 0.0, 0.0
+    probabilities = counts / np.sum(counts)
+    entropy = float(-np.sum(probabilities * np.log(probabilities)))
+    dominant_fraction = float(np.max(probabilities))
+    return entropy, dominant_fraction
+
+
+def _binary_code_mutual_information(
+    codes: np.ndarray,
+    positives: np.ndarray,
+) -> float:
+    flat_codes = np.asarray(codes, dtype=np.int64).reshape(-1)
+    flat_positives = np.asarray(positives, dtype=bool).reshape(-1)
+    if flat_codes.size == 0:
+        return 0.0
+    positive_counts = np.bincount(flat_codes[flat_positives])
+    negative_counts = np.bincount(flat_codes[~flat_positives])
+    size = max(positive_counts.size, negative_counts.size)
+    positive_counts = np.pad(positive_counts, (0, size - positive_counts.size))
+    negative_counts = np.pad(negative_counts, (0, size - negative_counts.size))
+    joint = np.stack([negative_counts, positive_counts], axis=1).astype(np.float64)
+    total = float(np.sum(joint))
+    if total == 0.0:
+        return 0.0
+    joint_probability = joint / total
+    code_probability = np.sum(joint_probability, axis=1, keepdims=True)
+    label_probability = np.sum(joint_probability, axis=0, keepdims=True)
+    independent = code_probability * label_probability
+    mask = joint_probability > 0.0
+    return float(np.sum(joint_probability[mask] * np.log(joint_probability[mask] / independent[mask])))
 
 
 def _row(result: OptionMediationResult) -> str:
@@ -929,6 +989,10 @@ def _row(result: OptionMediationResult) -> str:
             f"{result.mean_chosen_delta:.6f}",
             f"{result.mean_oracle_delta:.6f}",
             str(result.message_codes_used),
+            f"{result.message_code_entropy:.6f}",
+            f"{result.dominant_message_code_fraction:.6f}",
+            f"{result.target_code_mutual_information:.6f}",
+            f"{result.choice_code_mutual_information:.6f}",
             result.target_counts,
         ]
     )
@@ -945,7 +1009,9 @@ def main() -> None:
     print(
         "model_control,intervention,samples,choice_accuracy,mean_chosen_lowest,"
         "mean_oracle_lowest,mean_regret,mean_chosen_delta,mean_oracle_delta,"
-        "message_codes_used,target_counts"
+        "message_codes_used,message_code_entropy,dominant_message_code_fraction,"
+        "target_code_mutual_information,choice_code_mutual_information,"
+        "target_counts"
     )
     train_source = collect_option_mediation_source(
         config,

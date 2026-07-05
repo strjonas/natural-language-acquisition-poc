@@ -296,6 +296,9 @@ Completed:
 - commitment-timing probe: pretrain-only commitment reached the best single
   compact-message result (`0.6031`) but tied constant commitment on three-seed
   mean accuracy and had weaker negated-delta collapse.
+- message-code diagnostics for mediation CSVs, showing that commitment schedule
+  differences are not explained by simple code collapse or target-code mutual
+  information on the best m11 seed.
 
 Not yet passed:
 
@@ -331,8 +334,11 @@ Not yet passed:
   `0.546`,
 - better discrete-code training rather than raw capacity increases, because
   extra committed slots/vocabulary hurt the current receiver,
-- explicit code stability diagnostics, because commitment timing changes
-  accuracy, regret, and intervention collapse in different directions,
+- code semantics and receiver/code alignment diagnostics, because active code
+  usage is already broad while compact-message accuracy still trails direct
+  self-rank,
+- explicit code stability diagnostics across seeds and independently trained
+  bodies, because the current semantics check is still a single-seed comparison,
 - stronger rank-plus-dynamics training that recovers the old world-trend metric
   closer to pre-rank levels while keeping direct branch choice above `0.62`,
 - message bottleneck improvements so compact communication can express the

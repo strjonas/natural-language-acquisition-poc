@@ -25,6 +25,11 @@ class OptionWorldMediationReplicationTests(unittest.TestCase):
             mean_regret=0.0123456,
             mean_chosen_delta=-0.1,
             mean_oracle_delta=0.2,
+            message_codes_used=3,
+            message_code_entropy=0.8,
+            dominant_message_code_fraction=0.6,
+            target_code_mutual_information=0.03,
+            choice_code_mutual_information=0.04,
             world_final_need_mse=0.0345678,
             world_trend_accuracy=0.75,
             trained_world_final_need_mse_before=0.12,
@@ -33,11 +38,13 @@ class OptionWorldMediationReplicationTests(unittest.TestCase):
             trained_world_trend_after=0.75,
         )
 
+        self.assertIn("message_code_entropy", header())
         self.assertIn("trained_world_trend_after", header())
         self.assertEqual(
             format_row(row),
             "7,trained,original,11,0.5000,0.012346,-0.100000,"
-            "0.200000,0.034568,0.7500,0.120000,0.030000,0.2500,0.7500",
+            "0.200000,3,0.800000,0.600000,0.030000,0.040000,"
+            "0.034568,0.7500,0.120000,0.030000,0.2500,0.7500",
         )
 
     def test_noise_overrides_fall_back_to_shared_value(self):

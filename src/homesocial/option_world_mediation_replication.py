@@ -51,6 +51,11 @@ class OptionWorldMediationReplicationRow:
     mean_regret: float
     mean_chosen_delta: float
     mean_oracle_delta: float
+    message_codes_used: int
+    message_code_entropy: float
+    dominant_message_code_fraction: float
+    target_code_mutual_information: float
+    choice_code_mutual_information: float
     world_final_need_mse: float
     world_trend_accuracy: float
     trained_world_final_need_mse_before: float
@@ -72,8 +77,10 @@ class OptionRankBatch:
 def header() -> str:
     return (
         "seed,model_control,intervention,samples,choice_accuracy,mean_regret,"
-        "mean_chosen_delta,mean_oracle_delta,world_final_need_mse,"
-        "world_trend_accuracy,trained_world_final_need_mse_before,"
+        "mean_chosen_delta,mean_oracle_delta,message_codes_used,"
+        "message_code_entropy,dominant_message_code_fraction,"
+        "target_code_mutual_information,choice_code_mutual_information,"
+        "world_final_need_mse,world_trend_accuracy,trained_world_final_need_mse_before,"
         "trained_world_final_need_mse_after,trained_world_trend_before,"
         "trained_world_trend_after"
     )
@@ -90,6 +97,11 @@ def format_row(row: OptionWorldMediationReplicationRow) -> str:
             f"{row.mean_regret:.6f}",
             f"{row.mean_chosen_delta:.6f}",
             f"{row.mean_oracle_delta:.6f}",
+            str(row.message_codes_used),
+            f"{row.message_code_entropy:.6f}",
+            f"{row.dominant_message_code_fraction:.6f}",
+            f"{row.target_code_mutual_information:.6f}",
+            f"{row.choice_code_mutual_information:.6f}",
             f"{row.world_final_need_mse:.6f}",
             f"{row.world_trend_accuracy:.4f}",
             f"{row.trained_world_final_need_mse_before:.6f}",
@@ -650,6 +662,11 @@ def _result_row(
         mean_regret=result.mean_regret,
         mean_chosen_delta=result.mean_chosen_delta,
         mean_oracle_delta=result.mean_oracle_delta,
+        message_codes_used=result.message_codes_used,
+        message_code_entropy=result.message_code_entropy,
+        dominant_message_code_fraction=result.dominant_message_code_fraction,
+        target_code_mutual_information=result.target_code_mutual_information,
+        choice_code_mutual_information=result.choice_code_mutual_information,
         world_final_need_mse=world_final_need_mse,
         world_trend_accuracy=world_trend_accuracy,
         trained_world_final_need_mse_before=before_world_final_need_mse,

@@ -461,6 +461,15 @@ worse on the negated-delta collapse. This suggests commitment is most useful
 while shaping the self-score code, but retaining it during choice training gives
 cleaner causal intervention behavior.
 
+Message-code diagnostics now show that this is not a simple code-collapse
+problem. On seed `10043`, constant and pretrain-only commitment both used 14 of
+16 possible codes with similar entropy (`2.286` versus `2.267`). The remaining
+issue is likely code semantics and receiver alignment rather than insufficient
+active symbols. The follow-up semantics check agrees: target-code mutual
+information was nearly identical (`0.069` versus `0.070` nats), while
+choice-code information was only moderately higher (`0.119` versus `0.114`
+nats).
+
 ---
 
 ## M6: Reflective Report With Parrot Guards
