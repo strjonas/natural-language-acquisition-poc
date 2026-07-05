@@ -587,6 +587,11 @@ Next concrete implementation:
    receiver copies: new-speaker held-out listener accuracy improved modestly
    from mean `0.5334` to `0.5464` across seeds `10043-10045`. Receiver-logit
    and score-head distillation were negative.
+   New diagnostics now measure whether messages carry positive body-state delta
+   and relative option-value fields. The best staged run does carry those
+   fields, but fixed-slot supervision hurt transfer, so the next architecture
+   change should create compositional pressure through interaction rather than
+   hand-assigned code labels.
 7. Decide whether to scale the environment to Crafter before adding large
    language generation.
 

@@ -658,6 +658,10 @@ class OptionMediationTests(unittest.TestCase):
             score_targets=np.array(dataset.option_values),
             score_reconstruction_weight=0.1,
             score_rank_weight=0.1,
+            positive_delta_code_weight=0.1,
+            positive_delta_code_slot=0,
+            relative_value_code_weight=0.1,
+            relative_value_code_slot=1,
             seed=24,
         )
         base_result = evaluate_option_population_mediator(

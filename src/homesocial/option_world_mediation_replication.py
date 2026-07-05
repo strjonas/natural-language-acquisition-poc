@@ -63,10 +63,14 @@ class OptionWorldMediationReplicationRow:
     dominant_message_code_fraction: float
     target_code_mutual_information: float
     choice_code_mutual_information: float
+    positive_delta_code_mutual_information: float
+    relative_value_code_mutual_information: float
     message_patterns_used: int
     reused_message_pattern_fraction: float
     target_pattern_mutual_information: float
     choice_pattern_mutual_information: float
+    positive_delta_pattern_mutual_information: float
+    relative_value_pattern_mutual_information: float
     world_final_need_mse: float
     world_trend_accuracy: float
     trained_world_final_need_mse_before: float
@@ -91,8 +95,11 @@ def header() -> str:
         "mean_chosen_delta,mean_oracle_delta,message_codes_used,"
         "message_code_entropy,dominant_message_code_fraction,"
         "target_code_mutual_information,choice_code_mutual_information,"
+        "positive_delta_code_mutual_information,relative_value_code_mutual_information,"
         "message_patterns_used,reused_message_pattern_fraction,"
         "target_pattern_mutual_information,choice_pattern_mutual_information,"
+        "positive_delta_pattern_mutual_information,"
+        "relative_value_pattern_mutual_information,"
         "world_final_need_mse,world_trend_accuracy,trained_world_final_need_mse_before,"
         "trained_world_final_need_mse_after,trained_world_trend_before,"
         "trained_world_trend_after"
@@ -115,10 +122,14 @@ def format_row(row: OptionWorldMediationReplicationRow) -> str:
             f"{row.dominant_message_code_fraction:.6f}",
             f"{row.target_code_mutual_information:.6f}",
             f"{row.choice_code_mutual_information:.6f}",
+            f"{row.positive_delta_code_mutual_information:.6f}",
+            f"{row.relative_value_code_mutual_information:.6f}",
             str(row.message_patterns_used),
             f"{row.reused_message_pattern_fraction:.6f}",
             f"{row.target_pattern_mutual_information:.6f}",
             f"{row.choice_pattern_mutual_information:.6f}",
+            f"{row.positive_delta_pattern_mutual_information:.6f}",
+            f"{row.relative_value_pattern_mutual_information:.6f}",
             f"{row.world_final_need_mse:.6f}",
             f"{row.world_trend_accuracy:.4f}",
             f"{row.trained_world_final_need_mse_before:.6f}",
@@ -633,6 +644,14 @@ def _mediation_rows(
                     args.staged_score_reconstruction_weight
                 ),
                 score_rank_weight=args.staged_score_rank_weight,
+                positive_delta_code_weight=(
+                    args.staged_positive_delta_code_weight
+                ),
+                positive_delta_code_slot=args.staged_positive_delta_code_slot,
+                relative_value_code_weight=(
+                    args.staged_relative_value_code_weight
+                ),
+                relative_value_code_slot=args.staged_relative_value_code_slot,
                 seed=seed + 80_000,
             )
         else:
@@ -933,10 +952,22 @@ def _result_row(
         dominant_message_code_fraction=result.dominant_message_code_fraction,
         target_code_mutual_information=result.target_code_mutual_information,
         choice_code_mutual_information=result.choice_code_mutual_information,
+        positive_delta_code_mutual_information=(
+            result.positive_delta_code_mutual_information
+        ),
+        relative_value_code_mutual_information=(
+            result.relative_value_code_mutual_information
+        ),
         message_patterns_used=result.message_patterns_used,
         reused_message_pattern_fraction=result.reused_message_pattern_fraction,
         target_pattern_mutual_information=result.target_pattern_mutual_information,
         choice_pattern_mutual_information=result.choice_pattern_mutual_information,
+        positive_delta_pattern_mutual_information=(
+            result.positive_delta_pattern_mutual_information
+        ),
+        relative_value_pattern_mutual_information=(
+            result.relative_value_pattern_mutual_information
+        ),
         world_final_need_mse=world_final_need_mse,
         world_trend_accuracy=world_trend_accuracy,
         trained_world_final_need_mse_before=before_world_final_need_mse,
@@ -1051,6 +1082,18 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--staged-score-reconstruction-weight", type=float, default=0.0)
     parser.add_argument("--staged-score-rank-weight", type=float, default=0.0)
+    parser.add_argument(
+        "--staged-positive-delta-code-weight",
+        type=float,
+        default=0.0,
+    )
+    parser.add_argument("--staged-positive-delta-code-slot", type=int, default=0)
+    parser.add_argument(
+        "--staged-relative-value-code-weight",
+        type=float,
+        default=0.0,
+    )
+    parser.add_argument("--staged-relative-value-code-slot", type=int, default=1)
     parser.add_argument("--message-slots", type=int, default=OPTION_MEDIATION_SLOTS)
     parser.add_argument(
         "--message-vocabulary",

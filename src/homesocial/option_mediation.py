@@ -89,10 +89,14 @@ class OptionMediationResult:
     dominant_message_code_fraction: float
     target_code_mutual_information: float
     choice_code_mutual_information: float
+    positive_delta_code_mutual_information: float
+    relative_value_code_mutual_information: float
     message_patterns_used: int
     reused_message_pattern_fraction: float
     target_pattern_mutual_information: float
     choice_pattern_mutual_information: float
+    positive_delta_pattern_mutual_information: float
+    relative_value_pattern_mutual_information: float
     target_counts: str
 
 
@@ -1357,6 +1361,10 @@ def staged_option_population_from_mediator(
     score_targets: np.ndarray | None = None,
     score_reconstruction_weight: float = 0.0,
     score_rank_weight: float = 0.0,
+    positive_delta_code_weight: float = 0.0,
+    positive_delta_code_slot: int = 0,
+    relative_value_code_weight: float = 0.0,
+    relative_value_code_slot: int = 1,
     seed: int = 1,
 ) -> TrainedOptionPopulationMediator:
     rng = np.random.default_rng(seed)
@@ -1394,6 +1402,34 @@ def staged_option_population_from_mediator(
             (score_array - score_mean) / score_std,
             dtype=mx.float32,
         )
+    code_target_scores = (
+        np.asarray(score_targets, dtype=np.float32)
+        if score_targets is not None
+        else np.asarray(dataset.option_values, dtype=np.float32)
+    )
+    if code_target_scores.shape != (sample_count, option_count):
+        raise ValueError("Score targets must have shape (samples, options).")
+    if (
+        positive_delta_code_weight > 0.0
+        and not 0 <= positive_delta_code_slot < model.slots
+    ):
+        raise ValueError("Positive-delta code slot must select an existing slot.")
+    if (
+        relative_value_code_weight > 0.0
+        and not 0 <= relative_value_code_slot < model.slots
+    ):
+        raise ValueError("Relative-value code slot must select an existing slot.")
+    current_values = np.asarray(dataset.current_lowest, dtype=np.float32)[:, None]
+    positive_delta_code_targets = mx.array(
+        (code_target_scores > current_values).astype(np.int32),
+        dtype=mx.int32,
+    )
+    relative_value_code_targets = mx.array(
+        (
+            code_target_scores >= np.median(code_target_scores, axis=1, keepdims=True)
+        ).astype(np.int32),
+        dtype=mx.int32,
+    )
     transfer_receivers: list[TrainedOptionReceiver] = []
     if transfer_receiver_count > 0 and transfer_receiver_weight > 0.0:
         for receiver_index in range(transfer_receiver_count):
@@ -1456,6 +1492,20 @@ def staged_option_population_from_mediator(
         pair_loss = mx.logaddexp(mx.array(0.0), -direction * predicted_diff)
         return mx.sum(pair_loss * pair_weight) / (mx.sum(pair_weight) + 1e-6)
 
+    def binary_code_loss(
+        probabilities: list[mx.array],
+        code_targets: mx.array,
+        *,
+        slot: int,
+    ) -> mx.array:
+        flat_probs = mx.reshape(
+            probabilities[slot],
+            (-1, probabilities[slot].shape[-1]),
+        )
+        flat_targets = mx.reshape(code_targets, (-1,))
+        target_one_hot = mx.eye(trained_base.model.vocabulary_size)[flat_targets]
+        return -mx.mean(mx.sum(target_one_hot * mx.log(flat_probs + 1e-8), axis=-1))
+
     for sender_index in range(1, model.population_size):
         optimizer = optim.Adam(learning_rate=learning_rate)
 
@@ -1465,6 +1515,8 @@ def staged_option_population_from_mediator(
             batch_imitation_targets: list[mx.array],
             batch_base_logits: mx.array,
             batch_score_targets: mx.array,
+            batch_positive_delta_targets: mx.array,
+            batch_relative_value_targets: mx.array,
         ) -> mx.array:
             messages, probabilities = model.message(
                 sender_index,
@@ -1525,6 +1577,20 @@ def staged_option_population_from_mediator(
                         predicted_scores,
                         batch_score_targets,
                     )
+            positive_delta_loss = mx.array(0.0)
+            if positive_delta_code_weight > 0.0:
+                positive_delta_loss = binary_code_loss(
+                    probabilities,
+                    batch_positive_delta_targets,
+                    slot=positive_delta_code_slot,
+                )
+            relative_value_loss = mx.array(0.0)
+            if relative_value_code_weight > 0.0:
+                relative_value_loss = binary_code_loss(
+                    probabilities,
+                    batch_relative_value_targets,
+                    slot=relative_value_code_slot,
+                )
             return (
                 -mx.mean(selected)
                 + transfer_receiver_weight * transfer_loss
@@ -1532,6 +1598,8 @@ def staged_option_population_from_mediator(
                 + receiver_logit_distillation_weight * distillation_loss
                 + score_reconstruction_weight * score_loss
                 + score_rank_weight * rank_loss
+                + positive_delta_code_weight * positive_delta_loss
+                + relative_value_code_weight * relative_value_loss
                 + sender_regularizer_loss(probabilities)
             )
 
@@ -1553,6 +1621,8 @@ def staged_option_population_from_mediator(
                         if normalized_score_targets is None
                         else normalized_score_targets[batch]
                     ),
+                    positive_delta_code_targets[batch],
+                    relative_value_code_targets[batch],
                 )
                 optimizer.update(model.senders[sender_index], grads)
                 mx.eval(model.senders[sender_index].parameters(), optimizer.state, loss)
@@ -1731,6 +1801,8 @@ def _option_mediation_result_from_messages(
     pattern_ids, patterns_used = _message_pattern_ids(codes)
     reused_pattern_fraction = _reused_pattern_fraction(pattern_ids)
     option_indices = np.arange(values.shape[1], dtype=np.int32)[None, :]
+    positive_delta = values > current[:, None]
+    relative_value = values >= np.median(values, axis=1, keepdims=True)
     return OptionMediationResult(
         model_control=model_control,
         intervention=intervention,
@@ -1752,6 +1824,14 @@ def _option_mediation_result_from_messages(
             codes,
             option_indices == choices[:, None],
         ),
+        positive_delta_code_mutual_information=_binary_code_mutual_information(
+            codes,
+            positive_delta,
+        ),
+        relative_value_code_mutual_information=_binary_code_mutual_information(
+            codes,
+            relative_value,
+        ),
         message_patterns_used=patterns_used,
         reused_message_pattern_fraction=reused_pattern_fraction,
         target_pattern_mutual_information=_categorical_mutual_information(
@@ -1761,6 +1841,12 @@ def _option_mediation_result_from_messages(
         choice_pattern_mutual_information=_categorical_mutual_information(
             pattern_ids,
             choices,
+        ),
+        positive_delta_pattern_mutual_information=(
+            _binary_pattern_mutual_information(pattern_ids, positive_delta)
+        ),
+        relative_value_pattern_mutual_information=(
+            _binary_pattern_mutual_information(pattern_ids, relative_value)
         ),
         target_counts=target_count_string(dataset),
     )
@@ -1795,10 +1881,14 @@ def majority_option_result(
         dominant_message_code_fraction=0.0,
         target_code_mutual_information=0.0,
         choice_code_mutual_information=0.0,
+        positive_delta_code_mutual_information=0.0,
+        relative_value_code_mutual_information=0.0,
         message_patterns_used=0,
         reused_message_pattern_fraction=0.0,
         target_pattern_mutual_information=0.0,
         choice_pattern_mutual_information=0.0,
+        positive_delta_pattern_mutual_information=0.0,
+        relative_value_pattern_mutual_information=0.0,
         target_counts=target_count_string(eval_dataset),
     )
 
@@ -1829,10 +1919,14 @@ def predicted_future_option_result(
         dominant_message_code_fraction=0.0,
         target_code_mutual_information=0.0,
         choice_code_mutual_information=0.0,
+        positive_delta_code_mutual_information=0.0,
+        relative_value_code_mutual_information=0.0,
         message_patterns_used=0,
         reused_message_pattern_fraction=0.0,
         target_pattern_mutual_information=0.0,
         choice_pattern_mutual_information=0.0,
+        positive_delta_pattern_mutual_information=0.0,
+        relative_value_pattern_mutual_information=0.0,
         target_counts=target_count_string(dataset),
     )
 
@@ -2080,6 +2174,24 @@ def _categorical_mutual_information(left: np.ndarray, right: np.ndarray) -> floa
     return float(np.sum(joint_probability[mask] * np.log(joint_probability[mask] / independent[mask])))
 
 
+def _binary_pattern_mutual_information(
+    pattern_ids: np.ndarray,
+    positives: np.ndarray,
+) -> float:
+    pattern_values = np.asarray(pattern_ids, dtype=np.int64)
+    positive_values = np.asarray(positives, dtype=bool)
+    if positive_values.ndim != 2 or pattern_values.ndim != 1:
+        return 0.0
+    if positive_values.shape[0] != pattern_values.shape[0]:
+        return 0.0
+    repeated_patterns = np.repeat(
+        pattern_values[:, None],
+        positive_values.shape[1],
+        axis=1,
+    )
+    return _binary_code_mutual_information(repeated_patterns, positive_values)
+
+
 def _row(result: OptionMediationResult) -> str:
     return ",".join(
         [
@@ -2097,10 +2209,14 @@ def _row(result: OptionMediationResult) -> str:
             f"{result.dominant_message_code_fraction:.6f}",
             f"{result.target_code_mutual_information:.6f}",
             f"{result.choice_code_mutual_information:.6f}",
+            f"{result.positive_delta_code_mutual_information:.6f}",
+            f"{result.relative_value_code_mutual_information:.6f}",
             str(result.message_patterns_used),
             f"{result.reused_message_pattern_fraction:.6f}",
             f"{result.target_pattern_mutual_information:.6f}",
             f"{result.choice_pattern_mutual_information:.6f}",
+            f"{result.positive_delta_pattern_mutual_information:.6f}",
+            f"{result.relative_value_pattern_mutual_information:.6f}",
             result.target_counts,
         ]
     )
@@ -2119,8 +2235,11 @@ def main() -> None:
         "mean_oracle_lowest,mean_regret,mean_chosen_delta,mean_oracle_delta,"
         "message_codes_used,message_code_entropy,dominant_message_code_fraction,"
         "target_code_mutual_information,choice_code_mutual_information,"
+        "positive_delta_code_mutual_information,relative_value_code_mutual_information,"
         "message_patterns_used,reused_message_pattern_fraction,"
         "target_pattern_mutual_information,choice_pattern_mutual_information,"
+        "positive_delta_pattern_mutual_information,"
+        "relative_value_pattern_mutual_information,"
         "target_counts"
     )
     train_source = collect_option_mediation_source(

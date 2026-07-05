@@ -619,6 +619,13 @@ reconstruction/ranking also hurt transfer in the tested settings. The evidence
 currently favors developmental listener diversity over post-hoc imitation or
 distillation.
 
+Added diagnostics for whether option messages carry two grounded
+self-consequence fields: positive predicted body-state delta and relative
+state-local option value. The best staged receiver-diversity run carries both
+signals and loses them under `shuffle_delta`, but naive fixed-slot supervision
+for those fields reduced held-out listener transfer. This keeps the next target
+focused on emergent compositional pressure, not hand-assigned symbol slots.
+
 ## Commands
 
 ```bash
