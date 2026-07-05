@@ -663,6 +663,18 @@ def _mediation_rows(
                 field_receiver_count=args.staged_field_receiver_count,
                 field_receiver_epochs=args.staged_field_receiver_epochs,
                 field_receiver_weight=args.staged_field_receiver_weight,
+                field_action_receiver_count=(
+                    args.staged_field_action_receiver_count
+                ),
+                field_action_receiver_epochs=(
+                    args.staged_field_action_receiver_epochs
+                ),
+                field_action_receiver_weight=(
+                    args.staged_field_action_receiver_weight
+                ),
+                field_action_positive_opportunity_weight=(
+                    args.staged_field_action_positive_opportunity_weight
+                ),
                 sender_imitation_weight=args.staged_sender_imitation_weight,
                 receiver_logit_distillation_weight=(
                     args.staged_receiver_logit_distillation_weight
@@ -1173,6 +1185,18 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--staged-field-receiver-count", type=int, default=0)
     parser.add_argument("--staged-field-receiver-epochs", type=int, default=40)
     parser.add_argument("--staged-field-receiver-weight", type=float, default=0.0)
+    parser.add_argument("--staged-field-action-receiver-count", type=int, default=0)
+    parser.add_argument("--staged-field-action-receiver-epochs", type=int, default=40)
+    parser.add_argument(
+        "--staged-field-action-receiver-weight",
+        type=float,
+        default=0.0,
+    )
+    parser.add_argument(
+        "--staged-field-action-positive-opportunity-weight",
+        type=float,
+        default=1.0,
+    )
     parser.add_argument("--staged-sender-imitation-weight", type=float, default=0.0)
     parser.add_argument(
         "--staged-receiver-logit-distillation-weight",

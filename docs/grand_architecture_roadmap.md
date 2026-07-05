@@ -598,7 +598,10 @@ Next concrete implementation:
    current messages support relative-value queries and degrade under delta
    interventions. Opportunity-aware accounting shows positive body-improvement
    choices are partially communicated when available, but still recover only
-   part of the oracle improvement margin.
+   part of the oracle improvement margin. Auxiliary field-action receiver
+   pressure improved the narrow decoder metric but hurt held-out listener
+   transfer, so the next step should shift the main interaction/state
+   distribution toward positive self-improvement opportunities.
 7. Decide whether to scale the environment to Crafter before adding large
    language generation.
 

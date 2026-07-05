@@ -640,6 +640,11 @@ positive-improvement option, and the new sender reaches `0.6636` accuracy on
 that subset with positive selected delta, far above shuffled/negated controls
 but still well below oracle improvement. Receiver-side opportunity weighting did
 not close the gap.
+Sender-side field-action receiver pressure also failed as a route forward: it
+slightly improved opportunity accuracy but reduced held-out listener transfer
+and did not improve selected positive delta. The next intervention should change
+the state distribution or main interaction so positive self-improvement reports
+matter directly.
 
 ## Commands
 
