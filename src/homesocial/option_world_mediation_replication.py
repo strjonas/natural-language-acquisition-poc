@@ -575,6 +575,8 @@ def _mediation_rows(
                 training_dataset,
                 hidden_size=args.hidden_size,
                 receiver_size=args.receiver_size,
+                receiver_copies=args.receiver_copies,
+                receiver_turnover_interval=args.receiver_turnover_interval,
                 slots=args.message_slots,
                 vocabulary_size=args.message_vocabulary,
                 epochs=args.mediation_epochs,
@@ -620,6 +622,17 @@ def _mediation_rows(
                 transfer_receiver_epochs=args.staged_transfer_receiver_epochs,
                 transfer_receiver_weight=args.staged_transfer_receiver_weight,
                 sender_imitation_weight=args.staged_sender_imitation_weight,
+                receiver_logit_distillation_weight=(
+                    args.staged_receiver_logit_distillation_weight
+                ),
+                receiver_logit_distillation_temperature=(
+                    args.staged_receiver_logit_distillation_temperature
+                ),
+                score_targets=score_targets,
+                score_reconstruction_weight=(
+                    args.staged_score_reconstruction_weight
+                ),
+                score_rank_weight=args.staged_score_rank_weight,
                 seed=seed + 80_000,
             )
         else:
@@ -1026,6 +1039,18 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--staged-transfer-receiver-epochs", type=int, default=40)
     parser.add_argument("--staged-transfer-receiver-weight", type=float, default=0.0)
     parser.add_argument("--staged-sender-imitation-weight", type=float, default=0.0)
+    parser.add_argument(
+        "--staged-receiver-logit-distillation-weight",
+        type=float,
+        default=0.0,
+    )
+    parser.add_argument(
+        "--staged-receiver-logit-distillation-temperature",
+        type=float,
+        default=1.0,
+    )
+    parser.add_argument("--staged-score-reconstruction-weight", type=float, default=0.0)
+    parser.add_argument("--staged-score-rank-weight", type=float, default=0.0)
     parser.add_argument("--message-slots", type=int, default=OPTION_MEDIATION_SLOTS)
     parser.add_argument(
         "--message-vocabulary",

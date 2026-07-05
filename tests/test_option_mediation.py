@@ -653,6 +653,11 @@ class OptionMediationTests(unittest.TestCase):
             transfer_receiver_epochs=1,
             transfer_receiver_weight=0.1,
             sender_imitation_weight=0.1,
+            receiver_logit_distillation_weight=0.1,
+            receiver_logit_distillation_temperature=0.7,
+            score_targets=np.array(dataset.option_values),
+            score_reconstruction_weight=0.1,
+            score_rank_weight=0.1,
             seed=24,
         )
         base_result = evaluate_option_population_mediator(

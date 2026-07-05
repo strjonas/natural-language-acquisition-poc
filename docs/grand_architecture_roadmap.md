@@ -581,6 +581,12 @@ Next concrete implementation:
    with one-step consequence heads plus counterfactual branch training.
 6. Add minimal self-battery and report heads. Partially done with
    action-consequence ranking, causal attribution, and structured self-report.
+   Current learned-message work is probing whether option-level self-consequence
+   messages survive new speakers and new listeners. The strongest result so far
+   is staged sender introduction after the base convention was trained with two
+   receiver copies: new-speaker held-out listener accuracy improved modestly
+   from mean `0.5334` to `0.5464` across seeds `10043-10045`. Receiver-logit
+   and score-head distillation were negative.
 7. Decide whether to scale the environment to Crafter before adding large
    language generation.
 

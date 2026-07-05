@@ -602,6 +602,23 @@ Reports must track hidden interoceptive state and causal history above predeclar
 
 ---
 
+## Current Experimental State
+
+The current narrow target is not full self-report yet. It is the prerequisite:
+can a learned message about action-conditioned self-consequences remain usable
+when a new sender and a new listener are introduced? Staged population training
+now preserves a competent base sender/receiver, then admits a new sender.
+Auxiliary transfer receivers helped, and training the original convention with
+two receiver copies helped further: new-sender held-out listener accuracy rose
+from mean `0.5334` to `0.5464` across seeds `10043-10045`. This is a modest
+but real directional improvement, not a solved language system.
+
+Negative results are equally important. Token imitation improved fixed-receiver
+accuracy but hurt transfer. Receiver-logit distillation and score-head
+reconstruction/ranking also hurt transfer in the tested settings. The evidence
+currently favors developmental listener diversity over post-hoc imitation or
+distillation.
+
 ## Commands
 
 ```bash

@@ -1352,6 +1352,11 @@ def staged_option_population_from_mediator(
     transfer_receiver_epochs: int = 40,
     transfer_receiver_weight: float = 0.0,
     sender_imitation_weight: float = 0.0,
+    receiver_logit_distillation_weight: float = 0.0,
+    receiver_logit_distillation_temperature: float = 1.0,
+    score_targets: np.ndarray | None = None,
+    score_reconstruction_weight: float = 0.0,
+    score_rank_weight: float = 0.0,
     seed: int = 1,
 ) -> TrainedOptionPopulationMediator:
     rng = np.random.default_rng(seed)
@@ -1376,6 +1381,19 @@ def staged_option_population_from_mediator(
     model.choice = trained_base.model.choice
     model.score = trained_base.model.score
     indices = np.arange(sample_count)
+    normalized_score_targets: mx.array | None = None
+    if score_reconstruction_weight > 0.0 or score_rank_weight > 0.0:
+        if score_targets is None:
+            raise ValueError("Staged score supervision requires score targets.")
+        score_array = np.asarray(score_targets, dtype=np.float32)
+        if score_array.shape != (sample_count, option_count):
+            raise ValueError("Score targets must have shape (samples, options).")
+        score_mean = np.mean(score_array)
+        score_std = float(np.std(score_array) + 1e-6)
+        normalized_score_targets = mx.array(
+            (score_array - score_mean) / score_std,
+            dtype=mx.float32,
+        )
     transfer_receivers: list[TrainedOptionReceiver] = []
     if transfer_receiver_count > 0 and transfer_receiver_weight > 0.0:
         for receiver_index in range(transfer_receiver_count):
@@ -1395,7 +1413,8 @@ def staged_option_population_from_mediator(
         mx.stop_gradient(mx.argmax(message, axis=-1))
         for message in base_messages
     ]
-    mx.eval(*base_message_targets)
+    base_receiver_logits = mx.stop_gradient(trained_base.model.receive(base_messages))
+    mx.eval(*base_message_targets, base_receiver_logits)
 
     def sender_regularizer_loss(probabilities: list[mx.array]) -> mx.array:
         uniform = 1.0 / trained_base.model.vocabulary_size
@@ -1425,6 +1444,18 @@ def staged_option_population_from_mediator(
             + message_commitment_weight * commitment / scale
         )
 
+    def pairwise_score_rank_loss(
+        predicted_scores: mx.array,
+        batch_score_targets: mx.array,
+    ) -> mx.array:
+        predicted_diff = predicted_scores[:, :, None] - predicted_scores[:, None, :]
+        target_diff = batch_score_targets[:, :, None] - batch_score_targets[:, None, :]
+        target_abs = mx.abs(target_diff)
+        direction = mx.where(target_diff >= 0.0, 1.0, -1.0)
+        pair_weight = mx.where(target_abs > 1e-6, target_abs, 0.0)
+        pair_loss = mx.logaddexp(mx.array(0.0), -direction * predicted_diff)
+        return mx.sum(pair_loss * pair_weight) / (mx.sum(pair_weight) + 1e-6)
+
     for sender_index in range(1, model.population_size):
         optimizer = optim.Adam(learning_rate=learning_rate)
 
@@ -1432,6 +1463,8 @@ def staged_option_population_from_mediator(
             batch_features: mx.array,
             batch_targets: mx.array,
             batch_imitation_targets: list[mx.array],
+            batch_base_logits: mx.array,
+            batch_score_targets: mx.array,
         ) -> mx.array:
             messages, probabilities = model.message(
                 sender_index,
@@ -1469,10 +1502,36 @@ def staged_option_population_from_mediator(
                         mx.sum(target_one_hot * mx.log(flat_probs + 1e-8), axis=-1)
                     )
                 imitation_loss = imitation_loss / len(probabilities)
+            distillation_loss = mx.array(0.0)
+            if receiver_logit_distillation_weight > 0.0:
+                temperature = max(1e-6, receiver_logit_distillation_temperature)
+                base_probs = mx.softmax(batch_base_logits / temperature, axis=-1)
+                student_log_probs = logits / temperature - mx.logsumexp(
+                    logits / temperature,
+                    axis=-1,
+                    keepdims=True,
+                )
+                distillation_loss = -mx.mean(
+                    mx.sum(base_probs * student_log_probs, axis=-1)
+                )
+            score_loss = mx.array(0.0)
+            rank_loss = mx.array(0.0)
+            if score_reconstruction_weight > 0.0 or score_rank_weight > 0.0:
+                predicted_scores = model.score_messages(messages)
+                if score_reconstruction_weight > 0.0:
+                    score_loss = mx.mean((predicted_scores - batch_score_targets) ** 2)
+                if score_rank_weight > 0.0:
+                    rank_loss = pairwise_score_rank_loss(
+                        predicted_scores,
+                        batch_score_targets,
+                    )
             return (
                 -mx.mean(selected)
                 + transfer_receiver_weight * transfer_loss
                 + sender_imitation_weight * imitation_loss
+                + receiver_logit_distillation_weight * distillation_loss
+                + score_reconstruction_weight * score_loss
+                + score_rank_weight * rank_loss
                 + sender_regularizer_loss(probabilities)
             )
 
@@ -1488,6 +1547,12 @@ def staged_option_population_from_mediator(
                     features[batch],
                     dataset.target_options[batch],
                     [targets[batch] for targets in base_message_targets],
+                    base_receiver_logits[batch],
+                    (
+                        mx.zeros((batch.shape[0], option_count), dtype=mx.float32)
+                        if normalized_score_targets is None
+                        else normalized_score_targets[batch]
+                    ),
                 )
                 optimizer.update(model.senders[sender_index], grads)
                 mx.eval(model.senders[sender_index].parameters(), optimizer.state, loss)
