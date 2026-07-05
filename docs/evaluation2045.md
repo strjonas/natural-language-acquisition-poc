@@ -505,6 +505,12 @@ to `0.005` dropped primary/held-out accuracy to `0.5563`/`0.5297`. A single-slot
 only `0.5641` primary and `0.5453` held-out. The issue is therefore not just
 reuse; reusable symbols must preserve the self-model ranking semantics.
 
+Directly imposing reusable rank symbols was also tested with
+`--score-rank-code-weight`. Weights `0.005` and `0.02` reached only
+`0.5797`/`0.5625` and `0.5563`/`0.5375` primary/held-out accuracy. This
+preserved target-code information better than the `1x8` simplification but did
+not close the transfer gap.
+
 ---
 
 ## M6: Reflective Report With Parrot Guards

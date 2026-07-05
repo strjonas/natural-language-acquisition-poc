@@ -550,6 +550,7 @@ def _mediation_rows(
         or args.score_pretrain_epochs > 0
         or args.score_distillation_weight > 0.0
         or args.score_rank_weight > 0.0
+        or args.score_rank_code_weight > 0.0
     ):
         rank_score_dataset = (
             train_dataset
@@ -586,6 +587,8 @@ def _mediation_rows(
         score_reconstruction_weight=args.score_reconstruction_weight,
         code_target_weight=args.code_target_weight,
         message_replay_weight=args.message_replay_weight,
+        score_rank_code_weight=args.score_rank_code_weight,
+        score_rank_code_slot=args.score_rank_code_slot,
         seed=seed,
     )
 
@@ -840,6 +843,8 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--score-reconstruction-weight", type=float, default=0.0)
     parser.add_argument("--code-target-weight", type=float, default=0.0)
     parser.add_argument("--message-replay-weight", type=float, default=0.0)
+    parser.add_argument("--score-rank-code-weight", type=float, default=0.0)
+    parser.add_argument("--score-rank-code-slot", type=int, default=0)
     parser.add_argument("--heldout-receiver-epochs", type=int, default=0)
     parser.add_argument("--heldout-receiver-samples", type=int, default=None)
     return parser.parse_args()

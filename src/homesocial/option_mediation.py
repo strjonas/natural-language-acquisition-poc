@@ -515,6 +515,8 @@ def train_option_mediator(
     score_reconstruction_weight: float = 0.0,
     code_target_weight: float = 0.0,
     message_replay_weight: float = 0.0,
+    score_rank_code_weight: float = 0.0,
+    score_rank_code_slot: int = 0,
     seed: int = 1,
 ) -> TrainedOptionMediator:
     rng = np.random.default_rng(seed)
@@ -549,6 +551,7 @@ def train_option_mediator(
         or score_pretrain_epochs > 0
         or score_distillation_weight > 0.0
         or score_rank_weight > 0.0
+        or score_rank_code_weight > 0.0
     ):
         if score_targets is None:
             raise ValueError("Score supervision requires score targets.")
@@ -561,6 +564,21 @@ def train_option_mediator(
             (score_array - score_mean) / score_std,
             dtype=mx.float32,
         )
+    score_rank_code_targets = mx.zeros((sample_count, option_count), dtype=mx.int32)
+    if score_rank_code_weight > 0.0:
+        if score_targets is None:
+            raise ValueError("Rank-code supervision requires score targets.")
+        if not 0 <= score_rank_code_slot < slots:
+            raise ValueError("Rank-code slot must select an existing message slot.")
+        rank_order = np.argsort(np.asarray(score_targets, dtype=np.float32), axis=1)
+        rank_positions = np.empty_like(rank_order)
+        rows = np.arange(sample_count)[:, None]
+        rank_positions[rows, rank_order] = np.arange(option_count)[None, :]
+        rank_code_targets = np.floor(
+            rank_positions * vocabulary_size / max(1, option_count)
+        ).astype(np.int32)
+        rank_code_targets = np.clip(rank_code_targets, 0, vocabulary_size - 1)
+        score_rank_code_targets = mx.array(rank_code_targets, dtype=mx.int32)
 
     def pairwise_score_rank_loss(
         predicted_scores: mx.array,
@@ -608,10 +626,21 @@ def train_option_mediator(
             )
         return replay_loss / len(probabilities)
 
+    def score_rank_code_loss(
+        probabilities: list[mx.array],
+        rank_code_targets: mx.array,
+    ) -> mx.array:
+        probs = probabilities[score_rank_code_slot]
+        flat_probs = mx.reshape(probs, (-1, probs.shape[-1]))
+        flat_targets = mx.reshape(rank_code_targets, (-1,))
+        target_one_hot = mx.eye(vocabulary_size)[flat_targets]
+        return -mx.mean(mx.sum(target_one_hot * mx.log(flat_probs + 1e-8), axis=-1))
+
     def score_pretrain_loss_fn(
         batch_features: mx.array,
         batch_score_targets: mx.array,
         batch_targets: mx.array,
+        batch_rank_code_targets: mx.array,
     ) -> mx.array:
         messages, probabilities = model.message(
             batch_features,
@@ -634,6 +663,8 @@ def train_option_mediator(
             + balance_weight * balance_loss / len(probabilities)
             + pretrain_commitment_weight * message_commitment_loss(probabilities)
             + code_target_weight * code_target_loss(messages, batch_targets)
+            + score_rank_code_weight
+            * score_rank_code_loss(probabilities, batch_rank_code_targets)
         )
 
     def loss_fn(
@@ -641,6 +672,7 @@ def train_option_mediator(
         batch_targets: mx.array,
         batch_score_targets: mx.array,
         batch_replay_targets: list[mx.array],
+        batch_rank_code_targets: mx.array,
     ) -> mx.array:
         messages, probabilities = model.message(
             batch_features,
@@ -702,6 +734,8 @@ def train_option_mediator(
             + code_target_weight * code_target_loss(messages, batch_targets)
             + message_replay_weight
             * message_replay_loss(probabilities, batch_replay_targets)
+            + score_rank_code_weight
+            * score_rank_code_loss(probabilities, batch_rank_code_targets)
         )
 
     def frozen_receiver_loss_fn(
@@ -742,6 +776,7 @@ def train_option_mediator(
                 features[batch],
                 normalized_score_targets[batch],
                 dataset.target_options[batch],
+                score_rank_code_targets[batch],
             )
             optimizer.update(model, grads)
             mx.eval(model.parameters(), optimizer.state, loss)
@@ -808,6 +843,7 @@ def train_option_mediator(
                 dataset.target_options[batch],
                 batch_score_targets,
                 [targets[batch] for targets in replay_targets],
+                score_rank_code_targets[batch],
             )
             optimizer.update(model, grads)
             mx.eval(model.parameters(), optimizer.state, loss)
@@ -1390,6 +1426,7 @@ def main() -> None:
             or args.score_pretrain_epochs > 0
             or args.score_distillation_weight > 0.0
             or args.score_rank_weight > 0.0
+            or args.score_rank_code_weight > 0.0
         ):
             rank_score_dataset = (
                 train_dataset
@@ -1427,6 +1464,8 @@ def main() -> None:
             score_reconstruction_weight=args.score_reconstruction_weight,
             code_target_weight=args.code_target_weight,
             message_replay_weight=args.message_replay_weight,
+            score_rank_code_weight=args.score_rank_code_weight,
+            score_rank_code_slot=args.score_rank_code_slot,
             seed=args.seed,
         )
         for intervention in args.interventions:
@@ -1556,6 +1595,8 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--score-reconstruction-weight", type=float, default=0.0)
     parser.add_argument("--code-target-weight", type=float, default=0.0)
     parser.add_argument("--message-replay-weight", type=float, default=0.0)
+    parser.add_argument("--score-rank-code-weight", type=float, default=0.0)
+    parser.add_argument("--score-rank-code-slot", type=int, default=0)
     parser.add_argument(
         "--interventions",
         nargs="+",

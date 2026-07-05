@@ -388,6 +388,8 @@ penalizes later sender drift during choice training.
 test whether the compact self-code transfers beyond the co-trained receiver.
 `--receiver-copies` trains multiple co-receivers against the same sender as a
 convention-pressure probe.
+`--score-rank-code-weight` pushes one message slot to encode self-model rank
+buckets as a reusable ordinal-symbol probe.
 
 Replicate the strict self-model-targeted commitment setting across independent
 base body checkpoints:

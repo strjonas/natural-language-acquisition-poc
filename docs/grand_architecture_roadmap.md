@@ -315,6 +315,9 @@ Completed:
 - simpler-convention probes with lower balance pressure and a single-slot `1x8`
   message; both improved or preserved some reuse metrics but lost too much
   self-model choice accuracy.
+- score-rank code pressure via `--score-rank-code-weight`, which forced one
+  slot toward self-model rank buckets but still reduced primary and held-out
+  receiver accuracy.
 
 Not yet passed:
 
@@ -353,8 +356,8 @@ Not yet passed:
 - code semantics and receiver/code alignment diagnostics, because active code
   usage is already broad while compact-message accuracy still trails direct
   self-rank,
-- reusable sender symbols that preserve self-model rank semantics, because
-  simpler code usage alone improved reuse but lost choice accuracy,
+- receiver-useful codebook objectives that preserve self-model rank semantics,
+  because direct ordinal bucket supervision did not close the transfer gap,
 - explicit code stability diagnostics across seeds and independently trained
   bodies, because the current semantics check is still a single-seed comparison,
 - stronger rank-plus-dynamics training that recovers the old world-trend metric
