@@ -81,7 +81,12 @@ class OptionWorldMediationReplicationRow:
     trained_world_trend_after: float
     field_use_mean_accuracy: float
     field_use_positive_delta_accuracy: float
+    field_use_positive_delta_opportunity_rate: float
+    field_use_positive_delta_opportunity_accuracy: float
     field_use_relative_value_accuracy: float
+    field_use_positive_query_mean_selected_delta: float
+    field_use_positive_opportunity_mean_selected_delta: float
+    field_use_positive_opportunity_mean_oracle_delta: float
     field_use_mean_selected_delta: float
 
 
@@ -109,7 +114,13 @@ def header() -> str:
         "world_final_need_mse,world_trend_accuracy,trained_world_final_need_mse_before,"
         "trained_world_final_need_mse_after,trained_world_trend_before,"
         "trained_world_trend_after,field_use_mean_accuracy,"
-        "field_use_positive_delta_accuracy,field_use_relative_value_accuracy,"
+        "field_use_positive_delta_accuracy,"
+        "field_use_positive_delta_opportunity_rate,"
+        "field_use_positive_delta_opportunity_accuracy,"
+        "field_use_relative_value_accuracy,"
+        "field_use_positive_query_mean_selected_delta,"
+        "field_use_positive_opportunity_mean_selected_delta,"
+        "field_use_positive_opportunity_mean_oracle_delta,"
         "field_use_mean_selected_delta"
     )
 
@@ -146,7 +157,12 @@ def format_row(row: OptionWorldMediationReplicationRow) -> str:
             f"{row.trained_world_trend_after:.4f}",
             f"{row.field_use_mean_accuracy:.4f}",
             f"{row.field_use_positive_delta_accuracy:.4f}",
+            f"{row.field_use_positive_delta_opportunity_rate:.4f}",
+            f"{row.field_use_positive_delta_opportunity_accuracy:.4f}",
             f"{row.field_use_relative_value_accuracy:.4f}",
+            f"{row.field_use_positive_query_mean_selected_delta:.6f}",
+            f"{row.field_use_positive_opportunity_mean_selected_delta:.6f}",
+            f"{row.field_use_positive_opportunity_mean_oracle_delta:.6f}",
             f"{row.field_use_mean_selected_delta:.6f}",
         ]
     )
@@ -703,6 +719,9 @@ def _mediation_rows(
                     batch_size=args.mediation_batch_size,
                     learning_rate=args.mediation_learning_rate,
                     max_samples=args.field_use_receiver_samples,
+                    positive_opportunity_weight=(
+                        args.field_use_positive_opportunity_weight
+                    ),
                     seed=seed + 90_000 + sender_index,
                 )
             for intervention in args.interventions:
@@ -1021,10 +1040,35 @@ def _result_row(
             if field_use_result is None
             else field_use_result.positive_delta_accuracy
         ),
+        field_use_positive_delta_opportunity_rate=(
+            0.0
+            if field_use_result is None
+            else field_use_result.positive_delta_opportunity_rate
+        ),
+        field_use_positive_delta_opportunity_accuracy=(
+            0.0
+            if field_use_result is None
+            else field_use_result.positive_delta_opportunity_accuracy
+        ),
         field_use_relative_value_accuracy=(
             0.0
             if field_use_result is None
             else field_use_result.relative_value_accuracy
+        ),
+        field_use_positive_query_mean_selected_delta=(
+            0.0
+            if field_use_result is None
+            else field_use_result.positive_query_mean_selected_delta
+        ),
+        field_use_positive_opportunity_mean_selected_delta=(
+            0.0
+            if field_use_result is None
+            else field_use_result.positive_opportunity_mean_selected_delta
+        ),
+        field_use_positive_opportunity_mean_oracle_delta=(
+            0.0
+            if field_use_result is None
+            else field_use_result.positive_opportunity_mean_oracle_delta
         ),
         field_use_mean_selected_delta=(
             0.0
@@ -1185,6 +1229,11 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--heldout-receiver-samples", type=int, default=None)
     parser.add_argument("--field-use-receiver-epochs", type=int, default=0)
     parser.add_argument("--field-use-receiver-samples", type=int, default=None)
+    parser.add_argument(
+        "--field-use-positive-opportunity-weight",
+        type=float,
+        default=1.0,
+    )
     parser.add_argument(
         "--heldout-receiver-score-distillation-weight",
         type=float,

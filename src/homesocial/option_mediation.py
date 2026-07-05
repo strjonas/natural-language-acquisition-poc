@@ -111,10 +111,15 @@ class OptionFieldUseResult:
     sender_index: int
     samples: int
     positive_delta_accuracy: float
+    positive_delta_opportunity_rate: float
+    positive_delta_opportunity_accuracy: float
     relative_value_accuracy: float
     mean_accuracy: float
     positive_delta_selected_rate: float
     relative_value_selected_rate: float
+    positive_query_mean_selected_delta: float
+    positive_opportunity_mean_selected_delta: float
+    positive_opportunity_mean_oracle_delta: float
     mean_selected_delta: float
     mean_oracle_delta: float
 
@@ -1992,6 +1997,7 @@ def train_option_field_action_receiver_for_population_sender(
     batch_size: int = 128,
     learning_rate: float = 1e-3,
     max_samples: int | None = None,
+    positive_opportunity_weight: float = 1.0,
     seed: int = 1,
 ) -> OptionFieldActionReceiver:
     rng = np.random.default_rng(seed)
@@ -2007,8 +2013,16 @@ def train_option_field_action_receiver_for_population_sender(
     frozen_messages = [mx.stop_gradient(message) for message in messages]
     sample_count = int(features.shape[0])
     option_count = int(dataset.features.shape[1])
+    values = np.asarray(dataset.option_values, dtype=np.float32)
+    current = np.asarray(dataset.current_lowest, dtype=np.float32)
+    positive_opportunities = np.any(values > current[:, None], axis=1)
     positive_labels, relative_labels = _option_field_use_labels(dataset)
     acceptable = np.concatenate([positive_labels, relative_labels], axis=0)
+    sample_weights = np.ones((2 * sample_count,), dtype=np.float32)
+    sample_weights[:sample_count][positive_opportunities] = max(
+        0.0,
+        float(positive_opportunity_weight),
+    )
     query_indices = np.concatenate(
         [
             np.zeros((sample_count,), dtype=np.int32),
@@ -2031,16 +2045,19 @@ def train_option_field_action_receiver_for_population_sender(
     queries = mx.array(query_indices, dtype=mx.int32)
     sample_lookup = mx.array(sample_indices, dtype=mx.int32)
     acceptable_targets = mx.array(acceptable.astype(np.float32), dtype=mx.float32)
+    weights = mx.array(sample_weights, dtype=mx.float32)
 
     def loss_fn(
         batch_messages: list[mx.array],
         batch_queries: mx.array,
         batch_acceptable: mx.array,
+        batch_weights: mx.array,
     ) -> mx.array:
         logits = receiver.receive(batch_messages, batch_queries)
         log_probs = logits - mx.logsumexp(logits, axis=-1, keepdims=True)
         masked = mx.where(batch_acceptable > 0.0, log_probs, mx.array(-1e9))
-        return -mx.mean(mx.logsumexp(masked, axis=-1))
+        losses = -mx.logsumexp(masked, axis=-1)
+        return mx.sum(losses * batch_weights) / (mx.sum(batch_weights) + 1e-6)
 
     loss_and_grad = nn.value_and_grad(receiver, loss_fn)
     for _epoch in range(max(1, epochs)):
@@ -2053,6 +2070,7 @@ def train_option_field_action_receiver_for_population_sender(
                 [message[message_batch] for message in frozen_messages],
                 queries[batch],
                 acceptable_targets[batch],
+                weights[batch],
             )
             optimizer.update(receiver, grads)
             mx.eval(receiver.parameters(), optimizer.state, loss)
@@ -2078,6 +2096,8 @@ def evaluate_option_field_use_for_population_sender(
     sample_count = int(features.shape[0])
     values = np.asarray(dataset.option_values, dtype=np.float32)
     current = np.asarray(dataset.current_lowest, dtype=np.float32)
+    raw_positive_labels = values > current[:, None]
+    positive_opportunities = np.any(raw_positive_labels, axis=1)
     positive_labels, relative_labels = _option_field_use_labels(dataset)
 
     positive_queries = mx.zeros((sample_count,), dtype=mx.int32)
@@ -2102,17 +2122,48 @@ def evaluate_option_field_use_for_population_sender(
         ]
     )
     oracle_delta = np.max(values, axis=1) - current
+    positive_opportunity_accuracy = (
+        float(
+            np.mean(
+                raw_positive_labels[rows, positive_predictions][
+                    positive_opportunities
+                ]
+            )
+        )
+        if np.any(positive_opportunities)
+        else 0.0
+    )
+    positive_selected_delta = selected_positive_values - current
+    positive_opportunity_mean_selected_delta = (
+        float(np.mean(positive_selected_delta[positive_opportunities]))
+        if np.any(positive_opportunities)
+        else 0.0
+    )
+    positive_opportunity_mean_oracle_delta = (
+        float(np.mean(oracle_delta[positive_opportunities]))
+        if np.any(positive_opportunities)
+        else 0.0
+    )
     return OptionFieldUseResult(
         model_control=model_control,
         sender_index=sender_index,
         samples=sample_count,
         positive_delta_accuracy=float(np.mean(positive_correct)),
+        positive_delta_opportunity_rate=float(np.mean(positive_opportunities)),
+        positive_delta_opportunity_accuracy=positive_opportunity_accuracy,
         relative_value_accuracy=float(np.mean(relative_correct)),
         mean_accuracy=float(
             0.5 * (np.mean(positive_correct) + np.mean(relative_correct))
         ),
         positive_delta_selected_rate=float(np.mean(selected_positive_values > current)),
         relative_value_selected_rate=float(np.mean(relative_correct)),
+        positive_query_mean_selected_delta=float(
+            np.mean(positive_selected_delta)
+        ),
+        positive_opportunity_mean_selected_delta=(
+            positive_opportunity_mean_selected_delta
+        ),
+        positive_opportunity_mean_oracle_delta=positive_opportunity_mean_oracle_delta,
         mean_selected_delta=float(np.mean(selected_deltas)),
         mean_oracle_delta=float(np.mean(oracle_delta)),
     )

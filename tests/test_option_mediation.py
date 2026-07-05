@@ -660,6 +660,7 @@ class OptionMediationTests(unittest.TestCase):
             receiver_size=12,
             epochs=1,
             batch_size=5,
+            positive_opportunity_weight=2.0,
             seed=32,
         )
         result = evaluate_option_field_use_for_population_sender(
@@ -674,6 +675,15 @@ class OptionMediationTests(unittest.TestCase):
         self.assertEqual(result.model_control, "field_use")
         self.assertGreaterEqual(result.mean_accuracy, 0.0)
         self.assertLessEqual(result.mean_accuracy, 1.0)
+        self.assertGreaterEqual(result.positive_delta_opportunity_rate, 0.0)
+        self.assertLessEqual(result.positive_delta_opportunity_rate, 1.0)
+        self.assertGreaterEqual(result.positive_delta_opportunity_accuracy, 0.0)
+        self.assertLessEqual(result.positive_delta_opportunity_accuracy, 1.0)
+        self.assertTrue(np.isfinite(result.positive_query_mean_selected_delta))
+        self.assertTrue(
+            np.isfinite(result.positive_opportunity_mean_selected_delta)
+        )
+        self.assertTrue(np.isfinite(result.positive_opportunity_mean_oracle_delta))
         self.assertTrue(np.isfinite(result.mean_selected_delta))
 
     def test_staged_option_population_from_mediator_runs(self):

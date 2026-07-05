@@ -596,7 +596,9 @@ Next concrete implementation:
    useful in the environment instead of adding another offline decoding loss.
    A first query-conditioned field-use receiver now measures that directly:
    current messages support relative-value queries and degrade under delta
-   interventions, but remain weak for positive body-improvement choices.
+   interventions. Opportunity-aware accounting shows positive body-improvement
+   choices are partially communicated when available, but still recover only
+   part of the oracle improvement margin.
 7. Decide whether to scale the environment to Crafter before adding large
    language generation.
 

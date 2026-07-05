@@ -635,6 +635,11 @@ performance degrades under `shuffle_delta`/`negate_delta`, but positive
 body-improvement queries remain weak. This is now the next concrete bottleneck:
 messages must support useful self-improvement choices, not only relative option
 ordering.
+Opportunity-aware accounting sharpened this: only about `34%` of states have a
+positive-improvement option, and the new sender reaches `0.6636` accuracy on
+that subset with positive selected delta, far above shuffled/negated controls
+but still well below oracle improvement. Receiver-side opportunity weighting did
+not close the gap.
 
 ## Commands
 

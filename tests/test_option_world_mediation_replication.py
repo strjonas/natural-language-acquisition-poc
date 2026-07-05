@@ -46,7 +46,12 @@ class OptionWorldMediationReplicationTests(unittest.TestCase):
             trained_world_trend_after=0.75,
             field_use_mean_accuracy=0.81,
             field_use_positive_delta_accuracy=0.82,
+            field_use_positive_delta_opportunity_rate=0.30,
+            field_use_positive_delta_opportunity_accuracy=0.40,
             field_use_relative_value_accuracy=0.80,
+            field_use_positive_query_mean_selected_delta=0.05,
+            field_use_positive_opportunity_mean_selected_delta=0.06,
+            field_use_positive_opportunity_mean_oracle_delta=0.09,
             field_use_mean_selected_delta=0.11,
         )
 
@@ -60,7 +65,8 @@ class OptionWorldMediationReplicationTests(unittest.TestCase):
             "0.200000,3,0.800000,0.600000,0.030000,0.040000,"
             "0.070000,0.080000,5,0.700000,0.050000,0.060000,"
             "0.090000,0.100000,0.034568,0.7500,0.120000,0.030000,"
-            "0.2500,0.7500,0.8100,0.8200,0.8000,0.110000",
+            "0.2500,0.7500,0.8100,0.8200,0.3000,0.4000,0.8000,"
+            "0.050000,0.060000,0.090000,0.110000",
         )
 
     def test_noise_overrides_fall_back_to_shared_value(self):
