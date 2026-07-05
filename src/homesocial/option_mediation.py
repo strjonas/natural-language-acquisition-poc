@@ -67,6 +67,11 @@ class TrainedOptionReceiver:
 
 
 @dataclass(frozen=True)
+class TrainedOptionFieldReceiver:
+    model: "OptionMediationFieldReceiver"
+
+
+@dataclass(frozen=True)
 class TrainedOptionPopulationMediator:
     model: "OptionPopulationMediationProtocol"
     feature_mean: mx.array
@@ -376,6 +381,36 @@ class OptionMediationReceiver(nn.Module):
 
     def receive(self, messages: list[mx.array]) -> mx.array:
         return self.choice(self.receive_hidden(messages))
+
+
+class OptionMediationFieldReceiver(nn.Module):
+    def __init__(
+        self,
+        option_count: int,
+        *,
+        receiver_size: int = 96,
+        slots: int = OPTION_MEDIATION_SLOTS,
+        vocabulary_size: int = OPTION_MEDIATION_VOCABULARY,
+    ) -> None:
+        super().__init__()
+        receiver_input = option_count * slots * vocabulary_size
+        self.receiver = nn.Linear(receiver_input, receiver_size)
+        self.receiver_hidden = nn.Linear(receiver_size, receiver_size)
+        self.positive_delta = nn.Linear(receiver_size, option_count)
+        self.relative_value = nn.Linear(receiver_size, option_count)
+
+    def receive_hidden(self, messages: list[mx.array]) -> mx.array:
+        flat_messages = [
+            mx.reshape(message, (message.shape[0], -1))
+            for message in messages
+        ]
+        inputs = mx.concatenate(flat_messages, axis=-1)
+        hidden = nn.relu(self.receiver(inputs))
+        return hidden + nn.relu(self.receiver_hidden(hidden))
+
+    def receive(self, messages: list[mx.array]) -> tuple[mx.array, mx.array]:
+        hidden = self.receive_hidden(messages)
+        return self.positive_delta(hidden), self.relative_value(hidden)
 
 
 def collect_option_mediation_dataset(
@@ -1138,6 +1173,90 @@ def train_option_receiver_for_sender(
     return TrainedOptionReceiver(model=receiver)
 
 
+def train_option_field_receiver_for_sender(
+    trained_sender: TrainedOptionMediator,
+    dataset: OptionMediationDataset,
+    *,
+    receiver_size: int = 96,
+    epochs: int = 40,
+    batch_size: int = 128,
+    learning_rate: float = 1e-3,
+    max_samples: int | None = None,
+    score_targets: np.ndarray | None = None,
+    seed: int = 1,
+) -> TrainedOptionFieldReceiver:
+    rng = np.random.default_rng(seed)
+    mx.random.seed(seed)
+    features = (
+        dataset.features - trained_sender.feature_mean
+    ) / trained_sender.feature_std
+    messages, _probabilities = trained_sender.model.message(features, hard=True)
+    frozen_messages = [mx.stop_gradient(message) for message in messages]
+    sample_count = int(features.shape[0])
+    train_indices = np.arange(sample_count)
+    if max_samples is not None and max_samples > 0 and max_samples < sample_count:
+        train_indices = rng.choice(train_indices, size=max_samples, replace=False)
+    option_count = int(dataset.features.shape[1])
+    field_scores = (
+        np.asarray(score_targets, dtype=np.float32)
+        if score_targets is not None
+        else np.asarray(dataset.option_values, dtype=np.float32)
+    )
+    if field_scores.shape != (sample_count, option_count):
+        raise ValueError("Score targets must have shape (samples, options).")
+    current_values = np.asarray(dataset.current_lowest, dtype=np.float32)[:, None]
+    positive_delta_targets = mx.array(
+        (field_scores > current_values).astype(np.float32),
+        dtype=mx.float32,
+    )
+    relative_value_targets = mx.array(
+        (
+            field_scores >= np.median(field_scores, axis=1, keepdims=True)
+        ).astype(np.float32),
+        dtype=mx.float32,
+    )
+    receiver = OptionMediationFieldReceiver(
+        option_count,
+        receiver_size=receiver_size,
+        slots=trained_sender.model.slots,
+        vocabulary_size=trained_sender.model.vocabulary_size,
+    )
+    optimizer = optim.Adam(learning_rate=learning_rate)
+
+    def binary_logits_loss(logits: mx.array, labels: mx.array) -> mx.array:
+        losses = mx.logaddexp(mx.array(0.0), logits) - labels * logits
+        return mx.mean(losses)
+
+    def loss_fn(
+        batch_messages: list[mx.array],
+        batch_positive_delta_targets: mx.array,
+        batch_relative_value_targets: mx.array,
+    ) -> mx.array:
+        positive_logits, relative_logits = receiver.receive(batch_messages)
+        return 0.5 * (
+            binary_logits_loss(positive_logits, batch_positive_delta_targets)
+            + binary_logits_loss(relative_logits, batch_relative_value_targets)
+        )
+
+    loss_and_grad = nn.value_and_grad(receiver, loss_fn)
+    for _epoch in range(max(1, epochs)):
+        rng.shuffle(train_indices)
+        for start in range(0, len(train_indices), max(1, batch_size)):
+            current_batch = mx.array(
+                train_indices[start : start + max(1, batch_size)],
+                dtype=mx.int32,
+            )
+            loss, grads = loss_and_grad(
+                [message[current_batch] for message in frozen_messages],
+                positive_delta_targets[current_batch],
+                relative_value_targets[current_batch],
+            )
+            optimizer.update(receiver, grads)
+            mx.eval(receiver.parameters(), optimizer.state, loss)
+
+    return TrainedOptionFieldReceiver(model=receiver)
+
+
 def train_option_population_mediator(
     dataset: OptionMediationDataset,
     *,
@@ -1355,6 +1474,9 @@ def staged_option_population_from_mediator(
     transfer_receiver_count: int = 0,
     transfer_receiver_epochs: int = 40,
     transfer_receiver_weight: float = 0.0,
+    field_receiver_count: int = 0,
+    field_receiver_epochs: int = 40,
+    field_receiver_weight: float = 0.0,
     sender_imitation_weight: float = 0.0,
     receiver_logit_distillation_weight: float = 0.0,
     receiver_logit_distillation_temperature: float = 1.0,
@@ -1444,6 +1566,21 @@ def staged_option_population_from_mediator(
                     seed=seed + 10_000 + receiver_index,
                 )
             )
+    field_receivers: list[TrainedOptionFieldReceiver] = []
+    if field_receiver_count > 0 and field_receiver_weight > 0.0:
+        for receiver_index in range(field_receiver_count):
+            field_receivers.append(
+                train_option_field_receiver_for_sender(
+                    trained_base,
+                    dataset,
+                    receiver_size=receiver_size,
+                    epochs=field_receiver_epochs,
+                    batch_size=batch_size,
+                    learning_rate=learning_rate,
+                    score_targets=score_targets,
+                    seed=seed + 20_000 + receiver_index,
+                )
+            )
     base_messages, _base_probabilities = trained_base.model.message(features, hard=True)
     base_message_targets = [
         mx.stop_gradient(mx.argmax(message, axis=-1))
@@ -1506,6 +1643,10 @@ def staged_option_population_from_mediator(
         target_one_hot = mx.eye(trained_base.model.vocabulary_size)[flat_targets]
         return -mx.mean(mx.sum(target_one_hot * mx.log(flat_probs + 1e-8), axis=-1))
 
+    def binary_logits_loss(logits: mx.array, labels: mx.array) -> mx.array:
+        losses = mx.logaddexp(mx.array(0.0), logits) - labels * logits
+        return mx.mean(losses)
+
     for sender_index in range(1, model.population_size):
         optimizer = optim.Adam(learning_rate=learning_rate)
 
@@ -1542,6 +1683,21 @@ def staged_option_population_from_mediator(
                 transfer_loss = transfer_loss - mx.mean(receiver_selected)
             if transfer_receivers:
                 transfer_loss = transfer_loss / len(transfer_receivers)
+            field_transfer_loss = mx.array(0.0)
+            for receiver in field_receivers:
+                positive_logits, relative_logits = receiver.model.receive(messages)
+                field_transfer_loss = field_transfer_loss + 0.5 * (
+                    binary_logits_loss(
+                        positive_logits,
+                        batch_positive_delta_targets.astype(mx.float32),
+                    )
+                    + binary_logits_loss(
+                        relative_logits,
+                        batch_relative_value_targets.astype(mx.float32),
+                    )
+                )
+            if field_receivers:
+                field_transfer_loss = field_transfer_loss / len(field_receivers)
             imitation_loss = mx.array(0.0)
             if sender_imitation_weight > 0.0:
                 for probs, targets in zip(probabilities, batch_imitation_targets):
@@ -1594,6 +1750,7 @@ def staged_option_population_from_mediator(
             return (
                 -mx.mean(selected)
                 + transfer_receiver_weight * transfer_loss
+                + field_receiver_weight * field_transfer_loss
                 + sender_imitation_weight * imitation_loss
                 + receiver_logit_distillation_weight * distillation_loss
                 + score_reconstruction_weight * score_loss

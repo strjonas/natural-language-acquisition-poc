@@ -625,6 +625,10 @@ state-local option value. The best staged receiver-diversity run carries both
 signals and loses them under `shuffle_delta`, but naive fixed-slot supervision
 for those fields reduced held-out listener transfer. This keeps the next target
 focused on emergent compositional pressure, not hand-assigned symbol slots.
+Receiver-decoded field pressure was also negative: independent field receivers
+trained on the base sender reduced new-sender held-out transfer at weights
+`0.1` and `0.02`. The next version should make these fields operationally useful
+inside the interaction itself, rather than adding auxiliary field losses.
 
 ## Commands
 

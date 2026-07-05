@@ -632,6 +632,9 @@ def _mediation_rows(
                 transfer_receiver_count=args.staged_transfer_receiver_count,
                 transfer_receiver_epochs=args.staged_transfer_receiver_epochs,
                 transfer_receiver_weight=args.staged_transfer_receiver_weight,
+                field_receiver_count=args.staged_field_receiver_count,
+                field_receiver_epochs=args.staged_field_receiver_epochs,
+                field_receiver_weight=args.staged_field_receiver_weight,
                 sender_imitation_weight=args.staged_sender_imitation_weight,
                 receiver_logit_distillation_weight=(
                     args.staged_receiver_logit_distillation_weight
@@ -1069,6 +1072,9 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--staged-transfer-receiver-count", type=int, default=0)
     parser.add_argument("--staged-transfer-receiver-epochs", type=int, default=40)
     parser.add_argument("--staged-transfer-receiver-weight", type=float, default=0.0)
+    parser.add_argument("--staged-field-receiver-count", type=int, default=0)
+    parser.add_argument("--staged-field-receiver-epochs", type=int, default=40)
+    parser.add_argument("--staged-field-receiver-weight", type=float, default=0.0)
     parser.add_argument("--staged-sender-imitation-weight", type=float, default=0.0)
     parser.add_argument(
         "--staged-receiver-logit-distillation-weight",

@@ -591,7 +591,9 @@ Next concrete implementation:
    and relative option-value fields. The best staged run does carry those
    fields, but fixed-slot supervision hurt transfer, so the next architecture
    change should create compositional pressure through interaction rather than
-   hand-assigned code labels.
+   hand-assigned code labels. A first auxiliary field-receiver version also
+   hurt transfer, which strengthens the case for making field reports causally
+   useful in the environment instead of adding another offline decoding loss.
 7. Decide whether to scale the environment to Crafter before adding large
    language generation.
 
