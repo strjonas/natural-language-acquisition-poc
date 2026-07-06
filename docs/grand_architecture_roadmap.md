@@ -655,9 +655,15 @@ Next concrete implementation:
    the partial partner proposal intrinsic to the task loop and optimize final
    body outcome, rather than attaching auxiliary repair losses to the compact
    dialogue protocol. A first main-loop limited-partner training mode was also
-   negative inside the compact option-label dataset. The next step should move
-   this into an environment-level partner task with outcome scoring rather than
-   further supervised repairs in `option_dialogue`.
+   negative inside the compact option-label dataset. Outcome scoring now exists
+   in `option_dialogue`: training final choice by expected body value/regret
+   plus filtered consequential partner repair improved the ordinary two-seed
+   dialogue path (`0.6750` to `0.6897` final accuracy, chosen delta `+0.0533`
+   to `+0.0639`) and slightly improved limited-partner body delta, but did not
+   improve limited-partner final accuracy. Treat this as evidence that outcome
+   objectives matter; the next step should move this into an environment-level
+   partner task rather than adding more supervised repairs to the compact
+   option dataset.
 7. Decide whether to scale the environment to Crafter before adding large
    language generation.
 

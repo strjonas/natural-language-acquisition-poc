@@ -756,6 +756,16 @@ context. With proposal loss disabled, normal final accuracy dropped to
 `0.5893`, still below audit-only `0.6847`. This strengthens the conclusion
 that the next step should leave the compact option-label objective and build an
 environment-level partner task scored by downstream body outcome.
+That outcome-scored objective now exists in the compact protocol as
+`--final-objective outcome`. Main-loop limited-partner training with this
+objective did not solve partner repair, but outcome-scored consequential repair
+is the first positive partner-training result: over seeds `10043-10044`, normal
+dialogue improved from `0.6750` final accuracy and `+0.053317` chosen delta to
+`0.6897` and `+0.063918`, with regret falling from `0.060078` to `0.049477`.
+Limited-partner final accuracy remained lower than audit-only (`0.6420` versus
+`0.6573`), but its chosen delta improved slightly (`+0.051588` versus
+`+0.048185`). This says the outcome objective is useful, but the compact
+protocol is still not enough for robust social partner repair.
 
 ## Commands
 

@@ -101,6 +101,7 @@ class OptionDialogueTests(unittest.TestCase):
             batch_size=4,
             proposal_weight=0.0,
             train_proposal_mode="limited_partner",
+            final_objective="outcome",
             limited_partner_epochs=1,
             limited_partner_hidden_size=8,
             seed=8,
@@ -181,6 +182,14 @@ class OptionDialogueTests(unittest.TestCase):
                 receiver_size=12,
                 epochs=1,
                 train_proposal_mode="limited_partner",
+            )
+        with self.assertRaises(ValueError):
+            train_option_dialogue(
+                _dataset(),
+                hidden_size=12,
+                receiver_size=12,
+                epochs=1,
+                final_objective="unknown",
             )
 
     def test_repair_loss_weights_filter_mistakes_and_regret(self):

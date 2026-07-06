@@ -41,6 +41,7 @@ REPAIR_PROPOSAL_MODES = (
 VALUE_BASED_REPAIR_PROPOSAL_MODES = ("second_best", "worst")
 LIMITED_PARTNER_MASK_MODES = ("first_half", "even_features", "odd_features")
 TRAIN_PROPOSAL_MODES = ("model", "limited_partner")
+FINAL_OBJECTIVES = ("target", "outcome")
 
 
 @dataclass(frozen=True)
@@ -193,6 +194,7 @@ def train_option_dialogue(
     learning_rate: float = 1e-3,
     proposal_weight: float = 0.2,
     train_proposal_mode: str = "model",
+    final_objective: str = "target",
     repair_weight: float = 0.0,
     repair_proposal_modes: tuple[str, ...] = (),
     repair_only_mistakes: bool = False,
@@ -231,6 +233,8 @@ def train_option_dialogue(
         raise ValueError(f"Unknown repair proposal modes: {sorted(unknown_repair_modes)}.")
     if train_proposal_mode not in TRAIN_PROPOSAL_MODES:
         raise ValueError(f"Unknown train proposal mode: {train_proposal_mode}.")
+    if final_objective not in FINAL_OBJECTIVES:
+        raise ValueError(f"Unknown final objective: {final_objective}.")
     if repair_min_regret < 0.0:
         raise ValueError("repair_min_regret must be non-negative.")
     if repair_stage_epochs < 0:
@@ -281,6 +285,11 @@ def train_option_dialogue(
     def ce_loss(logits: mx.array, targets: mx.array) -> mx.array:
         return mx.mean(ce_examples(logits, targets))
 
+    def outcome_regret_examples(logits: mx.array, option_values: mx.array) -> mx.array:
+        choice_probs = mx.softmax(logits, axis=-1)
+        expected_value = mx.sum(choice_probs * option_values, axis=-1)
+        return mx.max(option_values, axis=-1) - expected_value
+
     def weighted_examples_loss(examples: mx.array, weights: mx.array) -> mx.array:
         return mx.sum(examples * weights) / (mx.sum(weights) + 1e-6)
 
@@ -297,6 +306,7 @@ def train_option_dialogue(
     def final_loss_for_proposals(
         batch_features: mx.array,
         batch_targets: mx.array,
+        batch_option_values: mx.array,
         first_message: mx.array,
         proposal_signal: mx.array,
     ) -> tuple[mx.array, mx.array, mx.array]:
@@ -307,7 +317,10 @@ def train_option_dialogue(
             hard=True,
         )
         final_logits = model.final(first_message, reply_message, proposal_signal)
-        example_losses = ce_examples(final_logits, batch_targets)
+        if final_objective == "outcome":
+            example_losses = outcome_regret_examples(final_logits, batch_option_values)
+        else:
+            example_losses = ce_examples(final_logits, batch_targets)
         return mx.mean(example_losses), reply_probs, example_losses
 
     def repair_loss_for_batch(
@@ -338,6 +351,7 @@ def train_option_dialogue(
             single_repair_loss, repair_reply_probs, repair_examples = final_loss_for_proposals(
                 batch_features,
                 batch_targets,
+                batch_option_values,
                 first_message,
                 repair_signal,
             )
@@ -380,6 +394,7 @@ def train_option_dialogue(
         final_loss, reply_probs, _final_examples = final_loss_for_proposals(
             batch_features,
             batch_targets,
+            batch_option_values,
             first_message,
             proposal_signal,
         )
@@ -767,6 +782,7 @@ def main() -> None:
         repair_proposal_modes=tuple(args.repair_proposal_modes),
         repair_only_mistakes=args.repair_only_mistakes,
         repair_min_regret=args.repair_min_regret,
+        final_objective=args.final_objective,
         repair_stage_epochs=args.repair_stage_epochs,
         repair_stage_learning_rate=args.repair_stage_learning_rate,
         limited_partner_epochs=args.limited_partner_epochs,
@@ -858,6 +874,11 @@ def _parse_args() -> argparse.Namespace:
         "--train-proposal-mode",
         choices=TRAIN_PROPOSAL_MODES,
         default="model",
+    )
+    parser.add_argument(
+        "--final-objective",
+        choices=FINAL_OBJECTIVES,
+        default="target",
     )
     parser.add_argument("--repair-weight", type=float, default=0.0)
     parser.add_argument("--repair-only-mistakes", action="store_true")
