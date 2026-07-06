@@ -193,6 +193,8 @@ def train_option_dialogue(
     proposal_weight: float = 0.2,
     repair_weight: float = 0.0,
     repair_proposal_modes: tuple[str, ...] = (),
+    repair_only_mistakes: bool = False,
+    repair_min_regret: float = 0.0,
     limited_partner_epochs: int = 0,
     limited_partner_hidden_size: int = 48,
     limited_partner_mask_mode: str = "first_half",
@@ -223,6 +225,8 @@ def train_option_dialogue(
     unknown_repair_modes = set(repair_proposal_modes) - set(REPAIR_PROPOSAL_MODES)
     if unknown_repair_modes:
         raise ValueError(f"Unknown repair proposal modes: {sorted(unknown_repair_modes)}.")
+    if repair_min_regret < 0.0:
+        raise ValueError("repair_min_regret must be non-negative.")
     needs_limited_partner = "limited_partner" in repair_proposal_modes
     if needs_limited_partner and limited_partner_epochs <= 0:
         raise ValueError("limited_partner repair requires limited_partner_epochs > 0.")
@@ -258,10 +262,13 @@ def train_option_dialogue(
         dtype=mx.int32,
     )
 
-    def ce_loss(logits: mx.array, targets: mx.array) -> mx.array:
+    def ce_examples(logits: mx.array, targets: mx.array) -> mx.array:
         log_probs = logits - mx.logsumexp(logits, axis=-1, keepdims=True)
         selected = mx.sum(log_probs * mx.eye(option_count)[targets], axis=-1)
-        return -mx.mean(selected)
+        return -selected
+
+    def ce_loss(logits: mx.array, targets: mx.array) -> mx.array:
+        return mx.mean(ce_examples(logits, targets))
 
     def token_regularizer(probabilities: list[mx.array]) -> mx.array:
         uniform = 1.0 / vocabulary_size
@@ -278,7 +285,7 @@ def train_option_dialogue(
         batch_targets: mx.array,
         first_message: mx.array,
         proposal_signal: mx.array,
-    ) -> tuple[mx.array, mx.array]:
+    ) -> tuple[mx.array, mx.array, mx.array]:
         reply_message, reply_probs = model.reply_message(
             batch_features,
             proposal_signal,
@@ -286,12 +293,14 @@ def train_option_dialogue(
             hard=True,
         )
         final_logits = model.final(first_message, reply_message, proposal_signal)
-        return ce_loss(final_logits, batch_targets), reply_probs
+        example_losses = ce_examples(final_logits, batch_targets)
+        return mx.mean(example_losses), reply_probs, example_losses
 
     def loss_fn(
         batch_features: mx.array,
         batch_targets: mx.array,
         batch_value_repair_proposals: mx.array,
+        batch_option_values: mx.array,
     ) -> mx.array:
         value_repair_index = 0
         first_message, first_probs = model.first_message(
@@ -305,7 +314,7 @@ def train_option_dialogue(
         proposal_signal = hard_proposal + proposal_probs - mx.stop_gradient(
             proposal_probs
         )
-        final_loss, reply_probs = final_loss_for_proposals(
+        final_loss, reply_probs, _final_examples = final_loss_for_proposals(
             batch_features,
             batch_targets,
             first_message,
@@ -325,12 +334,23 @@ def train_option_dialogue(
                 repair_indices = batch_value_repair_proposals[:, value_repair_index]
                 value_repair_index += 1
             repair_signal = mx.eye(option_count)[repair_indices]
-            single_repair_loss, repair_reply_probs = final_loss_for_proposals(
+            single_repair_loss, repair_reply_probs, repair_examples = final_loss_for_proposals(
                 batch_features,
                 batch_targets,
                 first_message,
                 repair_signal,
             )
+            if repair_only_mistakes or repair_min_regret > 0.0:
+                weights = _repair_loss_weights(
+                    repair_indices,
+                    batch_targets,
+                    batch_option_values,
+                    only_mistakes=repair_only_mistakes,
+                    min_regret=repair_min_regret,
+                )
+                single_repair_loss = mx.sum(repair_examples * weights) / (
+                    mx.sum(weights) + 1e-6
+                )
             repair_loss = repair_loss + single_repair_loss
             reply_regularizers.append(repair_reply_probs)
         if len(repair_proposal_modes) > 0:
@@ -351,6 +371,7 @@ def train_option_dialogue(
                 features[batch],
                 dataset.target_options[batch],
                 repair_proposals[batch],
+                dataset.option_values[batch],
             )
             optimizer.update(model, grads)
             mx.eval(model.parameters(), optimizer.state, loss)
@@ -470,6 +491,28 @@ def _train_limited_partner(
             optimizer.update(partner, grads)
             mx.eval(partner.parameters(), optimizer.state, loss)
     return partner
+
+
+def _repair_loss_weights(
+    proposal_indices: mx.array,
+    targets: mx.array,
+    option_values: mx.array,
+    *,
+    only_mistakes: bool,
+    min_regret: float,
+) -> mx.array:
+    weights = mx.ones(targets.shape, dtype=mx.float32)
+    if only_mistakes:
+        weights = weights * (proposal_indices != targets).astype(mx.float32)
+    if min_regret > 0.0:
+        option_count = int(option_values.shape[1])
+        proposal_values = mx.sum(
+            option_values * mx.eye(option_count)[proposal_indices],
+            axis=-1,
+        )
+        regret = mx.max(option_values, axis=-1) - proposal_values
+        weights = weights * (regret >= min_regret).astype(mx.float32)
+    return weights
 
 
 def _limited_partner_feature_mask(width: int, *, mode: str) -> np.ndarray:
@@ -628,6 +671,8 @@ def main() -> None:
         proposal_weight=args.proposal_weight,
         repair_weight=args.repair_weight,
         repair_proposal_modes=tuple(args.repair_proposal_modes),
+        repair_only_mistakes=args.repair_only_mistakes,
+        repair_min_regret=args.repair_min_regret,
         limited_partner_epochs=args.limited_partner_epochs,
         limited_partner_hidden_size=args.limited_partner_hidden_size,
         limited_partner_mask_mode=args.limited_partner_mask_mode,
@@ -714,6 +759,8 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--learning-rate", type=float, default=1e-3)
     parser.add_argument("--proposal-weight", type=float, default=0.2)
     parser.add_argument("--repair-weight", type=float, default=0.0)
+    parser.add_argument("--repair-only-mistakes", action="store_true")
+    parser.add_argument("--repair-min-regret", type=float, default=0.0)
     parser.add_argument("--limited-partner-epochs", type=int, default=0)
     parser.add_argument("--limited-partner-hidden-size", type=int, default=48)
     parser.add_argument(

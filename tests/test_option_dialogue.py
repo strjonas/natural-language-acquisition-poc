@@ -8,6 +8,7 @@ from homesocial.option_dialogue import (
     _forced_proposals,
     _limited_partner_feature_mask,
     _proposal_table_from_values,
+    _repair_loss_weights,
     evaluate_option_dialogue,
     format_result,
     train_option_dialogue,
@@ -51,6 +52,8 @@ class OptionDialogueTests(unittest.TestCase):
                 "second_best",
                 "worst",
             ),
+            repair_only_mistakes=True,
+            repair_min_regret=0.05,
             limited_partner_epochs=1,
             limited_partner_hidden_size=8,
             seed=5,
@@ -121,6 +124,55 @@ class OptionDialogueTests(unittest.TestCase):
                 epochs=1,
                 repair_proposal_modes=("unknown",),
             )
+        with self.assertRaises(ValueError):
+            train_option_dialogue(
+                _dataset(),
+                hidden_size=12,
+                receiver_size=12,
+                epochs=1,
+                repair_min_regret=-0.1,
+            )
+
+    def test_repair_loss_weights_filter_mistakes_and_regret(self):
+        proposals = mx.array([0, 1, 2, 3], dtype=mx.int32)
+        targets = mx.array([0, 2, 2, 1], dtype=mx.int32)
+        values = mx.array(
+            [
+                [0.9, 0.1, 0.0, 0.0],
+                [0.1, 0.7, 0.9, 0.0],
+                [0.0, 0.1, 0.8, 0.2],
+                [0.1, 0.9, 0.0, 0.4],
+            ],
+            dtype=mx.float32,
+        )
+
+        mistake_weights = np.asarray(
+            _repair_loss_weights(
+                proposals,
+                targets,
+                values,
+                only_mistakes=True,
+                min_regret=0.0,
+            )
+        )
+        regret_weights = np.asarray(
+            _repair_loss_weights(
+                proposals,
+                targets,
+                values,
+                only_mistakes=True,
+                min_regret=0.25,
+            )
+        )
+
+        np.testing.assert_array_equal(
+            mistake_weights,
+            np.array([0.0, 1.0, 0.0, 1.0], dtype=np.float32),
+        )
+        np.testing.assert_array_equal(
+            regret_weights,
+            np.array([0.0, 0.0, 0.0, 1.0], dtype=np.float32),
+        )
 
     def test_limited_partner_requires_training_and_masks_features(self):
         dataset = _dataset()

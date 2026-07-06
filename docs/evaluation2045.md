@@ -733,6 +733,13 @@ limited-partner condition collapses under `shuffle_delta` (`-0.0945`) and
 proposals was negative on seed `10043`, so keep it as an audit source for now.
 Next: repair training should sample only consequential partner mistakes, not
 every partial-partner proposal.
+That filter now exists (`--repair-only-mistakes`, `--repair-min-regret`) but
+did not fix the issue on seed `10043`. Filtered limited-partner repair at
+weight `0.5` reduced limited-partner final accuracy to `0.5913`; weight `0.1`
+was less damaging (`0.6660`) but still below audit-only (`0.6847`) and also
+hurt second-best/worst repair. The next repair-training attempt should freeze
+or stage the existing convention, then train only the reply/final correction
+path on consequential partner mistakes.
 
 ## Commands
 

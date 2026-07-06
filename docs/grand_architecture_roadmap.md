@@ -647,7 +647,10 @@ Next concrete implementation:
    It provides a stronger two-seed audit source than `model_runner_up`, but
    direct repair training on all of its proposals is still negative. The next
    implementation should filter for consequential wrong partner proposals
-   before using them as a training pressure.
+   before using them as a training pressure. That filter now exists, but early
+   results are still negative: lower-weight filtered repair damages less but
+   does not beat audit-only dialogue. The next version should freeze/stage the
+   existing sender convention and train only the reply/final correction path.
 7. Decide whether to scale the environment to Crafter before adding large
    language generation.
 
