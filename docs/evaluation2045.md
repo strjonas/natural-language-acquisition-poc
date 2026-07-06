@@ -766,6 +766,18 @@ Limited-partner final accuracy remained lower than audit-only (`0.6420` versus
 `0.6573`), but its chosen delta improved slightly (`+0.051588` versus
 `+0.048185`). This says the outcome objective is useful, but the compact
 protocol is still not enough for robust social partner repair.
+The first environment-level bridge now exists as
+`homesocial.situated_partner_dialogue`. It groups actual grid branch rollouts
+by state, lets a partial-body partner propose an executable option, and trains
+the self-reply/final choice on downstream viability. On two positive-opportunity
+seeds (`12001-12002`), the partial-body partner proposal is usually wrong
+(`0.0444` accuracy) and harmful (`-0.190652` body delta), while the self-reply
+path reaches `0.6482` final accuracy and `+0.127544` chosen delta against a
+`+0.149517` oracle. Zeroing outcome features drops chosen delta to `+0.072034`.
+This is the strongest current evidence that partner correction can be grounded
+in embodied consequence information, but it is still offline over branch
+samples; the next step is an online episode loop where partner proposals and
+self-replies affect actual trajectories.
 
 ## Commands
 

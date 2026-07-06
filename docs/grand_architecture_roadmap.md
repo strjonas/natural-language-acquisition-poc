@@ -663,7 +663,13 @@ Next concrete implementation:
    improve limited-partner final accuracy. Treat this as evidence that outcome
    objectives matter; the next step should move this into an environment-level
    partner task rather than adding more supervised repairs to the compact
-   option dataset.
+   option dataset. The first bridge now exists as `situated_partner_dialogue`:
+   it trains a self-reply/final-choice model on actual grid branch rollouts
+   after a partial-body partner proposal. Two positive-opportunity seeds show
+   harmful partial proposals (`-0.1907` body delta) repaired to strongly
+   positive choices (`+0.1275`, oracle `+0.1495`), and zeroing outcome features
+   cuts the gain. This should now be moved from offline branch choice into an
+   online episode loop where the proposal and reply determine actual action.
 7. Decide whether to scale the environment to Crafter before adding large
    language generation.
 
