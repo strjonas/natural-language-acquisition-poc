@@ -793,6 +793,14 @@ average minimum viability above zero (`0.004466`), while `zero_outcome` falls
 back to `0.121859` regret and zero minimum viability. This is progress, but
 termination is still `0.9833`; the bottleneck is now the short-horizon option
 set, not only the reply model.
+The option/ecology substrate fix produced the first strong online survival
+result. With the extended situated option set and renewable rich resources,
+dialogue reaches mean viability `0.740067`, average minimum viability
+`0.216862`, and truncates `65.00%` of episodes, close to the oracle
+(`0.752919`, `0.257745`, `66.67%`). The partial partner remains much worse
+(`0.704022`, `0.013009`, `5.00%` truncation), and `zero_outcome` loses most of
+the gain. This is now evidence that grounded self-reply can improve actual
+online viability when the environment supports reusable regulation.
 
 ## Commands
 

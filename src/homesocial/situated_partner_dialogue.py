@@ -10,18 +10,20 @@ import mlx.optimizers as optim
 import numpy as np
 
 from .attribution import _needs_array
-from .env import RESOURCE_ECOLOGIES, HomeostaticSocialGrid
+from .env import RESOURCE_ECOLOGIES, Action, HomeostaticSocialGrid
 from .imitation import load_checkpoint
 from .option_counterfactual_language import (
     OPTION_NAMES,
     STATE_POLICIES,
     _option_action_index,
+    _state_agent,
 )
 from .option_world_model import (
     OptionBranchDataset,
     collect_option_branch_dataset,
 )
 from .qlearning import EpisodeStats
+from .recurrent_ac import action_mask
 from .teachers import TEACHER_MODES, build_teacher, normalize_teacher_mode
 
 
@@ -41,6 +43,17 @@ SITUATED_INTERVENTIONS = (
     "zero_outcome",
 )
 SITUATED_VALUE_MODES = ("final_lowest", "trajectory_min", "trajectory_mean")
+SITUATED_OPTION_SETS = ("base", "extended")
+EXTENDED_SITUATED_OPTION_NAMES = (
+    "seek_lowest",
+    "seek_food",
+    "seek_water",
+    "seek_shelter",
+    "rest",
+    "wait",
+    "turn_left",
+    "turn_right",
+)
 
 
 @dataclass(frozen=True)
@@ -51,6 +64,7 @@ class SituatedPartnerDataset:
     option_values: mx.array
     target_options: mx.array
     current_lowest: mx.array
+    option_names: tuple[str, ...] = OPTION_NAMES
 
 
 @dataclass(frozen=True)
@@ -58,6 +72,7 @@ class TrainedSituatedPartnerDialogue:
     model: "SituatedPartnerDialogue"
     feature_mean: mx.array
     feature_std: mx.array
+    option_names: tuple[str, ...] = OPTION_NAMES
 
 
 @dataclass(frozen=True)
@@ -224,6 +239,101 @@ def situated_partner_dataset_from_branches(
         option_values=mx.array(np.stack(grouped_values), dtype=mx.float32),
         target_options=mx.array(targets, dtype=mx.int32),
         current_lowest=mx.array(current_lowest, dtype=mx.float32),
+        option_names=OPTION_NAMES,
+    )
+
+
+def collect_situated_partner_dataset(
+    config,
+    *,
+    episodes: int,
+    seed: int,
+    teacher_mode: str = "grounded",
+    horizon: int = 6,
+    state_policy: str = "cycle",
+    max_states: int = 3000,
+    option_action_noise: float = 0.0,
+    option_set: str = "base",
+    min_value_gap: float = 0.0,
+    min_oracle_delta: float | None = None,
+    value_mode: str = "final_lowest",
+) -> SituatedPartnerDataset:
+    if state_policy not in STATE_POLICIES:
+        raise ValueError(f"Unknown state policy: {state_policy}.")
+    if option_set not in SITUATED_OPTION_SETS:
+        raise ValueError(f"Unknown situated option set: {option_set}.")
+    if value_mode not in SITUATED_VALUE_MODES:
+        raise ValueError(f"Unknown situated value mode: {value_mode}.")
+    if not 0.0 <= option_action_noise <= 1.0:
+        raise ValueError("Option action noise must be in [0, 1].")
+
+    option_names = _situated_option_names(option_set)
+    normalized_teacher = normalize_teacher_mode(teacher_mode)
+    env = HomeostaticSocialGrid(
+        width=config.width,
+        height=config.height,
+        seed=seed,
+        max_steps=config.max_steps,
+        teacher=build_teacher(normalized_teacher, seed=seed),
+        randomize_world=config.randomize_world,
+        diagnostic_mode=config.diagnostic_mode,
+        body_dynamics_mode=config.body_dynamics_mode,
+        renewable_resources=config.renewable_resources,
+        resource_ecology=config.resource_ecology,
+    )
+    rng = np.random.default_rng(seed + 9_910_000)
+    grouped_features: list[np.ndarray] = []
+    grouped_current: list[np.ndarray] = []
+    grouped_final: list[np.ndarray] = []
+    grouped_values: list[np.ndarray] = []
+    targets: list[int] = []
+    current_lowest: list[float] = []
+
+    for episode in range(episodes):
+        observation = env.reset(seed=seed + episode)
+        agent = _state_agent(state_policy, seed=seed, episode=episode)
+        terminated = False
+        truncated = False
+        while not terminated and not truncated and len(grouped_features) < max_states:
+            features, final_needs, values, current_low = _situated_option_features(
+                env,
+                observation,
+                option_names=option_names,
+                horizon=max(1, horizon),
+                rng=rng,
+                option_action_noise=option_action_noise,
+                value_mode=value_mode,
+            )
+            if (
+                float(np.max(values) - np.min(values)) >= min_value_gap
+                and (
+                    min_oracle_delta is None
+                    or float(np.max(values) - current_low) >= min_oracle_delta
+                )
+            ):
+                grouped_features.append(features)
+                grouped_current.append(_needs_array(observation.needs).astype(np.float32))
+                grouped_final.append(final_needs)
+                grouped_values.append(values)
+                targets.append(int(np.argmax(values)))
+                current_lowest.append(current_low)
+
+            action = agent.act(observation)
+            observation, _reward, terminated, truncated, _info = env.step(action)
+        if len(grouped_features) >= max_states:
+            break
+
+    if not grouped_features:
+        raise ValueError("No situated partner states were collected.")
+
+    return SituatedPartnerDataset(
+        features=mx.array(np.stack(grouped_features), dtype=mx.float32),
+        current_needs=mx.array(np.stack(grouped_current), dtype=mx.float32),
+        final_needs=mx.array(np.stack(grouped_final), dtype=mx.float32),
+        option_values=mx.array(np.stack(grouped_values), dtype=mx.float32),
+        target_options=mx.array(targets, dtype=mx.int32),
+        current_lowest=mx.array(current_lowest, dtype=mx.float32),
+        option_names=option_names,
     )
 
 
@@ -326,6 +436,7 @@ def train_situated_partner_dialogue(
         model=model,
         feature_mean=feature_mean,
         feature_std=feature_std,
+        option_names=dataset.option_names,
     )
 
 
@@ -441,6 +552,7 @@ def evaluate_online_partner_dialogue(
                 rng=rng,
                 option_action_noise=option_action_noise,
                 value_mode=value_mode,
+                option_names=trained.option_names,
             )
             proposal = int(_partner_proposals(state_dataset, mode=partner_mode)[0])
             choice = _online_choice(
@@ -460,8 +572,8 @@ def evaluate_online_partner_dialogue(
             overrides.append(1.0 if choice != proposal else 0.0)
 
             for _commit in range(option_commit_steps):
-                action, _action_index = _option_action_index(
-                    OPTION_NAMES[choice],
+                action = _situated_option_action(
+                    trained.option_names[choice],
                     observation,
                     rng=rng,
                     option_action_noise=option_action_noise,
@@ -526,18 +638,50 @@ def _online_state_dataset(
     rng: np.random.Generator,
     option_action_noise: float,
     value_mode: str,
+    option_names: tuple[str, ...] = OPTION_NAMES,
 ) -> SituatedPartnerDataset:
     if value_mode not in SITUATED_VALUE_MODES:
         raise ValueError(f"Unknown situated value mode: {value_mode}.")
     current = _needs_array(observation.needs).astype(np.float32)
+    features, final, values, current_low = _situated_option_features(
+        env,
+        observation,
+        option_names=option_names,
+        horizon=horizon,
+        rng=rng,
+        option_action_noise=option_action_noise,
+        value_mode=value_mode,
+    )
+    return SituatedPartnerDataset(
+        features=mx.array(features[None, :, :], dtype=mx.float32),
+        current_needs=mx.array(current[None, :], dtype=mx.float32),
+        final_needs=mx.array(final[None, :, :], dtype=mx.float32),
+        option_values=mx.array(values[None, :], dtype=mx.float32),
+        target_options=mx.array([int(np.argmax(values))], dtype=mx.int32),
+        current_lowest=mx.array([current_low], dtype=mx.float32),
+        option_names=option_names,
+    )
+
+
+def _situated_option_features(
+    env: HomeostaticSocialGrid,
+    observation,
+    *,
+    option_names: tuple[str, ...],
+    horizon: int,
+    rng: np.random.Generator,
+    option_action_noise: float,
+    value_mode: str,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, float]:
     final_needs: list[np.ndarray] = []
     option_trajectories: list[np.ndarray] = []
-    for option_name in OPTION_NAMES:
+    current = _needs_array(observation.needs).astype(np.float32)
+    for option_name in option_names:
         branch = deepcopy(env)
         branch_observation = observation
         trajectory_needs: list[np.ndarray] = []
         for _step in range(max(1, horizon)):
-            action, _action_index = _option_action_index(
+            action = _situated_option_action(
                 option_name,
                 branch_observation,
                 rng=rng,
@@ -565,24 +709,101 @@ def _online_state_dataset(
         ],
         dtype=np.float32,
     )
-    option_ids = np.eye(len(OPTION_NAMES), dtype=np.float32)
     features = np.concatenate(
         [
-            np.repeat(current[None, :], len(OPTION_NAMES), axis=0),
+            np.repeat(current[None, :], len(option_names), axis=0),
             final,
             final - current[None, :],
-            option_ids,
+            np.eye(len(option_names), dtype=np.float32),
         ],
         axis=1,
     )
-    return SituatedPartnerDataset(
-        features=mx.array(features[None, :, :], dtype=mx.float32),
-        current_needs=mx.array(current[None, :], dtype=mx.float32),
-        final_needs=mx.array(final[None, :, :], dtype=mx.float32),
-        option_values=mx.array(values[None, :], dtype=mx.float32),
-        target_options=mx.array([int(np.argmax(values))], dtype=mx.int32),
-        current_lowest=mx.array([float(np.min(current))], dtype=mx.float32),
-    )
+    return features.astype(np.float32), final, values, float(np.min(current))
+
+
+def _situated_option_names(option_set: str) -> tuple[str, ...]:
+    if option_set == "base":
+        return OPTION_NAMES
+    if option_set == "extended":
+        return EXTENDED_SITUATED_OPTION_NAMES
+    raise ValueError(f"Unknown situated option set: {option_set}.")
+
+
+def _situated_option_action(
+    option_name: str,
+    observation,
+    *,
+    rng: np.random.Generator,
+    option_action_noise: float,
+) -> Action:
+    if not 0.0 <= option_action_noise <= 1.0:
+        raise ValueError("Option action noise must be in [0, 1].")
+    if option_name in OPTION_NAMES:
+        action, _action_index = _option_action_index(
+            option_name,
+            observation,
+            rng=None,
+            option_action_noise=0.0,
+        )
+        return _maybe_noisy_action(
+            action,
+            observation,
+            rng=rng,
+            option_action_noise=option_action_noise,
+        )
+    if option_name == "seek_lowest":
+        needs = observation.needs
+        need_values = {
+            "seek_food": needs.food,
+            "seek_water": needs.water,
+            "seek_shelter": min(needs.energy, needs.safety),
+        }
+        target = min(need_values, key=need_values.get)
+        return _situated_option_action(
+            target,
+            observation,
+            rng=rng,
+            option_action_noise=option_action_noise,
+        )
+    if option_name == "turn_left":
+        return _maybe_noisy_action(
+            Action.TURN_LEFT,
+            observation,
+            rng=rng,
+            option_action_noise=option_action_noise,
+        )
+    if option_name == "turn_right":
+        return _maybe_noisy_action(
+            Action.TURN_RIGHT,
+            observation,
+            rng=rng,
+            option_action_noise=option_action_noise,
+        )
+    raise ValueError(f"Unknown situated option: {option_name}.")
+
+
+def _maybe_noisy_action(
+    action: Action,
+    observation,
+    *,
+    rng: np.random.Generator,
+    option_action_noise: float,
+) -> Action:
+    if option_action_noise <= 0.0 or rng.random() >= option_action_noise:
+        return action
+    actions = tuple(Action)
+    mask = action_mask(observation)
+    action_index = actions.index(action)
+    candidates = [
+        index
+        for index, candidate in enumerate(actions)
+        if mask[index] > 0.0
+        and index != action_index
+        and candidate not in {Action.POINT, Action.ASK}
+    ]
+    if not candidates:
+        return action
+    return actions[int(rng.choice(candidates))]
 
 
 def _online_choice(
@@ -724,7 +945,7 @@ def target_count_string(dataset: SituatedPartnerDataset) -> str:
     targets = np.asarray(dataset.target_options, dtype=np.int32)
     return ";".join(
         f"{name}={int(np.sum(targets == index))}"
-        for index, name in enumerate(OPTION_NAMES)
+        for index, name in enumerate(dataset.option_names)
     )
 
 
@@ -777,22 +998,38 @@ def main() -> None:
         config = replace(config, renewable_resources=True)
     if args.resource_ecology is not None:
         config = replace(config, resource_ecology=args.resource_ecology)
-    train_branches = collect_option_branch_dataset(
-        config,
-        episodes=args.train_episodes,
-        seed=args.seed,
-        teacher_mode=args.teacher_mode,
-        horizon=args.horizon,
-        state_policy=args.state_policy,
-        max_samples=args.max_train_samples,
-        option_action_noise=args.option_action_noise,
-    )
-    train_dataset = situated_partner_dataset_from_branches(
-        train_branches,
-        min_value_gap=args.min_value_gap,
-        min_oracle_delta=args.min_oracle_delta,
-        value_mode=args.value_mode,
-    )
+    if args.option_set == "base":
+        train_branches = collect_option_branch_dataset(
+            config,
+            episodes=args.train_episodes,
+            seed=args.seed,
+            teacher_mode=args.teacher_mode,
+            horizon=args.horizon,
+            state_policy=args.state_policy,
+            max_samples=args.max_train_samples,
+            option_action_noise=args.option_action_noise,
+        )
+        train_dataset = situated_partner_dataset_from_branches(
+            train_branches,
+            min_value_gap=args.min_value_gap,
+            min_oracle_delta=args.min_oracle_delta,
+            value_mode=args.value_mode,
+        )
+    else:
+        train_dataset = collect_situated_partner_dataset(
+            config,
+            episodes=args.train_episodes,
+            seed=args.seed,
+            teacher_mode=args.teacher_mode,
+            horizon=args.horizon,
+            state_policy=args.state_policy,
+            max_states=args.max_train_samples,
+            option_action_noise=args.option_action_noise,
+            option_set=args.option_set,
+            min_value_gap=args.min_value_gap,
+            min_oracle_delta=args.min_oracle_delta,
+            value_mode=args.value_mode,
+        )
     trained = train_situated_partner_dialogue(
         train_dataset,
         hidden_size=args.hidden_size,
@@ -839,22 +1076,38 @@ def main() -> None:
                 )
         return
 
-    eval_branches = collect_option_branch_dataset(
-        config,
-        episodes=args.eval_episodes,
-        seed=args.seed + 10_000,
-        teacher_mode=args.teacher_mode,
-        horizon=args.horizon,
-        state_policy=args.state_policy,
-        max_samples=args.max_eval_samples,
-        option_action_noise=args.option_action_noise,
-    )
-    eval_dataset = situated_partner_dataset_from_branches(
-        eval_branches,
-        min_value_gap=args.min_value_gap,
-        min_oracle_delta=args.min_oracle_delta,
-        value_mode=args.value_mode,
-    )
+    if args.option_set == "base":
+        eval_branches = collect_option_branch_dataset(
+            config,
+            episodes=args.eval_episodes,
+            seed=args.seed + 10_000,
+            teacher_mode=args.teacher_mode,
+            horizon=args.horizon,
+            state_policy=args.state_policy,
+            max_samples=args.max_eval_samples,
+            option_action_noise=args.option_action_noise,
+        )
+        eval_dataset = situated_partner_dataset_from_branches(
+            eval_branches,
+            min_value_gap=args.min_value_gap,
+            min_oracle_delta=args.min_oracle_delta,
+            value_mode=args.value_mode,
+        )
+    else:
+        eval_dataset = collect_situated_partner_dataset(
+            config,
+            episodes=args.eval_episodes,
+            seed=args.seed + 10_000,
+            teacher_mode=args.teacher_mode,
+            horizon=args.horizon,
+            state_policy=args.state_policy,
+            max_states=args.max_eval_samples,
+            option_action_noise=args.option_action_noise,
+            option_set=args.option_set,
+            min_value_gap=args.min_value_gap,
+            min_oracle_delta=args.min_oracle_delta,
+            value_mode=args.value_mode,
+        )
     print(
         "model_control,intervention,samples,proposal_accuracy,final_accuracy,"
         "changed_fraction,mean_proposal_delta,mean_chosen_delta,"
@@ -894,6 +1147,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--renewable-resources", action="store_true")
     parser.add_argument("--resource-ecology", choices=RESOURCE_ECOLOGIES, default=None)
     parser.add_argument("--option-action-noise", type=float, default=0.0)
+    parser.add_argument("--option-set", choices=SITUATED_OPTION_SETS, default="base")
     parser.add_argument("--min-value-gap", type=float, default=0.0)
     parser.add_argument("--min-oracle-delta", type=float, default=None)
     parser.add_argument(

@@ -680,7 +680,13 @@ Next concrete implementation:
    the trajectory oracle's branch regret (`0.006252`), and outcome ablation
    fails, but termination remains high (`0.9833`). The next step should improve
    the option/horizon/controller substrate, because the reply model is close to
-   oracle over the current weak choices.
+   oracle over the current weak choices. The first substrate fix is positive:
+   extended situated options plus renewable rich resources produce the first
+   strong online survival result. Dialogue reaches mean viability `0.7401`,
+   average minimum viability `0.2169`, and `65.00%` truncation, close to oracle
+   and far above the partial partner. Next: expand the reusable ecology and
+   move from trained option-choice reply toward online learning over repeated
+   embodied/social episodes.
 7. Decide whether to scale the environment to Crafter before adding large
    language generation.
 

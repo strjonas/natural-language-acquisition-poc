@@ -6,7 +6,9 @@ import numpy as np
 from homesocial.option_world_model import OptionBranchDataset, OptionBranchSample
 from homesocial.recurrent_ac import RecurrentConfig
 from homesocial.situated_partner_dialogue import (
+    EXTENDED_SITUATED_OPTION_NAMES,
     SituatedPartnerDataset,
+    collect_situated_partner_dataset,
     _option_value,
     _partner_proposals,
     evaluate_online_partner_dialogue,
@@ -136,6 +138,29 @@ class SituatedPartnerDialogueTests(unittest.TestCase):
             situated_partner_dataset_from_branches(
                 _branch_dataset(),
                 value_mode="unknown",
+            )
+
+    def test_collect_extended_situated_option_dataset_runs(self):
+        config = RecurrentConfig(max_steps=6, randomize_world=False)
+        dataset = collect_situated_partner_dataset(
+            config,
+            episodes=1,
+            seed=19,
+            horizon=2,
+            max_states=3,
+            option_set="extended",
+            value_mode="trajectory_mean",
+        )
+
+        self.assertEqual(dataset.option_names, EXTENDED_SITUATED_OPTION_NAMES)
+        self.assertEqual(dataset.features.shape[-1], 20)
+        self.assertEqual(dataset.option_values.shape[1], len(EXTENDED_SITUATED_OPTION_NAMES))
+        with self.assertRaises(ValueError):
+            collect_situated_partner_dataset(
+                config,
+                episodes=1,
+                seed=19,
+                option_set="unknown",
             )
 
     def test_partner_proposals_use_partial_body_views(self):
