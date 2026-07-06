@@ -15,6 +15,7 @@ from homesocial.situated_partner_dialogue import (
     _partner_proposals,
     evaluate_online_partner_dialogue,
     evaluate_situated_partner_dialogue,
+    fit_situated_self_model_calibrator,
     format_online_result,
     format_result,
     intervene_situated_partner_features,
@@ -198,7 +199,30 @@ class SituatedPartnerDialogueTests(unittest.TestCase):
         )
 
         self.assertEqual(len(samples), 2)
+        self.assertEqual(
+            samples[0].option_final_needs.shape,
+            (len(EXTENDED_SITUATED_OPTION_NAMES), 4),
+        )
+        self.assertEqual(
+            samples[0].option_values.shape,
+            (len(EXTENDED_SITUATED_OPTION_NAMES),),
+        )
         self.assertGreaterEqual(loss, 0.0)
+        calibrator = fit_situated_self_model_calibrator(
+            model,
+            samples,
+            option_names=EXTENDED_SITUATED_OPTION_NAMES,
+            value_mode="trajectory_mean",
+        )
+
+        self.assertEqual(
+            calibrator.final_scale.shape,
+            (len(EXTENDED_SITUATED_OPTION_NAMES), 4),
+        )
+        self.assertEqual(
+            calibrator.value_scale.shape,
+            (len(EXTENDED_SITUATED_OPTION_NAMES),),
+        )
 
     def test_partner_proposals_use_partial_body_views(self):
         dataset = situated_partner_dataset_from_branches(_branch_dataset())
@@ -333,8 +357,36 @@ class SituatedPartnerDialogueTests(unittest.TestCase):
             online_self_model=self_model,
             online_self_model_config=config,
         )
+        calibration_samples = collect_situated_self_model_rank_samples(
+            config,
+            episodes=1,
+            seed=31,
+            horizon=1,
+            max_samples=2,
+            option_set="base",
+        )
+        calibrated = evaluate_online_partner_dialogue(
+            trained,
+            config,
+            episodes=1,
+            seed=17,
+            horizon=1,
+            model_control="dialogue",
+            partner_mode="partial_body",
+            online_self_model_source="learned",
+            online_self_model=self_model,
+            online_self_model_config=config,
+            online_self_model_calibrator=fit_situated_self_model_calibrator(
+                self_model,
+                calibration_samples,
+                option_names=trained.option_names,
+                value_mode="final_lowest",
+            ),
+            online_self_calibration_mode="values",
+        )
 
         self.assertEqual(learned.episodes, 1)
+        self.assertEqual(calibrated.episodes, 1)
         self.assertIn("dialogue,original,1", format_online_result(learned))
         with self.assertRaises(ValueError):
             evaluate_online_partner_dialogue(
@@ -399,6 +451,14 @@ class SituatedPartnerDialogueTests(unittest.TestCase):
                 episodes=1,
                 seed=17,
                 online_adaptation_choice_guard_margin=-0.1,
+            )
+        with self.assertRaises(ValueError):
+            evaluate_online_partner_dialogue(
+                trained,
+                config,
+                episodes=1,
+                seed=17,
+                online_self_calibration_mode="unknown",
             )
         with self.assertRaises(ValueError):
             evaluate_online_partner_dialogue(

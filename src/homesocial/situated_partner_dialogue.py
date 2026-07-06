@@ -52,6 +52,7 @@ SITUATED_INTERVENTIONS = (
 SITUATED_VALUE_MODES = ("final_lowest", "trajectory_min", "trajectory_mean")
 SITUATED_OPTION_SETS = ("base", "extended")
 ONLINE_SELF_MODEL_SOURCES = ("exact", "learned")
+ONLINE_SELF_CALIBRATION_MODES = ("all", "values")
 EXTENDED_SITUATED_OPTION_NAMES = (
     "seek_lowest",
     "seek_food",
@@ -123,7 +124,18 @@ class OnlinePartnerResult:
 class SituatedSelfModelRankSample:
     history: tuple[np.ndarray, ...]
     option_actions: tuple[np.ndarray, ...]
+    option_final_needs: np.ndarray
+    option_values: np.ndarray
     target_option: int
+
+
+@dataclass(frozen=True)
+class SituatedSelfModelCalibrator:
+    final_scale: np.ndarray
+    final_offset: np.ndarray
+    value_scale: np.ndarray
+    value_offset: np.ndarray
+    option_names: tuple[str, ...]
 
 
 class SituatedPartnerDialogue(nn.Module):
@@ -408,7 +420,7 @@ def collect_situated_self_model_rank_samples(
         terminated = False
         truncated = False
         while not terminated and not truncated and len(samples) < max_samples:
-            _features, _final_needs, values, _current_low = _situated_option_features(
+            _features, final_needs, values, _current_low = _situated_option_features(
                 env,
                 observation,
                 option_names=option_names,
@@ -429,6 +441,8 @@ def collect_situated_self_model_rank_samples(
                 SituatedSelfModelRankSample(
                     history=tuple(item.copy() for item in history),
                     option_actions=tuple(action_sequences),
+                    option_final_needs=final_needs.copy(),
+                    option_values=values.copy(),
                     target_option=int(np.argmax(values)),
                 )
             )
@@ -508,6 +522,93 @@ def train_situated_self_model_rank(
             mx.eval(model.parameters(), optimizer.state, loss)
             final_loss = float(loss)
     return final_loss
+
+
+def fit_situated_self_model_calibrator(
+    model: RecurrentActorCritic,
+    samples: tuple[SituatedSelfModelRankSample, ...],
+    *,
+    option_names: tuple[str, ...],
+    value_mode: str,
+    ridge: float = 1e-4,
+    batch_size: int = 128,
+) -> SituatedSelfModelCalibrator:
+    if not samples:
+        raise ValueError("Cannot fit calibrator on empty situated samples.")
+    if value_mode not in SITUATED_VALUE_MODES:
+        raise ValueError(f"Unknown situated value mode: {value_mode}.")
+    if ridge < 0.0:
+        raise ValueError("Calibrator ridge must be non-negative.")
+
+    predicted_finals: list[np.ndarray] = []
+    predicted_values: list[np.ndarray] = []
+    for start in range(0, len(samples), max(1, batch_size)):
+        batch = _pad_situated_rank_samples(
+            list(samples[start : start + max(1, batch_size)])
+        )
+        final, values = _situated_grouped_predicted_final_and_scores(
+            model,
+            batch[0],
+            batch[1],
+            batch[2],
+            batch[3],
+            batch[4],
+            value_mode=value_mode,
+        )
+        predicted_finals.append(np.asarray(final, dtype=np.float32))
+        predicted_values.append(np.asarray(values, dtype=np.float32))
+
+    predicted_final = np.concatenate(predicted_finals, axis=0)
+    predicted_value = np.concatenate(predicted_values, axis=0)
+    target_final = np.stack([sample.option_final_needs for sample in samples])
+    target_value = np.stack([sample.option_values for sample in samples])
+    option_count = predicted_value.shape[1]
+    if option_count != len(option_names):
+        raise ValueError("Calibrator option names do not match sample option count.")
+
+    final_scale = np.ones((option_count, 4), dtype=np.float32)
+    final_offset = np.zeros((option_count, 4), dtype=np.float32)
+    value_scale = np.ones(option_count, dtype=np.float32)
+    value_offset = np.zeros(option_count, dtype=np.float32)
+    for option_index in range(option_count):
+        for need_index in range(4):
+            scale, offset = _fit_affine_calibration(
+                predicted_final[:, option_index, need_index],
+                target_final[:, option_index, need_index],
+                ridge=ridge,
+            )
+            final_scale[option_index, need_index] = scale
+            final_offset[option_index, need_index] = offset
+        scale, offset = _fit_affine_calibration(
+            predicted_value[:, option_index],
+            target_value[:, option_index],
+            ridge=ridge,
+        )
+        value_scale[option_index] = scale
+        value_offset[option_index] = offset
+
+    return SituatedSelfModelCalibrator(
+        final_scale=final_scale,
+        final_offset=final_offset,
+        value_scale=value_scale,
+        value_offset=value_offset,
+        option_names=option_names,
+    )
+
+
+def _fit_affine_calibration(
+    predicted: np.ndarray,
+    target: np.ndarray,
+    *,
+    ridge: float,
+) -> tuple[float, float]:
+    predicted = np.asarray(predicted, dtype=np.float64)
+    target = np.asarray(target, dtype=np.float64)
+    design = np.stack([predicted, np.ones_like(predicted)], axis=1)
+    regularizer = ridge * np.eye(2, dtype=np.float64)
+    regularizer[1, 1] = 0.0
+    coeffs = np.linalg.solve(design.T @ design + regularizer, design.T @ target)
+    return float(coeffs[0]), float(coeffs[1])
 
 
 def train_situated_partner_dialogue(
@@ -681,6 +782,8 @@ def evaluate_online_partner_dialogue(
     online_self_model_source: str = "exact",
     online_self_model: RecurrentActorCritic | None = None,
     online_self_model_config: RecurrentConfig | None = None,
+    online_self_model_calibrator: SituatedSelfModelCalibrator | None = None,
+    online_self_calibration_mode: str = "all",
 ) -> OnlinePartnerResult:
     if partner_mode not in PARTNER_PROPOSAL_MODES:
         raise ValueError(f"Unknown partner proposal mode: {partner_mode}.")
@@ -696,6 +799,10 @@ def evaluate_online_partner_dialogue(
         raise ValueError(f"Unknown situated value mode: {value_mode}.")
     if online_self_model_source not in ONLINE_SELF_MODEL_SOURCES:
         raise ValueError(f"Unknown online self-model source: {online_self_model_source}.")
+    if online_self_calibration_mode not in ONLINE_SELF_CALIBRATION_MODES:
+        raise ValueError(
+            f"Unknown online self-calibration mode: {online_self_calibration_mode}."
+        )
     if online_adaptation_steps < 0:
         raise ValueError("online_adaptation_steps must be non-negative.")
     if online_adaptation_learning_rate <= 0.0:
@@ -795,6 +902,8 @@ def evaluate_online_partner_dialogue(
                     rng=rng,
                     option_action_noise=option_action_noise,
                     value_mode=value_mode,
+                    calibrator=online_self_model_calibrator,
+                    calibration_mode=online_self_calibration_mode,
                 )
             proposal = int(_partner_proposals(decision_dataset, mode=partner_mode)[0])
             pre_adaptation_choice = None
@@ -969,6 +1078,8 @@ def _learned_online_state_dataset(
     rng: np.random.Generator,
     option_action_noise: float,
     value_mode: str,
+    calibrator: SituatedSelfModelCalibrator | None = None,
+    calibration_mode: str = "all",
 ) -> SituatedPartnerDataset:
     if value_mode not in SITUATED_VALUE_MODES:
         raise ValueError(f"Unknown situated value mode: {value_mode}.")
@@ -1028,6 +1139,22 @@ def _learned_online_state_dataset(
         ],
         dtype=np.float32,
     )
+    if calibrator is not None:
+        if calibrator.option_names != option_names:
+            raise ValueError("Calibrator option names do not match online option names.")
+        if calibration_mode not in ONLINE_SELF_CALIBRATION_MODES:
+            raise ValueError(f"Unknown online self-calibration mode: {calibration_mode}.")
+        if calibration_mode == "all":
+            final = np.clip(
+                final * calibrator.final_scale + calibrator.final_offset,
+                0.0,
+                1.0,
+            ).astype(np.float32)
+        values = np.clip(
+            values * calibrator.value_scale + calibrator.value_offset,
+            0.0,
+            1.0,
+        ).astype(np.float32)
     features = np.concatenate(
         [
             np.repeat(current[None, :], len(option_names), axis=0),
@@ -1107,10 +1234,33 @@ def _situated_grouped_predicted_scores(
     *,
     value_mode: str,
 ) -> mx.array:
+    _final_needs, scores = _situated_grouped_predicted_final_and_scores(
+        model,
+        observations,
+        step_masks,
+        observation_lengths,
+        actions,
+        action_masks,
+        value_mode=value_mode,
+    )
+    return scores
+
+
+def _situated_grouped_predicted_final_and_scores(
+    model: RecurrentActorCritic,
+    observations: mx.array,
+    step_masks: mx.array,
+    observation_lengths: mx.array,
+    actions: mx.array,
+    action_masks: mx.array,
+    *,
+    value_mode: str,
+) -> tuple[mx.array, mx.array]:
     if value_mode not in SITUATED_VALUE_MODES:
         raise ValueError(f"Unknown situated value mode: {value_mode}.")
     hidden = model.hidden_states(observations)
     initial = _last_valid_hidden(hidden, observation_lengths, step_masks)
+    option_finals = []
     option_scores = []
     for option_index in range(actions.shape[1]):
         state = initial
@@ -1132,6 +1282,7 @@ def _situated_grouped_predicted_scores(
                     mx.ones((actions.shape[0],), dtype=mx.float32),
                 )
             )
+        option_finals.append(final_needs)
         if value_mode == "final_lowest":
             option_scores.append(mx.min(final_needs, axis=-1))
         else:
@@ -1144,7 +1295,7 @@ def _situated_grouped_predicted_scores(
                     mx.sum(lowest * masks, axis=1)
                     / mx.maximum(mx.sum(masks, axis=1), 1.0)
                 )
-    return mx.stack(option_scores, axis=1)
+    return mx.stack(option_finals, axis=1), mx.stack(option_scores, axis=1)
 
 
 def _last_valid_hidden(
@@ -1652,6 +1803,7 @@ def main() -> None:
         message_temperature=args.message_temperature,
         seed=args.seed,
     )
+    rank_samples = None
     if args.online_self_rank_finetune_epochs > 0:
         rank_samples = collect_situated_self_model_rank_samples(
             config,
@@ -1674,6 +1826,29 @@ def main() -> None:
             temperature=args.online_self_rank_finetune_temperature,
             value_mode=args.value_mode,
             seed=args.seed + 40_101,
+        )
+    calibrator = None
+    if args.online_self_calibration:
+        if rank_samples is None:
+            rank_samples = collect_situated_self_model_rank_samples(
+                config,
+                episodes=args.online_self_calibration_episodes,
+                seed=args.seed + 41_000,
+                teacher_mode=args.teacher_mode,
+                horizon=args.horizon,
+                state_policy=args.state_policy,
+                max_samples=args.online_self_calibration_samples,
+                option_action_noise=args.online_option_action_noise,
+                option_set=args.option_set,
+                value_mode=args.value_mode,
+            )
+        calibrator = fit_situated_self_model_calibrator(
+            _model,
+            rank_samples,
+            option_names=train_dataset.option_names,
+            value_mode=args.value_mode,
+            ridge=args.online_self_calibration_ridge,
+            batch_size=args.online_self_calibration_batch_size,
         )
     if args.report_mode == "online":
         print(
@@ -1728,6 +1903,10 @@ def main() -> None:
                             online_self_model_source=args.online_self_model_source,
                             online_self_model=_model,
                             online_self_model_config=config,
+                            online_self_model_calibrator=calibrator,
+                            online_self_calibration_mode=(
+                                args.online_self_calibration_mode
+                            ),
                         )
                     )
                 )
@@ -1861,6 +2040,16 @@ def _parse_args() -> argparse.Namespace:
         "--online-self-rank-finetune-temperature",
         type=float,
         default=0.05,
+    )
+    parser.add_argument("--online-self-calibration", action="store_true")
+    parser.add_argument("--online-self-calibration-episodes", type=int, default=80)
+    parser.add_argument("--online-self-calibration-samples", type=int, default=1500)
+    parser.add_argument("--online-self-calibration-batch-size", type=int, default=128)
+    parser.add_argument("--online-self-calibration-ridge", type=float, default=1e-4)
+    parser.add_argument(
+        "--online-self-calibration-mode",
+        choices=ONLINE_SELF_CALIBRATION_MODES,
+        default="all",
     )
     parser.add_argument(
         "--online-controls",

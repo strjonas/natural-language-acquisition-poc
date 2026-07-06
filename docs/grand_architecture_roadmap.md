@@ -700,7 +700,11 @@ Next concrete implementation:
    language scaling. First conservative controls show that local non-persistent
    rehearsal prevents collapse but does not beat frozen learned dialogue, so
    the remaining gap is calibrated lifetime adaptation rather than merely
-   smaller gradient steps.
+   smaller gradient steps. Value-only calibration is the first positive step:
+   local adaptive dialogue using calibrated learned option values improves mean
+   viability from `0.7212` to `0.7264` and truncation from `36.67%` to
+   `38.33%` on seed `12001`, while still trailing oracle. Next: make this
+   calibration uncertainty-aware and train it on realized online survival.
 7. Decide whether to scale the environment to Crafter before adding large
    language generation.
 

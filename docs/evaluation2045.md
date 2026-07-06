@@ -828,6 +828,15 @@ viability, `0.074828` average minimum viability, `33.33%` truncation), but does
 not beat frozen learned dialogue (`0.721195`, `0.079867`, `36.67%`). This
 means the current learned self-model can support grounded one-shot self-reply,
 but is not calibrated enough for cumulative lifetime weight updates.
+Value-only calibration gives the first positive learned-source adaptation
+result. Calibrating the option values used by local adaptation, while leaving
+the predicted future-need features unchanged for self-reply, improves seed
+`12001` from frozen learned dialogue (`0.721195` mean viability, `0.079867`
+minimum viability, `36.67%` truncation) to calibrated local adaptive dialogue
+(`0.726384`, `0.091553`, `38.33%`). `zero_outcome` removes that benefit. This
+is still below oracle (`0.745037`, `0.265038`, `61.67%`), but it is the first
+case where a learned self-model, not exact branch labels, supports beneficial
+online rehearsal.
 
 ## Commands
 
