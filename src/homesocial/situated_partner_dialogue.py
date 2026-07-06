@@ -52,7 +52,7 @@ SITUATED_INTERVENTIONS = (
 SITUATED_VALUE_MODES = ("final_lowest", "trajectory_min", "trajectory_mean")
 SITUATED_OPTION_SETS = ("base", "extended")
 ONLINE_SELF_MODEL_SOURCES = ("exact", "learned")
-ONLINE_SELF_CALIBRATION_MODES = ("all", "values")
+ONLINE_SELF_CALIBRATION_MODES = ("all", "values", "value_lcb")
 EXTENDED_SITUATED_OPTION_NAMES = (
     "seek_lowest",
     "seek_food",
@@ -133,8 +133,10 @@ class SituatedSelfModelRankSample:
 class SituatedSelfModelCalibrator:
     final_scale: np.ndarray
     final_offset: np.ndarray
+    final_rmse: np.ndarray
     value_scale: np.ndarray
     value_offset: np.ndarray
+    value_rmse: np.ndarray
     option_names: tuple[str, ...]
 
 
@@ -568,8 +570,10 @@ def fit_situated_self_model_calibrator(
 
     final_scale = np.ones((option_count, 4), dtype=np.float32)
     final_offset = np.zeros((option_count, 4), dtype=np.float32)
+    final_rmse = np.zeros((option_count, 4), dtype=np.float32)
     value_scale = np.ones(option_count, dtype=np.float32)
     value_offset = np.zeros(option_count, dtype=np.float32)
+    value_rmse = np.zeros(option_count, dtype=np.float32)
     for option_index in range(option_count):
         for need_index in range(4):
             scale, offset = _fit_affine_calibration(
@@ -579,6 +583,20 @@ def fit_situated_self_model_calibrator(
             )
             final_scale[option_index, need_index] = scale
             final_offset[option_index, need_index] = offset
+            calibrated_final = (
+                scale * predicted_final[:, option_index, need_index] + offset
+            )
+            final_rmse[option_index, need_index] = float(
+                np.sqrt(
+                    np.mean(
+                        (
+                            calibrated_final
+                            - target_final[:, option_index, need_index]
+                        )
+                        ** 2
+                    )
+                )
+            )
         scale, offset = _fit_affine_calibration(
             predicted_value[:, option_index],
             target_value[:, option_index],
@@ -586,12 +604,20 @@ def fit_situated_self_model_calibrator(
         )
         value_scale[option_index] = scale
         value_offset[option_index] = offset
+        calibrated_value = scale * predicted_value[:, option_index] + offset
+        value_rmse[option_index] = float(
+            np.sqrt(
+                np.mean((calibrated_value - target_value[:, option_index]) ** 2)
+            )
+        )
 
     return SituatedSelfModelCalibrator(
         final_scale=final_scale,
         final_offset=final_offset,
+        final_rmse=final_rmse,
         value_scale=value_scale,
         value_offset=value_offset,
+        value_rmse=value_rmse,
         option_names=option_names,
     )
 
@@ -784,6 +810,7 @@ def evaluate_online_partner_dialogue(
     online_self_model_config: RecurrentConfig | None = None,
     online_self_model_calibrator: SituatedSelfModelCalibrator | None = None,
     online_self_calibration_mode: str = "all",
+    online_self_calibration_uncertainty_scale: float = 1.0,
 ) -> OnlinePartnerResult:
     if partner_mode not in PARTNER_PROPOSAL_MODES:
         raise ValueError(f"Unknown partner proposal mode: {partner_mode}.")
@@ -803,6 +830,8 @@ def evaluate_online_partner_dialogue(
         raise ValueError(
             f"Unknown online self-calibration mode: {online_self_calibration_mode}."
         )
+    if online_self_calibration_uncertainty_scale < 0.0:
+        raise ValueError("online_self_calibration_uncertainty_scale must be non-negative.")
     if online_adaptation_steps < 0:
         raise ValueError("online_adaptation_steps must be non-negative.")
     if online_adaptation_learning_rate <= 0.0:
@@ -904,6 +933,7 @@ def evaluate_online_partner_dialogue(
                     value_mode=value_mode,
                     calibrator=online_self_model_calibrator,
                     calibration_mode=online_self_calibration_mode,
+                    uncertainty_scale=online_self_calibration_uncertainty_scale,
                 )
             proposal = int(_partner_proposals(decision_dataset, mode=partner_mode)[0])
             pre_adaptation_choice = None
@@ -1080,6 +1110,7 @@ def _learned_online_state_dataset(
     value_mode: str,
     calibrator: SituatedSelfModelCalibrator | None = None,
     calibration_mode: str = "all",
+    uncertainty_scale: float = 1.0,
 ) -> SituatedPartnerDataset:
     if value_mode not in SITUATED_VALUE_MODES:
         raise ValueError(f"Unknown situated value mode: {value_mode}.")
@@ -1155,6 +1186,12 @@ def _learned_online_state_dataset(
             0.0,
             1.0,
         ).astype(np.float32)
+        if calibration_mode == "value_lcb":
+            values = np.clip(
+                values - uncertainty_scale * calibrator.value_rmse,
+                0.0,
+                1.0,
+            ).astype(np.float32)
     features = np.concatenate(
         [
             np.repeat(current[None, :], len(option_names), axis=0),
@@ -1907,6 +1944,9 @@ def main() -> None:
                             online_self_calibration_mode=(
                                 args.online_self_calibration_mode
                             ),
+                            online_self_calibration_uncertainty_scale=(
+                                args.online_self_calibration_uncertainty_scale
+                            ),
                         )
                     )
                 )
@@ -2050,6 +2090,11 @@ def _parse_args() -> argparse.Namespace:
         "--online-self-calibration-mode",
         choices=ONLINE_SELF_CALIBRATION_MODES,
         default="all",
+    )
+    parser.add_argument(
+        "--online-self-calibration-uncertainty-scale",
+        type=float,
+        default=1.0,
     )
     parser.add_argument(
         "--online-controls",

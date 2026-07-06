@@ -704,7 +704,10 @@ Next concrete implementation:
    local adaptive dialogue using calibrated learned option values improves mean
    viability from `0.7212` to `0.7264` and truncation from `36.67%` to
    `38.33%` on seed `12001`, while still trailing oracle. Next: make this
-   calibration uncertainty-aware and train it on realized online survival.
+   calibration uncertainty-aware and train it on realized online survival. A
+   first global residual lower-confidence-bound interface exists, but it does
+   not beat value-only calibration; the next uncertainty model should be
+   state-conditional.
 7. Decide whether to scale the environment to Crafter before adding large
    language generation.
 

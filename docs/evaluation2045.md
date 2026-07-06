@@ -837,6 +837,13 @@ minimum viability, `36.67%` truncation) to calibrated local adaptive dialogue
 is still below oracle (`0.745037`, `0.265038`, `61.67%`), but it is the first
 case where a learned self-model, not exact branch labels, supports beneficial
 online rehearsal.
+The first uncertainty-aware extension is implemented but not yet positive:
+the calibrator now records residual RMSE and can use a lower-confidence-bound
+value (`calibrated_value - k * residual_rmse`). A global per-option residual
+discount at scale `0.5` underperforms value-only calibration on the 30-episode
+audit (`0.720779` mean viability versus `0.723229`), while scale `0.2` is
+effectively unchanged. This suggests uncertainty must be state-conditional or
+trained against realized online survival.
 
 ## Commands
 
