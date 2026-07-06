@@ -25,6 +25,9 @@ from .option_mediation import (
 from .option_world_mediation_replication import train_option_rank_finetune
 from .option_world_model import collect_option_branch_dataset, train_option_world_model
 
+FORCED_PROPOSAL_MODES = ("model", "second_best", "worst")
+REPAIR_PROPOSAL_MODES = ("second_best", "worst")
+
 
 @dataclass(frozen=True)
 class TrainedOptionDialogue:
@@ -152,6 +155,8 @@ def train_option_dialogue(
     batch_size: int = 128,
     learning_rate: float = 1e-3,
     proposal_weight: float = 0.2,
+    repair_weight: float = 0.0,
+    repair_proposal_modes: tuple[str, ...] = (),
     balance_weight: float = 0.02,
     entropy_weight: float = 0.0,
     message_temperature: float = 0.6,
@@ -176,6 +181,13 @@ def train_option_dialogue(
     )
     optimizer = optim.Adam(learning_rate=learning_rate)
     indices = np.arange(sample_count)
+    repair_proposals = mx.array(
+        _proposal_table_from_values(
+            dataset.option_values,
+            modes=repair_proposal_modes,
+        ),
+        dtype=mx.int32,
+    )
 
     def ce_loss(logits: mx.array, targets: mx.array) -> mx.array:
         log_probs = logits - mx.logsumexp(logits, axis=-1, keepdims=True)
@@ -192,7 +204,26 @@ def train_option_dialogue(
             entropy = entropy - mx.mean(mx.sum(flat * mx.log(flat + 1e-8), axis=-1))
         return balance_weight * balance / len(probabilities) + entropy_weight * entropy / len(probabilities)
 
-    def loss_fn(batch_features: mx.array, batch_targets: mx.array) -> mx.array:
+    def final_loss_for_proposals(
+        batch_features: mx.array,
+        batch_targets: mx.array,
+        first_message: mx.array,
+        proposal_signal: mx.array,
+    ) -> tuple[mx.array, mx.array]:
+        reply_message, reply_probs = model.reply_message(
+            batch_features,
+            proposal_signal,
+            temperature=message_temperature,
+            hard=True,
+        )
+        final_logits = model.final(first_message, reply_message, proposal_signal)
+        return ce_loss(final_logits, batch_targets), reply_probs
+
+    def loss_fn(
+        batch_features: mx.array,
+        batch_targets: mx.array,
+        batch_repair_proposals: mx.array,
+    ) -> mx.array:
         first_message, first_probs = model.first_message(
             batch_features,
             temperature=message_temperature,
@@ -204,17 +235,33 @@ def train_option_dialogue(
         proposal_signal = hard_proposal + proposal_probs - mx.stop_gradient(
             proposal_probs
         )
-        reply_message, reply_probs = model.reply_message(
+        final_loss, reply_probs = final_loss_for_proposals(
             batch_features,
+            batch_targets,
+            first_message,
             proposal_signal,
-            temperature=message_temperature,
-            hard=True,
         )
-        final_logits = model.final(first_message, reply_message, proposal_signal)
+        reply_regularizers = [reply_probs]
+        repair_loss = mx.array(0.0)
+        for repair_index in range(len(repair_proposal_modes)):
+            repair_signal = mx.eye(option_count)[
+                batch_repair_proposals[:, repair_index]
+            ]
+            single_repair_loss, repair_reply_probs = final_loss_for_proposals(
+                batch_features,
+                batch_targets,
+                first_message,
+                repair_signal,
+            )
+            repair_loss = repair_loss + single_repair_loss
+            reply_regularizers.append(repair_reply_probs)
+        if len(repair_proposal_modes) > 0:
+            repair_loss = repair_loss / len(repair_proposal_modes)
         return (
-            ce_loss(final_logits, batch_targets)
+            final_loss
+            + repair_weight * repair_loss
             + proposal_weight * ce_loss(proposal_logits, batch_targets)
-            + token_regularizer([first_probs, reply_probs])
+            + token_regularizer([first_probs] + reply_regularizers)
         )
 
     loss_and_grad = nn.value_and_grad(model, loss_fn)
@@ -222,7 +269,11 @@ def train_option_dialogue(
         rng.shuffle(indices)
         for start in range(0, sample_count, max(1, batch_size)):
             batch = mx.array(indices[start : start + max(1, batch_size)], dtype=mx.int32)
-            loss, grads = loss_and_grad(features[batch], dataset.target_options[batch])
+            loss, grads = loss_and_grad(
+                features[batch],
+                dataset.target_options[batch],
+                repair_proposals[batch],
+            )
             optimizer.update(model, grads)
             mx.eval(model.parameters(), optimizer.state, loss)
 
@@ -280,7 +331,24 @@ def _forced_proposals(
 ) -> np.ndarray:
     if mode == "model":
         return np.asarray(mx.argmax(proposal_logits, axis=-1), dtype=np.int32)
-    values = np.asarray(dataset.option_values, dtype=np.float32)
+    return _proposal_indices_from_values(dataset.option_values, mode=mode)
+
+
+def _proposal_table_from_values(
+    option_values: mx.array,
+    *,
+    modes: tuple[str, ...],
+) -> np.ndarray:
+    if len(modes) == 0:
+        return np.zeros((int(option_values.shape[0]), 0), dtype=np.int32)
+    return np.stack(
+        [_proposal_indices_from_values(option_values, mode=mode) for mode in modes],
+        axis=1,
+    ).astype(np.int32)
+
+
+def _proposal_indices_from_values(option_values: mx.array, *, mode: str) -> np.ndarray:
+    values = np.asarray(option_values, dtype=np.float32)
     if mode == "worst":
         return np.asarray(np.argmin(values, axis=1), dtype=np.int32)
     if mode == "second_best":
@@ -400,6 +468,8 @@ def main() -> None:
         batch_size=args.batch_size,
         learning_rate=args.learning_rate,
         proposal_weight=args.proposal_weight,
+        repair_weight=args.repair_weight,
+        repair_proposal_modes=tuple(args.repair_proposal_modes),
         balance_weight=args.balance_weight,
         entropy_weight=args.entropy_weight,
         message_temperature=args.message_temperature,
@@ -482,6 +552,13 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--learning-rate", type=float, default=1e-3)
     parser.add_argument("--proposal-weight", type=float, default=0.2)
+    parser.add_argument("--repair-weight", type=float, default=0.0)
+    parser.add_argument(
+        "--repair-proposal-modes",
+        nargs="*",
+        choices=REPAIR_PROPOSAL_MODES,
+        default=[],
+    )
     parser.add_argument("--balance-weight", type=float, default=0.02)
     parser.add_argument("--entropy-weight", type=float, default=0.0)
     parser.add_argument("--message-temperature", type=float, default=0.6)
@@ -494,7 +571,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--forced-proposals",
         nargs="+",
-        choices=["model", "second_best", "worst"],
+        choices=FORCED_PROPOSAL_MODES,
         default=["model"],
     )
     return parser.parse_args()

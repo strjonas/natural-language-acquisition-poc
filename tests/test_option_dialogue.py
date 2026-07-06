@@ -6,6 +6,7 @@ import numpy as np
 from homesocial.option_dialogue import (
     OptionDialogueResult,
     _forced_proposals,
+    _proposal_table_from_values,
     evaluate_option_dialogue,
     format_result,
     train_option_dialogue,
@@ -42,6 +43,8 @@ class OptionDialogueTests(unittest.TestCase):
             receiver_size=12,
             epochs=2,
             batch_size=4,
+            repair_weight=0.5,
+            repair_proposal_modes=("second_best", "worst"),
             seed=5,
         )
         result = evaluate_option_dialogue(
@@ -78,6 +81,13 @@ class OptionDialogueTests(unittest.TestCase):
         self.assertEqual(worst.shape, (8,))
         self.assertTrue(np.all(worst != np.asarray(dataset.target_options)))
         self.assertTrue(np.all(second_best != np.asarray(dataset.target_options)))
+        table = _proposal_table_from_values(
+            dataset.option_values,
+            modes=("second_best", "worst"),
+        )
+        self.assertEqual(table.shape, (8, 2))
+        self.assertTrue(np.all(table[:, 0] == second_best))
+        self.assertTrue(np.all(table[:, 1] == worst))
         with self.assertRaises(ValueError):
             _forced_proposals(logits, dataset, mode="unknown")
 

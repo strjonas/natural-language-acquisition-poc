@@ -702,6 +702,16 @@ This is the strongest current two-turn result: the second message can repair a
 bad social proposal by communicating learned action-conditioned self-change.
 It remains a compact protocol, not natural language, and has only two-seed
 evidence so far.
+Repair-proposal training now moves this from evaluation-only correction toward
+learned correction pressure. A heavy `repair_weight=1.0` over-weighted repair
+on the first seed and hurt the ordinary model-proposal path, but
+`repair_weight=0.5` replicated across seeds `10043-10044`: normal-path final
+accuracy stayed essentially flat (`0.6750` to `0.6793`), second-best repair
+rose `0.6483` to `0.6830`, and worst-proposal repair rose `0.6310` to
+`0.6863`; chosen body delta improved most on the worst-proposal case
+(`+0.0430` to `+0.0550`). Shuffled and reverse-rank self-change interventions
+still produce negative chosen deltas. Next, replace oracle-injected bad
+proposals with a learned/social source of incomplete or mistaken proposals.
 
 ## Commands
 

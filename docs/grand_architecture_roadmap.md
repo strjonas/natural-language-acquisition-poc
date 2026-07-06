@@ -632,7 +632,10 @@ Next concrete implementation:
    recovers positive body-improvement choice, while shuffled/reversed
    self-change channels choose harmful options. The next gap is to make this
    repair pressure arise naturally inside the environment and to scale beyond a
-   compact option-message protocol.
+   compact option-message protocol. Repair-proposal training is now a first
+   bridge: auxiliary second-best/worst proposal losses improve two-seed repair
+   accuracy without losing the ordinary proposal path, but the bad proposal is
+   still oracle-injected rather than produced by a situated learned partner.
 7. Decide whether to scale the environment to Crafter before adding large
    language generation.
 
