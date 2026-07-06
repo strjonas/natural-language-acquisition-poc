@@ -811,6 +811,15 @@ well above the frozen dialogue run from that audit (`0.687806`, `0.127459`,
 (`0.699891`, `0.116396`, `28.34%`), but one seed partly compensates, so the
 causal audit is positive but not yet complete. The next gate is to replace exact
 simulator branch labels with a learned recurrent/world-model self predictor.
+That gate is now partially implemented and currently exposes the next failure
+mode. With learned recurrent self-model predictions plus situated rank
+fine-tuning, frozen dialogue on seed `12001` beats the partial partner
+(`0.721195` mean viability, `36.67%` truncation versus partner `0.706144`,
+`3.33%`), and `zero_outcome` collapses most of that survival (`0.681504`,
+`3.33%`). But it is still below the oracle (`0.745037`, `61.67%`), and
+adaptive updates over learned values remain harmful (`0.677792`, `11.67%`).
+The next gate is calibrated/conservative learned-self adaptation, not more
+exact simulator rehearsal.
 
 ## Commands
 

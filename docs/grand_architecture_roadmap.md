@@ -692,7 +692,12 @@ Next concrete implementation:
    viability `0.2830`, and `62.50%` truncation, close to the oracle in that
    run. This still uses exact branch labels from the simulator, so the next
    architecture should make the branch labels come from a learned recurrent
-   self/world model.
+   self/world model. That learned-source path now exists and is partially
+   positive: rank-finetuned frozen dialogue can beat the partial partner from
+   learned predicted self-state, but online adaptation over learned values is
+   unstable and harmful. The next architecture should add uncertainty-aware or
+   trust-region adaptation around the recurrent self-model before further
+   language scaling.
 7. Decide whether to scale the environment to Crafter before adding large
    language generation.
 

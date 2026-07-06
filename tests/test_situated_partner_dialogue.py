@@ -4,11 +4,13 @@ import mlx.core as mx
 import numpy as np
 
 from homesocial.option_world_model import OptionBranchDataset, OptionBranchSample
-from homesocial.recurrent_ac import RecurrentConfig
+from homesocial.observations import observation_vector_size
+from homesocial.recurrent_ac import RecurrentActorCritic, RecurrentConfig
 from homesocial.situated_partner_dialogue import (
     EXTENDED_SITUATED_OPTION_NAMES,
     SituatedPartnerDataset,
     collect_situated_partner_dataset,
+    collect_situated_self_model_rank_samples,
     _option_value,
     _partner_proposals,
     evaluate_online_partner_dialogue,
@@ -17,6 +19,7 @@ from homesocial.situated_partner_dialogue import (
     format_result,
     intervene_situated_partner_features,
     situated_partner_dataset_from_branches,
+    train_situated_self_model_rank,
     train_situated_partner_dialogue,
 )
 
@@ -166,6 +169,37 @@ class SituatedPartnerDialogueTests(unittest.TestCase):
                 option_set="unknown",
             )
 
+    def test_situated_self_model_rank_finetune_runs(self):
+        config = RecurrentConfig(max_steps=5, randomize_world=False)
+        samples = collect_situated_self_model_rank_samples(
+            config,
+            episodes=1,
+            seed=23,
+            horizon=2,
+            max_samples=2,
+            option_set="extended",
+            value_mode="trajectory_mean",
+        )
+        model = RecurrentActorCritic(
+            observation_vector_size(
+                include_language=config.include_language_channel,
+                include_object_kinds=config.include_object_kinds,
+                body_dynamics_mode=config.body_dynamics_mode,
+            ),
+            hidden_size=8,
+            action_size=8,
+        )
+        loss = train_situated_self_model_rank(
+            model,
+            samples,
+            epochs=1,
+            batch_size=2,
+            seed=29,
+        )
+
+        self.assertEqual(len(samples), 2)
+        self.assertGreaterEqual(loss, 0.0)
+
     def test_partner_proposals_use_partial_body_views(self):
         dataset = situated_partner_dataset_from_branches(_branch_dataset())
 
@@ -262,6 +296,30 @@ class SituatedPartnerDialogueTests(unittest.TestCase):
 
         self.assertEqual(adaptive.episodes, 2)
         self.assertIn("adaptive_dialogue,original,2", format_online_result(adaptive))
+        self_model = RecurrentActorCritic(
+            observation_vector_size(
+                include_language=config.include_language_channel,
+                include_object_kinds=config.include_object_kinds,
+                body_dynamics_mode=config.body_dynamics_mode,
+            ),
+            hidden_size=8,
+            action_size=8,
+        )
+        learned = evaluate_online_partner_dialogue(
+            trained,
+            config,
+            episodes=1,
+            seed=17,
+            horizon=1,
+            model_control="dialogue",
+            partner_mode="partial_body",
+            online_self_model_source="learned",
+            online_self_model=self_model,
+            online_self_model_config=config,
+        )
+
+        self.assertEqual(learned.episodes, 1)
+        self.assertIn("dialogue,original,1", format_online_result(learned))
         with self.assertRaises(ValueError):
             evaluate_online_partner_dialogue(
                 trained,
@@ -301,6 +359,14 @@ class SituatedPartnerDialogueTests(unittest.TestCase):
                 episodes=1,
                 seed=17,
                 online_adaptation_steps=-1,
+            )
+        with self.assertRaises(ValueError):
+            evaluate_online_partner_dialogue(
+                trained,
+                config,
+                episodes=1,
+                seed=17,
+                online_self_model_source="learned",
             )
 
     def test_unknown_train_partner_mode_fails(self):

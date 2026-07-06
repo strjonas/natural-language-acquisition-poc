@@ -12,6 +12,7 @@ import numpy as np
 from .attribution import _needs_array
 from .env import RESOURCE_ECOLOGIES, Action, HomeostaticSocialGrid
 from .imitation import load_checkpoint
+from .observations import observation_vector
 from .option_counterfactual_language import (
     OPTION_NAMES,
     STATE_POLICIES,
@@ -21,10 +22,16 @@ from .option_counterfactual_language import (
 from .option_world_model import (
     OptionBranchDataset,
     collect_option_branch_dataset,
+    _option_rollout_predictions,
 )
 from .qlearning import EpisodeStats
-from .recurrent_ac import action_mask
-from .teachers import TEACHER_MODES, build_teacher, normalize_teacher_mode
+from .recurrent_ac import RecurrentActorCritic, RecurrentConfig, action_mask
+from .teachers import (
+    TEACHER_MODES,
+    build_teacher,
+    masks_language,
+    normalize_teacher_mode,
+)
 
 
 PARTNER_PROPOSAL_MODES = (
@@ -44,6 +51,7 @@ SITUATED_INTERVENTIONS = (
 )
 SITUATED_VALUE_MODES = ("final_lowest", "trajectory_min", "trajectory_mean")
 SITUATED_OPTION_SETS = ("base", "extended")
+ONLINE_SELF_MODEL_SOURCES = ("exact", "learned")
 EXTENDED_SITUATED_OPTION_NAMES = (
     "seek_lowest",
     "seek_food",
@@ -109,6 +117,13 @@ class OnlinePartnerResult:
     mean_oracle_delta: float
     mean_regret: float
     override_rate: float
+
+
+@dataclass(frozen=True)
+class SituatedSelfModelRankSample:
+    history: tuple[np.ndarray, ...]
+    option_actions: tuple[np.ndarray, ...]
+    target_option: int
 
 
 class SituatedPartnerDialogue(nn.Module):
@@ -337,6 +352,164 @@ def collect_situated_partner_dataset(
     )
 
 
+def collect_situated_self_model_rank_samples(
+    config: RecurrentConfig,
+    *,
+    episodes: int,
+    seed: int,
+    teacher_mode: str = "grounded",
+    horizon: int = 6,
+    state_policy: str = "cycle",
+    max_samples: int = 3000,
+    option_action_noise: float = 0.0,
+    option_set: str = "base",
+    value_mode: str = "final_lowest",
+) -> tuple[SituatedSelfModelRankSample, ...]:
+    if state_policy not in STATE_POLICIES:
+        raise ValueError(f"Unknown state policy: {state_policy}.")
+    if option_set not in SITUATED_OPTION_SETS:
+        raise ValueError(f"Unknown situated option set: {option_set}.")
+    if value_mode not in SITUATED_VALUE_MODES:
+        raise ValueError(f"Unknown situated value mode: {value_mode}.")
+    if not 0.0 <= option_action_noise <= 1.0:
+        raise ValueError("Option action noise must be in [0, 1].")
+
+    option_names = _situated_option_names(option_set)
+    normalized_teacher = normalize_teacher_mode(teacher_mode)
+    mask_language = (
+        masks_language(normalized_teacher) or not config.include_language_channel
+    )
+    env = HomeostaticSocialGrid(
+        width=config.width,
+        height=config.height,
+        seed=seed,
+        max_steps=config.max_steps,
+        teacher=build_teacher(normalized_teacher, seed=seed),
+        randomize_world=config.randomize_world,
+        diagnostic_mode=config.diagnostic_mode,
+        body_dynamics_mode=config.body_dynamics_mode,
+        renewable_resources=config.renewable_resources,
+        resource_ecology=config.resource_ecology,
+    )
+    rng = np.random.default_rng(seed + 3_310_000)
+    samples: list[SituatedSelfModelRankSample] = []
+
+    for episode in range(episodes):
+        observation = env.reset(seed=seed + episode)
+        agent = _state_agent(state_policy, seed=seed, episode=episode)
+        history = [
+            _online_observation_vector(
+                observation,
+                env=env,
+                config=config,
+                mask_language=mask_language,
+            )
+        ]
+        terminated = False
+        truncated = False
+        while not terminated and not truncated and len(samples) < max_samples:
+            _features, _final_needs, values, _current_low = _situated_option_features(
+                env,
+                observation,
+                option_names=option_names,
+                horizon=max(1, horizon),
+                rng=rng,
+                option_action_noise=option_action_noise,
+                value_mode=value_mode,
+            )
+            action_sequences = _situated_option_action_sequences(
+                env,
+                observation,
+                option_names=option_names,
+                horizon=max(1, horizon),
+                rng=rng,
+                option_action_noise=option_action_noise,
+            )
+            samples.append(
+                SituatedSelfModelRankSample(
+                    history=tuple(item.copy() for item in history),
+                    option_actions=tuple(action_sequences),
+                    target_option=int(np.argmax(values)),
+                )
+            )
+
+            action = agent.act(observation)
+            observation, _reward, terminated, truncated, _info = env.step(action)
+            history.append(
+                _online_observation_vector(
+                    observation,
+                    env=env,
+                    config=config,
+                    mask_language=mask_language,
+                )
+            )
+        if len(samples) >= max_samples:
+            break
+
+    if not samples:
+        raise ValueError("No situated self-model rank samples were collected.")
+    return tuple(samples)
+
+
+def train_situated_self_model_rank(
+    model: RecurrentActorCritic,
+    samples: tuple[SituatedSelfModelRankSample, ...],
+    *,
+    epochs: int = 2,
+    batch_size: int = 64,
+    learning_rate: float = 1e-4,
+    temperature: float = 0.05,
+    value_mode: str = "final_lowest",
+    seed: int = 1,
+) -> float:
+    if epochs <= 0:
+        return 0.0
+    if not samples:
+        raise ValueError("Cannot rank-finetune on empty situated samples.")
+    if value_mode not in SITUATED_VALUE_MODES:
+        raise ValueError(f"Unknown situated value mode: {value_mode}.")
+    rng = np.random.default_rng(seed)
+    mx.random.seed(seed)
+    optimizer = optim.Adam(learning_rate=learning_rate)
+    shuffled = list(samples)
+    final_loss = 0.0
+
+    def loss_fn(
+        observations: mx.array,
+        step_masks: mx.array,
+        observation_lengths: mx.array,
+        actions: mx.array,
+        action_masks: mx.array,
+        targets: mx.array,
+    ) -> mx.array:
+        scores = _situated_grouped_predicted_scores(
+            model,
+            observations,
+            step_masks,
+            observation_lengths,
+            actions,
+            action_masks,
+            value_mode=value_mode,
+        )
+        logits = scores / max(temperature, 1e-6)
+        log_probs = logits - mx.logsumexp(logits, axis=-1, keepdims=True)
+        selected = mx.sum(log_probs * mx.eye(scores.shape[1])[targets], axis=-1)
+        return -mx.mean(selected)
+
+    loss_and_grad = nn.value_and_grad(model, loss_fn)
+    for _epoch in range(max(1, epochs)):
+        rng.shuffle(shuffled)
+        for start in range(0, len(shuffled), max(1, batch_size)):
+            batch = _pad_situated_rank_samples(
+                shuffled[start : start + max(1, batch_size)]
+            )
+            loss, grads = loss_and_grad(*batch)
+            optimizer.update(model, grads)
+            mx.eval(model.parameters(), optimizer.state, loss)
+            final_loss = float(loss)
+    return final_loss
+
+
 def train_situated_partner_dialogue(
     dataset: SituatedPartnerDataset,
     *,
@@ -500,6 +673,9 @@ def evaluate_online_partner_dialogue(
     online_adaptation_steps: int = 0,
     online_adaptation_learning_rate: float = 3e-4,
     online_adaptation_target_weight: float = 0.0,
+    online_self_model_source: str = "exact",
+    online_self_model: RecurrentActorCritic | None = None,
+    online_self_model_config: RecurrentConfig | None = None,
 ) -> OnlinePartnerResult:
     if partner_mode not in PARTNER_PROPOSAL_MODES:
         raise ValueError(f"Unknown partner proposal mode: {partner_mode}.")
@@ -513,6 +689,8 @@ def evaluate_online_partner_dialogue(
         raise ValueError("option_commit_steps must be positive.")
     if value_mode not in SITUATED_VALUE_MODES:
         raise ValueError(f"Unknown situated value mode: {value_mode}.")
+    if online_self_model_source not in ONLINE_SELF_MODEL_SOURCES:
+        raise ValueError(f"Unknown online self-model source: {online_self_model_source}.")
     if online_adaptation_steps < 0:
         raise ValueError("online_adaptation_steps must be non-negative.")
     if online_adaptation_learning_rate <= 0.0:
@@ -521,8 +699,17 @@ def evaluate_online_partner_dialogue(
         raise ValueError("online_adaptation_target_weight must be non-negative.")
     if model_control == "adaptive_dialogue" and online_adaptation_steps <= 0:
         raise ValueError("adaptive_dialogue requires online_adaptation_steps > 0.")
+    if online_self_model_source == "learned" and (
+        online_self_model is None or online_self_model_config is None
+    ):
+        raise ValueError("learned online self-model source requires a model and config.")
 
     normalized_teacher = normalize_teacher_mode(teacher_mode)
+    self_model_config = online_self_model_config or config
+    mask_language = (
+        masks_language(normalized_teacher)
+        or not self_model_config.include_language_channel
+    )
     env = HomeostaticSocialGrid(
         width=config.width,
         height=config.height,
@@ -553,6 +740,14 @@ def evaluate_online_partner_dialogue(
 
     for episode in range(episodes):
         observation = env.reset(seed=seed + episode)
+        observation_history = [
+            _online_observation_vector(
+                observation,
+                env=env,
+                config=self_model_config,
+                mask_language=mask_language,
+            )
+        ]
         terminated = False
         truncated = False
         total_reward = 0.0
@@ -564,7 +759,7 @@ def evaluate_online_partner_dialogue(
         steps = 0
 
         while not terminated and not truncated:
-            state_dataset = _online_state_dataset(
+            exact_state_dataset = _online_state_dataset(
                 env,
                 observation,
                 horizon=max(1, horizon),
@@ -573,10 +768,27 @@ def evaluate_online_partner_dialogue(
                 value_mode=value_mode,
                 option_names=trained.option_names,
             )
-            proposal = int(_partner_proposals(state_dataset, mode=partner_mode)[0])
+            decision_dataset = exact_state_dataset
+            if (
+                online_self_model_source == "learned"
+                and model_control in {"dialogue", "adaptive_dialogue"}
+            ):
+                decision_dataset = _learned_online_state_dataset(
+                    online_self_model,
+                    self_model_config,
+                    env,
+                    observation,
+                    observation_history,
+                    option_names=trained.option_names,
+                    horizon=max(1, horizon),
+                    rng=rng,
+                    option_action_noise=option_action_noise,
+                    value_mode=value_mode,
+                )
+            proposal = int(_partner_proposals(decision_dataset, mode=partner_mode)[0])
             if model_control == "adaptive_dialogue":
                 adapt_dataset = intervene_situated_partner_features(
-                    state_dataset,
+                    decision_dataset,
                     intervention=intervention,
                     seed=seed + 20_000 + episode + steps,
                 )
@@ -590,14 +802,14 @@ def evaluate_online_partner_dialogue(
                 )
             choice = _online_choice(
                 working_trained,
-                state_dataset,
+                decision_dataset,
                 proposal=proposal,
                 model_control=model_control,
                 intervention=intervention,
                 seed=seed + 20_000 + episode + steps,
             )
-            values = np.asarray(state_dataset.option_values, dtype=np.float32)[0]
-            current_lowest = float(np.asarray(state_dataset.current_lowest)[0])
+            values = np.asarray(exact_state_dataset.option_values, dtype=np.float32)[0]
+            current_lowest = float(np.asarray(exact_state_dataset.current_lowest)[0])
             proposal_deltas.append(float(values[proposal] - current_lowest))
             chosen_deltas.append(float(values[choice] - current_lowest))
             oracle_deltas.append(float(np.max(values) - current_lowest))
@@ -623,6 +835,14 @@ def evaluate_online_partner_dialogue(
                     danger_hits += 1
                 if observation.teacher_utterance:
                     teacher_utterances += 1
+                observation_history.append(
+                    _online_observation_vector(
+                        observation,
+                        env=env,
+                        config=self_model_config,
+                        mask_language=mask_language,
+                    )
+                )
                 if terminated or truncated:
                     break
 
@@ -696,6 +916,206 @@ def _online_state_dataset(
     )
 
 
+def _learned_online_state_dataset(
+    model: RecurrentActorCritic,
+    config: RecurrentConfig,
+    env: HomeostaticSocialGrid,
+    observation,
+    observation_history: list[np.ndarray],
+    *,
+    option_names: tuple[str, ...],
+    horizon: int,
+    rng: np.random.Generator,
+    option_action_noise: float,
+    value_mode: str,
+) -> SituatedPartnerDataset:
+    if value_mode not in SITUATED_VALUE_MODES:
+        raise ValueError(f"Unknown situated value mode: {value_mode}.")
+    if not observation_history:
+        raise ValueError("Learned online state dataset requires observation history.")
+
+    current = _needs_array(observation.needs).astype(np.float32)
+    action_sequences = _situated_option_action_sequences(
+        env,
+        observation,
+        option_names=option_names,
+        horizon=max(1, horizon),
+        rng=rng,
+        option_action_noise=option_action_noise,
+    )
+    max_action_length = max(len(actions) for actions in action_sequences)
+    observations = np.repeat(
+        np.stack(observation_history, dtype=np.float32)[None, :, :],
+        len(option_names),
+        axis=0,
+    )
+    step_masks = np.ones(observations.shape[:2], dtype=np.float32)
+    observation_lengths = np.full(
+        len(option_names),
+        observations.shape[1],
+        dtype=np.int32,
+    )
+    actions = np.zeros((len(option_names), max_action_length), dtype=np.int32)
+    action_masks = np.zeros((len(option_names), max_action_length), dtype=np.float32)
+    for index, sequence in enumerate(action_sequences):
+        actions[index, : len(sequence)] = sequence
+        action_masks[index, : len(sequence)] = 1.0
+
+    _predicted_observations, predicted_needs, _predicted_rewards = (
+        _option_rollout_predictions(
+            model,
+            mx.array(observations, dtype=mx.float32),
+            mx.array(step_masks, dtype=mx.float32),
+            mx.array(observation_lengths, dtype=mx.int32),
+            mx.array(actions, dtype=mx.int32),
+            mx.array(action_masks, dtype=mx.float32),
+        )
+    )
+    predicted = np.asarray(predicted_needs, dtype=np.float32)
+    predicted_trajectories = [
+        predicted[index, : len(action_sequences[index])]
+        for index in range(len(option_names))
+    ]
+    final = np.stack(
+        [trajectory[-1] for trajectory in predicted_trajectories],
+        dtype=np.float32,
+    )
+    values = np.array(
+        [
+            _option_value(trajectory, value_mode=value_mode)
+            for trajectory in predicted_trajectories
+        ],
+        dtype=np.float32,
+    )
+    features = np.concatenate(
+        [
+            np.repeat(current[None, :], len(option_names), axis=0),
+            final,
+            final - current[None, :],
+            np.eye(len(option_names), dtype=np.float32),
+        ],
+        axis=1,
+    )
+    return SituatedPartnerDataset(
+        features=mx.array(features[None, :, :], dtype=mx.float32),
+        current_needs=mx.array(current[None, :], dtype=mx.float32),
+        final_needs=mx.array(final[None, :, :], dtype=mx.float32),
+        option_values=mx.array(values[None, :], dtype=mx.float32),
+        target_options=mx.array([int(np.argmax(values))], dtype=mx.int32),
+        current_lowest=mx.array([float(np.min(current))], dtype=mx.float32),
+        option_names=option_names,
+    )
+
+
+def _pad_situated_rank_samples(
+    samples: list[SituatedSelfModelRankSample],
+) -> tuple[mx.array, mx.array, mx.array, mx.array, mx.array, mx.array]:
+    if not samples:
+        raise ValueError("Cannot pad empty situated rank samples.")
+    batch_size = len(samples)
+    option_count = len(samples[0].option_actions)
+    max_observation_length = max(len(sample.history) for sample in samples)
+    max_action_length = max(
+        len(actions) for sample in samples for actions in sample.option_actions
+    )
+    input_size = samples[0].history[0].shape[-1]
+    observations = np.zeros(
+        (batch_size, max_observation_length, input_size),
+        dtype=np.float32,
+    )
+    step_masks = np.zeros((batch_size, max_observation_length), dtype=np.float32)
+    observation_lengths = np.zeros(batch_size, dtype=np.int32)
+    actions = np.zeros(
+        (batch_size, option_count, max_action_length),
+        dtype=np.int32,
+    )
+    action_masks = np.zeros(
+        (batch_size, option_count, max_action_length),
+        dtype=np.float32,
+    )
+    targets = np.zeros(batch_size, dtype=np.int32)
+
+    for index, sample in enumerate(samples):
+        observation_length = len(sample.history)
+        observations[index, :observation_length] = np.stack(sample.history)
+        step_masks[index, :observation_length] = 1.0
+        observation_lengths[index] = observation_length
+        for option_index, option_actions in enumerate(sample.option_actions):
+            action_length = len(option_actions)
+            actions[index, option_index, :action_length] = option_actions
+            action_masks[index, option_index, :action_length] = 1.0
+        targets[index] = sample.target_option
+
+    return (
+        mx.array(observations, dtype=mx.float32),
+        mx.array(step_masks, dtype=mx.float32),
+        mx.array(observation_lengths, dtype=mx.int32),
+        mx.array(actions, dtype=mx.int32),
+        mx.array(action_masks, dtype=mx.float32),
+        mx.array(targets, dtype=mx.int32),
+    )
+
+
+def _situated_grouped_predicted_scores(
+    model: RecurrentActorCritic,
+    observations: mx.array,
+    step_masks: mx.array,
+    observation_lengths: mx.array,
+    actions: mx.array,
+    action_masks: mx.array,
+    *,
+    value_mode: str,
+) -> mx.array:
+    if value_mode not in SITUATED_VALUE_MODES:
+        raise ValueError(f"Unknown situated value mode: {value_mode}.")
+    hidden = model.hidden_states(observations)
+    initial = _last_valid_hidden(hidden, observation_lengths, step_masks)
+    option_scores = []
+    for option_index in range(actions.shape[1]):
+        state = initial
+        final_needs = mx.sigmoid(model.next_needs(state))
+        lowest_steps = []
+        for step in range(actions.shape[2]):
+            action_features = mx.eye(model.action_size)[actions[:, option_index, step]]
+            x = mx.concatenate([state, action_features], axis=-1)
+            x = nn.relu(model.transition_norm(model.transition(x)))
+            next_state = x + nn.relu(model.transition_state(x))
+            next_needs = mx.sigmoid(model.next_needs(next_state))
+            mask = action_masks[:, option_index, step : step + 1]
+            state = mx.where(mask > 0.0, next_state, state)
+            final_needs = mx.where(mask > 0.0, next_needs, final_needs)
+            lowest_steps.append(
+                mx.where(
+                    mask[:, 0] > 0.0,
+                    mx.min(next_needs, axis=-1),
+                    mx.ones((actions.shape[0],), dtype=mx.float32),
+                )
+            )
+        if value_mode == "final_lowest":
+            option_scores.append(mx.min(final_needs, axis=-1))
+        else:
+            lowest = mx.stack(lowest_steps, axis=1)
+            masks = action_masks[:, option_index, :]
+            if value_mode == "trajectory_min":
+                option_scores.append(mx.min(lowest, axis=1))
+            else:
+                option_scores.append(
+                    mx.sum(lowest * masks, axis=1)
+                    / mx.maximum(mx.sum(masks, axis=1), 1.0)
+                )
+    return mx.stack(option_scores, axis=1)
+
+
+def _last_valid_hidden(
+    hidden: mx.array,
+    lengths: mx.array,
+    step_masks: mx.array,
+) -> mx.array:
+    del step_masks
+    selectors = mx.eye(hidden.shape[1])[lengths - 1]
+    return mx.sum(hidden * selectors[..., None], axis=1)
+
+
 def _situated_option_features(
     env: HomeostaticSocialGrid,
     observation,
@@ -752,6 +1172,57 @@ def _situated_option_features(
         axis=1,
     )
     return features.astype(np.float32), final, values, float(np.min(current))
+
+
+def _situated_option_action_sequences(
+    env: HomeostaticSocialGrid,
+    observation,
+    *,
+    option_names: tuple[str, ...],
+    horizon: int,
+    rng: np.random.Generator,
+    option_action_noise: float,
+) -> list[np.ndarray]:
+    sequences: list[np.ndarray] = []
+    actions = tuple(Action)
+    for option_name in option_names:
+        branch = deepcopy(env)
+        branch_observation = observation
+        action_indices: list[int] = []
+        for _step in range(max(1, horizon)):
+            action = _situated_option_action(
+                option_name,
+                branch_observation,
+                rng=rng,
+                option_action_noise=option_action_noise,
+            )
+            action_indices.append(actions.index(action))
+            branch_observation, _reward, terminated, truncated, _info = branch.step(
+                action
+            )
+            if terminated or truncated:
+                break
+        sequences.append(np.asarray(action_indices, dtype=np.int32))
+    return sequences
+
+
+def _online_observation_vector(
+    observation,
+    *,
+    env: HomeostaticSocialGrid,
+    config: RecurrentConfig,
+    mask_language: bool,
+) -> np.ndarray:
+    return observation_vector(
+        observation,
+        width=env.width,
+        height=env.height,
+        include_language=config.include_language_channel,
+        mask_language=mask_language,
+        include_object_kinds=config.include_object_kinds,
+        interoception_mode=config.interoception_mode,
+        body_dynamics_mode=config.body_dynamics_mode,
+    ).astype(np.float32)
 
 
 def _situated_option_names(option_set: str) -> tuple[str, ...]:
@@ -1117,6 +1588,29 @@ def main() -> None:
         message_temperature=args.message_temperature,
         seed=args.seed,
     )
+    if args.online_self_rank_finetune_epochs > 0:
+        rank_samples = collect_situated_self_model_rank_samples(
+            config,
+            episodes=args.online_self_rank_finetune_episodes,
+            seed=args.seed + 40_000,
+            teacher_mode=args.teacher_mode,
+            horizon=args.horizon,
+            state_policy=args.state_policy,
+            max_samples=args.online_self_rank_finetune_samples,
+            option_action_noise=args.online_option_action_noise,
+            option_set=args.option_set,
+            value_mode=args.value_mode,
+        )
+        train_situated_self_model_rank(
+            _model,
+            rank_samples,
+            epochs=args.online_self_rank_finetune_epochs,
+            batch_size=args.online_self_rank_finetune_batch_size,
+            learning_rate=args.online_self_rank_finetune_learning_rate,
+            temperature=args.online_self_rank_finetune_temperature,
+            value_mode=args.value_mode,
+            seed=args.seed + 40_101,
+        )
     if args.report_mode == "online":
         print(
             "model_control,intervention,episodes,mean_total_reward,mean_steps,"
@@ -1154,6 +1648,9 @@ def main() -> None:
                             online_adaptation_target_weight=(
                                 args.online_adaptation_target_weight
                             ),
+                            online_self_model_source=args.online_self_model_source,
+                            online_self_model=_model,
+                            online_self_model_config=config,
                         )
                     )
                 )
@@ -1260,6 +1757,25 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--online-adaptation-steps", type=int, default=0)
     parser.add_argument("--online-adaptation-learning-rate", type=float, default=3e-4)
     parser.add_argument("--online-adaptation-target-weight", type=float, default=0.0)
+    parser.add_argument(
+        "--online-self-model-source",
+        choices=ONLINE_SELF_MODEL_SOURCES,
+        default="exact",
+    )
+    parser.add_argument("--online-self-rank-finetune-epochs", type=int, default=0)
+    parser.add_argument("--online-self-rank-finetune-episodes", type=int, default=80)
+    parser.add_argument("--online-self-rank-finetune-samples", type=int, default=1500)
+    parser.add_argument("--online-self-rank-finetune-batch-size", type=int, default=64)
+    parser.add_argument(
+        "--online-self-rank-finetune-learning-rate",
+        type=float,
+        default=1e-4,
+    )
+    parser.add_argument(
+        "--online-self-rank-finetune-temperature",
+        type=float,
+        default=0.05,
+    )
     parser.add_argument(
         "--online-controls",
         nargs="+",
