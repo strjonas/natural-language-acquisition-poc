@@ -707,7 +707,9 @@ Next concrete implementation:
    calibration uncertainty-aware and train it on realized online survival. A
    first global residual lower-confidence-bound interface exists, but it does
    not beat value-only calibration; the next uncertainty model should be
-   state-conditional.
+   state-conditional. A nearest-neighbor residual version now also exists and
+   still trails value-only calibration, so the uncertainty target likely needs
+   realized online survival risk rather than offline value residuals.
 7. Decide whether to scale the environment to Crafter before adding large
    language generation.
 

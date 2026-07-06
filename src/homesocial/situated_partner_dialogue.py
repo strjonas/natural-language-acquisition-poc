@@ -52,7 +52,7 @@ SITUATED_INTERVENTIONS = (
 SITUATED_VALUE_MODES = ("final_lowest", "trajectory_min", "trajectory_mean")
 SITUATED_OPTION_SETS = ("base", "extended")
 ONLINE_SELF_MODEL_SOURCES = ("exact", "learned")
-ONLINE_SELF_CALIBRATION_MODES = ("all", "values", "value_lcb")
+ONLINE_SELF_CALIBRATION_MODES = ("all", "values", "value_lcb", "value_knn_lcb")
 EXTENDED_SITUATED_OPTION_NAMES = (
     "seek_lowest",
     "seek_food",
@@ -137,6 +137,8 @@ class SituatedSelfModelCalibrator:
     value_scale: np.ndarray
     value_offset: np.ndarray
     value_rmse: np.ndarray
+    value_reference_predictions: np.ndarray
+    value_reference_errors: np.ndarray
     option_names: tuple[str, ...]
 
 
@@ -574,6 +576,8 @@ def fit_situated_self_model_calibrator(
     value_scale = np.ones(option_count, dtype=np.float32)
     value_offset = np.zeros(option_count, dtype=np.float32)
     value_rmse = np.zeros(option_count, dtype=np.float32)
+    value_reference_predictions = predicted_value.astype(np.float32)
+    value_reference_errors = np.zeros_like(value_reference_predictions, dtype=np.float32)
     for option_index in range(option_count):
         for need_index in range(4):
             scale, offset = _fit_affine_calibration(
@@ -610,6 +614,9 @@ def fit_situated_self_model_calibrator(
                 np.mean((calibrated_value - target_value[:, option_index]) ** 2)
             )
         )
+        value_reference_errors[:, option_index] = np.abs(
+            calibrated_value - target_value[:, option_index]
+        ).astype(np.float32)
 
     return SituatedSelfModelCalibrator(
         final_scale=final_scale,
@@ -618,6 +625,8 @@ def fit_situated_self_model_calibrator(
         value_scale=value_scale,
         value_offset=value_offset,
         value_rmse=value_rmse,
+        value_reference_predictions=value_reference_predictions,
+        value_reference_errors=value_reference_errors,
         option_names=option_names,
     )
 
@@ -635,6 +644,26 @@ def _fit_affine_calibration(
     regularizer[1, 1] = 0.0
     coeffs = np.linalg.solve(design.T @ design + regularizer, design.T @ target)
     return float(coeffs[0]), float(coeffs[1])
+
+
+def _calibrator_local_value_error(
+    calibrator: SituatedSelfModelCalibrator,
+    predicted_values: np.ndarray,
+    *,
+    k: int,
+) -> np.ndarray:
+    if k <= 0:
+        raise ValueError("Local calibration neighbor count must be positive.")
+    predicted_values = np.asarray(predicted_values, dtype=np.float32)
+    errors = np.zeros_like(predicted_values, dtype=np.float32)
+    for option_index in range(predicted_values.shape[0]):
+        references = calibrator.value_reference_predictions[:, option_index]
+        residuals = calibrator.value_reference_errors[:, option_index]
+        neighbor_count = min(k, references.shape[0])
+        distances = np.abs(references - predicted_values[option_index])
+        nearest = np.argpartition(distances, neighbor_count - 1)[:neighbor_count]
+        errors[option_index] = float(np.mean(residuals[nearest]))
+    return errors
 
 
 def train_situated_partner_dialogue(
@@ -811,6 +840,7 @@ def evaluate_online_partner_dialogue(
     online_self_model_calibrator: SituatedSelfModelCalibrator | None = None,
     online_self_calibration_mode: str = "all",
     online_self_calibration_uncertainty_scale: float = 1.0,
+    online_self_calibration_knn: int = 16,
 ) -> OnlinePartnerResult:
     if partner_mode not in PARTNER_PROPOSAL_MODES:
         raise ValueError(f"Unknown partner proposal mode: {partner_mode}.")
@@ -832,6 +862,8 @@ def evaluate_online_partner_dialogue(
         )
     if online_self_calibration_uncertainty_scale < 0.0:
         raise ValueError("online_self_calibration_uncertainty_scale must be non-negative.")
+    if online_self_calibration_knn <= 0:
+        raise ValueError("online_self_calibration_knn must be positive.")
     if online_adaptation_steps < 0:
         raise ValueError("online_adaptation_steps must be non-negative.")
     if online_adaptation_learning_rate <= 0.0:
@@ -934,6 +966,7 @@ def evaluate_online_partner_dialogue(
                     calibrator=online_self_model_calibrator,
                     calibration_mode=online_self_calibration_mode,
                     uncertainty_scale=online_self_calibration_uncertainty_scale,
+                    uncertainty_knn=online_self_calibration_knn,
                 )
             proposal = int(_partner_proposals(decision_dataset, mode=partner_mode)[0])
             pre_adaptation_choice = None
@@ -1111,6 +1144,7 @@ def _learned_online_state_dataset(
     calibrator: SituatedSelfModelCalibrator | None = None,
     calibration_mode: str = "all",
     uncertainty_scale: float = 1.0,
+    uncertainty_knn: int = 16,
 ) -> SituatedPartnerDataset:
     if value_mode not in SITUATED_VALUE_MODES:
         raise ValueError(f"Unknown situated value mode: {value_mode}.")
@@ -1175,6 +1209,7 @@ def _learned_online_state_dataset(
             raise ValueError("Calibrator option names do not match online option names.")
         if calibration_mode not in ONLINE_SELF_CALIBRATION_MODES:
             raise ValueError(f"Unknown online self-calibration mode: {calibration_mode}.")
+        raw_values = values.copy()
         if calibration_mode == "all":
             final = np.clip(
                 final * calibrator.final_scale + calibrator.final_offset,
@@ -1189,6 +1224,18 @@ def _learned_online_state_dataset(
         if calibration_mode == "value_lcb":
             values = np.clip(
                 values - uncertainty_scale * calibrator.value_rmse,
+                0.0,
+                1.0,
+            ).astype(np.float32)
+        elif calibration_mode == "value_knn_lcb":
+            values = np.clip(
+                values
+                - uncertainty_scale
+                * _calibrator_local_value_error(
+                    calibrator,
+                    raw_values,
+                    k=uncertainty_knn,
+                ),
                 0.0,
                 1.0,
             ).astype(np.float32)
@@ -1947,6 +1994,9 @@ def main() -> None:
                             online_self_calibration_uncertainty_scale=(
                                 args.online_self_calibration_uncertainty_scale
                             ),
+                            online_self_calibration_knn=(
+                                args.online_self_calibration_knn
+                            ),
                         )
                     )
                 )
@@ -2096,6 +2146,7 @@ def _parse_args() -> argparse.Namespace:
         type=float,
         default=1.0,
     )
+    parser.add_argument("--online-self-calibration-knn", type=int, default=16)
     parser.add_argument(
         "--online-controls",
         nargs="+",

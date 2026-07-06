@@ -844,6 +844,12 @@ discount at scale `0.5` underperforms value-only calibration on the 30-episode
 audit (`0.720779` mean viability versus `0.723229`), while scale `0.2` is
 effectively unchanged. This suggests uncertainty must be state-conditional or
 trained against realized online survival.
+A first state-conditional residual model now exists (`value_knn_lcb`), using
+nearest calibration predictions to estimate local value error, but it is also
+negative so far: on the 30-episode seed-`12001` audit, scales `0.5` and `0.2`
+both trail value-only calibration (`0.718963`/`0.718964` mean viability versus
+`0.723229`). The next step should learn uncertainty/risk from realized online
+survival, not just residuals in offline option-value space.
 
 ## Commands
 

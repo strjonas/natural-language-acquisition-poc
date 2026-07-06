@@ -231,6 +231,14 @@ class SituatedPartnerDialogueTests(unittest.TestCase):
             calibrator.value_rmse.shape,
             (len(EXTENDED_SITUATED_OPTION_NAMES),),
         )
+        self.assertEqual(
+            calibrator.value_reference_predictions.shape,
+            (len(samples), len(EXTENDED_SITUATED_OPTION_NAMES)),
+        )
+        self.assertEqual(
+            calibrator.value_reference_errors.shape,
+            (len(samples), len(EXTENDED_SITUATED_OPTION_NAMES)),
+        )
 
     def test_partner_proposals_use_partial_body_views(self):
         dataset = situated_partner_dataset_from_branches(_branch_dataset())
@@ -390,8 +398,9 @@ class SituatedPartnerDialogueTests(unittest.TestCase):
                 option_names=trained.option_names,
                 value_mode="final_lowest",
             ),
-            online_self_calibration_mode="value_lcb",
+            online_self_calibration_mode="value_knn_lcb",
             online_self_calibration_uncertainty_scale=0.5,
+            online_self_calibration_knn=1,
         )
 
         self.assertEqual(learned.episodes, 1)
@@ -476,6 +485,14 @@ class SituatedPartnerDialogueTests(unittest.TestCase):
                 episodes=1,
                 seed=17,
                 online_self_calibration_uncertainty_scale=-0.1,
+            )
+        with self.assertRaises(ValueError):
+            evaluate_online_partner_dialogue(
+                trained,
+                config,
+                episodes=1,
+                seed=17,
+                online_self_calibration_knn=0,
             )
         with self.assertRaises(ValueError):
             evaluate_online_partner_dialogue(
