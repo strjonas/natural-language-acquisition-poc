@@ -626,9 +626,13 @@ Next concrete implementation:
    version should make the second turn part of the main embodied/social task.
    The prototype now supports that stronger pipeline: with option-world
    training plus rank finetuning, two-turn dialogue recovers positive
-   body-improvement choice and intervention collapse. The second turn is still
-   not strongly necessary, so future tasks should force incomplete/noisy first
-   proposals that require a self-change correction.
+   body-improvement choice and intervention collapse. Forced-proposal
+   evaluation now shows the second turn is useful when it is required: after a
+   deliberately second-best or worst first proposal, the original reply channel
+   recovers positive body-improvement choice, while shuffled/reversed
+   self-change channels choose harmful options. The next gap is to make this
+   repair pressure arise naturally inside the environment and to scale beyond a
+   compact option-message protocol.
 7. Decide whether to scale the environment to Crafter before adding large
    language generation.
 

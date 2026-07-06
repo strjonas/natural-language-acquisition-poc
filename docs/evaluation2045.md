@@ -693,9 +693,15 @@ wired into `option_dialogue`. With `world_epochs=8` and
 `rank_finetune_epochs=8`, two balanced rich-opportunity seeds reach mean final
 accuracy `0.6750` and positive chosen delta `+0.0533`; `shuffle_delta`,
 `negate_delta`, and `reverse_delta_rank` all collapse below zero chosen delta.
-The remaining weakness is that the second turn only slightly improves over the
-first proposal. The next dialogue task should force a proposal/correction
-dependency rather than merely giving the model another token channel.
+Forced-proposal evaluation now makes that dependency explicit: when the first
+proposal is forcibly set to the second-best or worst true option, the original
+second-turn channel recovers final accuracy `0.6483` / `0.6310` and positive
+chosen delta `+0.0505` / `+0.0430`; shuffled and reverse-rank self-change
+channels collapse to negative deltas and near-chance or worse final choices.
+This is the strongest current two-turn result: the second message can repair a
+bad social proposal by communicating learned action-conditioned self-change.
+It remains a compact protocol, not natural language, and has only two-seed
+evidence so far.
 
 ## Commands
 

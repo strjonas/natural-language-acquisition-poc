@@ -5,6 +5,7 @@ import numpy as np
 
 from homesocial.option_dialogue import (
     OptionDialogueResult,
+    _forced_proposals,
     evaluate_option_dialogue,
     format_result,
     train_option_dialogue,
@@ -58,6 +59,7 @@ class OptionDialogueTests(unittest.TestCase):
             intervened,
             model_control="dialogue",
             intervention="reverse_delta_rank",
+            forced_proposal="worst",
         )
 
         self.assertEqual(result.samples, 8)
@@ -65,6 +67,19 @@ class OptionDialogueTests(unittest.TestCase):
         self.assertLessEqual(result.final_accuracy, 1.0)
         self.assertGreaterEqual(result.changed_fraction, 0.0)
         self.assertEqual(intervened_result.intervention, "reverse_delta_rank")
+
+    def test_forced_proposals_use_dataset_values(self):
+        dataset = _dataset()
+        logits = mx.zeros((8, 5), dtype=mx.float32)
+
+        worst = _forced_proposals(logits, dataset, mode="worst")
+        second_best = _forced_proposals(logits, dataset, mode="second_best")
+
+        self.assertEqual(worst.shape, (8,))
+        self.assertTrue(np.all(worst != np.asarray(dataset.target_options)))
+        self.assertTrue(np.all(second_best != np.asarray(dataset.target_options)))
+        with self.assertRaises(ValueError):
+            _forced_proposals(logits, dataset, mode="unknown")
 
     def test_format_result_is_stable(self):
         result = OptionDialogueResult(

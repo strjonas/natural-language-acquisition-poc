@@ -235,12 +235,17 @@ def evaluate_option_dialogue(
     *,
     model_control: str,
     intervention: str,
+    forced_proposal: str = "model",
 ) -> OptionDialogueResult:
     features = (dataset.features - trained.feature_mean) / trained.feature_std
     first_message, _first_probs = trained.model.first_message(features, hard=True)
     proposal_logits = trained.model.propose(first_message)
-    proposals = np.asarray(mx.argmax(proposal_logits, axis=-1), dtype=np.int32)
-    proposal_signal = mx.eye(trained.model.option_count)[mx.argmax(proposal_logits, axis=-1)]
+    proposals = _forced_proposals(
+        proposal_logits,
+        dataset,
+        mode=forced_proposal,
+    )
+    proposal_signal = mx.eye(trained.model.option_count)[mx.array(proposals, dtype=mx.int32)]
     reply_message, _reply_probs = trained.model.reply_message(
         features,
         proposal_signal,
@@ -265,6 +270,23 @@ def evaluate_option_dialogue(
         mean_regret=float(np.mean(oracle_values - chosen_values)),
         target_counts=target_count_string(dataset),
     )
+
+
+def _forced_proposals(
+    proposal_logits: mx.array,
+    dataset: OptionMediationDataset,
+    *,
+    mode: str,
+) -> np.ndarray:
+    if mode == "model":
+        return np.asarray(mx.argmax(proposal_logits, axis=-1), dtype=np.int32)
+    values = np.asarray(dataset.option_values, dtype=np.float32)
+    if mode == "worst":
+        return np.asarray(np.argmin(values, axis=1), dtype=np.int32)
+    if mode == "second_best":
+        order = np.argsort(values, axis=1)
+        return np.asarray(order[:, -2], dtype=np.int32)
+    raise ValueError(f"Unknown forced proposal mode: {mode}.")
 
 
 def format_result(result: OptionDialogueResult) -> str:
@@ -394,16 +416,18 @@ def main() -> None:
             intervention=intervention,
             seed=args.seed + 20_000,
         )
-        print(
-            format_result(
-                evaluate_option_dialogue(
-                    trained,
-                    intervened,
-                    model_control="dialogue",
-                    intervention=intervention,
+        for forced_proposal in args.forced_proposals:
+            print(
+                format_result(
+                    evaluate_option_dialogue(
+                        trained,
+                        intervened,
+                        model_control=f"dialogue_{forced_proposal}",
+                        intervention=intervention,
+                        forced_proposal=forced_proposal,
+                    )
                 )
             )
-        )
 
 
 def _parse_args() -> argparse.Namespace:
@@ -466,6 +490,12 @@ def _parse_args() -> argparse.Namespace:
         nargs="+",
         choices=OPTION_MEDIATION_FEATURE_INTERVENTIONS,
         default=["original", "shuffle_delta", "reverse_delta_rank"],
+    )
+    parser.add_argument(
+        "--forced-proposals",
+        nargs="+",
+        choices=["model", "second_best", "worst"],
+        default=["model"],
     )
     return parser.parse_args()
 
