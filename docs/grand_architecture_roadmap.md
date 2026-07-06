@@ -624,6 +624,11 @@ Next concrete implementation:
    the first proposal somewhat, yet does not recover positive body-delta choice
    without the stronger rank-finetuned mediation pipeline. The next dialogue
    version should make the second turn part of the main embodied/social task.
+   The prototype now supports that stronger pipeline: with option-world
+   training plus rank finetuning, two-turn dialogue recovers positive
+   body-improvement choice and intervention collapse. The second turn is still
+   not strongly necessary, so future tasks should force incomplete/noisy first
+   proposals that require a self-change correction.
 7. Decide whether to scale the environment to Crafter before adding large
    language generation.
 

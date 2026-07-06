@@ -22,6 +22,8 @@ from .option_mediation import (
     option_mediation_dataset_from_source,
     target_count_string,
 )
+from .option_world_mediation_replication import train_option_rank_finetune
+from .option_world_model import collect_option_branch_dataset, train_option_world_model
 
 
 @dataclass(frozen=True)
@@ -289,6 +291,33 @@ def main() -> None:
         config = replace(config, renewable_resources=True)
     if args.resource_ecology is not None:
         config = replace(config, resource_ecology=args.resource_ecology)
+    train_branches = None
+    if args.world_epochs > 0 or args.rank_finetune_epochs > 0:
+        train_branches = collect_option_branch_dataset(
+            config,
+            episodes=args.world_train_episodes,
+            seed=args.seed,
+            teacher_mode=args.teacher_mode,
+            horizon=args.horizon,
+            state_policy=args.state_policy,
+            max_samples=args.max_world_train_samples,
+            option_action_noise=args.option_action_noise,
+        )
+    if args.world_epochs > 0:
+        train_option_world_model(
+            base_model,
+            config,
+            train_branches,
+            checkpoint_path=None,
+            epochs=args.world_epochs,
+            batch_size=args.world_batch_size,
+            learning_rate=args.world_learning_rate,
+            seed=args.seed,
+            step_needs_weight=args.step_needs_weight,
+            final_needs_weight=args.final_needs_weight,
+            observation_prediction_weight=args.observation_prediction_weight,
+            reward_prediction_weight=args.reward_prediction_weight,
+        )
     train_source = collect_option_mediation_source(
         config,
         episodes=args.train_episodes,
@@ -314,6 +343,21 @@ def main() -> None:
         min_value_gap=args.min_value_gap,
         min_positive_delta=args.min_positive_delta,
         option_action_noise=args.option_action_noise,
+    )
+    train_option_rank_finetune(
+        base_model,
+        train_source,
+        dynamics_samples=None if train_branches is None else train_branches.samples,
+        epochs=args.rank_finetune_epochs,
+        batch_size=args.rank_finetune_batch_size,
+        learning_rate=args.rank_finetune_learning_rate,
+        temperature=args.rank_finetune_temperature,
+        dynamics_weight=args.rank_finetune_dynamics_weight,
+        step_needs_weight=args.step_needs_weight,
+        final_needs_weight=args.final_needs_weight,
+        observation_prediction_weight=args.observation_prediction_weight,
+        reward_prediction_weight=args.reward_prediction_weight,
+        seed=args.seed + 40_000,
     )
     train_dataset = option_mediation_dataset_from_source(
         train_source,
@@ -378,6 +422,20 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--option-action-noise", type=float, default=0.0)
     parser.add_argument("--min-value-gap", type=float, default=0.005)
     parser.add_argument("--min-positive-delta", type=float, default=None)
+    parser.add_argument("--world-train-episodes", type=int, default=500)
+    parser.add_argument("--max-world-train-samples", type=int, default=7000)
+    parser.add_argument("--world-epochs", type=int, default=0)
+    parser.add_argument("--world-batch-size", type=int, default=128)
+    parser.add_argument("--world-learning-rate", type=float, default=4e-4)
+    parser.add_argument("--step-needs-weight", type=float, default=2.0)
+    parser.add_argument("--final-needs-weight", type=float, default=10.0)
+    parser.add_argument("--observation-prediction-weight", type=float, default=0.03)
+    parser.add_argument("--reward-prediction-weight", type=float, default=0.4)
+    parser.add_argument("--rank-finetune-epochs", type=int, default=0)
+    parser.add_argument("--rank-finetune-batch-size", type=int, default=128)
+    parser.add_argument("--rank-finetune-learning-rate", type=float, default=1e-4)
+    parser.add_argument("--rank-finetune-temperature", type=float, default=0.05)
+    parser.add_argument("--rank-finetune-dynamics-weight", type=float, default=0.0)
     parser.add_argument(
         "--feature-mode",
         choices=OPTION_MEDIATION_FEATURE_MODES,

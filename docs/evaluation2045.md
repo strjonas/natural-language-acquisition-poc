@@ -688,6 +688,14 @@ chosen body delta remained negative (`-0.0150`). This suggests longer social
 interaction needs to be coupled to the stronger rank-finetuned self-model or
 made necessary in the environment; adding a second token-level correction turn
 alone is not enough.
+That coupling now works: optional option-world training and rank finetuning are
+wired into `option_dialogue`. With `world_epochs=8` and
+`rank_finetune_epochs=8`, two balanced rich-opportunity seeds reach mean final
+accuracy `0.6750` and positive chosen delta `+0.0533`; `shuffle_delta`,
+`negate_delta`, and `reverse_delta_rank` all collapse below zero chosen delta.
+The remaining weakness is that the second turn only slightly improves over the
+first proposal. The next dialogue task should force a proposal/correction
+dependency rather than merely giving the model another token channel.
 
 ## Commands
 
