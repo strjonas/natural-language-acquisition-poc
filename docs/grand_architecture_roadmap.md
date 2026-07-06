@@ -636,6 +636,12 @@ Next concrete implementation:
    bridge: auxiliary second-best/worst proposal losses improve two-seed repair
    accuracy without losing the ordinary proposal path, but the bad proposal is
    still oracle-injected rather than produced by a situated learned partner.
+   A first learned-partner proxy, `model_runner_up`, now audits repair against
+   the proposal receiver's own second-most likely choice. It is useful as an
+   evaluation mode, but training on it directly was negative/mixed because the
+   runner-up is not consistently a homeostatically meaningful mistake. The next
+   partner should have partial observations or limited message access, making
+   its mistakes learned, situated, and consequential.
 7. Decide whether to scale the environment to Crafter before adding large
    language generation.
 

@@ -712,6 +712,17 @@ rose `0.6483` to `0.6830`, and worst-proposal repair rose `0.6310` to
 (`+0.0430` to `+0.0550`). Shuffled and reverse-rank self-change interventions
 still produce negative chosen deltas. Next, replace oracle-injected bad
 proposals with a learned/social source of incomplete or mistaken proposals.
+That replacement is only partially successful so far. `model_runner_up` now
+uses the proposal receiver's own second-most likely option as a learned-partner
+mistake source. The no-repair dialogue already repairs this on seed `10043`
+from `0.1540` proposal accuracy to `0.6587` final accuracy with positive
+chosen delta `+0.0446`. Training directly on runner-up repair was negative
+(`0.6107` runner-up final accuracy), and a hybrid
+`model_runner_up second_best worst` repair setting improved forced final
+accuracies but reduced body-delta quality versus the simpler second-best/worst
+repair. Keep `model_runner_up` as an audit mode; the next training target
+should be a separate partially informed partner whose mistakes are learned,
+situated, and homeostatically meaningful.
 
 ## Commands
 

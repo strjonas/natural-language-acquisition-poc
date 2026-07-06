@@ -25,8 +25,9 @@ from .option_mediation import (
 from .option_world_mediation_replication import train_option_rank_finetune
 from .option_world_model import collect_option_branch_dataset, train_option_world_model
 
-FORCED_PROPOSAL_MODES = ("model", "second_best", "worst")
-REPAIR_PROPOSAL_MODES = ("second_best", "worst")
+FORCED_PROPOSAL_MODES = ("model", "model_runner_up", "second_best", "worst")
+REPAIR_PROPOSAL_MODES = ("model_runner_up", "second_best", "worst")
+VALUE_BASED_REPAIR_PROPOSAL_MODES = ("second_best", "worst")
 
 
 @dataclass(frozen=True)
@@ -181,10 +182,17 @@ def train_option_dialogue(
     )
     optimizer = optim.Adam(learning_rate=learning_rate)
     indices = np.arange(sample_count)
+    unknown_repair_modes = set(repair_proposal_modes) - set(REPAIR_PROPOSAL_MODES)
+    if unknown_repair_modes:
+        raise ValueError(f"Unknown repair proposal modes: {sorted(unknown_repair_modes)}.")
     repair_proposals = mx.array(
         _proposal_table_from_values(
             dataset.option_values,
-            modes=repair_proposal_modes,
+            modes=tuple(
+                mode
+                for mode in repair_proposal_modes
+                if mode in VALUE_BASED_REPAIR_PROPOSAL_MODES
+            ),
         ),
         dtype=mx.int32,
     )
@@ -222,8 +230,9 @@ def train_option_dialogue(
     def loss_fn(
         batch_features: mx.array,
         batch_targets: mx.array,
-        batch_repair_proposals: mx.array,
+        batch_value_repair_proposals: mx.array,
     ) -> mx.array:
+        value_repair_index = 0
         first_message, first_probs = model.first_message(
             batch_features,
             temperature=message_temperature,
@@ -243,10 +252,13 @@ def train_option_dialogue(
         )
         reply_regularizers = [reply_probs]
         repair_loss = mx.array(0.0)
-        for repair_index in range(len(repair_proposal_modes)):
-            repair_signal = mx.eye(option_count)[
-                batch_repair_proposals[:, repair_index]
-            ]
+        for repair_mode in repair_proposal_modes:
+            if repair_mode == "model_runner_up":
+                repair_indices = _runner_up_from_logits(proposal_logits)
+            else:
+                repair_indices = batch_value_repair_proposals[:, value_repair_index]
+                value_repair_index += 1
+            repair_signal = mx.eye(option_count)[repair_indices]
             single_repair_loss, repair_reply_probs = final_loss_for_proposals(
                 batch_features,
                 batch_targets,
@@ -331,7 +343,14 @@ def _forced_proposals(
 ) -> np.ndarray:
     if mode == "model":
         return np.asarray(mx.argmax(proposal_logits, axis=-1), dtype=np.int32)
+    if mode == "model_runner_up":
+        return np.asarray(_runner_up_from_logits(proposal_logits), dtype=np.int32)
     return _proposal_indices_from_values(dataset.option_values, mode=mode)
+
+
+def _runner_up_from_logits(proposal_logits: mx.array) -> mx.array:
+    order = mx.argsort(proposal_logits, axis=-1)
+    return order[:, -2].astype(mx.int32)
 
 
 def _proposal_table_from_values(

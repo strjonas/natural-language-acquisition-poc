@@ -44,7 +44,7 @@ class OptionDialogueTests(unittest.TestCase):
             epochs=2,
             batch_size=4,
             repair_weight=0.5,
-            repair_proposal_modes=("second_best", "worst"),
+            repair_proposal_modes=("model_runner_up", "second_best", "worst"),
             seed=5,
         )
         result = evaluate_option_dialogue(
@@ -73,11 +73,16 @@ class OptionDialogueTests(unittest.TestCase):
 
     def test_forced_proposals_use_dataset_values(self):
         dataset = _dataset()
-        logits = mx.zeros((8, 5), dtype=mx.float32)
+        logits = mx.array(
+            np.tile(np.array([0.0, 3.0, 1.0, 2.0, -1.0], dtype=np.float32), (8, 1)),
+            dtype=mx.float32,
+        )
 
+        model_runner_up = _forced_proposals(logits, dataset, mode="model_runner_up")
         worst = _forced_proposals(logits, dataset, mode="worst")
         second_best = _forced_proposals(logits, dataset, mode="second_best")
 
+        self.assertTrue(np.all(model_runner_up == 3))
         self.assertEqual(worst.shape, (8,))
         self.assertTrue(np.all(worst != np.asarray(dataset.target_options)))
         self.assertTrue(np.all(second_best != np.asarray(dataset.target_options)))
@@ -90,6 +95,16 @@ class OptionDialogueTests(unittest.TestCase):
         self.assertTrue(np.all(table[:, 1] == worst))
         with self.assertRaises(ValueError):
             _forced_proposals(logits, dataset, mode="unknown")
+
+    def test_unknown_repair_mode_fails(self):
+        with self.assertRaises(ValueError):
+            train_option_dialogue(
+                _dataset(),
+                hidden_size=12,
+                receiver_size=12,
+                epochs=1,
+                repair_proposal_modes=("unknown",),
+            )
 
     def test_format_result_is_stable(self):
         result = OptionDialogueResult(
