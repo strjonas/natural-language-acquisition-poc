@@ -619,7 +619,11 @@ Next concrete implementation:
    source-training path (`standard` plus `rich`) improves intervention
    robustness but slightly lowers rich held-out transfer, so the problem is now
    less about proving local self-change dependence and more about preserving it
-   as the interaction format becomes broader.
+   as the interaction format becomes broader. A first two-turn dialogue
+   prototype now exists, but its initial diagnostic is negative: it can correct
+   the first proposal somewhat, yet does not recover positive body-delta choice
+   without the stronger rank-finetuned mediation pipeline. The next dialogue
+   version should make the second turn part of the main embodied/social task.
 7. Decide whether to scale the environment to Crafter before adding large
    language generation.
 

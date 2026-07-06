@@ -680,6 +680,14 @@ from `0.8656` to `0.8330`. This is a useful tradeoff: diversity strengthens
 self-change dependence, but the compact option-message channel loses some
 within-ecology efficiency. The next move should broaden the interaction format,
 not only add more ecology mixes.
+The first broader-format attempt is `homesocial.option_dialogue`, a two-turn
+proposal/correction protocol. It is useful infrastructure but not yet a win:
+on balanced rich opportunity states, final accuracy improved over the first
+proposal (`0.4420` versus `0.3367` in the straight-through proposal run), but
+chosen body delta remained negative (`-0.0150`). This suggests longer social
+interaction needs to be coupled to the stronger rank-finetuned self-model or
+made necessary in the environment; adding a second token-level correction turn
+alone is not enough.
 
 ## Commands
 
