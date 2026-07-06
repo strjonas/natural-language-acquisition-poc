@@ -11,6 +11,7 @@ from homesocial.option_world_mediation_replication import (
     header,
     pad_option_rank_samples,
     resolved_mediation_balance_targets,
+    resolved_mediation_train_resource_ecologies,
     resolved_option_action_noises,
 )
 
@@ -112,6 +113,22 @@ class OptionWorldMediationReplicationTests(unittest.TestCase):
                 )
             ),
             ("target_option_resample", "none"),
+        )
+
+    def test_train_resource_ecologies_default_to_configured_ecology(self):
+        self.assertEqual(
+            resolved_mediation_train_resource_ecologies(
+                Namespace(mediation_train_resource_ecologies=None),
+                default_ecology="rich",
+            ),
+            ("rich",),
+        )
+        self.assertEqual(
+            resolved_mediation_train_resource_ecologies(
+                Namespace(mediation_train_resource_ecologies=["standard", "rich"]),
+                default_ecology="rich",
+            ),
+            ("standard", "rich"),
         )
 
     def test_pad_option_rank_samples_preserves_grouped_actions_and_targets(self):

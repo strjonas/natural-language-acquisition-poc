@@ -617,16 +617,44 @@ def collect_option_mediation_source(
     if not samples:
         raise ValueError("No option mediation states were collected.")
 
-    target_options = [sample.target_option for sample in samples]
-    indices = np.arange(len(samples))
+    return balance_option_mediation_source(
+        OptionMediationSourceDataset(samples=tuple(samples)),
+        balance_target=balance_target,
+        seed=seed + 4_170_000,
+    )
+
+
+def balance_option_mediation_source(
+    source: OptionMediationSourceDataset,
+    *,
+    balance_target: str,
+    seed: int = 1,
+) -> OptionMediationSourceDataset:
+    if balance_target not in OPTION_MEDIATION_BALANCE_TARGETS:
+        raise ValueError(f"Unknown balance target: {balance_target}.")
+    if not source.samples:
+        raise ValueError("Cannot balance an empty option mediation source.")
+    rng = np.random.default_rng(seed)
+    target_options = [sample.target_option for sample in source.samples]
+    indices = np.arange(len(source.samples))
     if balance_target == "target_option":
         indices = _balanced_target_option_indices(target_options, rng)
     elif balance_target == "target_option_resample":
         indices = _resampled_target_option_indices(target_options, rng)
-
     return OptionMediationSourceDataset(
-        samples=tuple(samples[int(index)] for index in indices)
+        samples=tuple(source.samples[int(index)] for index in indices)
     )
+
+
+def combine_option_mediation_sources(
+    sources: list[OptionMediationSourceDataset],
+) -> OptionMediationSourceDataset:
+    samples: list[OptionMediationSourceSample] = []
+    for source in sources:
+        samples.extend(source.samples)
+    if not samples:
+        raise ValueError("Cannot combine empty option mediation sources.")
+    return OptionMediationSourceDataset(samples=tuple(samples))
 
 
 def option_mediation_dataset_from_source(

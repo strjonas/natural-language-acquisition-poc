@@ -671,6 +671,15 @@ to `0.0848` and chosen delta to `-0.1762`; a fresh held-out receiver drops to
 the claim that the compact messages carry option-specific self-change rank.
 The next research step can move from proving this local causal dependence to
 broadening the ecology and interaction loop.
+The first broadening attempt is now available through
+`--mediation-train-resource-ecologies`. Training on both `standard` and `rich`
+opportunity states while evaluating on natural `rich` states improves
+intervention robustness: `negate_delta` drops to `-0.1069` chosen delta and
+`reverse_delta_rank` to `-0.1973`. It also reduces held-out receiver transfer
+from `0.8656` to `0.8330`. This is a useful tradeoff: diversity strengthens
+self-change dependence, but the compact option-message channel loses some
+within-ecology efficiency. The next move should broaden the interaction format,
+not only add more ecology mixes.
 
 ## Commands
 

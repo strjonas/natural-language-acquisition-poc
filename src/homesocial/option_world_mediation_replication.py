@@ -19,7 +19,9 @@ from .option_mediation import (
     OPTION_MEDIATION_SLOTS,
     OPTION_MEDIATION_TARGET_MODES,
     OPTION_MEDIATION_VOCABULARY,
+    balance_option_mediation_source,
     collect_option_mediation_source,
+    combine_option_mediation_sources,
     evaluate_option_field_use_for_population_sender,
     evaluate_option_mediator,
     evaluate_option_population_mediator,
@@ -186,6 +188,17 @@ def resolved_mediation_balance_targets(args: argparse.Namespace) -> tuple[str, s
         shared_target if train_target is None else str(train_target),
         shared_target if eval_target is None else str(eval_target),
     )
+
+
+def resolved_mediation_train_resource_ecologies(
+    args: argparse.Namespace,
+    *,
+    default_ecology: str,
+) -> tuple[str, ...]:
+    ecologies = getattr(args, "mediation_train_resource_ecologies", None)
+    if ecologies is None:
+        return (default_ecology,)
+    return tuple(str(ecology) for ecology in ecologies)
 
 
 def train_option_rank_finetune(
@@ -416,6 +429,10 @@ def run_replication_seed(
     train_balance_target, eval_balance_target = resolved_mediation_balance_targets(
         args
     )
+    train_resource_ecologies = resolved_mediation_train_resource_ecologies(
+        args,
+        default_ecology=config.resource_ecology,
+    )
 
     train_branches = collect_option_branch_dataset(
         config,
@@ -462,18 +479,33 @@ def run_replication_seed(
         batch_size=args.world_eval_batch_size,
     )
 
-    train_source = collect_option_mediation_source(
-        config,
-        episodes=args.mediation_train_episodes,
-        seed=seed,
-        teacher_mode=args.teacher_mode,
-        horizon=args.horizon,
-        state_policy=args.state_policy,
+    train_source = balance_option_mediation_source(
+        combine_option_mediation_sources(
+            [
+                collect_option_mediation_source(
+                    replace(config, resource_ecology=resource_ecology),
+                    episodes=args.mediation_train_episodes,
+                    seed=seed + 1_000 * ecology_index,
+                    teacher_mode=args.teacher_mode,
+                    horizon=args.horizon,
+                    state_policy=args.state_policy,
+                    balance_target="none",
+                    max_states=max(
+                        1,
+                        args.max_mediation_train_states
+                        // max(1, len(train_resource_ecologies)),
+                    ),
+                    min_value_gap=args.min_value_gap,
+                    min_positive_delta=args.min_positive_delta,
+                    option_action_noise=mediation_noise,
+                )
+                for ecology_index, resource_ecology in enumerate(
+                    train_resource_ecologies
+                )
+            ]
+        ),
         balance_target=train_balance_target,
-        max_states=args.max_mediation_train_states,
-        min_value_gap=args.min_value_gap,
-        min_positive_delta=args.min_positive_delta,
-        option_action_noise=mediation_noise,
+        seed=seed + 50_000,
     )
     eval_source = collect_option_mediation_source(
         config,
@@ -1131,6 +1163,12 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--renewable-resources", action="store_true")
     parser.add_argument(
         "--resource-ecology",
+        choices=RESOURCE_ECOLOGIES,
+        default=None,
+    )
+    parser.add_argument(
+        "--mediation-train-resource-ecologies",
+        nargs="+",
         choices=RESOURCE_ECOLOGIES,
         default=None,
     )

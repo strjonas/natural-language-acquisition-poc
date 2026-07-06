@@ -5,9 +5,13 @@ import numpy as np
 
 from homesocial.option_mediation import (
     OptionMediationDataset,
+    OptionMediationSourceDataset,
+    OptionMediationSourceSample,
     _balanced_target_option_indices,
     _resampled_target_option_indices,
     _should_keep_option_mediation_sample,
+    balance_option_mediation_source,
+    combine_option_mediation_sources,
     collect_option_mediation_source,
     intervene_option_mediation_features,
     majority_option_result,
@@ -85,6 +89,37 @@ class OptionMediationTests(unittest.TestCase):
             [2, 2, 2],
         )
         self.assertGreater(int(np.sum(indices == 4)), 1)
+
+    def test_combine_and_balance_option_mediation_sources(self):
+        def sample(target: int) -> OptionMediationSourceSample:
+            return OptionMediationSourceSample(
+                history=(np.zeros((2,), dtype=np.float32),),
+                option_actions=((0,), (1,), (2,), (3,), (4,)),
+                option_values=np.eye(5, dtype=np.float32)[target],
+                target_option=target,
+                current_lowest=0.1,
+            )
+
+        source = combine_option_mediation_sources(
+            [
+                OptionMediationSourceDataset(samples=(sample(0), sample(0))),
+                OptionMediationSourceDataset(samples=(sample(1),)),
+            ]
+        )
+        balanced = balance_option_mediation_source(
+            source,
+            balance_target="target_option_resample",
+            seed=3,
+        )
+
+        targets = np.array([item.target_option for item in balanced.samples])
+        self.assertEqual(len(balanced.samples), 4)
+        self.assertEqual(
+            [int(np.sum(targets == option)) for option in range(2)],
+            [2, 2],
+        )
+        with self.assertRaises(ValueError):
+            combine_option_mediation_sources([])
 
     def test_option_mediation_sample_filter_can_require_positive_delta(self):
         self.assertFalse(

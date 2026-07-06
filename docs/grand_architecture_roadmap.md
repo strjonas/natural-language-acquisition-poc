@@ -615,7 +615,11 @@ Next concrete implementation:
    now closes that audit gap: reversing option-specific self-change rank drives
    both trained and held-out receivers to harmful choices. The next improvement
    should broaden opportunity diversity and move this causal self-change
-   communication into richer, longer-horizon interaction.
+   communication into richer, longer-horizon interaction. A first mixed-ecology
+   source-training path (`standard` plus `rich`) improves intervention
+   robustness but slightly lowers rich held-out transfer, so the problem is now
+   less about proving local self-change dependence and more about preserving it
+   as the interaction format becomes broader.
 7. Decide whether to scale the environment to Crafter before adding large
    language generation.
 
