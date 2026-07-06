@@ -25,6 +25,10 @@ from .recurrent_ac import RecurrentActorCritic, RecurrentConfig, action_mask
 from .teachers import build_teacher, masks_language, normalize_teacher_mode
 
 
+OPTION_MEDIATION_FEATURE_INTERVENTIONS = (
+    *OPTION_FEATURE_INTERVENTIONS,
+    "reverse_delta_rank",
+)
 OPTION_MEDIATION_BALANCE_TARGETS = (
     "none",
     "target_option",
@@ -689,7 +693,7 @@ def intervene_option_mediation_features(
     intervention: str,
     seed: int = 1,
 ) -> OptionMediationDataset:
-    if intervention not in OPTION_FEATURE_INTERVENTIONS:
+    if intervention not in OPTION_MEDIATION_FEATURE_INTERVENTIONS:
         raise ValueError(f"Unknown option feature intervention: {intervention}.")
     features = np.asarray(dataset.features).copy()
     rng = np.random.default_rng(seed)
@@ -715,6 +719,17 @@ def intervene_option_mediation_features(
         features[:, :, block] = flat.reshape(features[:, :, block].shape)
     elif intervention == "negate_delta":
         features[:, :, blocks["delta"]] *= -1.0
+    elif intervention == "reverse_delta_rank":
+        values = np.asarray(dataset.option_values, dtype=np.float32)
+        order = np.argsort(values, axis=1, kind="stable")
+        reverse_order = order[:, ::-1]
+        row_indices = np.arange(features.shape[0])[:, None]
+        delta_block = blocks["delta"]
+        original_delta = features[:, :, delta_block].copy()
+        features[row_indices, order, delta_block] = original_delta[
+            row_indices,
+            reverse_order,
+        ]
     return OptionMediationDataset(
         features=mx.array(features, dtype=mx.float32),
         option_values=dataset.option_values,
@@ -3092,7 +3107,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--interventions",
         nargs="+",
-        choices=OPTION_FEATURE_INTERVENTIONS,
+        choices=OPTION_MEDIATION_FEATURE_INTERVENTIONS,
         default=["original", "shuffle_delta", "negate_delta"],
     )
     parser.add_argument("--random-model-control", action="store_true")

@@ -144,6 +144,44 @@ class OptionMediationTests(unittest.TestCase):
             np.asarray(dataset.target_options),
         )
 
+    def test_reverse_delta_rank_assigns_low_value_delta_to_high_value_options(self):
+        values = np.array(
+            [[0.1, 0.5, 0.3, 0.2, 0.4]],
+            dtype=np.float32,
+        )
+        dataset = _dataset([1], values=values)
+
+        intervened = intervene_option_mediation_features(
+            dataset,
+            intervention="reverse_delta_rank",
+        )
+
+        features = np.asarray(dataset.features)
+        intervened_features = np.asarray(intervened.features)
+        np.testing.assert_allclose(intervened_features[:, :, :8], features[:, :, :8])
+        np.testing.assert_allclose(
+            intervened_features[0, 0, 8:12],
+            features[0, 1, 8:12],
+        )
+        np.testing.assert_allclose(
+            intervened_features[0, 1, 8:12],
+            features[0, 0, 8:12],
+        )
+        np.testing.assert_allclose(
+            intervened_features[0, 2, 8:12],
+            features[0, 2, 8:12],
+        )
+        np.testing.assert_allclose(
+            intervened_features[0, 3, 8:12],
+            features[0, 4, 8:12],
+        )
+        np.testing.assert_allclose(
+            intervened_features[0, 4, 8:12],
+            features[0, 3, 8:12],
+        )
+        np.testing.assert_array_equal(np.asarray(intervened.option_values), values)
+        np.testing.assert_array_equal(np.asarray(intervened.target_options), [1])
+
     def test_delta_only_intervention_accepts_width_four(self):
         dataset = _dataset([0, 1], feature_width=4)
 

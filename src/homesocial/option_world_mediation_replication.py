@@ -12,9 +12,9 @@ from .env import RESOURCE_ECOLOGIES, Action
 from .imitation import load_checkpoint
 from .observations import observation_vector_size
 from .option_counterfactual_language import STATE_POLICIES
-from .option_feature_intervention import OPTION_FEATURE_INTERVENTIONS
 from .option_mediation import (
     OPTION_MEDIATION_BALANCE_TARGETS,
+    OPTION_MEDIATION_FEATURE_INTERVENTIONS,
     OPTION_MEDIATION_FEATURE_MODES,
     OPTION_MEDIATION_SLOTS,
     OPTION_MEDIATION_TARGET_MODES,
@@ -1158,7 +1158,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--interventions",
         nargs="+",
-        choices=OPTION_FEATURE_INTERVENTIONS,
+        choices=OPTION_MEDIATION_FEATURE_INTERVENTIONS,
         default=["original", "shuffle_delta", "negate_delta"],
     )
     parser.add_argument("--random-model-control", action="store_true")

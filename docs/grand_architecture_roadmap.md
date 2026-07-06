@@ -611,8 +611,11 @@ Next concrete implementation:
    stratified training version (`target_option_resample` for training, natural
    evaluation) removes the majority-target shortcut and preserves positive
    held-out receiver deltas, but reduces raw accuracy and leaves negated-delta
-   controls imperfect. The next improvement should broaden opportunity
-   diversity and tighten intervention robustness.
+   controls imperfect. A stricter row-wise `reverse_delta_rank` intervention
+   now closes that audit gap: reversing option-specific self-change rank drives
+   both trained and held-out receivers to harmful choices. The next improvement
+   should broaden opportunity diversity and move this causal self-change
+   communication into richer, longer-horizon interaction.
 7. Decide whether to scale the environment to Crafter before adding large
    language generation.
 

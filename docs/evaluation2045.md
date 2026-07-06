@@ -663,6 +663,14 @@ new-sender and held-out receiver deltas (`+0.1200` / `+0.1212`, oracle
 also lowers raw accuracy and leaves negated-delta less destructive than desired,
 so the next gate should strengthen intervention robustness across more diverse
 opportunity ecologies.
+The first stronger gate is now in place: `reverse_delta_rank` swaps delta
+features within each state so high-value options inherit low-value
+self-change and vice versa. On the same two seeds it drops new-sender accuracy
+to `0.0848` and chosen delta to `-0.1762`; a fresh held-out receiver drops to
+`0.1339` and `-0.1570`. This is much cleaner than global negation and supports
+the claim that the compact messages carry option-specific self-change rank.
+The next research step can move from proving this local causal dependence to
+broadening the ecology and interaction loop.
 
 ## Commands
 
