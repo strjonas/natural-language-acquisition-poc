@@ -195,6 +195,8 @@ def train_option_dialogue(
     repair_proposal_modes: tuple[str, ...] = (),
     repair_only_mistakes: bool = False,
     repair_min_regret: float = 0.0,
+    repair_stage_epochs: int = 0,
+    repair_stage_learning_rate: float | None = None,
     limited_partner_epochs: int = 0,
     limited_partner_hidden_size: int = 48,
     limited_partner_mask_mode: str = "first_half",
@@ -227,6 +229,8 @@ def train_option_dialogue(
         raise ValueError(f"Unknown repair proposal modes: {sorted(unknown_repair_modes)}.")
     if repair_min_regret < 0.0:
         raise ValueError("repair_min_regret must be non-negative.")
+    if repair_stage_epochs < 0:
+        raise ValueError("repair_stage_epochs must be non-negative.")
     needs_limited_partner = "limited_partner" in repair_proposal_modes
     if needs_limited_partner and limited_partner_epochs <= 0:
         raise ValueError("limited_partner repair requires limited_partner_epochs > 0.")
@@ -270,6 +274,9 @@ def train_option_dialogue(
     def ce_loss(logits: mx.array, targets: mx.array) -> mx.array:
         return mx.mean(ce_examples(logits, targets))
 
+    def weighted_examples_loss(examples: mx.array, weights: mx.array) -> mx.array:
+        return mx.sum(examples * weights) / (mx.sum(weights) + 1e-6)
+
     def token_regularizer(probabilities: list[mx.array]) -> mx.array:
         uniform = 1.0 / vocabulary_size
         balance = mx.array(0.0)
@@ -296,32 +303,19 @@ def train_option_dialogue(
         example_losses = ce_examples(final_logits, batch_targets)
         return mx.mean(example_losses), reply_probs, example_losses
 
-    def loss_fn(
+    def repair_loss_for_batch(
         batch_features: mx.array,
         batch_targets: mx.array,
         batch_value_repair_proposals: mx.array,
         batch_option_values: mx.array,
-    ) -> mx.array:
+        first_message: mx.array,
+        proposal_logits: mx.array,
+    ) -> tuple[mx.array, list[mx.array]]:
+        if len(repair_proposal_modes) == 0:
+            return mx.array(0.0), []
         value_repair_index = 0
-        first_message, first_probs = model.first_message(
-            batch_features,
-            temperature=message_temperature,
-            hard=True,
-        )
-        proposal_logits = model.propose(first_message)
-        proposal_probs = mx.softmax(proposal_logits, axis=-1)
-        hard_proposal = mx.eye(option_count)[mx.argmax(proposal_probs, axis=-1)]
-        proposal_signal = hard_proposal + proposal_probs - mx.stop_gradient(
-            proposal_probs
-        )
-        final_loss, reply_probs, _final_examples = final_loss_for_proposals(
-            batch_features,
-            batch_targets,
-            first_message,
-            proposal_signal,
-        )
-        reply_regularizers = [reply_probs]
         repair_loss = mx.array(0.0)
+        repair_probabilities: list[mx.array] = []
         for repair_mode in repair_proposal_modes:
             if repair_mode == "model_runner_up":
                 repair_indices = _runner_up_from_logits(proposal_logits)
@@ -348,18 +342,48 @@ def train_option_dialogue(
                     only_mistakes=repair_only_mistakes,
                     min_regret=repair_min_regret,
                 )
-                single_repair_loss = mx.sum(repair_examples * weights) / (
-                    mx.sum(weights) + 1e-6
-                )
+                single_repair_loss = weighted_examples_loss(repair_examples, weights)
             repair_loss = repair_loss + single_repair_loss
-            reply_regularizers.append(repair_reply_probs)
-        if len(repair_proposal_modes) > 0:
-            repair_loss = repair_loss / len(repair_proposal_modes)
+            repair_probabilities.append(repair_reply_probs)
+        return repair_loss / len(repair_proposal_modes), repair_probabilities
+
+    def loss_fn(
+        batch_features: mx.array,
+        batch_targets: mx.array,
+        batch_value_repair_proposals: mx.array,
+        batch_option_values: mx.array,
+    ) -> mx.array:
+        first_message, first_probs = model.first_message(
+            batch_features,
+            temperature=message_temperature,
+            hard=True,
+        )
+        proposal_logits = model.propose(first_message)
+        proposal_probs = mx.softmax(proposal_logits, axis=-1)
+        hard_proposal = mx.eye(option_count)[mx.argmax(proposal_probs, axis=-1)]
+        proposal_signal = hard_proposal + proposal_probs - mx.stop_gradient(
+            proposal_probs
+        )
+        final_loss, reply_probs, _final_examples = final_loss_for_proposals(
+            batch_features,
+            batch_targets,
+            first_message,
+            proposal_signal,
+        )
+        stage_base_repair_weight = 0.0 if repair_stage_epochs > 0 else repair_weight
+        repair_loss, repair_probs = repair_loss_for_batch(
+            batch_features,
+            batch_targets,
+            batch_value_repair_proposals,
+            batch_option_values,
+            first_message,
+            proposal_logits,
+        )
         return (
             final_loss
-            + repair_weight * repair_loss
+            + stage_base_repair_weight * repair_loss
             + proposal_weight * ce_loss(proposal_logits, batch_targets)
-            + token_regularizer([first_probs] + reply_regularizers)
+            + token_regularizer([first_probs, reply_probs] + repair_probs)
         )
 
     loss_and_grad = nn.value_and_grad(model, loss_fn)
@@ -375,6 +399,62 @@ def train_option_dialogue(
             )
             optimizer.update(model, grads)
             mx.eval(model.parameters(), optimizer.state, loss)
+
+    if repair_stage_epochs > 0 and repair_weight > 0.0 and len(repair_proposal_modes) > 0:
+        model.freeze()
+        for module in (
+            model.reply_sender,
+            model.reply_sender_hidden,
+            model.reply_token,
+            model.final_receiver,
+            model.final_hidden,
+            model.final_choice,
+        ):
+            module.unfreeze()
+        stage_optimizer = optim.Adam(
+            learning_rate=(
+                learning_rate
+                if repair_stage_learning_rate is None
+                else repair_stage_learning_rate
+            )
+        )
+
+        def stage_loss_fn(
+            batch_features: mx.array,
+            batch_targets: mx.array,
+            batch_value_repair_proposals: mx.array,
+            batch_option_values: mx.array,
+        ) -> mx.array:
+            first_message, _first_probs = model.first_message(
+                batch_features,
+                temperature=message_temperature,
+                hard=True,
+            )
+            proposal_logits = model.propose(first_message)
+            repair_loss, repair_probs = repair_loss_for_batch(
+                batch_features,
+                batch_targets,
+                batch_value_repair_proposals,
+                batch_option_values,
+                first_message,
+                proposal_logits,
+            )
+            return repair_weight * repair_loss + token_regularizer(repair_probs)
+
+        stage_loss_and_grad = nn.value_and_grad(model, stage_loss_fn)
+        for _epoch in range(repair_stage_epochs):
+            rng.shuffle(indices)
+            for start in range(0, sample_count, max(1, batch_size)):
+                batch = mx.array(indices[start : start + max(1, batch_size)], dtype=mx.int32)
+                loss, grads = stage_loss_and_grad(
+                    features[batch],
+                    dataset.target_options[batch],
+                    repair_proposals[batch],
+                    dataset.option_values[batch],
+                )
+                stage_optimizer.update(model, grads)
+                mx.eval(model.parameters(), stage_optimizer.state, loss)
+        model.unfreeze()
 
     return TrainedOptionDialogue(
         model=model,
@@ -673,6 +753,8 @@ def main() -> None:
         repair_proposal_modes=tuple(args.repair_proposal_modes),
         repair_only_mistakes=args.repair_only_mistakes,
         repair_min_regret=args.repair_min_regret,
+        repair_stage_epochs=args.repair_stage_epochs,
+        repair_stage_learning_rate=args.repair_stage_learning_rate,
         limited_partner_epochs=args.limited_partner_epochs,
         limited_partner_hidden_size=args.limited_partner_hidden_size,
         limited_partner_mask_mode=args.limited_partner_mask_mode,
@@ -761,6 +843,8 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--repair-weight", type=float, default=0.0)
     parser.add_argument("--repair-only-mistakes", action="store_true")
     parser.add_argument("--repair-min-regret", type=float, default=0.0)
+    parser.add_argument("--repair-stage-epochs", type=int, default=0)
+    parser.add_argument("--repair-stage-learning-rate", type=float, default=None)
     parser.add_argument("--limited-partner-epochs", type=int, default=0)
     parser.add_argument("--limited-partner-hidden-size", type=int, default=48)
     parser.add_argument(

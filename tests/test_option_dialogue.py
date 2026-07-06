@@ -54,6 +54,7 @@ class OptionDialogueTests(unittest.TestCase):
             ),
             repair_only_mistakes=True,
             repair_min_regret=0.05,
+            repair_stage_epochs=1,
             limited_partner_epochs=1,
             limited_partner_hidden_size=8,
             seed=5,
@@ -131,6 +132,14 @@ class OptionDialogueTests(unittest.TestCase):
                 receiver_size=12,
                 epochs=1,
                 repair_min_regret=-0.1,
+            )
+        with self.assertRaises(ValueError):
+            train_option_dialogue(
+                _dataset(),
+                hidden_size=12,
+                receiver_size=12,
+                epochs=1,
+                repair_stage_epochs=-1,
             )
 
     def test_repair_loss_weights_filter_mistakes_and_regret(self):

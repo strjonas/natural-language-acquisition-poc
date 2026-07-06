@@ -651,6 +651,10 @@ Next concrete implementation:
    results are still negative: lower-weight filtered repair damages less but
    does not beat audit-only dialogue. The next version should freeze/stage the
    existing sender convention and train only the reply/final correction path.
+   That staged version is now also negative. The next architecture should make
+   the partial partner proposal intrinsic to the task loop and optimize final
+   body outcome, rather than attaching auxiliary repair losses to the compact
+   dialogue protocol.
 7. Decide whether to scale the environment to Crafter before adding large
    language generation.
 

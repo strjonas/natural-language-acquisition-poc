@@ -740,6 +740,14 @@ was less damaging (`0.6660`) but still below audit-only (`0.6847`) and also
 hurt second-best/worst repair. The next repair-training attempt should freeze
 or stage the existing convention, then train only the reply/final correction
 path on consequential partner mistakes.
+That staged variant is now implemented and tested, but it is negative too.
+Freezing first-message/proposal modules and training only reply/final on
+consequential limited-partner mistakes reduced limited-partner final accuracy
+to `0.5873` in a conservative `3`-epoch setting and to `0.5227` in a stronger
+`20`-epoch setting, versus `0.6847` audit-only. The next training direction
+should not be another auxiliary repair loss on the same compact protocol; it
+should make partial partner proposals part of the actual interaction and score
+the final body outcome.
 
 ## Commands
 
