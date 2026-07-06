@@ -154,7 +154,10 @@ class SituatedPartnerDialogueTests(unittest.TestCase):
 
         self.assertEqual(dataset.option_names, EXTENDED_SITUATED_OPTION_NAMES)
         self.assertEqual(dataset.features.shape[-1], 20)
-        self.assertEqual(dataset.option_values.shape[1], len(EXTENDED_SITUATED_OPTION_NAMES))
+        self.assertEqual(
+            dataset.option_values.shape[1],
+            len(EXTENDED_SITUATED_OPTION_NAMES),
+        )
         with self.assertRaises(ValueError):
             collect_situated_partner_dataset(
                 config,
@@ -184,6 +187,7 @@ class SituatedPartnerDialogueTests(unittest.TestCase):
         )
 
         self.assertEqual(intervened.features.shape, dataset.features.shape)
+        self.assertEqual(intervened.option_names, dataset.option_names)
         np.testing.assert_array_equal(
             np.asarray(intervened.target_options),
             np.asarray(dataset.target_options),
@@ -245,6 +249,19 @@ class SituatedPartnerDialogueTests(unittest.TestCase):
         self.assertGreaterEqual(result.override_rate, 0.0)
         self.assertGreaterEqual(result.termination_rate, 0.0)
         self.assertIn("dialogue,original,2", format_online_result(result))
+        adaptive = evaluate_online_partner_dialogue(
+            trained,
+            config,
+            episodes=2,
+            seed=17,
+            horizon=1,
+            model_control="adaptive_dialogue",
+            partner_mode="partial_body",
+            online_adaptation_steps=1,
+        )
+
+        self.assertEqual(adaptive.episodes, 2)
+        self.assertIn("adaptive_dialogue,original,2", format_online_result(adaptive))
         with self.assertRaises(ValueError):
             evaluate_online_partner_dialogue(
                 trained,
@@ -268,6 +285,22 @@ class SituatedPartnerDialogueTests(unittest.TestCase):
                 episodes=1,
                 seed=17,
                 value_mode="unknown",
+            )
+        with self.assertRaises(ValueError):
+            evaluate_online_partner_dialogue(
+                trained,
+                config,
+                episodes=1,
+                seed=17,
+                model_control="adaptive_dialogue",
+            )
+        with self.assertRaises(ValueError):
+            evaluate_online_partner_dialogue(
+                trained,
+                config,
+                episodes=1,
+                seed=17,
+                online_adaptation_steps=-1,
             )
 
     def test_unknown_train_partner_mode_fails(self):

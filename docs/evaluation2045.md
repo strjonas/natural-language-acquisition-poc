@@ -801,6 +801,16 @@ dialogue reaches mean viability `0.740067`, average minimum viability
 (`0.704022`, `0.013009`, `5.00%` truncation), and `zero_outcome` loses most of
 the gain. This is now evidence that grounded self-reply can improve actual
 online viability when the environment supports reusable regulation.
+The first online-adaptation variant is also positive. `adaptive_dialogue`
+performs one in-loop gradient rehearsal step per visited state against exact
+branch-generated future-self values. On the same extended renewable audit it
+reaches mean viability `0.739386`, average minimum viability `0.283018`, and
+`62.50%` truncation, close to oracle (`0.744722`, `0.262521`, `61.67%`) and
+well above the frozen dialogue run from that audit (`0.687806`, `0.127459`,
+`35.83%`). `zero_outcome` still degrades aggregate adaptive performance
+(`0.699891`, `0.116396`, `28.34%`), but one seed partly compensates, so the
+causal audit is positive but not yet complete. The next gate is to replace exact
+simulator branch labels with a learned recurrent/world-model self predictor.
 
 ## Commands
 

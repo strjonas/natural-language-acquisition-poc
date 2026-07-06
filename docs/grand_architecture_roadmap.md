@@ -686,7 +686,13 @@ Next concrete implementation:
    average minimum viability `0.2169`, and `65.00%` truncation, close to oracle
    and far above the partial partner. Next: expand the reusable ecology and
    move from trained option-choice reply toward online learning over repeated
-   embodied/social episodes.
+   embodied/social episodes. A first version of that now exists as
+   `adaptive_dialogue`: one in-loop rehearsal update per visited state improves
+   the extended renewable audit to mean viability `0.7394`, average minimum
+   viability `0.2830`, and `62.50%` truncation, close to the oracle in that
+   run. This still uses exact branch labels from the simulator, so the next
+   architecture should make the branch labels come from a learned recurrent
+   self/world model.
 7. Decide whether to scale the environment to Crafter before adding large
    language generation.
 

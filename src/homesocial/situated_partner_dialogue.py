@@ -497,10 +497,13 @@ def evaluate_online_partner_dialogue(
     option_action_noise: float = 0.0,
     option_commit_steps: int = 1,
     value_mode: str = "final_lowest",
+    online_adaptation_steps: int = 0,
+    online_adaptation_learning_rate: float = 3e-4,
+    online_adaptation_target_weight: float = 0.0,
 ) -> OnlinePartnerResult:
     if partner_mode not in PARTNER_PROPOSAL_MODES:
         raise ValueError(f"Unknown partner proposal mode: {partner_mode}.")
-    if model_control not in {"dialogue", "partner", "oracle"}:
+    if model_control not in {"dialogue", "adaptive_dialogue", "partner", "oracle"}:
         raise ValueError(f"Unknown online model control: {model_control}.")
     if intervention not in SITUATED_INTERVENTIONS:
         raise ValueError(f"Unknown situated partner intervention: {intervention}.")
@@ -510,6 +513,14 @@ def evaluate_online_partner_dialogue(
         raise ValueError("option_commit_steps must be positive.")
     if value_mode not in SITUATED_VALUE_MODES:
         raise ValueError(f"Unknown situated value mode: {value_mode}.")
+    if online_adaptation_steps < 0:
+        raise ValueError("online_adaptation_steps must be non-negative.")
+    if online_adaptation_learning_rate <= 0.0:
+        raise ValueError("online_adaptation_learning_rate must be positive.")
+    if online_adaptation_target_weight < 0.0:
+        raise ValueError("online_adaptation_target_weight must be non-negative.")
+    if model_control == "adaptive_dialogue" and online_adaptation_steps <= 0:
+        raise ValueError("adaptive_dialogue requires online_adaptation_steps > 0.")
 
     normalized_teacher = normalize_teacher_mode(teacher_mode)
     env = HomeostaticSocialGrid(
@@ -531,6 +542,14 @@ def evaluate_online_partner_dialogue(
     oracle_deltas: list[float] = []
     regrets: list[float] = []
     overrides: list[float] = []
+    working_trained = (
+        deepcopy(trained) if model_control == "adaptive_dialogue" else trained
+    )
+    adaptation_optimizer = (
+        optim.Adam(learning_rate=online_adaptation_learning_rate)
+        if model_control == "adaptive_dialogue"
+        else None
+    )
 
     for episode in range(episodes):
         observation = env.reset(seed=seed + episode)
@@ -555,8 +574,22 @@ def evaluate_online_partner_dialogue(
                 option_names=trained.option_names,
             )
             proposal = int(_partner_proposals(state_dataset, mode=partner_mode)[0])
+            if model_control == "adaptive_dialogue":
+                adapt_dataset = intervene_situated_partner_features(
+                    state_dataset,
+                    intervention=intervention,
+                    seed=seed + 20_000 + episode + steps,
+                )
+                _adapt_online_dialogue(
+                    working_trained,
+                    adapt_dataset,
+                    proposal=proposal,
+                    optimizer=adaptation_optimizer,
+                    steps=online_adaptation_steps,
+                    target_weight=online_adaptation_target_weight,
+                )
             choice = _online_choice(
-                trained,
+                working_trained,
                 state_dataset,
                 proposal=proposal,
                 model_control=model_control,
@@ -839,6 +872,44 @@ def _online_choice(
     return int(np.asarray(mx.argmax(final_logits, axis=-1))[0])
 
 
+def _adapt_online_dialogue(
+    trained: TrainedSituatedPartnerDialogue,
+    state_dataset: SituatedPartnerDataset,
+    *,
+    proposal: int,
+    optimizer: optim.Optimizer,
+    steps: int,
+    target_weight: float,
+) -> None:
+    features = (state_dataset.features - trained.feature_mean) / trained.feature_std
+    values = state_dataset.option_values
+    option_count = trained.model.option_count
+    proposal_signal = mx.eye(option_count)[mx.array([proposal], dtype=mx.int32)]
+    targets = mx.argmax(values, axis=-1)
+
+    def loss_fn() -> mx.array:
+        reply_message, _reply_probs = trained.model.reply_message(
+            features,
+            proposal_signal,
+            hard=True,
+        )
+        logits = trained.model.final(reply_message, proposal_signal)
+        choice_probs = mx.softmax(logits, axis=-1)
+        expected_value = mx.sum(choice_probs * values, axis=-1)
+        regret = mx.max(values, axis=-1) - expected_value
+        if target_weight <= 0.0:
+            return mx.mean(regret)
+        log_probs = logits - mx.logsumexp(logits, axis=-1, keepdims=True)
+        selected = mx.sum(log_probs * mx.eye(option_count)[targets], axis=-1)
+        return mx.mean(regret) - target_weight * mx.mean(selected)
+
+    loss_and_grad = nn.value_and_grad(trained.model, loss_fn)
+    for _step in range(max(1, steps)):
+        loss, grads = loss_and_grad()
+        optimizer.update(trained.model, grads)
+        mx.eval(trained.model.parameters(), optimizer.state, loss)
+
+
 def intervene_situated_partner_features(
     dataset: SituatedPartnerDataset,
     *,
@@ -896,6 +967,7 @@ def intervene_situated_partner_features(
         option_values=dataset.option_values,
         target_options=dataset.target_options,
         current_lowest=dataset.current_lowest,
+        option_names=dataset.option_names,
     )
 
 
@@ -1054,7 +1126,11 @@ def main() -> None:
             "mean_oracle_delta,mean_regret,override_rate"
         )
         for control in args.online_controls:
-            interventions = args.interventions if control == "dialogue" else ["original"]
+            interventions = (
+                args.interventions
+                if control in {"dialogue", "adaptive_dialogue"}
+                else ["original"]
+            )
             for intervention in interventions:
                 print(
                     format_online_result(
@@ -1071,6 +1147,13 @@ def main() -> None:
                             option_action_noise=args.online_option_action_noise,
                             option_commit_steps=args.option_commit_steps,
                             value_mode=args.value_mode,
+                            online_adaptation_steps=args.online_adaptation_steps,
+                            online_adaptation_learning_rate=(
+                                args.online_adaptation_learning_rate
+                            ),
+                            online_adaptation_target_weight=(
+                                args.online_adaptation_target_weight
+                            ),
                         )
                     )
                 )
@@ -1174,10 +1257,13 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--online-eval-episodes", type=int, default=60)
     parser.add_argument("--online-option-action-noise", type=float, default=0.0)
     parser.add_argument("--option-commit-steps", type=int, default=1)
+    parser.add_argument("--online-adaptation-steps", type=int, default=0)
+    parser.add_argument("--online-adaptation-learning-rate", type=float, default=3e-4)
+    parser.add_argument("--online-adaptation-target-weight", type=float, default=0.0)
     parser.add_argument(
         "--online-controls",
         nargs="+",
-        choices=("partner", "dialogue", "oracle"),
+        choices=("partner", "dialogue", "adaptive_dialogue", "oracle"),
         default=["partner", "dialogue", "oracle"],
     )
     parser.add_argument(
