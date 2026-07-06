@@ -91,6 +91,31 @@ class OptionDialogueTests(unittest.TestCase):
         self.assertEqual(intervened_result.intervention, "reverse_delta_rank")
         self.assertEqual(limited_partner_result.samples, 8)
 
+    def test_limited_partner_can_drive_main_training_context(self):
+        dataset = _dataset()
+        trained = train_option_dialogue(
+            dataset,
+            hidden_size=12,
+            receiver_size=12,
+            epochs=2,
+            batch_size=4,
+            proposal_weight=0.0,
+            train_proposal_mode="limited_partner",
+            limited_partner_epochs=1,
+            limited_partner_hidden_size=8,
+            seed=8,
+        )
+        result = evaluate_option_dialogue(
+            trained,
+            dataset,
+            model_control="dialogue",
+            intervention="original",
+            forced_proposal="limited_partner",
+        )
+
+        self.assertEqual(result.samples, 8)
+        self.assertGreaterEqual(result.final_accuracy, 0.0)
+
     def test_forced_proposals_use_dataset_values(self):
         dataset = _dataset()
         logits = mx.array(
@@ -140,6 +165,22 @@ class OptionDialogueTests(unittest.TestCase):
                 receiver_size=12,
                 epochs=1,
                 repair_stage_epochs=-1,
+            )
+        with self.assertRaises(ValueError):
+            train_option_dialogue(
+                _dataset(),
+                hidden_size=12,
+                receiver_size=12,
+                epochs=1,
+                train_proposal_mode="unknown",
+            )
+        with self.assertRaises(ValueError):
+            train_option_dialogue(
+                _dataset(),
+                hidden_size=12,
+                receiver_size=12,
+                epochs=1,
+                train_proposal_mode="limited_partner",
             )
 
     def test_repair_loss_weights_filter_mistakes_and_regret(self):

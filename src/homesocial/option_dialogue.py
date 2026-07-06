@@ -40,6 +40,7 @@ REPAIR_PROPOSAL_MODES = (
 )
 VALUE_BASED_REPAIR_PROPOSAL_MODES = ("second_best", "worst")
 LIMITED_PARTNER_MASK_MODES = ("first_half", "even_features", "odd_features")
+TRAIN_PROPOSAL_MODES = ("model", "limited_partner")
 
 
 @dataclass(frozen=True)
@@ -191,6 +192,7 @@ def train_option_dialogue(
     batch_size: int = 128,
     learning_rate: float = 1e-3,
     proposal_weight: float = 0.2,
+    train_proposal_mode: str = "model",
     repair_weight: float = 0.0,
     repair_proposal_modes: tuple[str, ...] = (),
     repair_only_mistakes: bool = False,
@@ -227,11 +229,16 @@ def train_option_dialogue(
     unknown_repair_modes = set(repair_proposal_modes) - set(REPAIR_PROPOSAL_MODES)
     if unknown_repair_modes:
         raise ValueError(f"Unknown repair proposal modes: {sorted(unknown_repair_modes)}.")
+    if train_proposal_mode not in TRAIN_PROPOSAL_MODES:
+        raise ValueError(f"Unknown train proposal mode: {train_proposal_mode}.")
     if repair_min_regret < 0.0:
         raise ValueError("repair_min_regret must be non-negative.")
     if repair_stage_epochs < 0:
         raise ValueError("repair_stage_epochs must be non-negative.")
-    needs_limited_partner = "limited_partner" in repair_proposal_modes
+    needs_limited_partner = (
+        "limited_partner" in repair_proposal_modes
+        or train_proposal_mode == "limited_partner"
+    )
     if needs_limited_partner and limited_partner_epochs <= 0:
         raise ValueError("limited_partner repair requires limited_partner_epochs > 0.")
     limited_partner_mask = None
@@ -359,11 +366,17 @@ def train_option_dialogue(
             hard=True,
         )
         proposal_logits = model.propose(first_message)
-        proposal_probs = mx.softmax(proposal_logits, axis=-1)
-        hard_proposal = mx.eye(option_count)[mx.argmax(proposal_probs, axis=-1)]
-        proposal_signal = hard_proposal + proposal_probs - mx.stop_gradient(
-            proposal_probs
-        )
+        if train_proposal_mode == "limited_partner":
+            if limited_partner is None or limited_partner_mask is None:
+                raise ValueError("limited_partner proposal training requires a trained partner.")
+            partner_logits = limited_partner(batch_features * limited_partner_mask)
+            proposal_signal = mx.eye(option_count)[mx.argmax(partner_logits, axis=-1)]
+        else:
+            proposal_probs = mx.softmax(proposal_logits, axis=-1)
+            hard_proposal = mx.eye(option_count)[mx.argmax(proposal_probs, axis=-1)]
+            proposal_signal = hard_proposal + proposal_probs - mx.stop_gradient(
+                proposal_probs
+            )
         final_loss, reply_probs, _final_examples = final_loss_for_proposals(
             batch_features,
             batch_targets,
@@ -749,6 +762,7 @@ def main() -> None:
         batch_size=args.batch_size,
         learning_rate=args.learning_rate,
         proposal_weight=args.proposal_weight,
+        train_proposal_mode=args.train_proposal_mode,
         repair_weight=args.repair_weight,
         repair_proposal_modes=tuple(args.repair_proposal_modes),
         repair_only_mistakes=args.repair_only_mistakes,
@@ -840,6 +854,11 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--learning-rate", type=float, default=1e-3)
     parser.add_argument("--proposal-weight", type=float, default=0.2)
+    parser.add_argument(
+        "--train-proposal-mode",
+        choices=TRAIN_PROPOSAL_MODES,
+        default="model",
+    )
     parser.add_argument("--repair-weight", type=float, default=0.0)
     parser.add_argument("--repair-only-mistakes", action="store_true")
     parser.add_argument("--repair-min-regret", type=float, default=0.0)

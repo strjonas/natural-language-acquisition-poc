@@ -748,6 +748,14 @@ to `0.5873` in a conservative `3`-epoch setting and to `0.5227` in a stronger
 should not be another auxiliary repair loss on the same compact protocol; it
 should make partial partner proposals part of the actual interaction and score
 the final body outcome.
+The first main-loop version of that idea also failed: `--train-proposal-mode
+limited_partner` made the limited partner's proposal the primary training
+context. With proposal loss disabled, normal final accuracy dropped to
+`0.4867`; with proposal loss kept at `0.2`, the proposal head recovered
+(`0.6580` proposal accuracy) but limited-partner final accuracy was only
+`0.5893`, still below audit-only `0.6847`. This strengthens the conclusion
+that the next step should leave the compact option-label objective and build an
+environment-level partner task scored by downstream body outcome.
 
 ## Commands
 

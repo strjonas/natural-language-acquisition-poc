@@ -654,7 +654,10 @@ Next concrete implementation:
    That staged version is now also negative. The next architecture should make
    the partial partner proposal intrinsic to the task loop and optimize final
    body outcome, rather than attaching auxiliary repair losses to the compact
-   dialogue protocol.
+   dialogue protocol. A first main-loop limited-partner training mode was also
+   negative inside the compact option-label dataset. The next step should move
+   this into an environment-level partner task with outcome scoring rather than
+   further supervised repairs in `option_dialogue`.
 7. Decide whether to scale the environment to Crafter before adding large
    language generation.
 
