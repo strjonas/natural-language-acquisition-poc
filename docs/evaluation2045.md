@@ -786,6 +786,13 @@ episode viability is not better: dialogue mean viability is `0.660783` versus
 the myopic oracle's `0.661520`, and min viability still reaches `0.0`. The
 offline self-reply signal is real, but the next work must train or plan against
 online survival, not just branch-choice regret.
+That next training variant now exists: trajectory-valued scoring plus a direct
+best-option loss. With `trajectory_mean` and `target_weight=0.25`, dialogue
+nearly matches the trajectory oracle on branch regret (`0.006252`) and keeps
+average minimum viability above zero (`0.004466`), while `zero_outcome` falls
+back to `0.121859` regret and zero minimum viability. This is progress, but
+termination is still `0.9833`; the bottleneck is now the short-horizon option
+set, not only the reply model.
 
 ## Commands
 

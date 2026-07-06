@@ -675,7 +675,12 @@ Next concrete implementation:
    realized survival. The next implementation should optimize online viability
    directly, either by training the reply policy through episode rollouts or by
    upgrading the option set/world-model horizon so the oracle itself preserves
-   viability.
+   viability. A first online objective improvement now exists:
+   `trajectory_mean` value scoring plus direct best-option loss nearly matches
+   the trajectory oracle's branch regret (`0.006252`), and outcome ablation
+   fails, but termination remains high (`0.9833`). The next step should improve
+   the option/horizon/controller substrate, because the reply model is close to
+   oracle over the current weak choices.
 7. Decide whether to scale the environment to Crafter before adding large
    language generation.
 

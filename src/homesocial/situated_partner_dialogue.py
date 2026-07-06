@@ -40,6 +40,7 @@ SITUATED_INTERVENTIONS = (
     "reverse_outcome_rank",
     "zero_outcome",
 )
+SITUATED_VALUE_MODES = ("final_lowest", "trajectory_min", "trajectory_mean")
 
 
 @dataclass(frozen=True)
@@ -86,6 +87,8 @@ class OnlinePartnerResult:
     mean_resource_uses: float
     mean_danger_hits: float
     mean_teacher_utterances: float
+    termination_rate: float
+    truncation_rate: float
     mean_proposal_delta: float
     mean_chosen_delta: float
     mean_oracle_delta: float
@@ -157,7 +160,10 @@ def situated_partner_dataset_from_branches(
     *,
     min_value_gap: float = 0.0,
     min_oracle_delta: float | None = None,
+    value_mode: str = "final_lowest",
 ) -> SituatedPartnerDataset:
+    if value_mode not in SITUATED_VALUE_MODES:
+        raise ValueError(f"Unknown situated value mode: {value_mode}.")
     option_count = len(OPTION_NAMES)
     samples = list(branches.samples)
     grouped_features: list[np.ndarray] = []
@@ -176,7 +182,13 @@ def situated_partner_dataset_from_branches(
         final_needs = np.stack(
             [np.asarray(sample.next_needs, dtype=np.float32)[-1] for sample in group]
         ).astype(np.float32)
-        values = np.min(final_needs, axis=1).astype(np.float32)
+        option_needs = [
+            np.asarray(sample.next_needs, dtype=np.float32) for sample in group
+        ]
+        values = np.array(
+            [_option_value(needs, value_mode=value_mode) for needs in option_needs],
+            dtype=np.float32,
+        )
         current_low = float(np.min(current))
         if float(np.max(values) - np.min(values)) < min_value_gap:
             continue
@@ -225,6 +237,7 @@ def train_situated_partner_dialogue(
     batch_size: int = 128,
     learning_rate: float = 1e-3,
     partner_mode: str = "partial_body",
+    target_weight: float = 0.0,
     balance_weight: float = 0.02,
     entropy_weight: float = 0.0,
     message_temperature: float = 0.6,
@@ -232,6 +245,8 @@ def train_situated_partner_dialogue(
 ) -> TrainedSituatedPartnerDialogue:
     if partner_mode not in PARTNER_PROPOSAL_MODES:
         raise ValueError(f"Unknown partner proposal mode: {partner_mode}.")
+    if target_weight < 0.0:
+        raise ValueError("target_weight must be non-negative.")
 
     rng = np.random.default_rng(seed)
     mx.random.seed(seed)
@@ -262,6 +277,11 @@ def train_situated_partner_dialogue(
         expected_value = mx.sum(choice_probs * option_values, axis=-1)
         return mx.max(option_values, axis=-1) - expected_value
 
+    def ce_loss(logits: mx.array, targets: mx.array) -> mx.array:
+        log_probs = logits - mx.logsumexp(logits, axis=-1, keepdims=True)
+        selected = mx.sum(log_probs * mx.eye(option_count)[targets], axis=-1)
+        return -mx.mean(selected)
+
     def token_regularizer(probs: mx.array) -> mx.array:
         flat = mx.reshape(probs, (-1, probs.shape[-1]))
         uniform = 1.0 / vocabulary_size
@@ -282,8 +302,11 @@ def train_situated_partner_dialogue(
             hard=True,
         )
         final_logits = model.final(reply_message, proposal_signal)
-        return mx.mean(outcome_regret(final_logits, batch_values)) + token_regularizer(
-            reply_probs
+        targets = mx.argmax(batch_values, axis=-1)
+        return (
+            mx.mean(outcome_regret(final_logits, batch_values))
+            + target_weight * ce_loss(final_logits, targets)
+            + token_regularizer(reply_probs)
         )
 
     loss_and_grad = nn.value_and_grad(model, loss_fn)
@@ -362,6 +385,7 @@ def evaluate_online_partner_dialogue(
     intervention: str = "original",
     option_action_noise: float = 0.0,
     option_commit_steps: int = 1,
+    value_mode: str = "final_lowest",
 ) -> OnlinePartnerResult:
     if partner_mode not in PARTNER_PROPOSAL_MODES:
         raise ValueError(f"Unknown partner proposal mode: {partner_mode}.")
@@ -373,6 +397,8 @@ def evaluate_online_partner_dialogue(
         raise ValueError("Option action noise must be in [0, 1].")
     if option_commit_steps <= 0:
         raise ValueError("option_commit_steps must be positive.")
+    if value_mode not in SITUATED_VALUE_MODES:
+        raise ValueError(f"Unknown situated value mode: {value_mode}.")
 
     normalized_teacher = normalize_teacher_mode(teacher_mode)
     env = HomeostaticSocialGrid(
@@ -414,6 +440,7 @@ def evaluate_online_partner_dialogue(
                 horizon=max(1, horizon),
                 rng=rng,
                 option_action_noise=option_action_noise,
+                value_mode=value_mode,
             )
             proposal = int(_partner_proposals(state_dataset, mode=partner_mode)[0])
             choice = _online_choice(
@@ -481,6 +508,8 @@ def evaluate_online_partner_dialogue(
         mean_teacher_utterances=float(
             np.mean([item.teacher_utterances for item in stats])
         ),
+        termination_rate=float(np.mean([item.terminated for item in stats])),
+        truncation_rate=float(np.mean([item.truncated for item in stats])),
         mean_proposal_delta=float(np.mean(proposal_deltas)),
         mean_chosen_delta=float(np.mean(chosen_deltas)),
         mean_oracle_delta=float(np.mean(oracle_deltas)),
@@ -496,12 +525,17 @@ def _online_state_dataset(
     horizon: int,
     rng: np.random.Generator,
     option_action_noise: float,
+    value_mode: str,
 ) -> SituatedPartnerDataset:
+    if value_mode not in SITUATED_VALUE_MODES:
+        raise ValueError(f"Unknown situated value mode: {value_mode}.")
     current = _needs_array(observation.needs).astype(np.float32)
     final_needs: list[np.ndarray] = []
+    option_trajectories: list[np.ndarray] = []
     for option_name in OPTION_NAMES:
         branch = deepcopy(env)
         branch_observation = observation
+        trajectory_needs: list[np.ndarray] = []
         for _step in range(max(1, horizon)):
             action, _action_index = _option_action_index(
                 option_name,
@@ -512,11 +546,25 @@ def _online_state_dataset(
             branch_observation, _reward, terminated, truncated, _info = branch.step(
                 action
             )
+            trajectory_needs.append(
+                _needs_array(branch_observation.needs).astype(np.float32)
+            )
             if terminated or truncated:
                 break
-        final_needs.append(_needs_array(branch_observation.needs).astype(np.float32))
+        if not trajectory_needs:
+            trajectory_needs.append(
+                _needs_array(branch_observation.needs).astype(np.float32)
+            )
+        option_trajectories.append(np.stack(trajectory_needs).astype(np.float32))
+        final_needs.append(option_trajectories[-1][-1])
     final = np.stack(final_needs).astype(np.float32)
-    values = np.min(final, axis=1).astype(np.float32)
+    values = np.array(
+        [
+            _option_value(trajectory, value_mode=value_mode)
+            for trajectory in option_trajectories
+        ],
+        dtype=np.float32,
+    )
     option_ids = np.eye(len(OPTION_NAMES), dtype=np.float32)
     features = np.concatenate(
         [
@@ -656,6 +704,22 @@ def _partner_proposals(
     raise ValueError(f"Unknown partner proposal mode: {mode}.")
 
 
+def _option_value(needs: np.ndarray, *, value_mode: str) -> float:
+    if value_mode not in SITUATED_VALUE_MODES:
+        raise ValueError(f"Unknown situated value mode: {value_mode}.")
+    needs = np.asarray(needs, dtype=np.float32)
+    if needs.ndim == 1:
+        needs = needs[None, :]
+    lowest = np.min(needs, axis=1)
+    if value_mode == "final_lowest":
+        return float(lowest[-1])
+    if value_mode == "trajectory_min":
+        return float(np.min(lowest))
+    if value_mode == "trajectory_mean":
+        return float(np.mean(lowest))
+    raise ValueError(f"Unknown situated value mode: {value_mode}.")
+
+
 def target_count_string(dataset: SituatedPartnerDataset) -> str:
     targets = np.asarray(dataset.target_options, dtype=np.int32)
     return ";".join(
@@ -695,6 +759,8 @@ def format_online_result(result: OnlinePartnerResult) -> str:
             f"{result.mean_resource_uses:.2f}",
             f"{result.mean_danger_hits:.2f}",
             f"{result.mean_teacher_utterances:.2f}",
+            f"{result.termination_rate:.4f}",
+            f"{result.truncation_rate:.4f}",
             f"{result.mean_proposal_delta:.6f}",
             f"{result.mean_chosen_delta:.6f}",
             f"{result.mean_oracle_delta:.6f}",
@@ -725,6 +791,7 @@ def main() -> None:
         train_branches,
         min_value_gap=args.min_value_gap,
         min_oracle_delta=args.min_oracle_delta,
+        value_mode=args.value_mode,
     )
     trained = train_situated_partner_dialogue(
         train_dataset,
@@ -735,6 +802,7 @@ def main() -> None:
         batch_size=args.batch_size,
         learning_rate=args.learning_rate,
         partner_mode=args.train_partner_mode,
+        target_weight=args.target_weight,
         balance_weight=args.balance_weight,
         entropy_weight=args.entropy_weight,
         message_temperature=args.message_temperature,
@@ -744,8 +812,9 @@ def main() -> None:
         print(
             "model_control,intervention,episodes,mean_total_reward,mean_steps,"
             "mean_viability,mean_min_viability,mean_resource_uses,"
-            "mean_danger_hits,mean_teacher_utterances,mean_proposal_delta,"
-            "mean_chosen_delta,mean_oracle_delta,mean_regret,override_rate"
+            "mean_danger_hits,mean_teacher_utterances,termination_rate,"
+            "truncation_rate,mean_proposal_delta,mean_chosen_delta,"
+            "mean_oracle_delta,mean_regret,override_rate"
         )
         for control in args.online_controls:
             interventions = args.interventions if control == "dialogue" else ["original"]
@@ -764,6 +833,7 @@ def main() -> None:
                             intervention=intervention,
                             option_action_noise=args.online_option_action_noise,
                             option_commit_steps=args.option_commit_steps,
+                            value_mode=args.value_mode,
                         )
                     )
                 )
@@ -783,6 +853,7 @@ def main() -> None:
         eval_branches,
         min_value_gap=args.min_value_gap,
         min_oracle_delta=args.min_oracle_delta,
+        value_mode=args.value_mode,
     )
     print(
         "model_control,intervention,samples,proposal_accuracy,final_accuracy,"
@@ -825,12 +896,18 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--option-action-noise", type=float, default=0.0)
     parser.add_argument("--min-value-gap", type=float, default=0.0)
     parser.add_argument("--min-oracle-delta", type=float, default=None)
+    parser.add_argument(
+        "--value-mode",
+        choices=SITUATED_VALUE_MODES,
+        default="final_lowest",
+    )
     parser.add_argument("--hidden-size", type=int, default=96)
     parser.add_argument("--receiver-size", type=int, default=96)
     parser.add_argument("--vocabulary-size", type=int, default=4)
     parser.add_argument("--epochs", type=int, default=80)
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--learning-rate", type=float, default=1e-3)
+    parser.add_argument("--target-weight", type=float, default=0.0)
     parser.add_argument(
         "--train-partner-mode",
         choices=PARTNER_PROPOSAL_MODES,

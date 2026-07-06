@@ -7,6 +7,7 @@ from homesocial.option_world_model import OptionBranchDataset, OptionBranchSampl
 from homesocial.recurrent_ac import RecurrentConfig
 from homesocial.situated_partner_dialogue import (
     SituatedPartnerDataset,
+    _option_value,
     _partner_proposals,
     evaluate_online_partner_dialogue,
     evaluate_situated_partner_dialogue,
@@ -110,6 +111,33 @@ class SituatedPartnerDialogueTests(unittest.TestCase):
             np.array([2], dtype=np.int32),
         )
 
+    def test_dataset_supports_trajectory_value_modes(self):
+        dataset = situated_partner_dataset_from_branches(
+            _branch_dataset(),
+            value_mode="trajectory_mean",
+        )
+
+        self.assertEqual(dataset.option_values.shape, (2, 5))
+        self.assertAlmostEqual(
+            _option_value(
+                np.array([[0.4, 0.8], [0.6, 0.7]], dtype=np.float32),
+                value_mode="trajectory_min",
+            ),
+            0.4,
+        )
+        self.assertAlmostEqual(
+            _option_value(
+                np.array([[0.4, 0.8], [0.6, 0.7]], dtype=np.float32),
+                value_mode="trajectory_mean",
+            ),
+            0.5,
+        )
+        with self.assertRaises(ValueError):
+            situated_partner_dataset_from_branches(
+                _branch_dataset(),
+                value_mode="unknown",
+            )
+
     def test_partner_proposals_use_partial_body_views(self):
         dataset = situated_partner_dataset_from_branches(_branch_dataset())
 
@@ -190,6 +218,7 @@ class SituatedPartnerDialogueTests(unittest.TestCase):
         self.assertEqual(result.episodes, 2)
         self.assertGreaterEqual(result.mean_steps, 1.0)
         self.assertGreaterEqual(result.override_rate, 0.0)
+        self.assertGreaterEqual(result.termination_rate, 0.0)
         self.assertIn("dialogue,original,2", format_online_result(result))
         with self.assertRaises(ValueError):
             evaluate_online_partner_dialogue(
@@ -207,6 +236,14 @@ class SituatedPartnerDialogueTests(unittest.TestCase):
                 seed=17,
                 option_commit_steps=0,
             )
+        with self.assertRaises(ValueError):
+            evaluate_online_partner_dialogue(
+                trained,
+                config,
+                episodes=1,
+                seed=17,
+                value_mode="unknown",
+            )
 
     def test_unknown_train_partner_mode_fails(self):
         with self.assertRaises(ValueError):
@@ -216,6 +253,14 @@ class SituatedPartnerDialogueTests(unittest.TestCase):
                 receiver_size=12,
                 epochs=1,
                 partner_mode="unknown",
+            )
+        with self.assertRaises(ValueError):
+            train_situated_partner_dialogue(
+                _trainable_dataset(repeats=1),
+                hidden_size=12,
+                receiver_size=12,
+                epochs=1,
+                target_weight=-0.1,
             )
 
 
