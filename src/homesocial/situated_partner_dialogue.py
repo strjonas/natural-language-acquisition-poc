@@ -673,6 +673,11 @@ def evaluate_online_partner_dialogue(
     online_adaptation_steps: int = 0,
     online_adaptation_learning_rate: float = 3e-4,
     online_adaptation_target_weight: float = 0.0,
+    online_adaptation_kl_weight: float = 0.0,
+    online_adaptation_min_value_gap: float = 0.0,
+    online_adaptation_choice_guard: bool = False,
+    online_adaptation_choice_guard_margin: float = 0.0,
+    online_adaptation_local: bool = False,
     online_self_model_source: str = "exact",
     online_self_model: RecurrentActorCritic | None = None,
     online_self_model_config: RecurrentConfig | None = None,
@@ -697,6 +702,12 @@ def evaluate_online_partner_dialogue(
         raise ValueError("online_adaptation_learning_rate must be positive.")
     if online_adaptation_target_weight < 0.0:
         raise ValueError("online_adaptation_target_weight must be non-negative.")
+    if online_adaptation_kl_weight < 0.0:
+        raise ValueError("online_adaptation_kl_weight must be non-negative.")
+    if online_adaptation_min_value_gap < 0.0:
+        raise ValueError("online_adaptation_min_value_gap must be non-negative.")
+    if online_adaptation_choice_guard_margin < 0.0:
+        raise ValueError("online_adaptation_choice_guard_margin must be non-negative.")
     if model_control == "adaptive_dialogue" and online_adaptation_steps <= 0:
         raise ValueError("adaptive_dialogue requires online_adaptation_steps > 0.")
     if online_self_model_source == "learned" and (
@@ -786,6 +797,23 @@ def evaluate_online_partner_dialogue(
                     value_mode=value_mode,
                 )
             proposal = int(_partner_proposals(decision_dataset, mode=partner_mode)[0])
+            pre_adaptation_choice = None
+            if model_control == "adaptive_dialogue" and online_adaptation_choice_guard:
+                pre_adaptation_choice = _online_choice(
+                    working_trained,
+                    decision_dataset,
+                    proposal=proposal,
+                    model_control="dialogue",
+                    intervention=intervention,
+                    seed=seed + 20_000 + episode + steps,
+                )
+            adapted_trained = working_trained
+            adapt_optimizer = adaptation_optimizer
+            if model_control == "adaptive_dialogue" and online_adaptation_local:
+                adapted_trained = deepcopy(working_trained)
+                adapt_optimizer = optim.Adam(
+                    learning_rate=online_adaptation_learning_rate
+                )
             if model_control == "adaptive_dialogue":
                 adapt_dataset = intervene_situated_partner_features(
                     decision_dataset,
@@ -793,21 +821,34 @@ def evaluate_online_partner_dialogue(
                     seed=seed + 20_000 + episode + steps,
                 )
                 _adapt_online_dialogue(
-                    working_trained,
+                    adapted_trained,
                     adapt_dataset,
                     proposal=proposal,
-                    optimizer=adaptation_optimizer,
+                    optimizer=adapt_optimizer,
                     steps=online_adaptation_steps,
                     target_weight=online_adaptation_target_weight,
+                    kl_weight=online_adaptation_kl_weight,
+                    min_value_gap=online_adaptation_min_value_gap,
                 )
             choice = _online_choice(
-                working_trained,
+                adapted_trained,
                 decision_dataset,
                 proposal=proposal,
                 model_control=model_control,
                 intervention=intervention,
                 seed=seed + 20_000 + episode + steps,
             )
+            if pre_adaptation_choice is not None:
+                predicted_values = np.asarray(
+                    decision_dataset.option_values,
+                    dtype=np.float32,
+                )[0]
+                if (
+                    predicted_values[choice]
+                    < predicted_values[pre_adaptation_choice]
+                    + online_adaptation_choice_guard_margin
+                ):
+                    choice = pre_adaptation_choice
             values = np.asarray(exact_state_dataset.option_values, dtype=np.float32)[0]
             current_lowest = float(np.asarray(exact_state_dataset.current_lowest)[0])
             proposal_deltas.append(float(values[proposal] - current_lowest))
@@ -1351,12 +1392,25 @@ def _adapt_online_dialogue(
     optimizer: optim.Optimizer,
     steps: int,
     target_weight: float,
+    kl_weight: float,
+    min_value_gap: float,
 ) -> None:
     features = (state_dataset.features - trained.feature_mean) / trained.feature_std
     values = state_dataset.option_values
+    value_span = float(np.max(np.asarray(values)) - np.min(np.asarray(values)))
+    if value_span < min_value_gap:
+        return
     option_count = trained.model.option_count
     proposal_signal = mx.eye(option_count)[mx.array([proposal], dtype=mx.int32)]
     targets = mx.argmax(values, axis=-1)
+    prior_message, _prior_probs = trained.model.reply_message(
+        features,
+        proposal_signal,
+        hard=True,
+    )
+    prior_logits = mx.stop_gradient(trained.model.final(prior_message, proposal_signal))
+    prior_log_probs = prior_logits - mx.logsumexp(prior_logits, axis=-1, keepdims=True)
+    prior_probs = mx.stop_gradient(mx.exp(prior_log_probs))
 
     def loss_fn() -> mx.array:
         reply_message, _reply_probs = trained.model.reply_message(
@@ -1368,11 +1422,21 @@ def _adapt_online_dialogue(
         choice_probs = mx.softmax(logits, axis=-1)
         expected_value = mx.sum(choice_probs * values, axis=-1)
         regret = mx.max(values, axis=-1) - expected_value
+        loss = mx.mean(regret)
         if target_weight <= 0.0:
-            return mx.mean(regret)
-        log_probs = logits - mx.logsumexp(logits, axis=-1, keepdims=True)
-        selected = mx.sum(log_probs * mx.eye(option_count)[targets], axis=-1)
-        return mx.mean(regret) - target_weight * mx.mean(selected)
+            target_loss = mx.array(0.0)
+        else:
+            log_probs = logits - mx.logsumexp(logits, axis=-1, keepdims=True)
+            selected = mx.sum(log_probs * mx.eye(option_count)[targets], axis=-1)
+            target_loss = -mx.mean(selected)
+        if kl_weight <= 0.0:
+            kl_loss = mx.array(0.0)
+        else:
+            log_probs = logits - mx.logsumexp(logits, axis=-1, keepdims=True)
+            kl_loss = mx.mean(
+                mx.sum(prior_probs * (prior_log_probs - log_probs), axis=-1)
+            )
+        return loss + target_weight * target_loss + kl_weight * kl_loss
 
     loss_and_grad = nn.value_and_grad(trained.model, loss_fn)
     for _step in range(max(1, steps)):
@@ -1648,6 +1712,19 @@ def main() -> None:
                             online_adaptation_target_weight=(
                                 args.online_adaptation_target_weight
                             ),
+                            online_adaptation_kl_weight=(
+                                args.online_adaptation_kl_weight
+                            ),
+                            online_adaptation_min_value_gap=(
+                                args.online_adaptation_min_value_gap
+                            ),
+                            online_adaptation_choice_guard=(
+                                args.online_adaptation_choice_guard
+                            ),
+                            online_adaptation_choice_guard_margin=(
+                                args.online_adaptation_choice_guard_margin
+                            ),
+                            online_adaptation_local=args.online_adaptation_local,
                             online_self_model_source=args.online_self_model_source,
                             online_self_model=_model,
                             online_self_model_config=config,
@@ -1757,6 +1834,15 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--online-adaptation-steps", type=int, default=0)
     parser.add_argument("--online-adaptation-learning-rate", type=float, default=3e-4)
     parser.add_argument("--online-adaptation-target-weight", type=float, default=0.0)
+    parser.add_argument("--online-adaptation-kl-weight", type=float, default=0.0)
+    parser.add_argument("--online-adaptation-min-value-gap", type=float, default=0.0)
+    parser.add_argument("--online-adaptation-choice-guard", action="store_true")
+    parser.add_argument(
+        "--online-adaptation-choice-guard-margin",
+        type=float,
+        default=0.0,
+    )
+    parser.add_argument("--online-adaptation-local", action="store_true")
     parser.add_argument(
         "--online-self-model-source",
         choices=ONLINE_SELF_MODEL_SOURCES,

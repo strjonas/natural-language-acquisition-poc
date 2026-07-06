@@ -820,6 +820,14 @@ fine-tuning, frozen dialogue on seed `12001` beats the partial partner
 adaptive updates over learned values remain harmful (`0.677792`, `11.67%`).
 The next gate is calibrated/conservative learned-self adaptation, not more
 exact simulator rehearsal.
+Conservative controls now show the failure more clearly. KL anchoring and
+choice guards do not repair learned-source adaptation by themselves. Local
+adaptation, where each decision rehearses on a temporary copy and discards the
+update, prevents the severe persistent-weight collapse (`0.719857` mean
+viability, `0.074828` average minimum viability, `33.33%` truncation), but does
+not beat frozen learned dialogue (`0.721195`, `0.079867`, `36.67%`). This
+means the current learned self-model can support grounded one-shot self-reply,
+but is not calibrated enough for cumulative lifetime weight updates.
 
 ## Commands
 

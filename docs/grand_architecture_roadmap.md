@@ -697,7 +697,10 @@ Next concrete implementation:
    learned predicted self-state, but online adaptation over learned values is
    unstable and harmful. The next architecture should add uncertainty-aware or
    trust-region adaptation around the recurrent self-model before further
-   language scaling.
+   language scaling. First conservative controls show that local non-persistent
+   rehearsal prevents collapse but does not beat frozen learned dialogue, so
+   the remaining gap is calibrated lifetime adaptation rather than merely
+   smaller gradient steps.
 7. Decide whether to scale the environment to Crafter before adding large
    language generation.
 

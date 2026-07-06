@@ -296,6 +296,22 @@ class SituatedPartnerDialogueTests(unittest.TestCase):
 
         self.assertEqual(adaptive.episodes, 2)
         self.assertIn("adaptive_dialogue,original,2", format_online_result(adaptive))
+        gated_adaptive = evaluate_online_partner_dialogue(
+            trained,
+            config,
+            episodes=1,
+            seed=17,
+            horizon=1,
+            model_control="adaptive_dialogue",
+            partner_mode="partial_body",
+            online_adaptation_steps=1,
+            online_adaptation_kl_weight=0.5,
+            online_adaptation_min_value_gap=10.0,
+            online_adaptation_choice_guard=True,
+            online_adaptation_local=True,
+        )
+
+        self.assertEqual(gated_adaptive.episodes, 1)
         self_model = RecurrentActorCritic(
             observation_vector_size(
                 include_language=config.include_language_channel,
@@ -359,6 +375,30 @@ class SituatedPartnerDialogueTests(unittest.TestCase):
                 episodes=1,
                 seed=17,
                 online_adaptation_steps=-1,
+            )
+        with self.assertRaises(ValueError):
+            evaluate_online_partner_dialogue(
+                trained,
+                config,
+                episodes=1,
+                seed=17,
+                online_adaptation_kl_weight=-0.1,
+            )
+        with self.assertRaises(ValueError):
+            evaluate_online_partner_dialogue(
+                trained,
+                config,
+                episodes=1,
+                seed=17,
+                online_adaptation_min_value_gap=-0.1,
+            )
+        with self.assertRaises(ValueError):
+            evaluate_online_partner_dialogue(
+                trained,
+                config,
+                episodes=1,
+                seed=17,
+                online_adaptation_choice_guard_margin=-0.1,
             )
         with self.assertRaises(ValueError):
             evaluate_online_partner_dialogue(
