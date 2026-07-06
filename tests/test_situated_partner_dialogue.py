@@ -9,6 +9,7 @@ from homesocial.recurrent_ac import RecurrentActorCritic, RecurrentConfig
 from homesocial.situated_partner_dialogue import (
     EXTENDED_SITUATED_OPTION_NAMES,
     SituatedPartnerDataset,
+    collect_online_adaptation_risk_samples,
     collect_situated_partner_dataset,
     collect_situated_self_model_rank_samples,
     _option_value,
@@ -406,6 +407,38 @@ class SituatedPartnerDialogueTests(unittest.TestCase):
         self.assertEqual(learned.episodes, 1)
         self.assertEqual(calibrated.episodes, 1)
         self.assertIn("dialogue,original,1", format_online_result(learned))
+        risk_calibrator = collect_online_adaptation_risk_samples(
+            trained,
+            config,
+            episodes=1,
+            seed=37,
+            horizon=1,
+            max_samples=4,
+            partner_mode="partial_body",
+            online_self_model_source="learned",
+            online_self_model=self_model,
+            online_self_model_config=config,
+        )
+        self.assertEqual(risk_calibrator.features.shape[0], 4)
+        self.assertEqual(risk_calibrator.risks.shape, (4,))
+        risk_gated = evaluate_online_partner_dialogue(
+            trained,
+            config,
+            episodes=1,
+            seed=17,
+            horizon=1,
+            model_control="adaptive_dialogue",
+            partner_mode="partial_body",
+            online_adaptation_steps=1,
+            online_adaptation_local=True,
+            online_self_model_source="learned",
+            online_self_model=self_model,
+            online_self_model_config=config,
+            online_adaptation_risk_calibrator=risk_calibrator,
+            online_adaptation_risk_threshold=0.0,
+            online_adaptation_risk_knn=1,
+        )
+        self.assertEqual(risk_gated.episodes, 1)
         with self.assertRaises(ValueError):
             evaluate_online_partner_dialogue(
                 trained,
@@ -493,6 +526,22 @@ class SituatedPartnerDialogueTests(unittest.TestCase):
                 episodes=1,
                 seed=17,
                 online_self_calibration_knn=0,
+            )
+        with self.assertRaises(ValueError):
+            evaluate_online_partner_dialogue(
+                trained,
+                config,
+                episodes=1,
+                seed=17,
+                online_adaptation_risk_threshold=-0.1,
+            )
+        with self.assertRaises(ValueError):
+            evaluate_online_partner_dialogue(
+                trained,
+                config,
+                episodes=1,
+                seed=17,
+                online_adaptation_risk_knn=0,
             )
         with self.assertRaises(ValueError):
             evaluate_online_partner_dialogue(

@@ -142,6 +142,15 @@ class SituatedSelfModelCalibrator:
     option_names: tuple[str, ...]
 
 
+@dataclass(frozen=True)
+class OnlineAdaptationRiskCalibrator:
+    features: np.ndarray
+    risks: np.ndarray
+    feature_mean: np.ndarray
+    feature_std: np.ndarray
+    option_names: tuple[str, ...]
+
+
 class SituatedPartnerDialogue(nn.Module):
     def __init__(
         self,
@@ -467,6 +476,165 @@ def collect_situated_self_model_rank_samples(
     if not samples:
         raise ValueError("No situated self-model rank samples were collected.")
     return tuple(samples)
+
+
+def collect_online_adaptation_risk_samples(
+    trained: TrainedSituatedPartnerDialogue,
+    config: RecurrentConfig,
+    *,
+    episodes: int,
+    seed: int,
+    teacher_mode: str = "grounded",
+    horizon: int = 6,
+    state_policy: str = "cycle",
+    max_samples: int = 1500,
+    partner_mode: str = "partial_body",
+    option_action_noise: float = 0.0,
+    value_mode: str = "final_lowest",
+    online_self_model_source: str = "exact",
+    online_self_model: RecurrentActorCritic | None = None,
+    online_self_model_config: RecurrentConfig | None = None,
+    online_self_model_calibrator: SituatedSelfModelCalibrator | None = None,
+    online_self_calibration_mode: str = "all",
+    online_self_calibration_uncertainty_scale: float = 1.0,
+    online_self_calibration_knn: int = 16,
+) -> OnlineAdaptationRiskCalibrator:
+    if episodes <= 0:
+        raise ValueError("Risk calibration episodes must be positive.")
+    if max_samples <= 0:
+        raise ValueError("Risk calibration max_samples must be positive.")
+    if partner_mode not in PARTNER_PROPOSAL_MODES:
+        raise ValueError(f"Unknown partner proposal mode: {partner_mode}.")
+    if state_policy not in STATE_POLICIES:
+        raise ValueError(f"Unknown state policy: {state_policy}.")
+    if not 0.0 <= option_action_noise <= 1.0:
+        raise ValueError("Option action noise must be in [0, 1].")
+    if value_mode not in SITUATED_VALUE_MODES:
+        raise ValueError(f"Unknown situated value mode: {value_mode}.")
+    if online_self_model_source not in ONLINE_SELF_MODEL_SOURCES:
+        raise ValueError(f"Unknown online self-model source: {online_self_model_source}.")
+    if online_self_calibration_mode not in ONLINE_SELF_CALIBRATION_MODES:
+        raise ValueError(
+            f"Unknown online self-calibration mode: {online_self_calibration_mode}."
+        )
+    if online_self_calibration_uncertainty_scale < 0.0:
+        raise ValueError("online_self_calibration_uncertainty_scale must be non-negative.")
+    if online_self_calibration_knn <= 0:
+        raise ValueError("online_self_calibration_knn must be positive.")
+    if online_self_model_source == "learned" and (
+        online_self_model is None or online_self_model_config is None
+    ):
+        raise ValueError("learned online self-model source requires a model and config.")
+
+    self_model_config = online_self_model_config or config
+    normalized_teacher = normalize_teacher_mode(teacher_mode)
+    mask_language = (
+        masks_language(normalized_teacher)
+        or not self_model_config.include_language_channel
+    )
+    env = HomeostaticSocialGrid(
+        width=config.width,
+        height=config.height,
+        seed=seed,
+        max_steps=config.max_steps,
+        teacher=build_teacher(normalized_teacher, seed=seed),
+        randomize_world=config.randomize_world,
+        diagnostic_mode=config.diagnostic_mode,
+        body_dynamics_mode=config.body_dynamics_mode,
+        renewable_resources=config.renewable_resources,
+        resource_ecology=config.resource_ecology,
+    )
+    rng = np.random.default_rng(seed + 8_410_000)
+    features: list[np.ndarray] = []
+    risks: list[float] = []
+
+    for episode in range(episodes):
+        observation = env.reset(seed=seed + episode)
+        agent = _state_agent(state_policy, seed=seed, episode=episode)
+        observation_history = [
+            _online_observation_vector(
+                observation,
+                env=env,
+                config=self_model_config,
+                mask_language=mask_language,
+            )
+        ]
+        terminated = False
+        truncated = False
+        while not terminated and not truncated and len(features) < max_samples:
+            exact_state_dataset = _online_state_dataset(
+                env,
+                observation,
+                horizon=max(1, horizon),
+                rng=rng,
+                option_action_noise=option_action_noise,
+                value_mode=value_mode,
+                option_names=trained.option_names,
+            )
+            decision_dataset = exact_state_dataset
+            if online_self_model_source == "learned":
+                decision_dataset = _learned_online_state_dataset(
+                    online_self_model,
+                    self_model_config,
+                    env,
+                    observation,
+                    observation_history,
+                    option_names=trained.option_names,
+                    horizon=max(1, horizon),
+                    rng=rng,
+                    option_action_noise=option_action_noise,
+                    value_mode=value_mode,
+                    calibrator=online_self_model_calibrator,
+                    calibration_mode=online_self_calibration_mode,
+                    uncertainty_scale=online_self_calibration_uncertainty_scale,
+                    uncertainty_knn=online_self_calibration_knn,
+                )
+            proposal = int(_partner_proposals(decision_dataset, mode=partner_mode)[0])
+            exact_values = np.asarray(
+                exact_state_dataset.option_values,
+                dtype=np.float32,
+            )[0]
+            current_lowest = float(np.asarray(exact_state_dataset.current_lowest)[0])
+            for choice in range(len(trained.option_names)):
+                features.append(
+                    _online_risk_feature_vector(
+                        decision_dataset,
+                        proposal=proposal,
+                        choice=choice,
+                    )
+                )
+                risks.append(max(0.0, current_lowest - float(exact_values[choice])))
+                if len(features) >= max_samples:
+                    break
+
+            action = agent.act(observation)
+            observation, _reward, terminated, truncated, _info = env.step(action)
+            observation_history.append(
+                _online_observation_vector(
+                    observation,
+                    env=env,
+                    config=self_model_config,
+                    mask_language=mask_language,
+                )
+            )
+        if len(features) >= max_samples:
+            break
+
+    if not features:
+        raise ValueError("No online risk calibration samples were collected.")
+    feature_array = np.stack(features).astype(np.float32)
+    risk_array = np.asarray(risks, dtype=np.float32)
+    feature_mean = np.mean(feature_array, axis=0).astype(np.float32)
+    feature_std = np.sqrt(
+        np.mean((feature_array - feature_mean[None, :]) ** 2, axis=0) + 1e-6
+    ).astype(np.float32)
+    return OnlineAdaptationRiskCalibrator(
+        features=feature_array,
+        risks=risk_array,
+        feature_mean=feature_mean,
+        feature_std=feature_std,
+        option_names=trained.option_names,
+    )
 
 
 def train_situated_self_model_rank(
@@ -841,6 +1009,9 @@ def evaluate_online_partner_dialogue(
     online_self_calibration_mode: str = "all",
     online_self_calibration_uncertainty_scale: float = 1.0,
     online_self_calibration_knn: int = 16,
+    online_adaptation_risk_calibrator: OnlineAdaptationRiskCalibrator | None = None,
+    online_adaptation_risk_threshold: float = 0.0,
+    online_adaptation_risk_knn: int = 16,
 ) -> OnlinePartnerResult:
     if partner_mode not in PARTNER_PROPOSAL_MODES:
         raise ValueError(f"Unknown partner proposal mode: {partner_mode}.")
@@ -864,6 +1035,10 @@ def evaluate_online_partner_dialogue(
         raise ValueError("online_self_calibration_uncertainty_scale must be non-negative.")
     if online_self_calibration_knn <= 0:
         raise ValueError("online_self_calibration_knn must be positive.")
+    if online_adaptation_risk_threshold < 0.0:
+        raise ValueError("online_adaptation_risk_threshold must be non-negative.")
+    if online_adaptation_risk_knn <= 0:
+        raise ValueError("online_adaptation_risk_knn must be positive.")
     if online_adaptation_steps < 0:
         raise ValueError("online_adaptation_steps must be non-negative.")
     if online_adaptation_learning_rate <= 0.0:
@@ -882,6 +1057,11 @@ def evaluate_online_partner_dialogue(
         online_self_model is None or online_self_model_config is None
     ):
         raise ValueError("learned online self-model source requires a model and config.")
+    if (
+        online_adaptation_risk_calibrator is not None
+        and online_adaptation_risk_calibrator.option_names != trained.option_names
+    ):
+        raise ValueError("Risk calibrator option names do not match online options.")
 
     normalized_teacher = normalize_teacher_mode(teacher_mode)
     self_model_config = online_self_model_config or config
@@ -970,7 +1150,10 @@ def evaluate_online_partner_dialogue(
                 )
             proposal = int(_partner_proposals(decision_dataset, mode=partner_mode)[0])
             pre_adaptation_choice = None
-            if model_control == "adaptive_dialogue" and online_adaptation_choice_guard:
+            if model_control == "adaptive_dialogue" and (
+                online_adaptation_choice_guard
+                or online_adaptation_risk_calibrator is not None
+            ):
                 pre_adaptation_choice = _online_choice(
                     working_trained,
                     decision_dataset,
@@ -1016,11 +1199,26 @@ def evaluate_online_partner_dialogue(
                     dtype=np.float32,
                 )[0]
                 if (
-                    predicted_values[choice]
-                    < predicted_values[pre_adaptation_choice]
-                    + online_adaptation_choice_guard_margin
+                    online_adaptation_choice_guard
+                    and (
+                        predicted_values[choice]
+                        < predicted_values[pre_adaptation_choice]
+                        + online_adaptation_choice_guard_margin
+                    )
                 ):
                     choice = pre_adaptation_choice
+                elif online_adaptation_risk_calibrator is not None:
+                    risk = _online_risk_estimate(
+                        online_adaptation_risk_calibrator,
+                        _online_risk_feature_vector(
+                            decision_dataset,
+                            proposal=proposal,
+                            choice=choice,
+                        ),
+                        k=online_adaptation_risk_knn,
+                    )
+                    if risk > online_adaptation_risk_threshold:
+                        choice = pre_adaptation_choice
             values = np.asarray(exact_state_dataset.option_values, dtype=np.float32)[0]
             current_lowest = float(np.asarray(exact_state_dataset.current_lowest)[0])
             proposal_deltas.append(float(values[proposal] - current_lowest))
@@ -1619,6 +1817,69 @@ def _online_choice(
     return int(np.asarray(mx.argmax(final_logits, axis=-1))[0])
 
 
+def _online_risk_feature_vector(
+    state_dataset: SituatedPartnerDataset,
+    *,
+    proposal: int,
+    choice: int,
+) -> np.ndarray:
+    values = np.asarray(state_dataset.option_values, dtype=np.float32)[0]
+    current = float(np.asarray(state_dataset.current_lowest, dtype=np.float32)[0])
+    option_count = values.shape[0]
+    if not 0 <= proposal < option_count:
+        raise ValueError("Risk feature proposal index is out of range.")
+    if not 0 <= choice < option_count:
+        raise ValueError("Risk feature choice index is out of range.")
+    sorted_values = np.sort(values)
+    best = float(sorted_values[-1])
+    second = float(sorted_values[-2]) if option_count > 1 else best
+    chosen = float(values[choice])
+    proposed = float(values[proposal])
+    predicted_target = int(np.argmax(values))
+    denom = float(max(1, option_count - 1))
+    choice_one_hot = np.eye(option_count, dtype=np.float32)[choice]
+    proposal_one_hot = np.eye(option_count, dtype=np.float32)[proposal]
+    scalar_features = np.asarray(
+        [
+            current,
+            chosen,
+            chosen - current,
+            chosen - proposed,
+            best - second,
+            best - chosen,
+            float(choice != proposal),
+            float(choice == predicted_target),
+            float(choice) / denom,
+            float(proposal) / denom,
+        ],
+        dtype=np.float32,
+    )
+    return np.concatenate([scalar_features, choice_one_hot, proposal_one_hot]).astype(
+        np.float32
+    )
+
+
+def _online_risk_estimate(
+    calibrator: OnlineAdaptationRiskCalibrator,
+    feature: np.ndarray,
+    *,
+    k: int,
+) -> float:
+    if k <= 0:
+        raise ValueError("Online risk neighbor count must be positive.")
+    feature = np.asarray(feature, dtype=np.float32)
+    if feature.shape != calibrator.feature_mean.shape:
+        raise ValueError("Online risk feature shape does not match calibrator.")
+    references = (calibrator.features - calibrator.feature_mean[None, :]) / (
+        calibrator.feature_std[None, :] + 1e-6
+    )
+    query = (feature - calibrator.feature_mean) / (calibrator.feature_std + 1e-6)
+    distances = np.sum((references - query[None, :]) ** 2, axis=1)
+    neighbor_count = min(k, calibrator.risks.shape[0])
+    nearest = np.argpartition(distances, neighbor_count - 1)[:neighbor_count]
+    return float(np.mean(calibrator.risks[nearest]))
+
+
 def _adapt_online_dialogue(
     trained: TrainedSituatedPartnerDialogue,
     state_dataset: SituatedPartnerDataset,
@@ -1934,6 +2195,30 @@ def main() -> None:
             ridge=args.online_self_calibration_ridge,
             batch_size=args.online_self_calibration_batch_size,
         )
+    risk_calibrator = None
+    if args.online_risk_calibration:
+        risk_calibrator = collect_online_adaptation_risk_samples(
+            trained,
+            config,
+            episodes=args.online_risk_calibration_episodes,
+            seed=args.seed + 42_000,
+            teacher_mode=args.teacher_mode,
+            horizon=args.horizon,
+            state_policy=args.state_policy,
+            max_samples=args.online_risk_calibration_samples,
+            partner_mode=args.train_partner_mode,
+            option_action_noise=args.online_option_action_noise,
+            value_mode=args.value_mode,
+            online_self_model_source=args.online_self_model_source,
+            online_self_model=_model,
+            online_self_model_config=config,
+            online_self_model_calibrator=calibrator,
+            online_self_calibration_mode=args.online_self_calibration_mode,
+            online_self_calibration_uncertainty_scale=(
+                args.online_self_calibration_uncertainty_scale
+            ),
+            online_self_calibration_knn=args.online_self_calibration_knn,
+        )
     if args.report_mode == "online":
         print(
             "model_control,intervention,episodes,mean_total_reward,mean_steps,"
@@ -1997,6 +2282,11 @@ def main() -> None:
                             online_self_calibration_knn=(
                                 args.online_self_calibration_knn
                             ),
+                            online_adaptation_risk_calibrator=risk_calibrator,
+                            online_adaptation_risk_threshold=(
+                                args.online_risk_threshold
+                            ),
+                            online_adaptation_risk_knn=args.online_risk_knn,
                         )
                     )
                 )
@@ -2147,6 +2437,11 @@ def _parse_args() -> argparse.Namespace:
         default=1.0,
     )
     parser.add_argument("--online-self-calibration-knn", type=int, default=16)
+    parser.add_argument("--online-risk-calibration", action="store_true")
+    parser.add_argument("--online-risk-calibration-episodes", type=int, default=40)
+    parser.add_argument("--online-risk-calibration-samples", type=int, default=1200)
+    parser.add_argument("--online-risk-threshold", type=float, default=0.02)
+    parser.add_argument("--online-risk-knn", type=int, default=16)
     parser.add_argument(
         "--online-controls",
         nargs="+",

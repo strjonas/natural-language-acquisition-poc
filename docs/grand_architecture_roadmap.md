@@ -709,7 +709,14 @@ Next concrete implementation:
    not beat value-only calibration; the next uncertainty model should be
    state-conditional. A nearest-neighbor residual version now also exists and
    still trails value-only calibration, so the uncertainty target likely needs
-   realized online survival risk rather than offline value residuals.
+   realized online survival risk rather than offline value residuals. That
+   first direct online-risk target now exists as a kNN harm gate trained from
+   online-state decision features and exact short-horizon body harm labels. It
+   is slightly positive in the matched seed-`12001` audit (`0.685350` to
+   `0.686093` mean viability, `0.030923` to `0.032555` minimum viability, and
+   `80.00%` to `78.33%` termination), but the effect is small and mixed under
+   `zero_outcome`. The next version should learn a real survival-risk/value
+   critic from online traces rather than rely on kNN calibration.
 7. Decide whether to scale the environment to Crafter before adding large
    language generation.
 

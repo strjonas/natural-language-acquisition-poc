@@ -850,6 +850,18 @@ negative so far: on the 30-episode seed-`12001` audit, scales `0.5` and `0.2`
 both trail value-only calibration (`0.718963`/`0.718964` mean viability versus
 `0.723229`). The next step should learn uncertainty/risk from realized online
 survival, not just residuals in offline option-value space.
+Direct online-risk calibration is now implemented and slightly positive, but
+not decisive. `--online-risk-calibration` fits a kNN gate from online-state
+decision features to exact short-horizon body harm labels, then rejects adapted
+choices whose estimated harm exceeds a threshold. In the matched current
+60-episode seed-`12001` audit, value-calibrated adaptive dialogue reached
+`0.685350` mean viability and `0.030923` minimum viability; adding a `0.04`
+risk gate reached `0.686093` and `0.032555`, with termination improving from
+`80.00%` to `78.33%`. The gain is real but small, and the `zero_outcome`
+ablation did not improve. A relative-risk variant was tried and was worse on
+minimum viability. The next step should replace the kNN gate with a learned
+online risk/value critic trained on realized survival traces, or make the
+self-model adaptation objective directly optimize episode viability.
 
 ## Commands
 
