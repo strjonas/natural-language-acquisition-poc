@@ -723,6 +723,16 @@ accuracies but reduced body-delta quality versus the simpler second-best/worst
 repair. Keep `model_runner_up` as an audit mode; the next training target
 should be a separate partially informed partner whose mistakes are learned,
 situated, and homeostatically meaningful.
+That separate partner now exists in audit form. `limited_partner` is a frozen
+proposal model trained on masked option features; the first diagnostic uses
+only the first half of the delta feature vector. Across seeds `10043-10044`,
+its proposal accuracy is `0.5130`, and the dialogue second turn repairs this to
+`0.6574` final accuracy with positive chosen delta `+0.0482`. The same
+limited-partner condition collapses under `shuffle_delta` (`-0.0945`) and
+`reverse_delta_rank` (`-0.1499`). Directly training on all limited-partner
+proposals was negative on seed `10043`, so keep it as an audit source for now.
+Next: repair training should sample only consequential partner mistakes, not
+every partial-partner proposal.
 
 ## Commands
 

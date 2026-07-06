@@ -642,6 +642,12 @@ Next concrete implementation:
    runner-up is not consistently a homeostatically meaningful mistake. The next
    partner should have partial observations or limited message access, making
    its mistakes learned, situated, and consequential.
+   That first partial partner now exists as `limited_partner`: a separately
+   trained proposal model with masked access to option-consequence features.
+   It provides a stronger two-seed audit source than `model_runner_up`, but
+   direct repair training on all of its proposals is still negative. The next
+   implementation should filter for consequential wrong partner proposals
+   before using them as a training pressure.
 7. Decide whether to scale the environment to Crafter before adding large
    language generation.
 

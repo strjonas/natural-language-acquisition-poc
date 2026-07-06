@@ -25,9 +25,21 @@ from .option_mediation import (
 from .option_world_mediation_replication import train_option_rank_finetune
 from .option_world_model import collect_option_branch_dataset, train_option_world_model
 
-FORCED_PROPOSAL_MODES = ("model", "model_runner_up", "second_best", "worst")
-REPAIR_PROPOSAL_MODES = ("model_runner_up", "second_best", "worst")
+FORCED_PROPOSAL_MODES = (
+    "model",
+    "model_runner_up",
+    "limited_partner",
+    "second_best",
+    "worst",
+)
+REPAIR_PROPOSAL_MODES = (
+    "model_runner_up",
+    "limited_partner",
+    "second_best",
+    "worst",
+)
 VALUE_BASED_REPAIR_PROPOSAL_MODES = ("second_best", "worst")
+LIMITED_PARTNER_MASK_MODES = ("first_half", "even_features", "odd_features")
 
 
 @dataclass(frozen=True)
@@ -35,6 +47,8 @@ class TrainedOptionDialogue:
     model: "OptionDialogueMediator"
     feature_mean: mx.array
     feature_std: mx.array
+    limited_partner: "LimitedPartnerProposal | None" = None
+    limited_partner_mask: mx.array | None = None
 
 
 @dataclass(frozen=True)
@@ -146,6 +160,27 @@ class OptionDialogueMediator(nn.Module):
         return self.final_choice(hidden)
 
 
+class LimitedPartnerProposal(nn.Module):
+    def __init__(
+        self,
+        input_size: int,
+        option_count: int,
+        *,
+        hidden_size: int = 48,
+    ) -> None:
+        super().__init__()
+        self.option_count = option_count
+        self.receiver = nn.Linear(option_count * input_size, hidden_size)
+        self.receiver_hidden = nn.Linear(hidden_size, hidden_size)
+        self.choice = nn.Linear(hidden_size, option_count)
+
+    def __call__(self, features: mx.array) -> mx.array:
+        inputs = mx.reshape(features, (features.shape[0], -1))
+        hidden = nn.relu(self.receiver(inputs))
+        hidden = hidden + nn.relu(self.receiver_hidden(hidden))
+        return self.choice(hidden)
+
+
 def train_option_dialogue(
     dataset: OptionMediationDataset,
     *,
@@ -158,6 +193,9 @@ def train_option_dialogue(
     proposal_weight: float = 0.2,
     repair_weight: float = 0.0,
     repair_proposal_modes: tuple[str, ...] = (),
+    limited_partner_epochs: int = 0,
+    limited_partner_hidden_size: int = 48,
+    limited_partner_mask_mode: str = "first_half",
     balance_weight: float = 0.02,
     entropy_weight: float = 0.0,
     message_temperature: float = 0.6,
@@ -185,6 +223,29 @@ def train_option_dialogue(
     unknown_repair_modes = set(repair_proposal_modes) - set(REPAIR_PROPOSAL_MODES)
     if unknown_repair_modes:
         raise ValueError(f"Unknown repair proposal modes: {sorted(unknown_repair_modes)}.")
+    needs_limited_partner = "limited_partner" in repair_proposal_modes
+    if needs_limited_partner and limited_partner_epochs <= 0:
+        raise ValueError("limited_partner repair requires limited_partner_epochs > 0.")
+    limited_partner_mask = None
+    limited_partner = None
+    if limited_partner_epochs > 0:
+        limited_partner_mask = mx.array(
+            _limited_partner_feature_mask(
+                int(features.shape[-1]),
+                mode=limited_partner_mask_mode,
+            )[None, None, :],
+            dtype=mx.float32,
+        )
+        limited_partner = _train_limited_partner(
+            features,
+            dataset.target_options,
+            feature_mask=limited_partner_mask,
+            hidden_size=limited_partner_hidden_size,
+            epochs=limited_partner_epochs,
+            batch_size=batch_size,
+            learning_rate=learning_rate,
+            seed=seed + 10_101,
+        )
     repair_proposals = mx.array(
         _proposal_table_from_values(
             dataset.option_values,
@@ -255,6 +316,11 @@ def train_option_dialogue(
         for repair_mode in repair_proposal_modes:
             if repair_mode == "model_runner_up":
                 repair_indices = _runner_up_from_logits(proposal_logits)
+            elif repair_mode == "limited_partner":
+                if limited_partner is None or limited_partner_mask is None:
+                    raise ValueError("limited_partner repair requires a trained partner.")
+                partner_logits = limited_partner(batch_features * limited_partner_mask)
+                repair_indices = mx.argmax(partner_logits, axis=-1)
             else:
                 repair_indices = batch_value_repair_proposals[:, value_repair_index]
                 value_repair_index += 1
@@ -289,7 +355,13 @@ def train_option_dialogue(
             optimizer.update(model, grads)
             mx.eval(model.parameters(), optimizer.state, loss)
 
-    return TrainedOptionDialogue(model=model, feature_mean=feature_mean, feature_std=feature_std)
+    return TrainedOptionDialogue(
+        model=model,
+        feature_mean=feature_mean,
+        feature_std=feature_std,
+        limited_partner=limited_partner,
+        limited_partner_mask=limited_partner_mask,
+    )
 
 
 def evaluate_option_dialogue(
@@ -303,11 +375,7 @@ def evaluate_option_dialogue(
     features = (dataset.features - trained.feature_mean) / trained.feature_std
     first_message, _first_probs = trained.model.first_message(features, hard=True)
     proposal_logits = trained.model.propose(first_message)
-    proposals = _forced_proposals(
-        proposal_logits,
-        dataset,
-        mode=forced_proposal,
-    )
+    proposals = _dialogue_proposals(trained, proposal_logits, dataset, features, mode=forced_proposal)
     proposal_signal = mx.eye(trained.model.option_count)[mx.array(proposals, dtype=mx.int32)]
     reply_message, _reply_probs = trained.model.reply_message(
         features,
@@ -346,6 +414,77 @@ def _forced_proposals(
     if mode == "model_runner_up":
         return np.asarray(_runner_up_from_logits(proposal_logits), dtype=np.int32)
     return _proposal_indices_from_values(dataset.option_values, mode=mode)
+
+
+def _dialogue_proposals(
+    trained: TrainedOptionDialogue,
+    proposal_logits: mx.array,
+    dataset: OptionMediationDataset,
+    features: mx.array,
+    *,
+    mode: str,
+) -> np.ndarray:
+    if mode == "limited_partner":
+        if trained.limited_partner is None or trained.limited_partner_mask is None:
+            raise ValueError("limited_partner proposals require a trained limited partner.")
+        logits = trained.limited_partner(features * trained.limited_partner_mask)
+        return np.asarray(mx.argmax(logits, axis=-1), dtype=np.int32)
+    return _forced_proposals(proposal_logits, dataset, mode=mode)
+
+
+def _train_limited_partner(
+    features: mx.array,
+    targets: mx.array,
+    *,
+    feature_mask: mx.array,
+    hidden_size: int,
+    epochs: int,
+    batch_size: int,
+    learning_rate: float,
+    seed: int,
+) -> LimitedPartnerProposal:
+    rng = np.random.default_rng(seed)
+    mx.random.seed(seed)
+    sample_count = int(features.shape[0])
+    option_count = int(features.shape[1])
+    partner = LimitedPartnerProposal(
+        int(features.shape[-1]),
+        option_count,
+        hidden_size=hidden_size,
+    )
+    optimizer = optim.Adam(learning_rate=learning_rate)
+    indices = np.arange(sample_count)
+
+    def loss_fn(batch_features: mx.array, batch_targets: mx.array) -> mx.array:
+        logits = partner(batch_features * feature_mask)
+        log_probs = logits - mx.logsumexp(logits, axis=-1, keepdims=True)
+        selected = mx.sum(log_probs * mx.eye(option_count)[batch_targets], axis=-1)
+        return -mx.mean(selected)
+
+    loss_and_grad = nn.value_and_grad(partner, loss_fn)
+    for _epoch in range(max(1, epochs)):
+        rng.shuffle(indices)
+        for start in range(0, sample_count, max(1, batch_size)):
+            batch = mx.array(indices[start : start + max(1, batch_size)], dtype=mx.int32)
+            loss, grads = loss_and_grad(features[batch], targets[batch])
+            optimizer.update(partner, grads)
+            mx.eval(partner.parameters(), optimizer.state, loss)
+    return partner
+
+
+def _limited_partner_feature_mask(width: int, *, mode: str) -> np.ndarray:
+    if mode not in LIMITED_PARTNER_MASK_MODES:
+        raise ValueError(f"Unknown limited partner mask mode: {mode}.")
+    mask = np.zeros((width,), dtype=np.float32)
+    if mode == "first_half":
+        mask[: max(1, width // 2)] = 1.0
+    elif mode == "even_features":
+        mask[::2] = 1.0
+    elif mode == "odd_features":
+        mask[1::2] = 1.0
+        if not np.any(mask):
+            mask[0] = 1.0
+    return mask
 
 
 def _runner_up_from_logits(proposal_logits: mx.array) -> mx.array:
@@ -489,6 +628,9 @@ def main() -> None:
         proposal_weight=args.proposal_weight,
         repair_weight=args.repair_weight,
         repair_proposal_modes=tuple(args.repair_proposal_modes),
+        limited_partner_epochs=args.limited_partner_epochs,
+        limited_partner_hidden_size=args.limited_partner_hidden_size,
+        limited_partner_mask_mode=args.limited_partner_mask_mode,
         balance_weight=args.balance_weight,
         entropy_weight=args.entropy_weight,
         message_temperature=args.message_temperature,
@@ -572,6 +714,13 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--learning-rate", type=float, default=1e-3)
     parser.add_argument("--proposal-weight", type=float, default=0.2)
     parser.add_argument("--repair-weight", type=float, default=0.0)
+    parser.add_argument("--limited-partner-epochs", type=int, default=0)
+    parser.add_argument("--limited-partner-hidden-size", type=int, default=48)
+    parser.add_argument(
+        "--limited-partner-mask-mode",
+        choices=LIMITED_PARTNER_MASK_MODES,
+        default="first_half",
+    )
     parser.add_argument(
         "--repair-proposal-modes",
         nargs="*",

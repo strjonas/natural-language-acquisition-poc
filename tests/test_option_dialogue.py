@@ -6,6 +6,7 @@ import numpy as np
 from homesocial.option_dialogue import (
     OptionDialogueResult,
     _forced_proposals,
+    _limited_partner_feature_mask,
     _proposal_table_from_values,
     evaluate_option_dialogue,
     format_result,
@@ -44,7 +45,14 @@ class OptionDialogueTests(unittest.TestCase):
             epochs=2,
             batch_size=4,
             repair_weight=0.5,
-            repair_proposal_modes=("model_runner_up", "second_best", "worst"),
+            repair_proposal_modes=(
+                "model_runner_up",
+                "limited_partner",
+                "second_best",
+                "worst",
+            ),
+            limited_partner_epochs=1,
+            limited_partner_hidden_size=8,
             seed=5,
         )
         result = evaluate_option_dialogue(
@@ -64,12 +72,20 @@ class OptionDialogueTests(unittest.TestCase):
             intervention="reverse_delta_rank",
             forced_proposal="worst",
         )
+        limited_partner_result = evaluate_option_dialogue(
+            trained,
+            dataset,
+            model_control="dialogue",
+            intervention="original",
+            forced_proposal="limited_partner",
+        )
 
         self.assertEqual(result.samples, 8)
         self.assertGreaterEqual(result.proposal_accuracy, 0.0)
         self.assertLessEqual(result.final_accuracy, 1.0)
         self.assertGreaterEqual(result.changed_fraction, 0.0)
         self.assertEqual(intervened_result.intervention, "reverse_delta_rank")
+        self.assertEqual(limited_partner_result.samples, 8)
 
     def test_forced_proposals_use_dataset_values(self):
         dataset = _dataset()
@@ -105,6 +121,43 @@ class OptionDialogueTests(unittest.TestCase):
                 epochs=1,
                 repair_proposal_modes=("unknown",),
             )
+
+    def test_limited_partner_requires_training_and_masks_features(self):
+        dataset = _dataset()
+        trained = train_option_dialogue(
+            dataset,
+            hidden_size=12,
+            receiver_size=12,
+            epochs=1,
+            seed=7,
+        )
+        with self.assertRaises(ValueError):
+            evaluate_option_dialogue(
+                trained,
+                dataset,
+                model_control="dialogue",
+                intervention="original",
+                forced_proposal="limited_partner",
+            )
+        with self.assertRaises(ValueError):
+            train_option_dialogue(
+                dataset,
+                hidden_size=12,
+                receiver_size=12,
+                epochs=1,
+                repair_proposal_modes=("limited_partner",),
+            )
+
+        np.testing.assert_array_equal(
+            _limited_partner_feature_mask(4, mode="first_half"),
+            np.array([1.0, 1.0, 0.0, 0.0], dtype=np.float32),
+        )
+        np.testing.assert_array_equal(
+            _limited_partner_feature_mask(4, mode="even_features"),
+            np.array([1.0, 0.0, 1.0, 0.0], dtype=np.float32),
+        )
+        with self.assertRaises(ValueError):
+            _limited_partner_feature_mask(4, mode="unknown")
 
     def test_format_result_is_stable(self):
         result = OptionDialogueResult(
