@@ -8,7 +8,9 @@ from homesocial.recurrent_ac import RecurrentConfig
 from homesocial.situated_partner_dialogue import (
     SituatedPartnerDataset,
     _partner_proposals,
+    evaluate_online_partner_dialogue,
     evaluate_situated_partner_dialogue,
+    format_online_result,
     format_result,
     intervene_situated_partner_features,
     situated_partner_dataset_from_branches,
@@ -162,6 +164,49 @@ class SituatedPartnerDialogueTests(unittest.TestCase):
         self.assertGreaterEqual(result.final_accuracy, 0.0)
         self.assertLessEqual(result.final_accuracy, 1.0)
         self.assertIn("situated_partial_body,original", format_result(result))
+
+    def test_online_partner_dialogue_runs(self):
+        dataset = _trainable_dataset()
+        trained = train_situated_partner_dialogue(
+            dataset,
+            hidden_size=12,
+            receiver_size=12,
+            epochs=2,
+            batch_size=4,
+            vocabulary_size=3,
+            seed=13,
+        )
+        config = RecurrentConfig(max_steps=4, randomize_world=False)
+        result = evaluate_online_partner_dialogue(
+            trained,
+            config,
+            episodes=2,
+            seed=17,
+            horizon=1,
+            model_control="dialogue",
+            partner_mode="partial_body",
+        )
+
+        self.assertEqual(result.episodes, 2)
+        self.assertGreaterEqual(result.mean_steps, 1.0)
+        self.assertGreaterEqual(result.override_rate, 0.0)
+        self.assertIn("dialogue,original,2", format_online_result(result))
+        with self.assertRaises(ValueError):
+            evaluate_online_partner_dialogue(
+                trained,
+                config,
+                episodes=1,
+                seed=17,
+                model_control="unknown",
+            )
+        with self.assertRaises(ValueError):
+            evaluate_online_partner_dialogue(
+                trained,
+                config,
+                episodes=1,
+                seed=17,
+                option_commit_steps=0,
+            )
 
     def test_unknown_train_partner_mode_fails(self):
         with self.assertRaises(ValueError):

@@ -670,6 +670,12 @@ Next concrete implementation:
    positive choices (`+0.1275`, oracle `+0.1495`), and zeroing outcome features
    cuts the gain. This should now be moved from offline branch choice into an
    online episode loop where the proposal and reply determine actual action.
+   That online evaluator now exists and shows the next bottleneck: dialogue
+   reduces branch regret versus the partial partner, but does not yet improve
+   realized survival. The next implementation should optimize online viability
+   directly, either by training the reply policy through episode rollouts or by
+   upgrading the option set/world-model horizon so the oracle itself preserves
+   viability.
 7. Decide whether to scale the environment to Crafter before adding large
    language generation.
 

@@ -778,6 +778,14 @@ This is the strongest current evidence that partner correction can be grounded
 in embodied consequence information, but it is still offline over branch
 samples; the next step is an online episode loop where partner proposals and
 self-replies affect actual trajectories.
+That online evaluator now exists and gives a mixed/negative first result. With
+`6` committed option steps and all consequential training states, dialogue
+reduces branch regret versus the partial partner (`0.035363` versus `0.324147`)
+and worsens when outcome features are zeroed (`0.085087` regret), but realized
+episode viability is not better: dialogue mean viability is `0.660783` versus
+the myopic oracle's `0.661520`, and min viability still reaches `0.0`. The
+offline self-reply signal is real, but the next work must train or plan against
+online survival, not just branch-choice regret.
 
 ## Commands
 

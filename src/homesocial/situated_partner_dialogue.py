@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from copy import deepcopy
 from dataclasses import dataclass, replace
 
 import mlx.core as mx
@@ -8,14 +9,20 @@ import mlx.nn as nn
 import mlx.optimizers as optim
 import numpy as np
 
-from .env import RESOURCE_ECOLOGIES
+from .attribution import _needs_array
+from .env import RESOURCE_ECOLOGIES, HomeostaticSocialGrid
 from .imitation import load_checkpoint
-from .option_counterfactual_language import OPTION_NAMES, STATE_POLICIES
+from .option_counterfactual_language import (
+    OPTION_NAMES,
+    STATE_POLICIES,
+    _option_action_index,
+)
 from .option_world_model import (
     OptionBranchDataset,
     collect_option_branch_dataset,
 )
-from .teachers import TEACHER_MODES
+from .qlearning import EpisodeStats
+from .teachers import TEACHER_MODES, build_teacher, normalize_teacher_mode
 
 
 PARTNER_PROPOSAL_MODES = (
@@ -65,6 +72,25 @@ class SituatedPartnerResult:
     mean_oracle_delta: float
     mean_regret: float
     target_counts: str
+
+
+@dataclass(frozen=True)
+class OnlinePartnerResult:
+    model_control: str
+    intervention: str
+    episodes: int
+    mean_total_reward: float
+    mean_steps: float
+    mean_viability: float
+    mean_min_viability: float
+    mean_resource_uses: float
+    mean_danger_hits: float
+    mean_teacher_utterances: float
+    mean_proposal_delta: float
+    mean_chosen_delta: float
+    mean_oracle_delta: float
+    mean_regret: float
+    override_rate: float
 
 
 class SituatedPartnerDialogue(nn.Module):
@@ -323,6 +349,227 @@ def evaluate_situated_partner_dialogue(
     )
 
 
+def evaluate_online_partner_dialogue(
+    trained: TrainedSituatedPartnerDialogue,
+    config,
+    *,
+    episodes: int,
+    seed: int,
+    teacher_mode: str = "grounded",
+    horizon: int = 6,
+    partner_mode: str = "partial_body",
+    model_control: str = "dialogue",
+    intervention: str = "original",
+    option_action_noise: float = 0.0,
+    option_commit_steps: int = 1,
+) -> OnlinePartnerResult:
+    if partner_mode not in PARTNER_PROPOSAL_MODES:
+        raise ValueError(f"Unknown partner proposal mode: {partner_mode}.")
+    if model_control not in {"dialogue", "partner", "oracle"}:
+        raise ValueError(f"Unknown online model control: {model_control}.")
+    if intervention not in SITUATED_INTERVENTIONS:
+        raise ValueError(f"Unknown situated partner intervention: {intervention}.")
+    if not 0.0 <= option_action_noise <= 1.0:
+        raise ValueError("Option action noise must be in [0, 1].")
+    if option_commit_steps <= 0:
+        raise ValueError("option_commit_steps must be positive.")
+
+    normalized_teacher = normalize_teacher_mode(teacher_mode)
+    env = HomeostaticSocialGrid(
+        width=config.width,
+        height=config.height,
+        seed=seed,
+        max_steps=config.max_steps,
+        teacher=build_teacher(normalized_teacher, seed=seed),
+        randomize_world=config.randomize_world,
+        diagnostic_mode=config.diagnostic_mode,
+        body_dynamics_mode=config.body_dynamics_mode,
+        renewable_resources=config.renewable_resources,
+        resource_ecology=config.resource_ecology,
+    )
+    rng = np.random.default_rng(seed + 8_110_000)
+    stats: list[EpisodeStats] = []
+    proposal_deltas: list[float] = []
+    chosen_deltas: list[float] = []
+    oracle_deltas: list[float] = []
+    regrets: list[float] = []
+    overrides: list[float] = []
+
+    for episode in range(episodes):
+        observation = env.reset(seed=seed + episode)
+        terminated = False
+        truncated = False
+        total_reward = 0.0
+        viability_sum = observation.needs.mean_viability()
+        min_viability = observation.needs.viability()
+        resource_uses = 0
+        danger_hits = 0
+        teacher_utterances = 0
+        steps = 0
+
+        while not terminated and not truncated:
+            state_dataset = _online_state_dataset(
+                env,
+                observation,
+                horizon=max(1, horizon),
+                rng=rng,
+                option_action_noise=option_action_noise,
+            )
+            proposal = int(_partner_proposals(state_dataset, mode=partner_mode)[0])
+            choice = _online_choice(
+                trained,
+                state_dataset,
+                proposal=proposal,
+                model_control=model_control,
+                intervention=intervention,
+                seed=seed + 20_000 + episode + steps,
+            )
+            values = np.asarray(state_dataset.option_values, dtype=np.float32)[0]
+            current_lowest = float(np.asarray(state_dataset.current_lowest)[0])
+            proposal_deltas.append(float(values[proposal] - current_lowest))
+            chosen_deltas.append(float(values[choice] - current_lowest))
+            oracle_deltas.append(float(np.max(values) - current_lowest))
+            regrets.append(float(np.max(values) - values[choice]))
+            overrides.append(1.0 if choice != proposal else 0.0)
+
+            for _commit in range(option_commit_steps):
+                action, _action_index = _option_action_index(
+                    OPTION_NAMES[choice],
+                    observation,
+                    rng=rng,
+                    option_action_noise=option_action_noise,
+                )
+                observation, reward, terminated, truncated, info = env.step(action)
+                total_reward += float(reward)
+                steps += 1
+                viability_sum += observation.needs.mean_viability()
+                min_viability = min(min_viability, observation.needs.viability())
+                event = info["event"]
+                if event in {"consumed_water", "consumed_food", "rested_shelter"}:
+                    resource_uses += 1
+                if event in {"hit_danger", "consumed_danger", "rested_danger"}:
+                    danger_hits += 1
+                if observation.teacher_utterance:
+                    teacher_utterances += 1
+                if terminated or truncated:
+                    break
+
+        stats.append(
+            EpisodeStats(
+                total_reward=total_reward,
+                steps=steps,
+                terminated=terminated,
+                truncated=truncated,
+                mean_viability=viability_sum / (steps + 1),
+                min_viability=min_viability,
+                resource_uses=resource_uses,
+                danger_hits=danger_hits,
+                teacher_utterances=teacher_utterances,
+            )
+        )
+
+    return OnlinePartnerResult(
+        model_control=model_control,
+        intervention=intervention,
+        episodes=episodes,
+        mean_total_reward=float(np.mean([item.total_reward for item in stats])),
+        mean_steps=float(np.mean([item.steps for item in stats])),
+        mean_viability=float(np.mean([item.mean_viability for item in stats])),
+        mean_min_viability=float(np.mean([item.min_viability for item in stats])),
+        mean_resource_uses=float(np.mean([item.resource_uses for item in stats])),
+        mean_danger_hits=float(np.mean([item.danger_hits for item in stats])),
+        mean_teacher_utterances=float(
+            np.mean([item.teacher_utterances for item in stats])
+        ),
+        mean_proposal_delta=float(np.mean(proposal_deltas)),
+        mean_chosen_delta=float(np.mean(chosen_deltas)),
+        mean_oracle_delta=float(np.mean(oracle_deltas)),
+        mean_regret=float(np.mean(regrets)),
+        override_rate=float(np.mean(overrides)),
+    )
+
+
+def _online_state_dataset(
+    env: HomeostaticSocialGrid,
+    observation,
+    *,
+    horizon: int,
+    rng: np.random.Generator,
+    option_action_noise: float,
+) -> SituatedPartnerDataset:
+    current = _needs_array(observation.needs).astype(np.float32)
+    final_needs: list[np.ndarray] = []
+    for option_name in OPTION_NAMES:
+        branch = deepcopy(env)
+        branch_observation = observation
+        for _step in range(max(1, horizon)):
+            action, _action_index = _option_action_index(
+                option_name,
+                branch_observation,
+                rng=rng,
+                option_action_noise=option_action_noise,
+            )
+            branch_observation, _reward, terminated, truncated, _info = branch.step(
+                action
+            )
+            if terminated or truncated:
+                break
+        final_needs.append(_needs_array(branch_observation.needs).astype(np.float32))
+    final = np.stack(final_needs).astype(np.float32)
+    values = np.min(final, axis=1).astype(np.float32)
+    option_ids = np.eye(len(OPTION_NAMES), dtype=np.float32)
+    features = np.concatenate(
+        [
+            np.repeat(current[None, :], len(OPTION_NAMES), axis=0),
+            final,
+            final - current[None, :],
+            option_ids,
+        ],
+        axis=1,
+    )
+    return SituatedPartnerDataset(
+        features=mx.array(features[None, :, :], dtype=mx.float32),
+        current_needs=mx.array(current[None, :], dtype=mx.float32),
+        final_needs=mx.array(final[None, :, :], dtype=mx.float32),
+        option_values=mx.array(values[None, :], dtype=mx.float32),
+        target_options=mx.array([int(np.argmax(values))], dtype=mx.int32),
+        current_lowest=mx.array([float(np.min(current))], dtype=mx.float32),
+    )
+
+
+def _online_choice(
+    trained: TrainedSituatedPartnerDialogue,
+    state_dataset: SituatedPartnerDataset,
+    *,
+    proposal: int,
+    model_control: str,
+    intervention: str,
+    seed: int,
+) -> int:
+    values = np.asarray(state_dataset.option_values, dtype=np.float32)[0]
+    if model_control == "partner":
+        return proposal
+    if model_control == "oracle":
+        return int(np.argmax(values))
+
+    intervened = intervene_situated_partner_features(
+        state_dataset,
+        intervention=intervention,
+        seed=seed,
+    )
+    features = (intervened.features - trained.feature_mean) / trained.feature_std
+    proposal_signal = mx.eye(trained.model.option_count)[
+        mx.array([proposal], dtype=mx.int32)
+    ]
+    reply_message, _reply_probs = trained.model.reply_message(
+        features,
+        proposal_signal,
+        hard=True,
+    )
+    final_logits = trained.model.final(reply_message, proposal_signal)
+    return int(np.asarray(mx.argmax(final_logits, axis=-1))[0])
+
+
 def intervene_situated_partner_features(
     dataset: SituatedPartnerDataset,
     *,
@@ -435,6 +682,28 @@ def format_result(result: SituatedPartnerResult) -> str:
     )
 
 
+def format_online_result(result: OnlinePartnerResult) -> str:
+    return ",".join(
+        [
+            result.model_control,
+            result.intervention,
+            str(result.episodes),
+            f"{result.mean_total_reward:.6f}",
+            f"{result.mean_steps:.2f}",
+            f"{result.mean_viability:.6f}",
+            f"{result.mean_min_viability:.6f}",
+            f"{result.mean_resource_uses:.2f}",
+            f"{result.mean_danger_hits:.2f}",
+            f"{result.mean_teacher_utterances:.2f}",
+            f"{result.mean_proposal_delta:.6f}",
+            f"{result.mean_chosen_delta:.6f}",
+            f"{result.mean_oracle_delta:.6f}",
+            f"{result.mean_regret:.6f}",
+            f"{result.override_rate:.4f}",
+        ]
+    )
+
+
 def main() -> None:
     args = _parse_args()
     _model, config = load_checkpoint(args.checkpoint)
@@ -452,23 +721,8 @@ def main() -> None:
         max_samples=args.max_train_samples,
         option_action_noise=args.option_action_noise,
     )
-    eval_branches = collect_option_branch_dataset(
-        config,
-        episodes=args.eval_episodes,
-        seed=args.seed + 10_000,
-        teacher_mode=args.teacher_mode,
-        horizon=args.horizon,
-        state_policy=args.state_policy,
-        max_samples=args.max_eval_samples,
-        option_action_noise=args.option_action_noise,
-    )
     train_dataset = situated_partner_dataset_from_branches(
         train_branches,
-        min_value_gap=args.min_value_gap,
-        min_oracle_delta=args.min_oracle_delta,
-    )
-    eval_dataset = situated_partner_dataset_from_branches(
-        eval_branches,
         min_value_gap=args.min_value_gap,
         min_oracle_delta=args.min_oracle_delta,
     )
@@ -485,6 +739,50 @@ def main() -> None:
         entropy_weight=args.entropy_weight,
         message_temperature=args.message_temperature,
         seed=args.seed,
+    )
+    if args.report_mode == "online":
+        print(
+            "model_control,intervention,episodes,mean_total_reward,mean_steps,"
+            "mean_viability,mean_min_viability,mean_resource_uses,"
+            "mean_danger_hits,mean_teacher_utterances,mean_proposal_delta,"
+            "mean_chosen_delta,mean_oracle_delta,mean_regret,override_rate"
+        )
+        for control in args.online_controls:
+            interventions = args.interventions if control == "dialogue" else ["original"]
+            for intervention in interventions:
+                print(
+                    format_online_result(
+                        evaluate_online_partner_dialogue(
+                            trained,
+                            config,
+                            episodes=args.online_eval_episodes,
+                            seed=args.seed + 30_000,
+                            teacher_mode=args.teacher_mode,
+                            horizon=args.horizon,
+                            partner_mode=args.train_partner_mode,
+                            model_control=control,
+                            intervention=intervention,
+                            option_action_noise=args.online_option_action_noise,
+                            option_commit_steps=args.option_commit_steps,
+                        )
+                    )
+                )
+        return
+
+    eval_branches = collect_option_branch_dataset(
+        config,
+        episodes=args.eval_episodes,
+        seed=args.seed + 10_000,
+        teacher_mode=args.teacher_mode,
+        horizon=args.horizon,
+        state_policy=args.state_policy,
+        max_samples=args.max_eval_samples,
+        option_action_noise=args.option_action_noise,
+    )
+    eval_dataset = situated_partner_dataset_from_branches(
+        eval_branches,
+        min_value_gap=args.min_value_gap,
+        min_oracle_delta=args.min_oracle_delta,
     )
     print(
         "model_control,intervention,samples,proposal_accuracy,final_accuracy,"
@@ -541,6 +839,16 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--balance-weight", type=float, default=0.02)
     parser.add_argument("--entropy-weight", type=float, default=0.0)
     parser.add_argument("--message-temperature", type=float, default=0.6)
+    parser.add_argument("--report-mode", choices=("offline", "online"), default="offline")
+    parser.add_argument("--online-eval-episodes", type=int, default=60)
+    parser.add_argument("--online-option-action-noise", type=float, default=0.0)
+    parser.add_argument("--option-commit-steps", type=int, default=1)
+    parser.add_argument(
+        "--online-controls",
+        nargs="+",
+        choices=("partner", "dialogue", "oracle"),
+        default=["partner", "dialogue", "oracle"],
+    )
     parser.add_argument(
         "--interventions",
         nargs="+",
