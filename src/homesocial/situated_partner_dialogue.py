@@ -53,6 +53,7 @@ SITUATED_VALUE_MODES = ("final_lowest", "trajectory_min", "trajectory_mean")
 SITUATED_OPTION_SETS = ("base", "extended")
 ONLINE_SELF_MODEL_SOURCES = ("exact", "learned")
 ONLINE_SELF_CALIBRATION_MODES = ("all", "values", "value_lcb", "value_knn_lcb")
+ONLINE_RISK_MODELS = ("knn", "ridge", "mlp")
 EXTENDED_SITUATED_OPTION_NAMES = (
     "seek_lowest",
     "seek_food",
@@ -148,6 +149,10 @@ class OnlineAdaptationRiskCalibrator:
     risks: np.ndarray
     feature_mean: np.ndarray
     feature_std: np.ndarray
+    risk_model: str
+    ridge_weights: np.ndarray | None
+    risk_critic: "OnlineRiskCritic | None"
+    ridge_rmse: float
     option_names: tuple[str, ...]
 
 
@@ -208,6 +213,19 @@ class SituatedPartnerDialogue(nn.Module):
         hidden = nn.relu(self.final_receiver(inputs))
         hidden = hidden + nn.relu(self.final_hidden(hidden))
         return self.final_choice(hidden)
+
+
+class OnlineRiskCritic(nn.Module):
+    def __init__(self, input_size: int, *, hidden_size: int = 32) -> None:
+        super().__init__()
+        self.hidden = nn.Linear(input_size, hidden_size)
+        self.hidden_residual = nn.Linear(hidden_size, hidden_size)
+        self.output = nn.Linear(hidden_size, 1)
+
+    def __call__(self, features: mx.array) -> mx.array:
+        hidden = nn.relu(self.hidden(features))
+        hidden = hidden + nn.relu(self.hidden_residual(hidden))
+        return self.output(hidden)[:, 0]
 
 
 def situated_partner_dataset_from_branches(
@@ -498,6 +516,12 @@ def collect_online_adaptation_risk_samples(
     online_self_calibration_mode: str = "all",
     online_self_calibration_uncertainty_scale: float = 1.0,
     online_self_calibration_knn: int = 16,
+    online_risk_model: str = "knn",
+    online_risk_ridge: float = 1e-3,
+    online_risk_hidden_size: int = 32,
+    online_risk_epochs: int = 80,
+    online_risk_learning_rate: float = 1e-3,
+    online_risk_batch_size: int = 128,
 ) -> OnlineAdaptationRiskCalibrator:
     if episodes <= 0:
         raise ValueError("Risk calibration episodes must be positive.")
@@ -521,6 +545,18 @@ def collect_online_adaptation_risk_samples(
         raise ValueError("online_self_calibration_uncertainty_scale must be non-negative.")
     if online_self_calibration_knn <= 0:
         raise ValueError("online_self_calibration_knn must be positive.")
+    if online_risk_model not in ONLINE_RISK_MODELS:
+        raise ValueError(f"Unknown online risk model: {online_risk_model}.")
+    if online_risk_ridge < 0.0:
+        raise ValueError("online_risk_ridge must be non-negative.")
+    if online_risk_hidden_size <= 0:
+        raise ValueError("online_risk_hidden_size must be positive.")
+    if online_risk_epochs < 0:
+        raise ValueError("online_risk_epochs must be non-negative.")
+    if online_risk_learning_rate <= 0.0:
+        raise ValueError("online_risk_learning_rate must be positive.")
+    if online_risk_batch_size <= 0:
+        raise ValueError("online_risk_batch_size must be positive.")
     if online_self_model_source == "learned" and (
         online_self_model is None or online_self_model_config is None
     ):
@@ -628,11 +664,38 @@ def collect_online_adaptation_risk_samples(
     feature_std = np.sqrt(
         np.mean((feature_array - feature_mean[None, :]) ** 2, axis=0) + 1e-6
     ).astype(np.float32)
+    ridge_weights = None
+    risk_critic = None
+    ridge_rmse = 0.0
+    if online_risk_model == "ridge":
+        ridge_weights, ridge_rmse = _fit_online_risk_ridge(
+            feature_array,
+            risk_array,
+            feature_mean=feature_mean,
+            feature_std=feature_std,
+            ridge=online_risk_ridge,
+        )
+    elif online_risk_model == "mlp":
+        risk_critic, ridge_rmse = _fit_online_risk_mlp(
+            feature_array,
+            risk_array,
+            feature_mean=feature_mean,
+            feature_std=feature_std,
+            hidden_size=online_risk_hidden_size,
+            epochs=online_risk_epochs,
+            learning_rate=online_risk_learning_rate,
+            batch_size=online_risk_batch_size,
+            seed=seed + 8_420_000,
+        )
     return OnlineAdaptationRiskCalibrator(
         features=feature_array,
         risks=risk_array,
         feature_mean=feature_mean,
         feature_std=feature_std,
+        risk_model=online_risk_model,
+        ridge_weights=ridge_weights,
+        risk_critic=risk_critic,
+        ridge_rmse=ridge_rmse,
         option_names=trained.option_names,
     )
 
@@ -1012,6 +1075,7 @@ def evaluate_online_partner_dialogue(
     online_adaptation_risk_calibrator: OnlineAdaptationRiskCalibrator | None = None,
     online_adaptation_risk_threshold: float = 0.0,
     online_adaptation_risk_knn: int = 16,
+    online_adaptation_risk_penalty: float = 0.0,
 ) -> OnlinePartnerResult:
     if partner_mode not in PARTNER_PROPOSAL_MODES:
         raise ValueError(f"Unknown partner proposal mode: {partner_mode}.")
@@ -1039,6 +1103,8 @@ def evaluate_online_partner_dialogue(
         raise ValueError("online_adaptation_risk_threshold must be non-negative.")
     if online_adaptation_risk_knn <= 0:
         raise ValueError("online_adaptation_risk_knn must be positive.")
+    if online_adaptation_risk_penalty < 0.0:
+        raise ValueError("online_adaptation_risk_penalty must be non-negative.")
     if online_adaptation_steps < 0:
         raise ValueError("online_adaptation_steps must be non-negative.")
     if online_adaptation_learning_rate <= 0.0:
@@ -1062,6 +1128,8 @@ def evaluate_online_partner_dialogue(
         and online_adaptation_risk_calibrator.option_names != trained.option_names
     ):
         raise ValueError("Risk calibrator option names do not match online options.")
+    if online_adaptation_risk_penalty > 0.0 and online_adaptation_risk_calibrator is None:
+        raise ValueError("Risk-shaped adaptation requires a risk calibrator.")
 
     normalized_teacher = normalize_teacher_mode(teacher_mode)
     self_model_config = online_self_model_config or config
@@ -1170,8 +1238,20 @@ def evaluate_online_partner_dialogue(
                     learning_rate=online_adaptation_learning_rate
                 )
             if model_control == "adaptive_dialogue":
+                adaptation_source_dataset = decision_dataset
+                if (
+                    online_adaptation_risk_calibrator is not None
+                    and online_adaptation_risk_penalty > 0.0
+                ):
+                    adaptation_source_dataset = _risk_adjusted_online_dataset(
+                        decision_dataset,
+                        proposal=proposal,
+                        calibrator=online_adaptation_risk_calibrator,
+                        penalty=online_adaptation_risk_penalty,
+                        k=online_adaptation_risk_knn,
+                    )
                 adapt_dataset = intervene_situated_partner_features(
-                    decision_dataset,
+                    adaptation_source_dataset,
                     intervention=intervention,
                     seed=seed + 20_000 + episode + steps,
                 )
@@ -1870,14 +1950,130 @@ def _online_risk_estimate(
     feature = np.asarray(feature, dtype=np.float32)
     if feature.shape != calibrator.feature_mean.shape:
         raise ValueError("Online risk feature shape does not match calibrator.")
+    query = (feature - calibrator.feature_mean) / (calibrator.feature_std + 1e-6)
+    if calibrator.risk_model == "ridge":
+        if calibrator.ridge_weights is None:
+            raise ValueError("Ridge risk calibrator is missing weights.")
+        design = np.concatenate([query, np.ones(1, dtype=np.float32)])
+        return float(max(0.0, design @ calibrator.ridge_weights))
+    if calibrator.risk_model == "mlp":
+        if calibrator.risk_critic is None:
+            raise ValueError("MLP risk calibrator is missing critic.")
+        prediction = calibrator.risk_critic(mx.array(query[None, :], dtype=mx.float32))
+        return float(max(0.0, np.asarray(prediction)[0]))
+    if calibrator.risk_model != "knn":
+        raise ValueError(f"Unknown online risk model: {calibrator.risk_model}.")
     references = (calibrator.features - calibrator.feature_mean[None, :]) / (
         calibrator.feature_std[None, :] + 1e-6
     )
-    query = (feature - calibrator.feature_mean) / (calibrator.feature_std + 1e-6)
     distances = np.sum((references - query[None, :]) ** 2, axis=1)
     neighbor_count = min(k, calibrator.risks.shape[0])
     nearest = np.argpartition(distances, neighbor_count - 1)[:neighbor_count]
     return float(np.mean(calibrator.risks[nearest]))
+
+
+def _risk_adjusted_online_dataset(
+    dataset: SituatedPartnerDataset,
+    *,
+    proposal: int,
+    calibrator: OnlineAdaptationRiskCalibrator,
+    penalty: float,
+    k: int,
+) -> SituatedPartnerDataset:
+    if penalty < 0.0:
+        raise ValueError("Risk penalty must be non-negative.")
+    values = np.asarray(dataset.option_values, dtype=np.float32).copy()
+    if values.shape[0] != 1:
+        raise ValueError("Risk-adjusted online dataset expects a single state.")
+    risks = np.asarray(
+        [
+            _online_risk_estimate(
+                calibrator,
+                _online_risk_feature_vector(dataset, proposal=proposal, choice=choice),
+                k=k,
+            )
+            for choice in range(values.shape[1])
+        ],
+        dtype=np.float32,
+    )
+    values[0] = np.clip(values[0] - penalty * risks, 0.0, 1.0)
+    return SituatedPartnerDataset(
+        features=dataset.features,
+        current_needs=dataset.current_needs,
+        final_needs=dataset.final_needs,
+        option_values=mx.array(values, dtype=mx.float32),
+        target_options=mx.array([int(np.argmax(values[0]))], dtype=mx.int32),
+        current_lowest=dataset.current_lowest,
+        option_names=dataset.option_names,
+    )
+
+
+def _fit_online_risk_ridge(
+    features: np.ndarray,
+    risks: np.ndarray,
+    *,
+    feature_mean: np.ndarray,
+    feature_std: np.ndarray,
+    ridge: float,
+) -> tuple[np.ndarray, float]:
+    normalized = (features - feature_mean[None, :]) / (feature_std[None, :] + 1e-6)
+    design = np.concatenate(
+        [normalized, np.ones((normalized.shape[0], 1), dtype=np.float32)],
+        axis=1,
+    ).astype(np.float64)
+    targets = np.asarray(risks, dtype=np.float64)
+    regularizer = ridge * np.eye(design.shape[1], dtype=np.float64)
+    regularizer[-1, -1] = 0.0
+    weights = np.linalg.solve(design.T @ design + regularizer, design.T @ targets)
+    predictions = np.maximum(0.0, design @ weights)
+    rmse = float(np.sqrt(np.mean((predictions - targets) ** 2)))
+    return weights.astype(np.float32), rmse
+
+
+def _fit_online_risk_mlp(
+    features: np.ndarray,
+    risks: np.ndarray,
+    *,
+    feature_mean: np.ndarray,
+    feature_std: np.ndarray,
+    hidden_size: int,
+    epochs: int,
+    learning_rate: float,
+    batch_size: int,
+    seed: int,
+) -> tuple[OnlineRiskCritic, float]:
+    normalized = ((features - feature_mean[None, :]) / (feature_std[None, :] + 1e-6)).astype(
+        np.float32
+    )
+    targets = np.asarray(risks, dtype=np.float32)
+    rng = np.random.default_rng(seed)
+    mx.random.seed(seed)
+    critic = OnlineRiskCritic(normalized.shape[1], hidden_size=hidden_size)
+    optimizer = optim.Adam(learning_rate=learning_rate)
+    indices = np.arange(normalized.shape[0])
+
+    def loss_fn(batch_features: mx.array, batch_targets: mx.array) -> mx.array:
+        predictions = critic(batch_features)
+        return mx.mean((predictions - batch_targets) ** 2)
+
+    loss_and_grad = nn.value_and_grad(critic, loss_fn)
+    for _epoch in range(max(1, epochs)):
+        rng.shuffle(indices)
+        for start in range(0, len(indices), batch_size):
+            batch_indices = indices[start : start + batch_size]
+            loss, grads = loss_and_grad(
+                mx.array(normalized[batch_indices], dtype=mx.float32),
+                mx.array(targets[batch_indices], dtype=mx.float32),
+            )
+            optimizer.update(critic, grads)
+            mx.eval(critic.parameters(), optimizer.state, loss)
+    predictions = np.asarray(
+        critic(mx.array(normalized, dtype=mx.float32)),
+        dtype=np.float32,
+    )
+    predictions = np.maximum(0.0, predictions)
+    rmse = float(np.sqrt(np.mean((predictions - targets) ** 2)))
+    return critic, rmse
 
 
 def _adapt_online_dialogue(
@@ -2218,6 +2414,12 @@ def main() -> None:
                 args.online_self_calibration_uncertainty_scale
             ),
             online_self_calibration_knn=args.online_self_calibration_knn,
+            online_risk_model=args.online_risk_model,
+            online_risk_ridge=args.online_risk_ridge,
+            online_risk_hidden_size=args.online_risk_hidden_size,
+            online_risk_epochs=args.online_risk_epochs,
+            online_risk_learning_rate=args.online_risk_learning_rate,
+            online_risk_batch_size=args.online_risk_batch_size,
         )
     if args.report_mode == "online":
         print(
@@ -2287,6 +2489,9 @@ def main() -> None:
                                 args.online_risk_threshold
                             ),
                             online_adaptation_risk_knn=args.online_risk_knn,
+                            online_adaptation_risk_penalty=(
+                                args.online_adaptation_risk_penalty
+                            ),
                         )
                     )
                 )
@@ -2440,8 +2645,19 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--online-risk-calibration", action="store_true")
     parser.add_argument("--online-risk-calibration-episodes", type=int, default=40)
     parser.add_argument("--online-risk-calibration-samples", type=int, default=1200)
+    parser.add_argument(
+        "--online-risk-model",
+        choices=ONLINE_RISK_MODELS,
+        default="knn",
+    )
+    parser.add_argument("--online-risk-ridge", type=float, default=1e-3)
+    parser.add_argument("--online-risk-hidden-size", type=int, default=32)
+    parser.add_argument("--online-risk-epochs", type=int, default=80)
+    parser.add_argument("--online-risk-learning-rate", type=float, default=1e-3)
+    parser.add_argument("--online-risk-batch-size", type=int, default=128)
     parser.add_argument("--online-risk-threshold", type=float, default=0.02)
     parser.add_argument("--online-risk-knn", type=int, default=16)
+    parser.add_argument("--online-adaptation-risk-penalty", type=float, default=0.0)
     parser.add_argument(
         "--online-controls",
         nargs="+",

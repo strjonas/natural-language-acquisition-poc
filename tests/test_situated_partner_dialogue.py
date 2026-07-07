@@ -421,6 +421,42 @@ class SituatedPartnerDialogueTests(unittest.TestCase):
         )
         self.assertEqual(risk_calibrator.features.shape[0], 4)
         self.assertEqual(risk_calibrator.risks.shape, (4,))
+        ridge_risk_calibrator = collect_online_adaptation_risk_samples(
+            trained,
+            config,
+            episodes=1,
+            seed=37,
+            horizon=1,
+            max_samples=4,
+            partner_mode="partial_body",
+            online_self_model_source="learned",
+            online_self_model=self_model,
+            online_self_model_config=config,
+            online_risk_model="ridge",
+            online_risk_ridge=0.01,
+        )
+        self.assertIsNotNone(ridge_risk_calibrator.ridge_weights)
+        self.assertEqual(
+            ridge_risk_calibrator.ridge_weights.shape,
+            (ridge_risk_calibrator.features.shape[1] + 1,),
+        )
+        mlp_risk_calibrator = collect_online_adaptation_risk_samples(
+            trained,
+            config,
+            episodes=1,
+            seed=37,
+            horizon=1,
+            max_samples=4,
+            partner_mode="partial_body",
+            online_self_model_source="learned",
+            online_self_model=self_model,
+            online_self_model_config=config,
+            online_risk_model="mlp",
+            online_risk_hidden_size=4,
+            online_risk_epochs=1,
+            online_risk_batch_size=4,
+        )
+        self.assertIsNotNone(mlp_risk_calibrator.risk_critic)
         risk_gated = evaluate_online_partner_dialogue(
             trained,
             config,
@@ -437,6 +473,7 @@ class SituatedPartnerDialogueTests(unittest.TestCase):
             online_adaptation_risk_calibrator=risk_calibrator,
             online_adaptation_risk_threshold=0.0,
             online_adaptation_risk_knn=1,
+            online_adaptation_risk_penalty=0.5,
         )
         self.assertEqual(risk_gated.episodes, 1)
         with self.assertRaises(ValueError):
@@ -542,6 +579,64 @@ class SituatedPartnerDialogueTests(unittest.TestCase):
                 episodes=1,
                 seed=17,
                 online_adaptation_risk_knn=0,
+            )
+        with self.assertRaises(ValueError):
+            collect_online_adaptation_risk_samples(
+                trained,
+                config,
+                episodes=1,
+                seed=37,
+                online_risk_model="unknown",
+            )
+        with self.assertRaises(ValueError):
+            collect_online_adaptation_risk_samples(
+                trained,
+                config,
+                episodes=1,
+                seed=37,
+                online_risk_ridge=-0.1,
+            )
+        with self.assertRaises(ValueError):
+            collect_online_adaptation_risk_samples(
+                trained,
+                config,
+                episodes=1,
+                seed=37,
+                online_risk_hidden_size=0,
+            )
+        with self.assertRaises(ValueError):
+            collect_online_adaptation_risk_samples(
+                trained,
+                config,
+                episodes=1,
+                seed=37,
+                online_risk_learning_rate=0.0,
+            )
+        with self.assertRaises(ValueError):
+            collect_online_adaptation_risk_samples(
+                trained,
+                config,
+                episodes=1,
+                seed=37,
+                online_risk_batch_size=0,
+            )
+        with self.assertRaises(ValueError):
+            evaluate_online_partner_dialogue(
+                trained,
+                config,
+                episodes=1,
+                seed=17,
+                online_adaptation_risk_penalty=-0.1,
+            )
+        with self.assertRaises(ValueError):
+            evaluate_online_partner_dialogue(
+                trained,
+                config,
+                episodes=1,
+                seed=17,
+                model_control="adaptive_dialogue",
+                online_adaptation_steps=1,
+                online_adaptation_risk_penalty=0.5,
             )
         with self.assertRaises(ValueError):
             evaluate_online_partner_dialogue(

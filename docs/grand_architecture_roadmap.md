@@ -716,7 +716,12 @@ Next concrete implementation:
    `0.686093` mean viability, `0.030923` to `0.032555` minimum viability, and
    `80.00%` to `78.33%` termination), but the effect is small and mixed under
    `zero_outcome`. The next version should learn a real survival-risk/value
-   critic from online traces rather than rely on kNN calibration.
+   critic from online traces rather than rely on kNN calibration. Lightweight
+   ridge and MLP critics over the same short-horizon harm labels are now
+   implemented and tested, as is risk-shaped rehearsal, but they do not beat
+   the kNN gate. This points away from merely changing the approximator and
+   toward richer realized-survival traces or longer-horizon self-state
+   histories as the critic target.
 7. Decide whether to scale the environment to Crafter before adding large
    language generation.
 

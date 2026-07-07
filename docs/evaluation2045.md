@@ -862,6 +862,16 @@ ablation did not improve. A relative-risk variant was tried and was worse on
 minimum viability. The next step should replace the kNN gate with a learned
 online risk/value critic trained on realized survival traces, or make the
 self-model adaptation objective directly optimize episode viability.
+That replacement has now been probed in lightweight form. Ridge and small MLP
+risk critics are implemented, as is risk-shaped local rehearsal that subtracts
+predicted harm from adaptation values. In 30-episode seed-`12001` probes, both
+learned critics trailed the kNN memory gate on mean and minimum viability
+(`ridge`: `0.676039` / `0.020555`, `mlp`: `0.676111` / `0.020346`, kNN:
+`0.677468` / `0.021138`). Risk-shaped rehearsal did not help either: penalty
+`1.0` slightly raised mean viability but reduced minimum viability to
+`0.016850`, and penalty-only shaping lowered truncation. This narrows the next
+move: the failure is probably the short-horizon harm target and sparse online
+state features, not just the risk approximator class.
 
 ## Commands
 
