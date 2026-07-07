@@ -740,7 +740,13 @@ Next concrete implementation:
    labels, but its 60-episode audit regresses survival. It preserves more
    causal separation than hard-coded recovery, but the next training source
    should be actual visited failure/recovery states rather than offline sampled
-   recovery candidates.
+   recovery candidates. That visited-risk source is now positive: training
+   recovery only on states where the learned adaptive controller triggers the
+   risk gate beats matched value-calibrated adaptation and the prior kNN risk
+   gate on mean and minimum viability. The remaining gap is causal: recovery
+   still partly works under `zero_outcome`, so the next recovery policy should
+   be trained from actual recovery attempts with explicit outcome-channel
+   dependence.
 7. Decide whether to scale the environment to Crafter before adding large
    language generation.
 

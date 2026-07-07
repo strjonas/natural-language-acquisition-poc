@@ -55,6 +55,7 @@ ONLINE_SELF_MODEL_SOURCES = ("exact", "learned")
 ONLINE_SELF_CALIBRATION_MODES = ("all", "values", "value_lcb", "value_knn_lcb")
 ONLINE_RISK_MODELS = ("knn", "ridge", "mlp")
 ONLINE_RISK_LABELS = ("branch", "rollout_min", "rollout_mean")
+ONLINE_RECOVERY_POLICY_SOURCES = ("state_policy", "risky_adaptive")
 ONLINE_RISK_FALLBACKS = (
     "pre_adaptation",
     "seek_lowest",
@@ -174,6 +175,7 @@ class OnlineRecoveryPolicy:
     feature_mean: np.ndarray
     feature_std: np.ndarray
     option_names: tuple[str, ...]
+    source: str
     label: str
     rollout_steps: int
     option_commit_steps: int
@@ -774,11 +776,28 @@ def train_online_recovery_policy(
     teacher_mode: str = "grounded",
     horizon: int = 6,
     state_policy: str = "cycle",
+    source: str = "state_policy",
     max_samples: int = 1500,
+    partner_mode: str = "partial_body",
     option_action_noise: float = 0.0,
+    value_mode: str = "final_lowest",
     label: str = "rollout_min",
     rollout_steps: int = 8,
     option_commit_steps: int = 1,
+    online_self_model_calibrator: SituatedSelfModelCalibrator | None = None,
+    online_self_calibration_mode: str = "all",
+    online_self_calibration_uncertainty_scale: float = 1.0,
+    online_self_calibration_knn: int = 16,
+    risk_calibrator: OnlineAdaptationRiskCalibrator | None = None,
+    risk_threshold: float = 0.0,
+    risk_knn: int = 16,
+    adaptation_steps: int = 0,
+    adaptation_learning_rate: float = 1e-5,
+    adaptation_target_weight: float = 0.0,
+    adaptation_kl_weight: float = 0.0,
+    adaptation_min_value_gap: float = 0.0,
+    adaptation_local: bool = True,
+    intervention: str = "original",
     hidden_size: int = 64,
     epochs: int = 80,
     learning_rate: float = 1e-3,
@@ -790,14 +809,46 @@ def train_online_recovery_policy(
         raise ValueError("Recovery policy max_samples must be positive.")
     if state_policy not in STATE_POLICIES:
         raise ValueError(f"Unknown state policy: {state_policy}.")
+    if source not in ONLINE_RECOVERY_POLICY_SOURCES:
+        raise ValueError(f"Unknown recovery policy source: {source}.")
+    if partner_mode not in PARTNER_PROPOSAL_MODES:
+        raise ValueError(f"Unknown partner proposal mode: {partner_mode}.")
     if not 0.0 <= option_action_noise <= 1.0:
         raise ValueError("Option action noise must be in [0, 1].")
+    if value_mode not in SITUATED_VALUE_MODES:
+        raise ValueError(f"Unknown situated value mode: {value_mode}.")
     if label not in {"rollout_min", "rollout_mean"}:
         raise ValueError(f"Unknown recovery policy label: {label}.")
     if rollout_steps <= 0:
         raise ValueError("Recovery policy rollout_steps must be positive.")
     if option_commit_steps <= 0:
         raise ValueError("Recovery policy option_commit_steps must be positive.")
+    if online_self_calibration_mode not in ONLINE_SELF_CALIBRATION_MODES:
+        raise ValueError(
+            f"Unknown online self-calibration mode: {online_self_calibration_mode}."
+        )
+    if online_self_calibration_uncertainty_scale < 0.0:
+        raise ValueError("online_self_calibration_uncertainty_scale must be non-negative.")
+    if online_self_calibration_knn <= 0:
+        raise ValueError("online_self_calibration_knn must be positive.")
+    if source == "risky_adaptive" and risk_calibrator is None:
+        raise ValueError("risky_adaptive recovery source requires a risk calibrator.")
+    if risk_threshold < 0.0:
+        raise ValueError("Recovery policy risk_threshold must be non-negative.")
+    if risk_knn <= 0:
+        raise ValueError("Recovery policy risk_knn must be positive.")
+    if adaptation_steps < 0:
+        raise ValueError("Recovery policy adaptation_steps must be non-negative.")
+    if adaptation_learning_rate <= 0.0:
+        raise ValueError("Recovery policy adaptation_learning_rate must be positive.")
+    if adaptation_target_weight < 0.0:
+        raise ValueError("Recovery policy adaptation_target_weight must be non-negative.")
+    if adaptation_kl_weight < 0.0:
+        raise ValueError("Recovery policy adaptation_kl_weight must be non-negative.")
+    if adaptation_min_value_gap < 0.0:
+        raise ValueError("Recovery policy adaptation_min_value_gap must be non-negative.")
+    if intervention not in SITUATED_INTERVENTIONS:
+        raise ValueError(f"Unknown situated partner intervention: {intervention}.")
     if hidden_size <= 0:
         raise ValueError("Recovery policy hidden_size must be positive.")
     if epochs < 0:
@@ -825,6 +876,35 @@ def train_online_recovery_policy(
     features: list[np.ndarray] = []
     risks: list[float] = []
 
+    def append_recovery_samples(observation, observation_history, episode: int) -> None:
+        current_lowest = float(np.min(_needs_array(observation.needs)))
+        for choice in _recovery_option_indices_from_names(trained.option_names):
+            features.append(
+                _temporal_recovery_feature_vector(
+                    self_model,
+                    observation_history,
+                    option_names=trained.option_names,
+                    choice=choice,
+                )
+            )
+            risks.append(
+                _online_rollout_risk_label(
+                    env,
+                    observation,
+                    option_name=trained.option_names[choice],
+                    current_lowest=current_lowest,
+                    rng=rng,
+                    option_action_noise=option_action_noise,
+                    option_commit_steps=option_commit_steps,
+                    rollout_steps=rollout_steps,
+                    rollout_policy=state_policy,
+                    seed=seed + 8_520_000 + episode * 10_000 + len(features),
+                    label=label,
+                )
+            )
+            if len(features) >= max_samples:
+                break
+
     for episode in range(episodes):
         observation = env.reset(seed=seed + episode)
         agent = _state_agent(state_policy, seed=seed, episode=episode)
@@ -838,35 +918,76 @@ def train_online_recovery_policy(
         ]
         terminated = False
         truncated = False
+        working_trained = deepcopy(trained)
+        adaptation_optimizer = optim.Adam(learning_rate=adaptation_learning_rate)
         while not terminated and not truncated and len(features) < max_samples:
-            current_lowest = float(np.min(_needs_array(observation.needs)))
-            for choice in _recovery_option_indices_from_names(trained.option_names):
-                features.append(
-                    _temporal_recovery_feature_vector(
-                        self_model,
-                        observation_history,
-                        option_names=trained.option_names,
+            if source == "state_policy":
+                append_recovery_samples(observation, observation_history, episode)
+                action = agent.act(observation)
+            else:
+                decision_dataset = _learned_online_state_dataset(
+                    self_model,
+                    config,
+                    env,
+                    observation,
+                    observation_history,
+                    option_names=trained.option_names,
+                    horizon=max(1, horizon),
+                    rng=rng,
+                    option_action_noise=option_action_noise,
+                    value_mode=value_mode,
+                    calibrator=online_self_model_calibrator,
+                    calibration_mode=online_self_calibration_mode,
+                    uncertainty_scale=online_self_calibration_uncertainty_scale,
+                    uncertainty_knn=online_self_calibration_knn,
+                )
+                proposal = int(_partner_proposals(decision_dataset, mode=partner_mode)[0])
+                adapted_trained = working_trained
+                adapt_optimizer = adaptation_optimizer
+                if adaptation_local:
+                    adapted_trained = deepcopy(working_trained)
+                    adapt_optimizer = optim.Adam(learning_rate=adaptation_learning_rate)
+                if adaptation_steps > 0:
+                    adapt_dataset = intervene_situated_partner_features(
+                        decision_dataset,
+                        intervention=intervention,
+                        seed=seed + 8_540_000 + episode + len(features),
+                    )
+                    _adapt_online_dialogue(
+                        adapted_trained,
+                        adapt_dataset,
+                        proposal=proposal,
+                        optimizer=adapt_optimizer,
+                        steps=adaptation_steps,
+                        target_weight=adaptation_target_weight,
+                        kl_weight=adaptation_kl_weight,
+                        min_value_gap=adaptation_min_value_gap,
+                    )
+                choice = _online_choice(
+                    adapted_trained,
+                    decision_dataset,
+                    proposal=proposal,
+                    model_control="dialogue",
+                    intervention=intervention,
+                    seed=seed + 8_550_000 + episode + len(features),
+                )
+                risk = _online_risk_estimate(
+                    risk_calibrator,
+                    _online_risk_feature_vector(
+                        decision_dataset,
+                        proposal=proposal,
                         choice=choice,
-                    )
+                    ),
+                    k=risk_knn,
                 )
-                risks.append(
-                    _online_rollout_risk_label(
-                        env,
-                        observation,
-                        option_name=trained.option_names[choice],
-                        current_lowest=current_lowest,
-                        rng=rng,
-                        option_action_noise=option_action_noise,
-                        option_commit_steps=option_commit_steps,
-                        rollout_steps=rollout_steps,
-                        rollout_policy=state_policy,
-                        seed=seed + 8_520_000 + episode * 10_000 + len(features),
-                        label=label,
-                    )
+                if risk > risk_threshold:
+                    append_recovery_samples(observation, observation_history, episode)
+                action = _situated_option_action(
+                    trained.option_names[choice],
+                    observation,
+                    rng=rng,
+                    option_action_noise=option_action_noise,
                 )
-                if len(features) >= max_samples:
-                    break
-            action = agent.act(observation)
             observation, _reward, terminated, truncated, _info = env.step(action)
             observation_history.append(
                 _online_observation_vector(
@@ -903,6 +1024,7 @@ def train_online_recovery_policy(
         feature_mean=feature_mean,
         feature_std=feature_std,
         option_names=trained.option_names,
+        source=source,
         label=label,
         rollout_steps=rollout_steps,
         option_commit_steps=option_commit_steps,
@@ -2956,11 +3078,30 @@ def main() -> None:
             teacher_mode=args.teacher_mode,
             horizon=args.horizon,
             state_policy=args.state_policy,
+            source=args.online_recovery_policy_source,
             max_samples=args.online_recovery_policy_samples,
+            partner_mode=args.train_partner_mode,
             option_action_noise=args.online_option_action_noise,
+            value_mode=args.value_mode,
             label=args.online_recovery_policy_label,
             rollout_steps=args.online_recovery_policy_rollout_steps,
             option_commit_steps=args.online_recovery_policy_option_commit_steps,
+            online_self_model_calibrator=calibrator,
+            online_self_calibration_mode=args.online_self_calibration_mode,
+            online_self_calibration_uncertainty_scale=(
+                args.online_self_calibration_uncertainty_scale
+            ),
+            online_self_calibration_knn=args.online_self_calibration_knn,
+            risk_calibrator=risk_calibrator,
+            risk_threshold=args.online_risk_threshold,
+            risk_knn=args.online_risk_knn,
+            adaptation_steps=args.online_adaptation_steps,
+            adaptation_learning_rate=args.online_adaptation_learning_rate,
+            adaptation_target_weight=args.online_adaptation_target_weight,
+            adaptation_kl_weight=args.online_adaptation_kl_weight,
+            adaptation_min_value_gap=args.online_adaptation_min_value_gap,
+            adaptation_local=args.online_adaptation_local,
+            intervention="original",
             hidden_size=args.online_recovery_policy_hidden_size,
             epochs=args.online_recovery_policy_epochs,
             learning_rate=args.online_recovery_policy_learning_rate,
@@ -3222,6 +3363,11 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--online-recovery-policy", action="store_true")
     parser.add_argument("--online-recovery-policy-episodes", type=int, default=40)
     parser.add_argument("--online-recovery-policy-samples", type=int, default=1200)
+    parser.add_argument(
+        "--online-recovery-policy-source",
+        choices=ONLINE_RECOVERY_POLICY_SOURCES,
+        default="state_policy",
+    )
     parser.add_argument(
         "--online-recovery-policy-label",
         choices=("rollout_min", "rollout_mean"),

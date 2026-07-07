@@ -916,6 +916,17 @@ termination, and `10.00%` truncation. `zero_outcome` remained worse
 recovery, but the policy is not yet good enough to improve survival. The next
 version should train on actual visited failure/recovery states rather than
 offline sampled recovery candidates.
+That visited-state version is now the first positive temporal recovery result.
+`--online-recovery-policy-source risky_adaptive` trains only on states visited
+by the learned adaptive controller when its adapted choice crosses the risk
+threshold. With `rollout_mean` labels and threshold `0.08`, the 60-episode
+audit reached `0.689977` mean viability and `0.033996` minimum viability,
+beating matched value-calibrated adaptation (`0.685350`, `0.030923`) and the
+prior kNN risk gate (`0.686093`, `0.032555`) on those two metrics. The caveat
+is that `zero_outcome` still has a strong safety floor (`0.046966` minimum
+viability), so the recovery policy is only partly dependent on communicated
+self-outcome. The next target is online recovery-attempt training with an
+explicit outcome-channel dependence audit.
 
 ## Commands
 

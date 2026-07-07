@@ -531,6 +531,7 @@ class SituatedPartnerDialogueTests(unittest.TestCase):
             batch_size=4,
         )
         self.assertEqual(recovery_policy.option_names, trained.option_names)
+        self.assertEqual(recovery_policy.source, "state_policy")
         temporal_recovery = evaluate_online_partner_dialogue(
             trained,
             config,
@@ -763,6 +764,24 @@ class SituatedPartnerDialogueTests(unittest.TestCase):
                 episodes=1,
                 seed=41,
                 max_samples=0,
+            )
+        with self.assertRaises(ValueError):
+            train_online_recovery_policy(
+                trained,
+                config,
+                self_model,
+                episodes=1,
+                seed=41,
+                source="unknown",
+            )
+        with self.assertRaises(ValueError):
+            train_online_recovery_policy(
+                trained,
+                config,
+                self_model,
+                episodes=1,
+                seed=41,
+                source="risky_adaptive",
             )
         with self.assertRaises(ValueError):
             evaluate_online_partner_dialogue(
