@@ -731,6 +731,11 @@ Next concrete implementation:
    survival floor, but the first `seek_lowest` audit shows they can bypass the
    learned self-outcome channel. Recovery must become a learned temporal
    self-state decision before it counts as progress on self-communication.
+   A `message_recovery` fallback now ranks recovery options through the
+   dialogue logits under the same intervention, preserving the causal audit
+   better, but it does not recover the safety-floor gain. The next step should
+   train recovery as a temporal self-state policy rather than only constrain
+   inference-time choices.
 7. Decide whether to scale the environment to Crafter before adding large
    language generation.
 

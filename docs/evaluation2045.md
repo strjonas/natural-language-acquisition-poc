@@ -896,6 +896,15 @@ minimum viability (`0.073435`). This is therefore safety/recovery
 infrastructure, not a self-communication win. The next step should make
 recovery selection depend on learned temporal self-state rather than a
 hard-coded current-need option.
+`message_recovery` now performs that restriction through the dialogue pathway:
+it limits fallback to recovery options but ranks them with the model's final
+message-conditioned logits under the active intervention. This better preserves
+the causal audit but does not yet improve safety. In 30-episode probes it
+reached about `0.6760` mean viability and `0.0179` minimum viability, close to
+the weaker ungated adaptive profile and below both the kNN pre-adaptation gate
+and the hard-coded `seek_lowest` survival floor. The next recovery mechanism
+therefore needs direct training on temporal self-state recovery, not an
+inference-time restriction over existing logits.
 
 ## Commands
 

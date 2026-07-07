@@ -60,6 +60,7 @@ ONLINE_RISK_FALLBACKS = (
     "seek_lowest",
     "need_recovery",
     "lowest_risk_recovery",
+    "message_recovery",
 )
 EXTENDED_SITUATED_OPTION_NAMES = (
     "seek_lowest",
@@ -1348,6 +1349,9 @@ def evaluate_online_partner_dialogue(
                             fallback=online_adaptation_risk_fallback,
                             calibrator=online_adaptation_risk_calibrator,
                             k=online_adaptation_risk_knn,
+                            trained=adapted_trained,
+                            intervention=intervention,
+                            seed=seed + 20_000 + episode + steps,
                         )
             values = np.asarray(exact_state_dataset.option_values, dtype=np.float32)[0]
             current_lowest = float(np.asarray(exact_state_dataset.current_lowest)[0])
@@ -1979,6 +1983,27 @@ def _online_choice(
     if model_control == "oracle":
         return int(np.argmax(values))
 
+    return int(
+        np.argmax(
+            _online_dialogue_logits(
+                trained,
+                state_dataset,
+                proposal=proposal,
+                intervention=intervention,
+                seed=seed,
+            )
+        )
+    )
+
+
+def _online_dialogue_logits(
+    trained: TrainedSituatedPartnerDialogue,
+    state_dataset: SituatedPartnerDataset,
+    *,
+    proposal: int,
+    intervention: str,
+    seed: int,
+) -> np.ndarray:
     intervened = intervene_situated_partner_features(
         state_dataset,
         intervention=intervention,
@@ -1994,7 +2019,7 @@ def _online_choice(
         hard=True,
     )
     final_logits = trained.model.final(reply_message, proposal_signal)
-    return int(np.asarray(mx.argmax(final_logits, axis=-1))[0])
+    return np.asarray(final_logits, dtype=np.float32)[0]
 
 
 def _online_risk_feature_vector(
@@ -2080,6 +2105,9 @@ def _online_risk_fallback_choice(
     fallback: str,
     calibrator: OnlineAdaptationRiskCalibrator,
     k: int,
+    trained: TrainedSituatedPartnerDialogue | None = None,
+    intervention: str = "original",
+    seed: int = 1,
 ) -> int:
     if fallback not in ONLINE_RISK_FALLBACKS:
         raise ValueError(f"Unknown online adaptation risk fallback: {fallback}.")
@@ -2107,6 +2135,21 @@ def _online_risk_fallback_choice(
             for choice in candidates
         ]
         return int(candidates[int(np.argmin(risks))])
+    if fallback == "message_recovery":
+        candidates = _recovery_option_indices(dataset)
+        if not candidates:
+            return pre_adaptation_choice
+        if trained is None:
+            raise ValueError("message_recovery fallback requires a trained dialogue.")
+        logits = _online_dialogue_logits(
+            trained,
+            dataset,
+            proposal=proposal,
+            intervention=intervention,
+            seed=seed,
+        )
+        candidate_logits = logits[np.asarray(candidates, dtype=np.int32)]
+        return int(candidates[int(np.argmax(candidate_logits))])
     raise ValueError(f"Unknown online adaptation risk fallback: {fallback}.")
 
 
