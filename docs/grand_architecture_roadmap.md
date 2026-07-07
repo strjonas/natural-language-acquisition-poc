@@ -735,7 +735,12 @@ Next concrete implementation:
    dialogue logits under the same intervention, preserving the causal audit
    better, but it does not recover the safety-floor gain. The next step should
    train recovery as a temporal self-state policy rather than only constrain
-   inference-time choices.
+   inference-time choices. A first version of that temporal recovery policy
+   now trains on recurrent hidden-state histories plus realized rollout harm
+   labels, but its 60-episode audit regresses survival. It preserves more
+   causal separation than hard-coded recovery, but the next training source
+   should be actual visited failure/recovery states rather than offline sampled
+   recovery candidates.
 7. Decide whether to scale the environment to Crafter before adding large
    language generation.
 

@@ -905,6 +905,17 @@ the weaker ungated adaptive profile and below both the kNN pre-adaptation gate
 and the hard-coded `seek_lowest` survival floor. The next recovery mechanism
 therefore needs direct training on temporal self-state recovery, not an
 inference-time restriction over existing logits.
+That first temporal recovery policy now exists. It embeds the observation
+history with the recurrent self-model and trains a small scorer over recovery
+options using realized rollout harm labels. The best short probe used
+`rollout_mean` labels and threshold `0.08` (`0.684746` mean viability,
+`0.022644` minimum viability), but the 60-episode audit regressed:
+`0.679363` mean viability, `0.014096` minimum viability, `90.00%`
+termination, and `10.00%` truncation. `zero_outcome` remained worse
+(`0.677053`, `0.006719`), so the causal separation is better than hard-coded
+recovery, but the policy is not yet good enough to improve survival. The next
+version should train on actual visited failure/recovery states rather than
+offline sampled recovery candidates.
 
 ## Commands
 

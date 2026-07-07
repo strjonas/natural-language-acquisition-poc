@@ -61,6 +61,7 @@ ONLINE_RISK_FALLBACKS = (
     "need_recovery",
     "lowest_risk_recovery",
     "message_recovery",
+    "temporal_recovery",
 )
 EXTENDED_SITUATED_OPTION_NAMES = (
     "seek_lowest",
@@ -167,6 +168,17 @@ class OnlineAdaptationRiskCalibrator:
     option_names: tuple[str, ...]
 
 
+@dataclass(frozen=True)
+class OnlineRecoveryPolicy:
+    model: "OnlineRecoveryPolicyModel"
+    feature_mean: np.ndarray
+    feature_std: np.ndarray
+    option_names: tuple[str, ...]
+    label: str
+    rollout_steps: int
+    option_commit_steps: int
+
+
 class SituatedPartnerDialogue(nn.Module):
     def __init__(
         self,
@@ -237,6 +249,19 @@ class OnlineRiskCritic(nn.Module):
         hidden = nn.relu(self.hidden(features))
         hidden = hidden + nn.relu(self.hidden_residual(hidden))
         return self.output(hidden)[:, 0]
+
+
+class OnlineRecoveryPolicyModel(nn.Module):
+    def __init__(self, input_size: int, *, hidden_size: int = 64) -> None:
+        super().__init__()
+        self.hidden = nn.Linear(input_size, hidden_size)
+        self.hidden_residual = nn.Linear(hidden_size, hidden_size)
+        self.score = nn.Linear(hidden_size, 1)
+
+    def __call__(self, features: mx.array) -> mx.array:
+        hidden = nn.relu(self.hidden(features))
+        hidden = hidden + nn.relu(self.hidden_residual(hidden))
+        return self.score(hidden)[:, 0]
 
 
 def situated_partner_dataset_from_branches(
@@ -739,6 +764,151 @@ def collect_online_adaptation_risk_samples(
     )
 
 
+def train_online_recovery_policy(
+    trained: TrainedSituatedPartnerDialogue,
+    config: RecurrentConfig,
+    self_model: RecurrentActorCritic,
+    *,
+    episodes: int,
+    seed: int,
+    teacher_mode: str = "grounded",
+    horizon: int = 6,
+    state_policy: str = "cycle",
+    max_samples: int = 1500,
+    option_action_noise: float = 0.0,
+    label: str = "rollout_min",
+    rollout_steps: int = 8,
+    option_commit_steps: int = 1,
+    hidden_size: int = 64,
+    epochs: int = 80,
+    learning_rate: float = 1e-3,
+    batch_size: int = 128,
+) -> OnlineRecoveryPolicy:
+    if episodes <= 0:
+        raise ValueError("Recovery policy episodes must be positive.")
+    if max_samples <= 0:
+        raise ValueError("Recovery policy max_samples must be positive.")
+    if state_policy not in STATE_POLICIES:
+        raise ValueError(f"Unknown state policy: {state_policy}.")
+    if not 0.0 <= option_action_noise <= 1.0:
+        raise ValueError("Option action noise must be in [0, 1].")
+    if label not in {"rollout_min", "rollout_mean"}:
+        raise ValueError(f"Unknown recovery policy label: {label}.")
+    if rollout_steps <= 0:
+        raise ValueError("Recovery policy rollout_steps must be positive.")
+    if option_commit_steps <= 0:
+        raise ValueError("Recovery policy option_commit_steps must be positive.")
+    if hidden_size <= 0:
+        raise ValueError("Recovery policy hidden_size must be positive.")
+    if epochs < 0:
+        raise ValueError("Recovery policy epochs must be non-negative.")
+    if learning_rate <= 0.0:
+        raise ValueError("Recovery policy learning_rate must be positive.")
+    if batch_size <= 0:
+        raise ValueError("Recovery policy batch_size must be positive.")
+
+    normalized_teacher = normalize_teacher_mode(teacher_mode)
+    mask_language = masks_language(normalized_teacher) or not config.include_language_channel
+    env = HomeostaticSocialGrid(
+        width=config.width,
+        height=config.height,
+        seed=seed,
+        max_steps=config.max_steps,
+        teacher=build_teacher(normalized_teacher, seed=seed),
+        randomize_world=config.randomize_world,
+        diagnostic_mode=config.diagnostic_mode,
+        body_dynamics_mode=config.body_dynamics_mode,
+        renewable_resources=config.renewable_resources,
+        resource_ecology=config.resource_ecology,
+    )
+    rng = np.random.default_rng(seed + 8_510_000)
+    features: list[np.ndarray] = []
+    risks: list[float] = []
+
+    for episode in range(episodes):
+        observation = env.reset(seed=seed + episode)
+        agent = _state_agent(state_policy, seed=seed, episode=episode)
+        observation_history = [
+            _online_observation_vector(
+                observation,
+                env=env,
+                config=config,
+                mask_language=mask_language,
+            )
+        ]
+        terminated = False
+        truncated = False
+        while not terminated and not truncated and len(features) < max_samples:
+            current_lowest = float(np.min(_needs_array(observation.needs)))
+            for choice in _recovery_option_indices_from_names(trained.option_names):
+                features.append(
+                    _temporal_recovery_feature_vector(
+                        self_model,
+                        observation_history,
+                        option_names=trained.option_names,
+                        choice=choice,
+                    )
+                )
+                risks.append(
+                    _online_rollout_risk_label(
+                        env,
+                        observation,
+                        option_name=trained.option_names[choice],
+                        current_lowest=current_lowest,
+                        rng=rng,
+                        option_action_noise=option_action_noise,
+                        option_commit_steps=option_commit_steps,
+                        rollout_steps=rollout_steps,
+                        rollout_policy=state_policy,
+                        seed=seed + 8_520_000 + episode * 10_000 + len(features),
+                        label=label,
+                    )
+                )
+                if len(features) >= max_samples:
+                    break
+            action = agent.act(observation)
+            observation, _reward, terminated, truncated, _info = env.step(action)
+            observation_history.append(
+                _online_observation_vector(
+                    observation,
+                    env=env,
+                    config=config,
+                    mask_language=mask_language,
+                )
+            )
+        if len(features) >= max_samples:
+            break
+
+    if not features:
+        raise ValueError("No recovery policy samples were collected.")
+    feature_array = np.stack(features).astype(np.float32)
+    risk_array = np.asarray(risks, dtype=np.float32)
+    feature_mean = np.mean(feature_array, axis=0).astype(np.float32)
+    feature_std = np.sqrt(
+        np.mean((feature_array - feature_mean[None, :]) ** 2, axis=0) + 1e-6
+    ).astype(np.float32)
+    model = _fit_online_recovery_policy_model(
+        feature_array,
+        risk_array,
+        feature_mean=feature_mean,
+        feature_std=feature_std,
+        hidden_size=hidden_size,
+        epochs=epochs,
+        learning_rate=learning_rate,
+        batch_size=batch_size,
+        seed=seed + 8_530_000,
+    )
+    return OnlineRecoveryPolicy(
+        model=model,
+        feature_mean=feature_mean,
+        feature_std=feature_std,
+        option_names=trained.option_names,
+        label=label,
+        rollout_steps=rollout_steps,
+        option_commit_steps=option_commit_steps,
+    )
+
+
 def train_situated_self_model_rank(
     model: RecurrentActorCritic,
     samples: tuple[SituatedSelfModelRankSample, ...],
@@ -1116,6 +1286,7 @@ def evaluate_online_partner_dialogue(
     online_adaptation_risk_knn: int = 16,
     online_adaptation_risk_penalty: float = 0.0,
     online_adaptation_risk_fallback: str = "pre_adaptation",
+    online_recovery_policy: OnlineRecoveryPolicy | None = None,
 ) -> OnlinePartnerResult:
     if partner_mode not in PARTNER_PROPOSAL_MODES:
         raise ValueError(f"Unknown partner proposal mode: {partner_mode}.")
@@ -1174,6 +1345,14 @@ def evaluate_online_partner_dialogue(
         raise ValueError("Risk calibrator option names do not match online options.")
     if online_adaptation_risk_penalty > 0.0 and online_adaptation_risk_calibrator is None:
         raise ValueError("Risk-shaped adaptation requires a risk calibrator.")
+    if online_adaptation_risk_fallback == "temporal_recovery" and (
+        online_recovery_policy is None
+        or online_self_model is None
+        or online_self_model_config is None
+    ):
+        raise ValueError(
+            "temporal_recovery requires a recovery policy and learned self-model."
+        )
 
     normalized_teacher = normalize_teacher_mode(teacher_mode)
     self_model_config = online_self_model_config or config
@@ -1352,6 +1531,9 @@ def evaluate_online_partner_dialogue(
                             trained=adapted_trained,
                             intervention=intervention,
                             seed=seed + 20_000 + episode + steps,
+                            recovery_policy=online_recovery_policy,
+                            self_model=online_self_model,
+                            observation_history=observation_history,
                         )
             values = np.asarray(exact_state_dataset.option_values, dtype=np.float32)[0]
             current_lowest = float(np.asarray(exact_state_dataset.current_lowest)[0])
@@ -2108,6 +2290,9 @@ def _online_risk_fallback_choice(
     trained: TrainedSituatedPartnerDialogue | None = None,
     intervention: str = "original",
     seed: int = 1,
+    recovery_policy: OnlineRecoveryPolicy | None = None,
+    self_model: RecurrentActorCritic | None = None,
+    observation_history: list[np.ndarray] | None = None,
 ) -> int:
     if fallback not in ONLINE_RISK_FALLBACKS:
         raise ValueError(f"Unknown online adaptation risk fallback: {fallback}.")
@@ -2150,6 +2335,24 @@ def _online_risk_fallback_choice(
         )
         candidate_logits = logits[np.asarray(candidates, dtype=np.int32)]
         return int(candidates[int(np.argmax(candidate_logits))])
+    if fallback == "temporal_recovery":
+        candidates = _recovery_option_indices(dataset)
+        if not candidates:
+            return pre_adaptation_choice
+        if recovery_policy is None or self_model is None or observation_history is None:
+            raise ValueError("temporal_recovery requires a recovery policy and history.")
+        if recovery_policy.option_names != dataset.option_names:
+            raise ValueError("Recovery policy option names do not match online options.")
+        risks = [
+            _online_recovery_policy_estimate(
+                recovery_policy,
+                self_model,
+                observation_history,
+                choice=choice,
+            )
+            for choice in candidates
+        ]
+        return int(candidates[int(np.argmin(risks))])
     raise ValueError(f"Unknown online adaptation risk fallback: {fallback}.")
 
 
@@ -2184,6 +2387,10 @@ def _need_recovery_choice(dataset: SituatedPartnerDataset) -> int:
 
 
 def _recovery_option_indices(dataset: SituatedPartnerDataset) -> list[int]:
+    return _recovery_option_indices_from_names(dataset.option_names)
+
+
+def _recovery_option_indices_from_names(option_names: tuple[str, ...]) -> list[int]:
     recovery_names = (
         "seek_lowest",
         "seek_food",
@@ -2192,10 +2399,58 @@ def _recovery_option_indices(dataset: SituatedPartnerDataset) -> list[int]:
         "rest",
     )
     return [
-        dataset.option_names.index(option_name)
+        option_names.index(option_name)
         for option_name in recovery_names
-        if option_name in dataset.option_names
+        if option_name in option_names
     ]
+
+
+def _temporal_recovery_feature_vector(
+    self_model: RecurrentActorCritic,
+    observation_history: list[np.ndarray],
+    *,
+    option_names: tuple[str, ...],
+    choice: int,
+) -> np.ndarray:
+    if not observation_history:
+        raise ValueError("Temporal recovery feature requires observation history.")
+    if not 0 <= choice < len(option_names):
+        raise ValueError("Temporal recovery choice index is out of range.")
+    observations = mx.array(np.stack(observation_history)[None, :, :], dtype=mx.float32)
+    hidden = np.asarray(self_model.hidden_states(observations), dtype=np.float32)[0, -1]
+    current = observation_history[-1][:4].astype(np.float32)
+    option_one_hot = np.eye(len(option_names), dtype=np.float32)[choice]
+    return np.concatenate(
+        [
+            hidden.astype(np.float32),
+            current,
+            option_one_hot,
+            np.asarray(
+                [float(choice) / float(max(1, len(option_names) - 1))],
+                dtype=np.float32,
+            ),
+        ]
+    ).astype(np.float32)
+
+
+def _online_recovery_policy_estimate(
+    recovery_policy: OnlineRecoveryPolicy,
+    self_model: RecurrentActorCritic,
+    observation_history: list[np.ndarray],
+    *,
+    choice: int,
+) -> float:
+    feature = _temporal_recovery_feature_vector(
+        self_model,
+        observation_history,
+        option_names=recovery_policy.option_names,
+        choice=choice,
+    )
+    normalized = (feature - recovery_policy.feature_mean) / (
+        recovery_policy.feature_std + 1e-6
+    )
+    prediction = recovery_policy.model(mx.array(normalized[None, :], dtype=mx.float32))
+    return float(max(0.0, np.asarray(prediction)[0]))
 
 
 def _risk_adjusted_online_dataset(
@@ -2300,6 +2555,46 @@ def _fit_online_risk_mlp(
     predictions = np.maximum(0.0, predictions)
     rmse = float(np.sqrt(np.mean((predictions - targets) ** 2)))
     return critic, rmse
+
+
+def _fit_online_recovery_policy_model(
+    features: np.ndarray,
+    risks: np.ndarray,
+    *,
+    feature_mean: np.ndarray,
+    feature_std: np.ndarray,
+    hidden_size: int,
+    epochs: int,
+    learning_rate: float,
+    batch_size: int,
+    seed: int,
+) -> OnlineRecoveryPolicyModel:
+    normalized = ((features - feature_mean[None, :]) / (feature_std[None, :] + 1e-6)).astype(
+        np.float32
+    )
+    targets = np.asarray(risks, dtype=np.float32)
+    rng = np.random.default_rng(seed)
+    mx.random.seed(seed)
+    model = OnlineRecoveryPolicyModel(normalized.shape[1], hidden_size=hidden_size)
+    optimizer = optim.Adam(learning_rate=learning_rate)
+    indices = np.arange(normalized.shape[0])
+
+    def loss_fn(batch_features: mx.array, batch_targets: mx.array) -> mx.array:
+        predictions = model(batch_features)
+        return mx.mean((predictions - batch_targets) ** 2)
+
+    loss_and_grad = nn.value_and_grad(model, loss_fn)
+    for _epoch in range(max(1, epochs)):
+        rng.shuffle(indices)
+        for start in range(0, len(indices), batch_size):
+            batch_indices = indices[start : start + batch_size]
+            loss, grads = loss_and_grad(
+                mx.array(normalized[batch_indices], dtype=mx.float32),
+                mx.array(targets[batch_indices], dtype=mx.float32),
+            )
+            optimizer.update(model, grads)
+            mx.eval(model.parameters(), optimizer.state, loss)
+    return model
 
 
 def _adapt_online_dialogue(
@@ -2650,6 +2945,27 @@ def main() -> None:
             online_risk_rollout_steps=args.online_risk_rollout_steps,
             online_risk_option_commit_steps=args.online_risk_option_commit_steps,
         )
+    recovery_policy = None
+    if args.online_recovery_policy:
+        recovery_policy = train_online_recovery_policy(
+            trained,
+            config,
+            _model,
+            episodes=args.online_recovery_policy_episodes,
+            seed=args.seed + 43_000,
+            teacher_mode=args.teacher_mode,
+            horizon=args.horizon,
+            state_policy=args.state_policy,
+            max_samples=args.online_recovery_policy_samples,
+            option_action_noise=args.online_option_action_noise,
+            label=args.online_recovery_policy_label,
+            rollout_steps=args.online_recovery_policy_rollout_steps,
+            option_commit_steps=args.online_recovery_policy_option_commit_steps,
+            hidden_size=args.online_recovery_policy_hidden_size,
+            epochs=args.online_recovery_policy_epochs,
+            learning_rate=args.online_recovery_policy_learning_rate,
+            batch_size=args.online_recovery_policy_batch_size,
+        )
     if args.report_mode == "online":
         print(
             "model_control,intervention,episodes,mean_total_reward,mean_steps,"
@@ -2724,6 +3040,7 @@ def main() -> None:
                             online_adaptation_risk_fallback=(
                                 args.online_adaptation_risk_fallback
                             ),
+                            online_recovery_policy=recovery_policy,
                         )
                     )
                 )
@@ -2902,6 +3219,28 @@ def _parse_args() -> argparse.Namespace:
         choices=ONLINE_RISK_FALLBACKS,
         default="pre_adaptation",
     )
+    parser.add_argument("--online-recovery-policy", action="store_true")
+    parser.add_argument("--online-recovery-policy-episodes", type=int, default=40)
+    parser.add_argument("--online-recovery-policy-samples", type=int, default=1200)
+    parser.add_argument(
+        "--online-recovery-policy-label",
+        choices=("rollout_min", "rollout_mean"),
+        default="rollout_min",
+    )
+    parser.add_argument("--online-recovery-policy-rollout-steps", type=int, default=8)
+    parser.add_argument(
+        "--online-recovery-policy-option-commit-steps",
+        type=int,
+        default=1,
+    )
+    parser.add_argument("--online-recovery-policy-hidden-size", type=int, default=64)
+    parser.add_argument("--online-recovery-policy-epochs", type=int, default=80)
+    parser.add_argument(
+        "--online-recovery-policy-learning-rate",
+        type=float,
+        default=1e-3,
+    )
+    parser.add_argument("--online-recovery-policy-batch-size", type=int, default=128)
     parser.add_argument(
         "--online-controls",
         nargs="+",

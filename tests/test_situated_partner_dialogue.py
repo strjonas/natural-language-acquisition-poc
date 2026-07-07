@@ -21,6 +21,7 @@ from homesocial.situated_partner_dialogue import (
     format_result,
     intervene_situated_partner_features,
     situated_partner_dataset_from_branches,
+    train_online_recovery_policy,
     train_situated_self_model_rank,
     train_situated_partner_dialogue,
 )
@@ -516,6 +517,40 @@ class SituatedPartnerDialogueTests(unittest.TestCase):
             online_adaptation_risk_fallback="message_recovery",
         )
         self.assertEqual(message_recovery.episodes, 1)
+        recovery_policy = train_online_recovery_policy(
+            trained,
+            config,
+            self_model,
+            episodes=1,
+            seed=41,
+            horizon=1,
+            max_samples=4,
+            rollout_steps=2,
+            hidden_size=4,
+            epochs=1,
+            batch_size=4,
+        )
+        self.assertEqual(recovery_policy.option_names, trained.option_names)
+        temporal_recovery = evaluate_online_partner_dialogue(
+            trained,
+            config,
+            episodes=1,
+            seed=17,
+            horizon=1,
+            model_control="adaptive_dialogue",
+            partner_mode="partial_body",
+            online_adaptation_steps=1,
+            online_adaptation_local=True,
+            online_self_model_source="learned",
+            online_self_model=self_model,
+            online_self_model_config=config,
+            online_adaptation_risk_calibrator=risk_calibrator,
+            online_adaptation_risk_threshold=0.0,
+            online_adaptation_risk_knn=1,
+            online_adaptation_risk_fallback="temporal_recovery",
+            online_recovery_policy=recovery_policy,
+        )
+        self.assertEqual(temporal_recovery.episodes, 1)
         with self.assertRaises(ValueError):
             evaluate_online_partner_dialogue(
                 trained,
@@ -709,6 +744,25 @@ class SituatedPartnerDialogueTests(unittest.TestCase):
                 episodes=1,
                 seed=17,
                 online_adaptation_risk_fallback="unknown",
+            )
+        with self.assertRaises(ValueError):
+            evaluate_online_partner_dialogue(
+                trained,
+                config,
+                episodes=1,
+                seed=17,
+                model_control="adaptive_dialogue",
+                online_adaptation_steps=1,
+                online_adaptation_risk_fallback="temporal_recovery",
+            )
+        with self.assertRaises(ValueError):
+            train_online_recovery_policy(
+                trained,
+                config,
+                self_model,
+                episodes=1,
+                seed=41,
+                max_samples=0,
             )
         with self.assertRaises(ValueError):
             evaluate_online_partner_dialogue(
