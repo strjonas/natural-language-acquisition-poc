@@ -494,6 +494,7 @@ class SituatedPartnerDialogueTests(unittest.TestCase):
             online_adaptation_risk_threshold=0.0,
             online_adaptation_risk_knn=1,
             online_adaptation_risk_penalty=0.5,
+            online_adaptation_risk_fallback="need_recovery",
         )
         self.assertEqual(risk_gated.episodes, 1)
         with self.assertRaises(ValueError):
@@ -681,6 +682,14 @@ class SituatedPartnerDialogueTests(unittest.TestCase):
                 model_control="adaptive_dialogue",
                 online_adaptation_steps=1,
                 online_adaptation_risk_penalty=0.5,
+            )
+        with self.assertRaises(ValueError):
+            evaluate_online_partner_dialogue(
+                trained,
+                config,
+                episodes=1,
+                seed=17,
+                online_adaptation_risk_fallback="unknown",
             )
         with self.assertRaises(ValueError):
             evaluate_online_partner_dialogue(

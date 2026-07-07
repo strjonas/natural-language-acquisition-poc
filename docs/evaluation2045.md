@@ -883,6 +883,19 @@ approached the weaker ungated adaptive baseline (`0.675918`, `0.017876`).
 This says longer-horizon traces are useful infrastructure, but the current
 scalar rejection gate is too blunt; the next target should use temporal context
 from actual visited trajectories or trigger explicit recovery options.
+Explicit recovery-option selection is now implemented. On high-risk adapted
+choices, the controller can fall back to `seek_lowest`, a weakest-need recovery
+map, or the lowest estimated-risk recovery option instead of only reverting to
+the pre-adaptation dialogue choice. This creates a real recovery behavior but
+also exposes a new audit problem. In the 60-episode seed-`12001` run,
+`seek_lowest` recovery improved minimum viability over matched value-calibrated
+adaptation (`0.049831` versus `0.030923`) and reduced regret (`0.043137`
+versus `0.051752`), but lowered mean viability (`0.673460` versus `0.685350`)
+and did not preserve outcome-channel necessity: `zero_outcome` also improved
+minimum viability (`0.073435`). This is therefore safety/recovery
+infrastructure, not a self-communication win. The next step should make
+recovery selection depend on learned temporal self-state rather than a
+hard-coded current-need option.
 
 ## Commands
 

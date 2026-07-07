@@ -55,6 +55,12 @@ ONLINE_SELF_MODEL_SOURCES = ("exact", "learned")
 ONLINE_SELF_CALIBRATION_MODES = ("all", "values", "value_lcb", "value_knn_lcb")
 ONLINE_RISK_MODELS = ("knn", "ridge", "mlp")
 ONLINE_RISK_LABELS = ("branch", "rollout_min", "rollout_mean")
+ONLINE_RISK_FALLBACKS = (
+    "pre_adaptation",
+    "seek_lowest",
+    "need_recovery",
+    "lowest_risk_recovery",
+)
 EXTENDED_SITUATED_OPTION_NAMES = (
     "seek_lowest",
     "seek_food",
@@ -1108,6 +1114,7 @@ def evaluate_online_partner_dialogue(
     online_adaptation_risk_threshold: float = 0.0,
     online_adaptation_risk_knn: int = 16,
     online_adaptation_risk_penalty: float = 0.0,
+    online_adaptation_risk_fallback: str = "pre_adaptation",
 ) -> OnlinePartnerResult:
     if partner_mode not in PARTNER_PROPOSAL_MODES:
         raise ValueError(f"Unknown partner proposal mode: {partner_mode}.")
@@ -1137,6 +1144,10 @@ def evaluate_online_partner_dialogue(
         raise ValueError("online_adaptation_risk_knn must be positive.")
     if online_adaptation_risk_penalty < 0.0:
         raise ValueError("online_adaptation_risk_penalty must be non-negative.")
+    if online_adaptation_risk_fallback not in ONLINE_RISK_FALLBACKS:
+        raise ValueError(
+            f"Unknown online adaptation risk fallback: {online_adaptation_risk_fallback}."
+        )
     if online_adaptation_steps < 0:
         raise ValueError("online_adaptation_steps must be non-negative.")
     if online_adaptation_learning_rate <= 0.0:
@@ -1330,7 +1341,14 @@ def evaluate_online_partner_dialogue(
                         k=online_adaptation_risk_knn,
                     )
                     if risk > online_adaptation_risk_threshold:
-                        choice = pre_adaptation_choice
+                        choice = _online_risk_fallback_choice(
+                            decision_dataset,
+                            proposal=proposal,
+                            pre_adaptation_choice=pre_adaptation_choice,
+                            fallback=online_adaptation_risk_fallback,
+                            calibrator=online_adaptation_risk_calibrator,
+                            k=online_adaptation_risk_knn,
+                        )
             values = np.asarray(exact_state_dataset.option_values, dtype=np.float32)[0]
             current_lowest = float(np.asarray(exact_state_dataset.current_lowest)[0])
             proposal_deltas.append(float(values[proposal] - current_lowest))
@@ -2054,6 +2072,89 @@ def _online_risk_estimate(
     return float(np.mean(calibrator.risks[nearest]))
 
 
+def _online_risk_fallback_choice(
+    dataset: SituatedPartnerDataset,
+    *,
+    proposal: int,
+    pre_adaptation_choice: int,
+    fallback: str,
+    calibrator: OnlineAdaptationRiskCalibrator,
+    k: int,
+) -> int:
+    if fallback not in ONLINE_RISK_FALLBACKS:
+        raise ValueError(f"Unknown online adaptation risk fallback: {fallback}.")
+    if fallback == "pre_adaptation":
+        return pre_adaptation_choice
+    option_names = dataset.option_names
+    if fallback == "seek_lowest":
+        return _option_index_or_default(
+            option_names,
+            "seek_lowest",
+            default=_need_recovery_choice(dataset),
+        )
+    if fallback == "need_recovery":
+        return _need_recovery_choice(dataset)
+    if fallback == "lowest_risk_recovery":
+        candidates = _recovery_option_indices(dataset)
+        if not candidates:
+            return pre_adaptation_choice
+        risks = [
+            _online_risk_estimate(
+                calibrator,
+                _online_risk_feature_vector(dataset, proposal=proposal, choice=choice),
+                k=k,
+            )
+            for choice in candidates
+        ]
+        return int(candidates[int(np.argmin(risks))])
+    raise ValueError(f"Unknown online adaptation risk fallback: {fallback}.")
+
+
+def _option_index_or_default(
+    option_names: tuple[str, ...],
+    option_name: str,
+    *,
+    default: int,
+) -> int:
+    if option_name in option_names:
+        return option_names.index(option_name)
+    return default
+
+
+def _need_recovery_choice(dataset: SituatedPartnerDataset) -> int:
+    option_names = dataset.option_names
+    current = np.asarray(dataset.current_needs, dtype=np.float32)[0]
+    weakest = int(np.argmin(current))
+    preferred = {
+        0: ("seek_food",),
+        1: ("seek_water",),
+        2: ("rest", "seek_shelter"),
+        3: ("seek_shelter",),
+    }[weakest]
+    for option_name in preferred:
+        if option_name in option_names:
+            return option_names.index(option_name)
+    if "seek_lowest" in option_names:
+        return option_names.index("seek_lowest")
+    values = np.asarray(dataset.option_values, dtype=np.float32)[0]
+    return int(np.argmax(values))
+
+
+def _recovery_option_indices(dataset: SituatedPartnerDataset) -> list[int]:
+    recovery_names = (
+        "seek_lowest",
+        "seek_food",
+        "seek_water",
+        "seek_shelter",
+        "rest",
+    )
+    return [
+        dataset.option_names.index(option_name)
+        for option_name in recovery_names
+        if option_name in dataset.option_names
+    ]
+
+
 def _risk_adjusted_online_dataset(
     dataset: SituatedPartnerDataset,
     *,
@@ -2577,6 +2678,9 @@ def main() -> None:
                             online_adaptation_risk_penalty=(
                                 args.online_adaptation_risk_penalty
                             ),
+                            online_adaptation_risk_fallback=(
+                                args.online_adaptation_risk_fallback
+                            ),
                         )
                     )
                 )
@@ -2750,6 +2854,11 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--online-risk-threshold", type=float, default=0.02)
     parser.add_argument("--online-risk-knn", type=int, default=16)
     parser.add_argument("--online-adaptation-risk-penalty", type=float, default=0.0)
+    parser.add_argument(
+        "--online-adaptation-risk-fallback",
+        choices=ONLINE_RISK_FALLBACKS,
+        default="pre_adaptation",
+    )
     parser.add_argument(
         "--online-controls",
         nargs="+",

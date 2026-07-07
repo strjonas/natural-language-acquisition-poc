@@ -727,7 +727,10 @@ Next concrete implementation:
    gate either shuts adaptation off or drifts toward the weaker ungated
    baseline. The next useful step should add temporal trajectory context or
    explicit recovery-option selection, not just another thresholded scalar
-   risk estimate.
+   risk estimate. Explicit recovery fallbacks now exist and can raise the
+   survival floor, but the first `seek_lowest` audit shows they can bypass the
+   learned self-outcome channel. Recovery must become a learned temporal
+   self-state decision before it counts as progress on self-communication.
 7. Decide whether to scale the environment to Crafter before adding large
    language generation.
 
