@@ -721,7 +721,13 @@ Next concrete implementation:
    implemented and tested, as is risk-shaped rehearsal, but they do not beat
    the kNN gate. This points away from merely changing the approximator and
    toward richer realized-survival traces or longer-horizon self-state
-   histories as the critic target.
+   histories as the critic target. A first rollout-label path now clones the
+   environment and labels each option by realized multi-step minimum/mean
+   viability, but early probes are still negative because the scalar rejection
+   gate either shuts adaptation off or drifts toward the weaker ungated
+   baseline. The next useful step should add temporal trajectory context or
+   explicit recovery-option selection, not just another thresholded scalar
+   risk estimate.
 7. Decide whether to scale the environment to Crafter before adding large
    language generation.
 

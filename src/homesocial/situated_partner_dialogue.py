@@ -54,6 +54,7 @@ SITUATED_OPTION_SETS = ("base", "extended")
 ONLINE_SELF_MODEL_SOURCES = ("exact", "learned")
 ONLINE_SELF_CALIBRATION_MODES = ("all", "values", "value_lcb", "value_knn_lcb")
 ONLINE_RISK_MODELS = ("knn", "ridge", "mlp")
+ONLINE_RISK_LABELS = ("branch", "rollout_min", "rollout_mean")
 EXTENDED_SITUATED_OPTION_NAMES = (
     "seek_lowest",
     "seek_food",
@@ -153,6 +154,9 @@ class OnlineAdaptationRiskCalibrator:
     ridge_weights: np.ndarray | None
     risk_critic: "OnlineRiskCritic | None"
     ridge_rmse: float
+    risk_label: str
+    rollout_steps: int
+    option_commit_steps: int
     option_names: tuple[str, ...]
 
 
@@ -522,6 +526,9 @@ def collect_online_adaptation_risk_samples(
     online_risk_epochs: int = 80,
     online_risk_learning_rate: float = 1e-3,
     online_risk_batch_size: int = 128,
+    online_risk_label: str = "branch",
+    online_risk_rollout_steps: int = 8,
+    online_risk_option_commit_steps: int = 1,
 ) -> OnlineAdaptationRiskCalibrator:
     if episodes <= 0:
         raise ValueError("Risk calibration episodes must be positive.")
@@ -557,6 +564,12 @@ def collect_online_adaptation_risk_samples(
         raise ValueError("online_risk_learning_rate must be positive.")
     if online_risk_batch_size <= 0:
         raise ValueError("online_risk_batch_size must be positive.")
+    if online_risk_label not in ONLINE_RISK_LABELS:
+        raise ValueError(f"Unknown online risk label: {online_risk_label}.")
+    if online_risk_rollout_steps <= 0:
+        raise ValueError("online_risk_rollout_steps must be positive.")
+    if online_risk_option_commit_steps <= 0:
+        raise ValueError("online_risk_option_commit_steps must be positive.")
     if online_self_model_source == "learned" and (
         online_self_model is None or online_self_model_config is None
     ):
@@ -639,7 +652,23 @@ def collect_online_adaptation_risk_samples(
                         choice=choice,
                     )
                 )
-                risks.append(max(0.0, current_lowest - float(exact_values[choice])))
+                if online_risk_label == "branch":
+                    risk = max(0.0, current_lowest - float(exact_values[choice]))
+                else:
+                    risk = _online_rollout_risk_label(
+                        env,
+                        observation,
+                        option_name=trained.option_names[choice],
+                        current_lowest=current_lowest,
+                        rng=rng,
+                        option_action_noise=option_action_noise,
+                        option_commit_steps=online_risk_option_commit_steps,
+                        rollout_steps=online_risk_rollout_steps,
+                        rollout_policy=state_policy,
+                        seed=seed + 8_430_000 + episode * 10_000 + len(features),
+                        label=online_risk_label,
+                    )
+                risks.append(risk)
                 if len(features) >= max_samples:
                     break
 
@@ -696,6 +725,9 @@ def collect_online_adaptation_risk_samples(
         ridge_weights=ridge_weights,
         risk_critic=risk_critic,
         ridge_rmse=ridge_rmse,
+        risk_label=online_risk_label,
+        rollout_steps=online_risk_rollout_steps,
+        option_commit_steps=online_risk_option_commit_steps,
         option_names=trained.option_names,
     )
 
@@ -1864,6 +1896,56 @@ def _maybe_noisy_action(
     return actions[int(rng.choice(candidates))]
 
 
+def _online_rollout_risk_label(
+    env: HomeostaticSocialGrid,
+    observation,
+    *,
+    option_name: str,
+    current_lowest: float,
+    rng: np.random.Generator,
+    option_action_noise: float,
+    option_commit_steps: int,
+    rollout_steps: int,
+    rollout_policy: str,
+    seed: int,
+    label: str,
+) -> float:
+    if option_commit_steps <= 0:
+        raise ValueError("option_commit_steps must be positive.")
+    if rollout_steps <= 0:
+        raise ValueError("rollout_steps must be positive.")
+    if rollout_policy not in STATE_POLICIES:
+        raise ValueError(f"Unknown rollout policy: {rollout_policy}.")
+    if label not in {"rollout_min", "rollout_mean"}:
+        raise ValueError(f"Unknown rollout risk label: {label}.")
+
+    branch = deepcopy(env)
+    branch_observation = observation
+    agent = _state_agent(rollout_policy, seed=seed, episode=0)
+    viabilities = [float(branch_observation.needs.viability())]
+    terminated = False
+    truncated = False
+    for step in range(rollout_steps):
+        if step < option_commit_steps:
+            action = _situated_option_action(
+                option_name,
+                branch_observation,
+                rng=rng,
+                option_action_noise=option_action_noise,
+            )
+        else:
+            action = agent.act(branch_observation)
+        branch_observation, _reward, terminated, truncated, _info = branch.step(action)
+        viabilities.append(float(branch_observation.needs.viability()))
+        if terminated or truncated:
+            break
+    if label == "rollout_min":
+        realized = float(np.min(viabilities))
+    else:
+        realized = float(np.mean(viabilities[1:] or viabilities))
+    return max(0.0, current_lowest - realized)
+
+
 def _online_choice(
     trained: TrainedSituatedPartnerDialogue,
     state_dataset: SituatedPartnerDataset,
@@ -2420,6 +2502,9 @@ def main() -> None:
             online_risk_epochs=args.online_risk_epochs,
             online_risk_learning_rate=args.online_risk_learning_rate,
             online_risk_batch_size=args.online_risk_batch_size,
+            online_risk_label=args.online_risk_label,
+            online_risk_rollout_steps=args.online_risk_rollout_steps,
+            online_risk_option_commit_steps=args.online_risk_option_commit_steps,
         )
     if args.report_mode == "online":
         print(
@@ -2655,6 +2740,13 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--online-risk-epochs", type=int, default=80)
     parser.add_argument("--online-risk-learning-rate", type=float, default=1e-3)
     parser.add_argument("--online-risk-batch-size", type=int, default=128)
+    parser.add_argument(
+        "--online-risk-label",
+        choices=ONLINE_RISK_LABELS,
+        default="branch",
+    )
+    parser.add_argument("--online-risk-rollout-steps", type=int, default=8)
+    parser.add_argument("--online-risk-option-commit-steps", type=int, default=1)
     parser.add_argument("--online-risk-threshold", type=float, default=0.02)
     parser.add_argument("--online-risk-knn", type=int, default=16)
     parser.add_argument("--online-adaptation-risk-penalty", type=float, default=0.0)

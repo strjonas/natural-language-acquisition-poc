@@ -872,6 +872,17 @@ learned critics trailed the kNN memory gate on mean and minimum viability
 `0.016850`, and penalty-only shaping lowered truncation. This narrows the next
 move: the failure is probably the short-horizon harm target and sparse online
 state features, not just the risk approximator class.
+The first longer-horizon label path is also implemented: `rollout_min` and
+`rollout_mean` clone the environment, commit each candidate option, roll forward
+for several realized steps, and label harm from actual viability over that
+window. In the first 30-episode seed-`12001` probes, rollout labels did not
+beat the short-branch kNN gate. `rollout_min` at thresholds `0.04` and `0.08`
+fell back to frozen-dialogue-like behavior (`0.675019` mean viability,
+`0.021440` minimum viability, `13.33%` truncation), while threshold `0.40`
+approached the weaker ungated adaptive baseline (`0.675918`, `0.017876`).
+This says longer-horizon traces are useful infrastructure, but the current
+scalar rejection gate is too blunt; the next target should use temporal context
+from actual visited trajectories or trigger explicit recovery options.
 
 ## Commands
 

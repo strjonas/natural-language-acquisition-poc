@@ -421,6 +421,26 @@ class SituatedPartnerDialogueTests(unittest.TestCase):
         )
         self.assertEqual(risk_calibrator.features.shape[0], 4)
         self.assertEqual(risk_calibrator.risks.shape, (4,))
+        self.assertEqual(risk_calibrator.risk_label, "branch")
+        rollout_risk_calibrator = collect_online_adaptation_risk_samples(
+            trained,
+            config,
+            episodes=1,
+            seed=37,
+            horizon=1,
+            max_samples=4,
+            partner_mode="partial_body",
+            online_self_model_source="learned",
+            online_self_model=self_model,
+            online_self_model_config=config,
+            online_risk_label="rollout_min",
+            online_risk_rollout_steps=2,
+            online_risk_option_commit_steps=1,
+        )
+        self.assertEqual(rollout_risk_calibrator.risks.shape, (4,))
+        self.assertEqual(rollout_risk_calibrator.risk_label, "rollout_min")
+        self.assertEqual(rollout_risk_calibrator.rollout_steps, 2)
+        self.assertTrue(np.all(rollout_risk_calibrator.risks >= 0.0))
         ridge_risk_calibrator = collect_online_adaptation_risk_samples(
             trained,
             config,
@@ -619,6 +639,30 @@ class SituatedPartnerDialogueTests(unittest.TestCase):
                 episodes=1,
                 seed=37,
                 online_risk_batch_size=0,
+            )
+        with self.assertRaises(ValueError):
+            collect_online_adaptation_risk_samples(
+                trained,
+                config,
+                episodes=1,
+                seed=37,
+                online_risk_label="unknown",
+            )
+        with self.assertRaises(ValueError):
+            collect_online_adaptation_risk_samples(
+                trained,
+                config,
+                episodes=1,
+                seed=37,
+                online_risk_rollout_steps=0,
+            )
+        with self.assertRaises(ValueError):
+            collect_online_adaptation_risk_samples(
+                trained,
+                config,
+                episodes=1,
+                seed=37,
+                online_risk_option_commit_steps=0,
             )
         with self.assertRaises(ValueError):
             evaluate_online_partner_dialogue(
