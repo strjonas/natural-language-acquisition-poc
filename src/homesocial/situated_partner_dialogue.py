@@ -62,6 +62,8 @@ ONLINE_RECOVERY_POLICY_LABELS = (
     "rollout_mean",
     "rollout_min_regret",
     "rollout_mean_regret",
+    "rollout_mean_floor",
+    "rollout_mean_floor_regret",
 )
 ONLINE_RISK_FALLBACKS = (
     "pre_adaptation",
@@ -186,6 +188,7 @@ class OnlineRecoveryPolicy:
     feature_mode: str
     label: str
     regret_weight: float
+    floor_weight: float
     rollout_steps: int
     option_commit_steps: int
 
@@ -793,6 +796,7 @@ def train_online_recovery_policy(
     value_mode: str = "final_lowest",
     label: str = "rollout_min",
     regret_weight: float = 1.0,
+    floor_weight: float = 1.0,
     rollout_steps: int = 8,
     option_commit_steps: int = 1,
     online_self_model_calibrator: SituatedSelfModelCalibrator | None = None,
@@ -834,6 +838,8 @@ def train_online_recovery_policy(
         raise ValueError(f"Unknown recovery policy label: {label}.")
     if regret_weight < 0.0:
         raise ValueError("Recovery policy regret_weight must be non-negative.")
+    if floor_weight < 0.0:
+        raise ValueError("Recovery policy floor_weight must be non-negative.")
     if rollout_steps <= 0:
         raise ValueError("Recovery policy rollout_steps must be positive.")
     if option_commit_steps <= 0:
@@ -951,6 +957,7 @@ def train_online_recovery_policy(
                     label=label,
                     regret_dataset=label_dataset,
                     regret_weight=regret_weight,
+                    floor_weight=floor_weight,
                 )
             )
             if len(features) >= max_samples:
@@ -1084,6 +1091,7 @@ def train_online_recovery_policy(
         feature_mode=feature_mode,
         label=label,
         regret_weight=regret_weight,
+        floor_weight=floor_weight,
         rollout_steps=rollout_steps,
         option_commit_steps=option_commit_steps,
     )
@@ -2294,14 +2302,44 @@ def _online_rollout_risk_label(
     seed: int,
     label: str,
 ) -> float:
+    min_harm, mean_harm = _online_rollout_harm_summary(
+        env,
+        observation,
+        option_name=option_name,
+        current_lowest=current_lowest,
+        rng=rng,
+        option_action_noise=option_action_noise,
+        option_commit_steps=option_commit_steps,
+        rollout_steps=rollout_steps,
+        rollout_policy=rollout_policy,
+        seed=seed,
+    )
+    if label == "rollout_min":
+        return min_harm
+    if label == "rollout_mean":
+        return mean_harm
+    raise ValueError(f"Unknown rollout risk label: {label}.")
+
+
+def _online_rollout_harm_summary(
+    env: HomeostaticSocialGrid,
+    observation,
+    *,
+    option_name: str,
+    current_lowest: float,
+    rng: np.random.Generator,
+    option_action_noise: float,
+    option_commit_steps: int,
+    rollout_steps: int,
+    rollout_policy: str,
+    seed: int,
+) -> tuple[float, float]:
     if option_commit_steps <= 0:
         raise ValueError("option_commit_steps must be positive.")
     if rollout_steps <= 0:
         raise ValueError("rollout_steps must be positive.")
     if rollout_policy not in STATE_POLICIES:
         raise ValueError(f"Unknown rollout policy: {rollout_policy}.")
-    if label not in {"rollout_min", "rollout_mean"}:
-        raise ValueError(f"Unknown rollout risk label: {label}.")
 
     branch = deepcopy(env)
     branch_observation = observation
@@ -2323,11 +2361,12 @@ def _online_rollout_risk_label(
         viabilities.append(float(branch_observation.needs.viability()))
         if terminated or truncated:
             break
-    if label == "rollout_min":
-        realized = float(np.min(viabilities))
-    else:
-        realized = float(np.mean(viabilities[1:] or viabilities))
-    return max(0.0, current_lowest - realized)
+    realized_min = float(np.min(viabilities))
+    realized_mean = float(np.mean(viabilities[1:] or viabilities))
+    return (
+        max(0.0, current_lowest - realized_min),
+        max(0.0, current_lowest - realized_mean),
+    )
 
 
 def _online_recovery_training_label(
@@ -2346,13 +2385,15 @@ def _online_recovery_training_label(
     label: str,
     regret_dataset: SituatedPartnerDataset | None,
     regret_weight: float,
+    floor_weight: float,
 ) -> float:
     if label not in ONLINE_RECOVERY_POLICY_LABELS:
         raise ValueError(f"Unknown recovery policy label: {label}.")
     if regret_weight < 0.0:
         raise ValueError("Recovery policy regret_weight must be non-negative.")
-    base_label = label.replace("_regret", "")
-    harm = _online_rollout_risk_label(
+    if floor_weight < 0.0:
+        raise ValueError("Recovery policy floor_weight must be non-negative.")
+    min_harm, mean_harm = _online_rollout_harm_summary(
         env,
         observation,
         option_name=option_name,
@@ -2363,8 +2404,13 @@ def _online_recovery_training_label(
         rollout_steps=rollout_steps,
         rollout_policy=rollout_policy,
         seed=seed,
-        label=base_label,
     )
+    if label.startswith("rollout_min"):
+        harm = min_harm
+    else:
+        harm = mean_harm
+    if "_floor" in label:
+        harm += floor_weight * min_harm
     if not label.endswith("_regret"):
         return harm
     if regret_dataset is None:
@@ -3218,6 +3264,7 @@ def main() -> None:
             value_mode=args.value_mode,
             label=args.online_recovery_policy_label,
             regret_weight=args.online_recovery_policy_regret_weight,
+            floor_weight=args.online_recovery_policy_floor_weight,
             rollout_steps=args.online_recovery_policy_rollout_steps,
             option_commit_steps=args.online_recovery_policy_option_commit_steps,
             online_self_model_calibrator=calibrator,
@@ -3514,6 +3561,11 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--online-recovery-policy-regret-weight",
+        type=float,
+        default=1.0,
+    )
+    parser.add_argument(
+        "--online-recovery-policy-floor-weight",
         type=float,
         default=1.0,
     )

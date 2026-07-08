@@ -352,6 +352,9 @@ Completed:
   (`rollout_mean_regret`, weight `0.1`) raised original mean viability to
   `0.711991` and kept `zero_outcome` clearly worse, but did not preserve the
   minimum-viability floor.
+- floor-aware scalar recovery labels; short probes showed that adding an
+  explicit minimum-viability term still did not recover the safety floor,
+  narrowing the next approach to constrained or paired recovery selection.
 
 Not yet passed:
 
@@ -413,6 +416,9 @@ Not yet passed:
 - floor-preserving recovery objectives, because scalar regret-aware labels
   reduced the regret problem only modestly and lowered original minimum
   viability to `0.013386`.
+- constrained recovery selection, because floor-aware scalar labels with
+  weights `0.5` and `2.0` failed to restore minimum viability while preserving
+  the outcome-channel ablation.
 
 Interpretation:
 

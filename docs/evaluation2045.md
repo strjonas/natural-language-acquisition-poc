@@ -946,6 +946,15 @@ viability). The cost is that the original safety floor fell to `0.013386` and
 terminations rose to `90.00%`. This suggests the next version should train
 paired online recovery attempts with an explicit minimum-viability or floor
 constraint rather than relying on a single scalar regret/harm target.
+Floor-aware scalar labels were added next (`rollout_mean_floor` and
+`rollout_mean_floor_regret`), but the short probes confirm the same diagnosis.
+With regret weight `0.1`, floor weight `0.5` kept mean viability high
+(`0.711810`) but left minimum viability low (`0.013277`); floor weight `2.0`
+reduced regret only modestly (`0.112580`) while mean viability fell to
+`0.683877` and termination rose to `96.67%`. This is negative evidence against
+more scalar label shaping. The next real step is a constrained or paired
+selector: preserve an acceptable predicted floor first, then optimize regret or
+mean recovery quality inside that feasible set.
 
 ## Commands
 
