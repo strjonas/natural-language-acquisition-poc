@@ -987,6 +987,15 @@ outcome-channel dependence but not the strong safety-floor or regret gains from
 the first rich checkpoint. The next step should focus on cross-model
 calibration of the floor constraint or stronger rich option-world training,
 not scaling up yet.
+The first cross-model calibration fix is now implemented as
+`all_value_knn_lcb`: it calibrates predicted final self-state for the
+constrained floor filter while keeping local value LCB. On the fresh rich
+checkpoint, original minimum viability rose only slightly (`0.014500` to
+`0.015818`), but regret improved (`0.135149` to `0.120874`) and termination
+fell (`88.33%` to `86.67%`); `zero_outcome` still collapsed to `0.000000`
+minimum viability. This is useful but insufficient. The floor constraint is
+now less miscalibrated, but the system still needs either stronger self-world
+training or a more robust cross-model floor calibration method.
 
 ## Commands
 

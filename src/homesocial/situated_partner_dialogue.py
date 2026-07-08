@@ -52,7 +52,13 @@ SITUATED_INTERVENTIONS = (
 SITUATED_VALUE_MODES = ("final_lowest", "trajectory_min", "trajectory_mean")
 SITUATED_OPTION_SETS = ("base", "extended")
 ONLINE_SELF_MODEL_SOURCES = ("exact", "learned")
-ONLINE_SELF_CALIBRATION_MODES = ("all", "values", "value_lcb", "value_knn_lcb")
+ONLINE_SELF_CALIBRATION_MODES = (
+    "all",
+    "values",
+    "value_lcb",
+    "value_knn_lcb",
+    "all_value_knn_lcb",
+)
 ONLINE_RISK_MODELS = ("knn", "ridge", "mlp")
 ONLINE_RISK_LABELS = ("branch", "rollout_min", "rollout_mean")
 ONLINE_RECOVERY_POLICY_SOURCES = ("state_policy", "risky_adaptive")
@@ -1920,7 +1926,7 @@ def _learned_online_state_dataset(
         if calibration_mode not in ONLINE_SELF_CALIBRATION_MODES:
             raise ValueError(f"Unknown online self-calibration mode: {calibration_mode}.")
         raw_values = values.copy()
-        if calibration_mode == "all":
+        if calibration_mode in {"all", "all_value_knn_lcb"}:
             final = np.clip(
                 final * calibrator.final_scale + calibrator.final_offset,
                 0.0,
@@ -1937,7 +1943,7 @@ def _learned_online_state_dataset(
                 0.0,
                 1.0,
             ).astype(np.float32)
-        elif calibration_mode == "value_knn_lcb":
+        elif calibration_mode in {"value_knn_lcb", "all_value_knn_lcb"}:
             values = np.clip(
                 values
                 - uncertainty_scale

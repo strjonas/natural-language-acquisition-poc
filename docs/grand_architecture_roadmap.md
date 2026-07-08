@@ -369,6 +369,10 @@ Completed:
   checkpoint preserved outcome-channel dependence (`zero_outcome` floor
   `0.000000`) but not the strong original safety floor (`0.014500`) or regret
   profile from the first rich checkpoint.
+- hybrid final-state/value calibration (`all_value_knn_lcb`) for constrained
+  recovery; on the second rich checkpoint it kept `zero_outcome` floor at
+  `0.000000` while improving original regret from `0.135149` to `0.120874`,
+  but only raised the original floor from `0.014500` to `0.015818`.
 
 Not yet passed:
 
@@ -442,6 +446,9 @@ Not yet passed:
 - cross-model calibration for constrained recovery floor thresholds, because
   the second rich-cycle checkpoint retained outcome dependence but did not
   preserve the strong safety-floor improvement.
+- stronger cross-model floor calibration or self-world training, because
+  `all_value_knn_lcb` improved regret and termination only modestly and did not
+  restore the first checkpoint's safety floor.
 
 Interpretation:
 

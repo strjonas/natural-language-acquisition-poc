@@ -4,7 +4,8 @@ import mlx.core as mx
 import numpy as np
 
 from homesocial.option_world_model import OptionBranchDataset, OptionBranchSample
-from homesocial.observations import observation_vector_size
+from homesocial.env import HomeostaticSocialGrid
+from homesocial.observations import observation_vector, observation_vector_size
 from homesocial.recurrent_ac import RecurrentActorCritic, RecurrentConfig
 from homesocial.situated_partner_dialogue import (
     EXTENDED_SITUATED_OPTION_NAMES,
@@ -12,6 +13,7 @@ from homesocial.situated_partner_dialogue import (
     collect_online_adaptation_risk_samples,
     collect_situated_partner_dataset,
     collect_situated_self_model_rank_samples,
+    _learned_online_state_dataset,
     _option_value,
     _partner_proposals,
     evaluate_online_partner_dialogue,
@@ -240,6 +242,61 @@ class SituatedPartnerDialogueTests(unittest.TestCase):
         self.assertEqual(
             calibrator.value_reference_errors.shape,
             (len(samples), len(EXTENDED_SITUATED_OPTION_NAMES)),
+        )
+        env = HomeostaticSocialGrid(
+            width=config.width,
+            height=config.height,
+            seed=31,
+            max_steps=config.max_steps,
+            randomize_world=config.randomize_world,
+            diagnostic_mode=config.diagnostic_mode,
+            body_dynamics_mode=config.body_dynamics_mode,
+        )
+        observation = env.reset(seed=31)
+        history = [
+            observation_vector(
+                observation,
+                width=config.width,
+                height=config.height,
+                include_language=config.include_language_channel,
+                include_object_kinds=config.include_object_kinds,
+                interoception_mode=config.interoception_mode,
+                body_dynamics_mode=config.body_dynamics_mode,
+            )
+        ]
+        raw_dataset = _learned_online_state_dataset(
+            model,
+            config,
+            env,
+            observation,
+            history,
+            option_names=EXTENDED_SITUATED_OPTION_NAMES,
+            horizon=1,
+            rng=np.random.default_rng(31),
+            option_action_noise=0.0,
+            value_mode="trajectory_mean",
+        )
+        calibrated_dataset = _learned_online_state_dataset(
+            model,
+            config,
+            env,
+            observation,
+            history,
+            option_names=EXTENDED_SITUATED_OPTION_NAMES,
+            horizon=1,
+            rng=np.random.default_rng(31),
+            option_action_noise=0.0,
+            value_mode="trajectory_mean",
+            calibrator=calibrator,
+            calibration_mode="all_value_knn_lcb",
+            uncertainty_knn=1,
+        )
+        self.assertEqual(calibrated_dataset.features.shape, raw_dataset.features.shape)
+        self.assertFalse(
+            np.allclose(
+                np.asarray(calibrated_dataset.features)[:, :, 4:8],
+                np.asarray(raw_dataset.features)[:, :, 4:8],
+            )
         )
 
     def test_partner_proposals_use_partial_body_views(self):
