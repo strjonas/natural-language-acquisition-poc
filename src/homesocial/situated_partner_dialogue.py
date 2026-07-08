@@ -72,6 +72,7 @@ ONLINE_RISK_FALLBACKS = (
     "lowest_risk_recovery",
     "message_recovery",
     "temporal_recovery",
+    "constrained_temporal_recovery",
 )
 EXTENDED_SITUATED_OPTION_NAMES = (
     "seek_lowest",
@@ -1475,6 +1476,7 @@ def evaluate_online_partner_dialogue(
     online_adaptation_risk_penalty: float = 0.0,
     online_adaptation_risk_fallback: str = "pre_adaptation",
     online_recovery_policy: OnlineRecoveryPolicy | None = None,
+    online_recovery_floor_margin: float = 0.0,
 ) -> OnlinePartnerResult:
     if partner_mode not in PARTNER_PROPOSAL_MODES:
         raise ValueError(f"Unknown partner proposal mode: {partner_mode}.")
@@ -1520,6 +1522,8 @@ def evaluate_online_partner_dialogue(
         raise ValueError("online_adaptation_min_value_gap must be non-negative.")
     if online_adaptation_choice_guard_margin < 0.0:
         raise ValueError("online_adaptation_choice_guard_margin must be non-negative.")
+    if online_recovery_floor_margin < 0.0:
+        raise ValueError("online_recovery_floor_margin must be non-negative.")
     if model_control == "adaptive_dialogue" and online_adaptation_steps <= 0:
         raise ValueError("adaptive_dialogue requires online_adaptation_steps > 0.")
     if online_self_model_source == "learned" and (
@@ -1533,7 +1537,10 @@ def evaluate_online_partner_dialogue(
         raise ValueError("Risk calibrator option names do not match online options.")
     if online_adaptation_risk_penalty > 0.0 and online_adaptation_risk_calibrator is None:
         raise ValueError("Risk-shaped adaptation requires a risk calibrator.")
-    if online_adaptation_risk_fallback == "temporal_recovery" and (
+    if online_adaptation_risk_fallback in {
+        "temporal_recovery",
+        "constrained_temporal_recovery",
+    } and (
         online_recovery_policy is None
         or online_self_model is None
         or online_self_model_config is None
@@ -1720,6 +1727,7 @@ def evaluate_online_partner_dialogue(
                             intervention=intervention,
                             seed=seed + 20_000 + episode + steps,
                             recovery_policy=online_recovery_policy,
+                            recovery_floor_margin=online_recovery_floor_margin,
                             self_model=online_self_model,
                             observation_history=observation_history,
                         )
@@ -2563,6 +2571,7 @@ def _online_risk_fallback_choice(
     intervention: str = "original",
     seed: int = 1,
     recovery_policy: OnlineRecoveryPolicy | None = None,
+    recovery_floor_margin: float = 0.0,
     self_model: RecurrentActorCritic | None = None,
     observation_history: list[np.ndarray] | None = None,
 ) -> int:
@@ -2607,14 +2616,27 @@ def _online_risk_fallback_choice(
         )
         candidate_logits = logits[np.asarray(candidates, dtype=np.int32)]
         return int(candidates[int(np.argmax(candidate_logits))])
-    if fallback == "temporal_recovery":
+    if recovery_floor_margin < 0.0:
+        raise ValueError("Recovery floor margin must be non-negative.")
+    if fallback in {"temporal_recovery", "constrained_temporal_recovery"}:
         candidates = _recovery_option_indices(dataset)
         if not candidates:
             return pre_adaptation_choice
         if recovery_policy is None or self_model is None or observation_history is None:
-            raise ValueError("temporal_recovery requires a recovery policy and history.")
+            raise ValueError(
+                f"{fallback} requires a recovery policy and history."
+            )
         if recovery_policy.option_names != dataset.option_names:
             raise ValueError("Recovery policy option names do not match online options.")
+        selectable = candidates
+        if fallback == "constrained_temporal_recovery":
+            selectable = _floor_feasible_recovery_candidates(
+                dataset,
+                candidates,
+                intervention=intervention,
+                seed=seed,
+                floor_margin=recovery_floor_margin,
+            )
         risks = [
             _online_recovery_policy_estimate(
                 recovery_policy,
@@ -2625,10 +2647,43 @@ def _online_risk_fallback_choice(
                 seed=seed,
                 choice=choice,
             )
-            for choice in candidates
+            for choice in selectable
         ]
-        return int(candidates[int(np.argmin(risks))])
+        return int(selectable[int(np.argmin(risks))])
     raise ValueError(f"Unknown online adaptation risk fallback: {fallback}.")
+
+
+def _floor_feasible_recovery_candidates(
+    dataset: SituatedPartnerDataset,
+    candidates: list[int],
+    *,
+    intervention: str,
+    seed: int,
+    floor_margin: float,
+) -> list[int]:
+    if floor_margin < 0.0:
+        raise ValueError("Recovery floor margin must be non-negative.")
+    if not candidates:
+        return []
+    intervened = intervene_situated_partner_features(
+        dataset,
+        intervention=intervention,
+        seed=seed,
+    )
+    features = np.asarray(intervened.features, dtype=np.float32)
+    if features.ndim != 3 or features.shape[0] != 1 or features.shape[2] < 8:
+        raise ValueError("Constrained recovery requires situated option features.")
+    predicted_floors = np.min(features[0, candidates, 4:8], axis=1)
+    current_floor = float(np.asarray(dataset.current_lowest, dtype=np.float32)[0])
+    threshold = current_floor - floor_margin
+    feasible = [
+        candidate
+        for candidate, predicted_floor in zip(candidates, predicted_floors)
+        if float(predicted_floor) >= threshold
+    ]
+    if feasible:
+        return feasible
+    return candidates
 
 
 def _option_index_or_default(
@@ -3363,6 +3418,9 @@ def main() -> None:
                                 args.online_adaptation_risk_fallback
                             ),
                             online_recovery_policy=recovery_policy,
+                            online_recovery_floor_margin=(
+                                args.online_recovery_floor_margin
+                            ),
                         )
                     )
                 )
@@ -3541,6 +3599,7 @@ def _parse_args() -> argparse.Namespace:
         choices=ONLINE_RISK_FALLBACKS,
         default="pre_adaptation",
     )
+    parser.add_argument("--online-recovery-floor-margin", type=float, default=0.0)
     parser.add_argument("--online-recovery-policy", action="store_true")
     parser.add_argument("--online-recovery-policy-episodes", type=int, default=40)
     parser.add_argument("--online-recovery-policy-samples", type=int, default=1200)

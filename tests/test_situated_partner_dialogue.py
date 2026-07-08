@@ -629,6 +629,28 @@ class SituatedPartnerDialogueTests(unittest.TestCase):
             online_recovery_policy=outcome_recovery_policy,
         )
         self.assertEqual(outcome_temporal_recovery.episodes, 1)
+        constrained_temporal_recovery = evaluate_online_partner_dialogue(
+            trained,
+            config,
+            episodes=1,
+            seed=19,
+            horizon=1,
+            intervention="zero_outcome",
+            model_control="adaptive_dialogue",
+            partner_mode="partial_body",
+            online_adaptation_steps=1,
+            online_adaptation_local=True,
+            online_self_model_source="learned",
+            online_self_model=self_model,
+            online_self_model_config=config,
+            online_adaptation_risk_calibrator=risk_calibrator,
+            online_adaptation_risk_threshold=0.0,
+            online_adaptation_risk_knn=1,
+            online_adaptation_risk_fallback="constrained_temporal_recovery",
+            online_recovery_policy=outcome_recovery_policy,
+            online_recovery_floor_margin=0.1,
+        )
+        self.assertEqual(constrained_temporal_recovery.episodes, 1)
         with self.assertRaises(ValueError):
             evaluate_online_partner_dialogue(
                 trained,
@@ -832,6 +854,16 @@ class SituatedPartnerDialogueTests(unittest.TestCase):
                 model_control="adaptive_dialogue",
                 online_adaptation_steps=1,
                 online_adaptation_risk_fallback="temporal_recovery",
+            )
+        with self.assertRaises(ValueError):
+            evaluate_online_partner_dialogue(
+                trained,
+                config,
+                episodes=1,
+                seed=17,
+                model_control="adaptive_dialogue",
+                online_adaptation_steps=1,
+                online_recovery_floor_margin=-0.1,
             )
         with self.assertRaises(ValueError):
             train_online_recovery_policy(

@@ -955,6 +955,17 @@ reduced regret only modestly (`0.112580`) while mean viability fell to
 more scalar label shaping. The next real step is a constrained or paired
 selector: preserve an acceptable predicted floor first, then optimize regret or
 mean recovery quality inside that feasible set.
+That constrained selector now exists as `constrained_temporal_recovery`, and it
+is the best recovery tradeoff so far. It filters candidates by the learned
+predicted final self-state floor under the active outcome intervention, then
+uses temporal recovery scoring inside the feasible set. The 60-episode audit
+with `history_outcome` features and `rollout_mean` labels reached `0.697448`
+mean viability, `0.052947` minimum viability, and `0.116298` regret; the
+matched `zero_outcome` run stayed much worse (`0.670144` mean, `0.008126`
+minimum, `0.127610` regret). This preserves the causal dependence while roughly
+doubling the original safety floor compared with unconstrained outcome-aware
+recovery. The next target is replication across seeds/checkpoints and then a
+paired recovery objective if the constrained selector generalizes.
 
 ## Commands
 

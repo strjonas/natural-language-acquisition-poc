@@ -355,6 +355,11 @@ Completed:
 - floor-aware scalar recovery labels; short probes showed that adding an
   explicit minimum-viability term still did not recover the safety floor,
   narrowing the next approach to constrained or paired recovery selection.
+- constrained temporal recovery selection, where recovery candidates are first
+  filtered by learned predicted final self-state floor under the same outcome
+  intervention and then ranked by temporal recovery score; this raised the
+  original safety floor to `0.052947` while keeping `zero_outcome` low
+  (`0.008126`).
 
 Not yet passed:
 
@@ -419,6 +424,8 @@ Not yet passed:
 - constrained recovery selection, because floor-aware scalar labels with
   weights `0.5` and `2.0` failed to restore minimum viability while preserving
   the outcome-channel ablation.
+- replication of constrained temporal recovery across seeds and checkpoints,
+  because the current best recovery result is still a one-seed audit.
 
 Interpretation:
 
