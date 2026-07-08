@@ -360,6 +360,10 @@ Completed:
   intervention and then ranked by temporal recovery score; this raised the
   original safety floor to `0.052947` while keeping `zero_outcome` low
   (`0.008126`).
+- three-online-seed constrained recovery replication on one rich option-world
+  checkpoint: original averaged `0.688533` mean viability, `0.047911` minimum
+  viability, `71.67%` termination, and `0.095358` regret versus `zero_outcome`
+  at `0.671979`, `0.015155`, `92.22%`, and `0.105771`.
 
 Not yet passed:
 
@@ -424,8 +428,12 @@ Not yet passed:
 - constrained recovery selection, because floor-aware scalar labels with
   weights `0.5` and `2.0` failed to restore minimum viability while preserving
   the outcome-channel ablation.
-- replication of constrained temporal recovery across seeds and checkpoints,
-  because the current best recovery result is still a one-seed audit.
+- cross-checkpoint replication of constrained temporal recovery, because the
+  current best recovery result now replicates across online seeds on one
+  checkpoint but not yet across independently trained self/world models.
+- stronger per-seed floor reliability for constrained recovery, because seed
+  `12002` had weak minimum-viability separation despite the favorable averaged
+  pattern.
 
 Interpretation:
 

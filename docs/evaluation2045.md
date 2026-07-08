@@ -966,6 +966,15 @@ minimum, `0.127610` regret). This preserves the causal dependence while roughly
 doubling the original safety floor compared with unconstrained outcome-aware
 recovery. The next target is replication across seeds/checkpoints and then a
 paired recovery objective if the constrained selector generalizes.
+The first replication pass across three online seeds is positive but not
+finished. Averaged over seeds `12001`-`12003`, constrained recovery reached
+`0.688533` mean viability, `0.047911` minimum viability, `71.67%` termination,
+and `0.095358` regret, versus `zero_outcome` at `0.671979`, `0.015155`,
+`92.22%`, and `0.105771`. Regret was lower than `zero_outcome` on every seed,
+and the safety-floor advantage was strong on two of three seeds; seed `12002`
+had weak minimum-viability separation. The result is now replicated across
+online seeds on one checkpoint, but it still needs cross-checkpoint replication
+before treating constrained recovery as stable.
 
 ## Commands
 
