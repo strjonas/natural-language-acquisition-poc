@@ -57,6 +57,12 @@ ONLINE_RISK_MODELS = ("knn", "ridge", "mlp")
 ONLINE_RISK_LABELS = ("branch", "rollout_min", "rollout_mean")
 ONLINE_RECOVERY_POLICY_SOURCES = ("state_policy", "risky_adaptive")
 ONLINE_RECOVERY_POLICY_FEATURE_MODES = ("history", "history_outcome")
+ONLINE_RECOVERY_POLICY_LABELS = (
+    "rollout_min",
+    "rollout_mean",
+    "rollout_min_regret",
+    "rollout_mean_regret",
+)
 ONLINE_RISK_FALLBACKS = (
     "pre_adaptation",
     "seek_lowest",
@@ -179,6 +185,7 @@ class OnlineRecoveryPolicy:
     source: str
     feature_mode: str
     label: str
+    regret_weight: float
     rollout_steps: int
     option_commit_steps: int
 
@@ -785,6 +792,7 @@ def train_online_recovery_policy(
     option_action_noise: float = 0.0,
     value_mode: str = "final_lowest",
     label: str = "rollout_min",
+    regret_weight: float = 1.0,
     rollout_steps: int = 8,
     option_commit_steps: int = 1,
     online_self_model_calibrator: SituatedSelfModelCalibrator | None = None,
@@ -822,8 +830,10 @@ def train_online_recovery_policy(
         raise ValueError("Option action noise must be in [0, 1].")
     if value_mode not in SITUATED_VALUE_MODES:
         raise ValueError(f"Unknown situated value mode: {value_mode}.")
-    if label not in {"rollout_min", "rollout_mean"}:
+    if label not in ONLINE_RECOVERY_POLICY_LABELS:
         raise ValueError(f"Unknown recovery policy label: {label}.")
+    if regret_weight < 0.0:
+        raise ValueError("Recovery policy regret_weight must be non-negative.")
     if rollout_steps <= 0:
         raise ValueError("Recovery policy rollout_steps must be positive.")
     if option_commit_steps <= 0:
@@ -881,9 +891,7 @@ def train_online_recovery_policy(
     features: list[np.ndarray] = []
     risks: list[float] = []
 
-    def recovery_feature_dataset(observation, observation_history):
-        if feature_mode == "history":
-            return None
+    def learned_state_dataset(observation, observation_history):
         return _learned_online_state_dataset(
             self_model,
             config,
@@ -909,7 +917,10 @@ def train_online_recovery_policy(
     ) -> None:
         feature_dataset = state_dataset
         if feature_mode != "history" and feature_dataset is None:
-            feature_dataset = recovery_feature_dataset(observation, observation_history)
+            feature_dataset = learned_state_dataset(observation, observation_history)
+        label_dataset = state_dataset
+        if label.endswith("_regret") and label_dataset is None:
+            label_dataset = learned_state_dataset(observation, observation_history)
         current_lowest = float(np.min(_needs_array(observation.needs)))
         for choice in _recovery_option_indices_from_names(trained.option_names):
             features.append(
@@ -925,10 +936,11 @@ def train_online_recovery_policy(
                 )
             )
             risks.append(
-                _online_rollout_risk_label(
+                _online_recovery_training_label(
                     env,
                     observation,
                     option_name=trained.option_names[choice],
+                    choice=choice,
                     current_lowest=current_lowest,
                     rng=rng,
                     option_action_noise=option_action_noise,
@@ -937,6 +949,8 @@ def train_online_recovery_policy(
                     rollout_policy=state_policy,
                     seed=seed + 8_520_000 + episode * 10_000 + len(features),
                     label=label,
+                    regret_dataset=label_dataset,
+                    regret_weight=regret_weight,
                 )
             )
             if len(features) >= max_samples:
@@ -1069,6 +1083,7 @@ def train_online_recovery_policy(
         source=source,
         feature_mode=feature_mode,
         label=label,
+        regret_weight=regret_weight,
         rollout_steps=rollout_steps,
         option_commit_steps=option_commit_steps,
     )
@@ -2315,6 +2330,52 @@ def _online_rollout_risk_label(
     return max(0.0, current_lowest - realized)
 
 
+def _online_recovery_training_label(
+    env: HomeostaticSocialGrid,
+    observation,
+    *,
+    option_name: str,
+    choice: int,
+    current_lowest: float,
+    rng: np.random.Generator,
+    option_action_noise: float,
+    option_commit_steps: int,
+    rollout_steps: int,
+    rollout_policy: str,
+    seed: int,
+    label: str,
+    regret_dataset: SituatedPartnerDataset | None,
+    regret_weight: float,
+) -> float:
+    if label not in ONLINE_RECOVERY_POLICY_LABELS:
+        raise ValueError(f"Unknown recovery policy label: {label}.")
+    if regret_weight < 0.0:
+        raise ValueError("Recovery policy regret_weight must be non-negative.")
+    base_label = label.replace("_regret", "")
+    harm = _online_rollout_risk_label(
+        env,
+        observation,
+        option_name=option_name,
+        current_lowest=current_lowest,
+        rng=rng,
+        option_action_noise=option_action_noise,
+        option_commit_steps=option_commit_steps,
+        rollout_steps=rollout_steps,
+        rollout_policy=rollout_policy,
+        seed=seed,
+        label=base_label,
+    )
+    if not label.endswith("_regret"):
+        return harm
+    if regret_dataset is None:
+        raise ValueError("Regret-aware recovery labels require a state dataset.")
+    values = np.asarray(regret_dataset.option_values, dtype=np.float32)[0]
+    if not 0 <= choice < values.shape[0]:
+        raise ValueError("Recovery regret choice index is out of range.")
+    regret = max(0.0, float(np.max(values) - values[choice]))
+    return harm + regret_weight * regret
+
+
 def _online_choice(
     trained: TrainedSituatedPartnerDialogue,
     state_dataset: SituatedPartnerDataset,
@@ -3156,6 +3217,7 @@ def main() -> None:
             option_action_noise=args.online_option_action_noise,
             value_mode=args.value_mode,
             label=args.online_recovery_policy_label,
+            regret_weight=args.online_recovery_policy_regret_weight,
             rollout_steps=args.online_recovery_policy_rollout_steps,
             option_commit_steps=args.online_recovery_policy_option_commit_steps,
             online_self_model_calibrator=calibrator,
@@ -3447,8 +3509,13 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--online-recovery-policy-label",
-        choices=("rollout_min", "rollout_mean"),
+        choices=ONLINE_RECOVERY_POLICY_LABELS,
         default="rollout_min",
+    )
+    parser.add_argument(
+        "--online-recovery-policy-regret-weight",
+        type=float,
+        default=1.0,
     )
     parser.add_argument("--online-recovery-policy-rollout-steps", type=int, default=8)
     parser.add_argument(

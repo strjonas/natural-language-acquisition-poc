@@ -348,6 +348,10 @@ Completed:
   interventions as the dialogue model; original mean viability reached
   `0.697656`, and `zero_outcome` minimum viability dropped to `0.008126`,
   giving the clearest recovery-level outcome-channel dependence so far.
+- regret-aware temporal recovery labels; the first useful setting
+  (`rollout_mean_regret`, weight `0.1`) raised original mean viability to
+  `0.711991` and kept `zero_outcome` clearly worse, but did not preserve the
+  minimum-viability floor.
 
 Not yet passed:
 
@@ -406,6 +410,9 @@ Not yet passed:
   audit improved causal dependence and mean viability but raised regret to
   `0.127612` and lowered the original safety floor relative to history-only
   recovery.
+- floor-preserving recovery objectives, because scalar regret-aware labels
+  reduced the regret problem only modestly and lowered original minimum
+  viability to `0.013386`.
 
 Interpretation:
 

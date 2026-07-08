@@ -938,6 +938,14 @@ original minimum viability fell to `0.026969` and regret rose sharply to
 `0.127612`. A threshold `0.12` probe did not fix the tradeoff. The next target
 should therefore be regret-aware online recovery-attempt training, not more
 threshold tuning.
+Regret-aware scalar labels now exist, but the first audit shows they are only a
+partial fix. `rollout_mean_regret` with weight `0.1` raised 60-episode original
+mean viability to `0.711991` and lowered regret slightly to `0.120255`, while
+`zero_outcome` stayed worse (`0.662587` mean viability, `0.006802` minimum
+viability). The cost is that the original safety floor fell to `0.013386` and
+terminations rose to `90.00%`. This suggests the next version should train
+paired online recovery attempts with an explicit minimum-viability or floor
+constraint rather than relying on a single scalar regret/harm target.
 
 ## Commands
 

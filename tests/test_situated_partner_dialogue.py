@@ -533,6 +533,7 @@ class SituatedPartnerDialogueTests(unittest.TestCase):
         self.assertEqual(recovery_policy.option_names, trained.option_names)
         self.assertEqual(recovery_policy.source, "state_policy")
         self.assertEqual(recovery_policy.feature_mode, "history")
+        self.assertEqual(recovery_policy.regret_weight, 1.0)
         outcome_recovery_policy = train_online_recovery_policy(
             trained,
             config,
@@ -548,6 +549,24 @@ class SituatedPartnerDialogueTests(unittest.TestCase):
             batch_size=4,
         )
         self.assertEqual(outcome_recovery_policy.feature_mode, "history_outcome")
+        regret_recovery_policy = train_online_recovery_policy(
+            trained,
+            config,
+            self_model,
+            episodes=1,
+            seed=43,
+            horizon=1,
+            max_samples=4,
+            rollout_steps=2,
+            feature_mode="history_outcome",
+            label="rollout_mean_regret",
+            regret_weight=0.5,
+            hidden_size=4,
+            epochs=1,
+            batch_size=4,
+        )
+        self.assertEqual(regret_recovery_policy.label, "rollout_mean_regret")
+        self.assertEqual(regret_recovery_policy.regret_weight, 0.5)
         temporal_recovery = evaluate_online_partner_dialogue(
             trained,
             config,
@@ -819,6 +838,24 @@ class SituatedPartnerDialogueTests(unittest.TestCase):
                 episodes=1,
                 seed=41,
                 feature_mode="unknown",
+            )
+        with self.assertRaises(ValueError):
+            train_online_recovery_policy(
+                trained,
+                config,
+                self_model,
+                episodes=1,
+                seed=41,
+                label="unknown",
+            )
+        with self.assertRaises(ValueError):
+            train_online_recovery_policy(
+                trained,
+                config,
+                self_model,
+                episodes=1,
+                seed=41,
+                regret_weight=-0.1,
             )
         with self.assertRaises(ValueError):
             train_online_recovery_policy(
