@@ -975,6 +975,18 @@ and the safety-floor advantage was strong on two of three seeds; seed `12002`
 had weak minimum-viability separation. The result is now replicated across
 online seeds on one checkpoint, but it still needs cross-checkpoint replication
 before treating constrained recovery as stable.
+The first cross-checkpoint pass narrows the claim. A renewable-random
+option-world checkpoint failed the constrained recovery probe entirely in its
+natural environment (`0.000000` minimum viability for both original and
+`zero_outcome`). A newly trained second rich-cycle checkpoint improved its
+option-world final-need MSE from `0.132157` to `0.014663` and trend accuracy
+from `0.2153` to `0.7707`, then partially replicated constrained recovery:
+original reached `0.679198` mean viability and `0.014500` minimum viability,
+while `zero_outcome` fell to `0.667518` and `0.000000`. This preserves
+outcome-channel dependence but not the strong safety-floor or regret gains from
+the first rich checkpoint. The next step should focus on cross-model
+calibration of the floor constraint or stronger rich option-world training,
+not scaling up yet.
 
 ## Commands
 

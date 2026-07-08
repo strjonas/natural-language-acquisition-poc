@@ -364,6 +364,11 @@ Completed:
   checkpoint: original averaged `0.688533` mean viability, `0.047911` minimum
   viability, `71.67%` termination, and `0.095358` regret versus `zero_outcome`
   at `0.671979`, `0.015155`, `92.22%`, and `0.105771`.
+- first cross-checkpoint constrained recovery pass: a renewable-random
+  checkpoint failed the probe, while a freshly trained second rich-cycle
+  checkpoint preserved outcome-channel dependence (`zero_outcome` floor
+  `0.000000`) but not the strong original safety floor (`0.014500`) or regret
+  profile from the first rich checkpoint.
 
 Not yet passed:
 
@@ -434,6 +439,9 @@ Not yet passed:
 - stronger per-seed floor reliability for constrained recovery, because seed
   `12002` had weak minimum-viability separation despite the favorable averaged
   pattern.
+- cross-model calibration for constrained recovery floor thresholds, because
+  the second rich-cycle checkpoint retained outcome dependence but did not
+  preserve the strong safety-floor improvement.
 
 Interpretation:
 
