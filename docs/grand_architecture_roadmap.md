@@ -373,6 +373,9 @@ Completed:
   recovery; on the second rich checkpoint it kept `zero_outcome` floor at
   `0.000000` while improving original regret from `0.135149` to `0.120874`,
   but only raised the original floor from `0.014500` to `0.015818`.
+- conservative final-state LCB calibration (`all_lcb_value_knn_lcb`) was tested
+  and rejected for now: it lowered regret but dropped original minimum viability
+  to `0.006170` on the fresh rich checkpoint.
 
 Not yet passed:
 
@@ -449,6 +452,9 @@ Not yet passed:
 - stronger cross-model floor calibration or self-world training, because
   `all_value_knn_lcb` improved regret and termination only modestly and did not
   restore the first checkpoint's safety floor.
+- broader calibrator coverage or paired constrained-selection training, because
+  uniformly pessimistic final-state LCB calibration worsened the original safety
+  floor instead of improving cross-model reliability.
 
 Interpretation:
 

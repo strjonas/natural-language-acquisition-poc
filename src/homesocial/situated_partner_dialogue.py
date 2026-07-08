@@ -58,6 +58,7 @@ ONLINE_SELF_CALIBRATION_MODES = (
     "value_lcb",
     "value_knn_lcb",
     "all_value_knn_lcb",
+    "all_lcb_value_knn_lcb",
 )
 ONLINE_RISK_MODELS = ("knn", "ridge", "mlp")
 ONLINE_RISK_LABELS = ("branch", "rollout_min", "rollout_mean")
@@ -1926,12 +1927,22 @@ def _learned_online_state_dataset(
         if calibration_mode not in ONLINE_SELF_CALIBRATION_MODES:
             raise ValueError(f"Unknown online self-calibration mode: {calibration_mode}.")
         raw_values = values.copy()
-        if calibration_mode in {"all", "all_value_knn_lcb"}:
+        if calibration_mode in {
+            "all",
+            "all_value_knn_lcb",
+            "all_lcb_value_knn_lcb",
+        }:
             final = np.clip(
                 final * calibrator.final_scale + calibrator.final_offset,
                 0.0,
                 1.0,
             ).astype(np.float32)
+            if calibration_mode == "all_lcb_value_knn_lcb":
+                final = np.clip(
+                    final - uncertainty_scale * calibrator.final_rmse,
+                    0.0,
+                    1.0,
+                ).astype(np.float32)
         values = np.clip(
             values * calibrator.value_scale + calibrator.value_offset,
             0.0,
@@ -1943,7 +1954,11 @@ def _learned_online_state_dataset(
                 0.0,
                 1.0,
             ).astype(np.float32)
-        elif calibration_mode in {"value_knn_lcb", "all_value_knn_lcb"}:
+        elif calibration_mode in {
+            "value_knn_lcb",
+            "all_value_knn_lcb",
+            "all_lcb_value_knn_lcb",
+        }:
             values = np.clip(
                 values
                 - uncertainty_scale

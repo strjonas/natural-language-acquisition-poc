@@ -996,6 +996,12 @@ fell (`88.33%` to `86.67%`); `zero_outcome` still collapsed to `0.000000`
 minimum viability. This is useful but insufficient. The floor constraint is
 now less miscalibrated, but the system still needs either stronger self-world
 training or a more robust cross-model floor calibration method.
+A more conservative final-state LCB variant, `all_lcb_value_knn_lcb`, did not
+fix this: on the fresh rich checkpoint it reduced regret but dropped original
+minimum viability to `0.006170` and mean viability to `0.664692`. This suggests
+the cross-model failure is not solved by making the floor filter uniformly more
+pessimistic; the next target should be better self-world representation,
+calibrator coverage, or paired constrained-selection training.
 
 ## Commands
 

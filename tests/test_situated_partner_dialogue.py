@@ -298,6 +298,27 @@ class SituatedPartnerDialogueTests(unittest.TestCase):
                 np.asarray(raw_dataset.features)[:, :, 4:8],
             )
         )
+        lcb_dataset = _learned_online_state_dataset(
+            model,
+            config,
+            env,
+            observation,
+            history,
+            option_names=EXTENDED_SITUATED_OPTION_NAMES,
+            horizon=1,
+            rng=np.random.default_rng(31),
+            option_action_noise=0.0,
+            value_mode="trajectory_mean",
+            calibrator=calibrator,
+            calibration_mode="all_lcb_value_knn_lcb",
+            uncertainty_knn=1,
+        )
+        self.assertTrue(
+            np.all(
+                np.asarray(lcb_dataset.features)[:, :, 4:8]
+                <= np.asarray(calibrated_dataset.features)[:, :, 4:8] + 1e-6
+            )
+        )
 
     def test_partner_proposals_use_partial_body_views(self):
         dataset = situated_partner_dataset_from_branches(_branch_dataset())
