@@ -343,6 +343,11 @@ Completed:
   fixed receiver but did not independently solve fresh-receiver transfer, while
   combining imitation with transfer pressure gave the best accuracy/transfer
   balance so far for the new sender.
+- outcome-aware visited-risk temporal recovery, where the recovery scorer sees
+  learned predicted final self-state and self-state delta under the same
+  interventions as the dialogue model; original mean viability reached
+  `0.697656`, and `zero_outcome` minimum viability dropped to `0.008126`,
+  giving the clearest recovery-level outcome-channel dependence so far.
 
 Not yet passed:
 
@@ -397,6 +402,10 @@ Not yet passed:
   curriculum or imitation warmstart,
 - replicated latent option-world and option-language results across seeds,
 - richer self-battery tests beyond one-step consequences and attribution.
+- regret-aware online recovery training, because the outcome-aware recovery
+  audit improved causal dependence and mean viability but raised regret to
+  `0.127612` and lowered the original safety floor relative to history-only
+  recovery.
 
 Interpretation:
 

@@ -56,6 +56,7 @@ ONLINE_SELF_CALIBRATION_MODES = ("all", "values", "value_lcb", "value_knn_lcb")
 ONLINE_RISK_MODELS = ("knn", "ridge", "mlp")
 ONLINE_RISK_LABELS = ("branch", "rollout_min", "rollout_mean")
 ONLINE_RECOVERY_POLICY_SOURCES = ("state_policy", "risky_adaptive")
+ONLINE_RECOVERY_POLICY_FEATURE_MODES = ("history", "history_outcome")
 ONLINE_RISK_FALLBACKS = (
     "pre_adaptation",
     "seek_lowest",
@@ -176,6 +177,7 @@ class OnlineRecoveryPolicy:
     feature_std: np.ndarray
     option_names: tuple[str, ...]
     source: str
+    feature_mode: str
     label: str
     rollout_steps: int
     option_commit_steps: int
@@ -777,6 +779,7 @@ def train_online_recovery_policy(
     horizon: int = 6,
     state_policy: str = "cycle",
     source: str = "state_policy",
+    feature_mode: str = "history",
     max_samples: int = 1500,
     partner_mode: str = "partial_body",
     option_action_noise: float = 0.0,
@@ -811,6 +814,8 @@ def train_online_recovery_policy(
         raise ValueError(f"Unknown state policy: {state_policy}.")
     if source not in ONLINE_RECOVERY_POLICY_SOURCES:
         raise ValueError(f"Unknown recovery policy source: {source}.")
+    if feature_mode not in ONLINE_RECOVERY_POLICY_FEATURE_MODES:
+        raise ValueError(f"Unknown recovery policy feature mode: {feature_mode}.")
     if partner_mode not in PARTNER_PROPOSAL_MODES:
         raise ValueError(f"Unknown partner proposal mode: {partner_mode}.")
     if not 0.0 <= option_action_noise <= 1.0:
@@ -876,7 +881,35 @@ def train_online_recovery_policy(
     features: list[np.ndarray] = []
     risks: list[float] = []
 
-    def append_recovery_samples(observation, observation_history, episode: int) -> None:
+    def recovery_feature_dataset(observation, observation_history):
+        if feature_mode == "history":
+            return None
+        return _learned_online_state_dataset(
+            self_model,
+            config,
+            env,
+            observation,
+            observation_history,
+            option_names=trained.option_names,
+            horizon=max(1, horizon),
+            rng=rng,
+            option_action_noise=option_action_noise,
+            value_mode=value_mode,
+            calibrator=online_self_model_calibrator,
+            calibration_mode=online_self_calibration_mode,
+            uncertainty_scale=online_self_calibration_uncertainty_scale,
+            uncertainty_knn=online_self_calibration_knn,
+        )
+
+    def append_recovery_samples(
+        observation,
+        observation_history,
+        episode: int,
+        state_dataset: SituatedPartnerDataset | None = None,
+    ) -> None:
+        feature_dataset = state_dataset
+        if feature_mode != "history" and feature_dataset is None:
+            feature_dataset = recovery_feature_dataset(observation, observation_history)
         current_lowest = float(np.min(_needs_array(observation.needs)))
         for choice in _recovery_option_indices_from_names(trained.option_names):
             features.append(
@@ -885,6 +918,10 @@ def train_online_recovery_policy(
                     observation_history,
                     option_names=trained.option_names,
                     choice=choice,
+                    feature_mode=feature_mode,
+                    state_dataset=feature_dataset,
+                    intervention="original",
+                    seed=seed + 8_515_000 + episode * 10_000 + len(features),
                 )
             )
             risks.append(
@@ -981,7 +1018,12 @@ def train_online_recovery_policy(
                     k=risk_knn,
                 )
                 if risk > risk_threshold:
-                    append_recovery_samples(observation, observation_history, episode)
+                    append_recovery_samples(
+                        observation,
+                        observation_history,
+                        episode,
+                        decision_dataset,
+                    )
                 action = _situated_option_action(
                     trained.option_names[choice],
                     observation,
@@ -1025,6 +1067,7 @@ def train_online_recovery_policy(
         feature_std=feature_std,
         option_names=trained.option_names,
         source=source,
+        feature_mode=feature_mode,
         label=label,
         rollout_steps=rollout_steps,
         option_commit_steps=option_commit_steps,
@@ -2470,6 +2513,9 @@ def _online_risk_fallback_choice(
                 recovery_policy,
                 self_model,
                 observation_history,
+                dataset,
+                intervention=intervention,
+                seed=seed,
                 choice=choice,
             )
             for choice in candidates
@@ -2533,7 +2579,13 @@ def _temporal_recovery_feature_vector(
     *,
     option_names: tuple[str, ...],
     choice: int,
+    feature_mode: str = "history",
+    state_dataset: SituatedPartnerDataset | None = None,
+    intervention: str = "original",
+    seed: int = 1,
 ) -> np.ndarray:
+    if feature_mode not in ONLINE_RECOVERY_POLICY_FEATURE_MODES:
+        raise ValueError(f"Unknown recovery policy feature mode: {feature_mode}.")
     if not observation_history:
         raise ValueError("Temporal recovery feature requires observation history.")
     if not 0 <= choice < len(option_names):
@@ -2542,24 +2594,39 @@ def _temporal_recovery_feature_vector(
     hidden = np.asarray(self_model.hidden_states(observations), dtype=np.float32)[0, -1]
     current = observation_history[-1][:4].astype(np.float32)
     option_one_hot = np.eye(len(option_names), dtype=np.float32)[choice]
-    return np.concatenate(
-        [
-            hidden.astype(np.float32),
-            current,
-            option_one_hot,
-            np.asarray(
-                [float(choice) / float(max(1, len(option_names) - 1))],
-                dtype=np.float32,
-            ),
-        ]
-    ).astype(np.float32)
+    feature_blocks = [
+        hidden.astype(np.float32),
+        current,
+        option_one_hot,
+        np.asarray(
+            [float(choice) / float(max(1, len(option_names) - 1))],
+            dtype=np.float32,
+        ),
+    ]
+    if feature_mode == "history_outcome":
+        if state_dataset is None:
+            raise ValueError("history_outcome recovery features require a state dataset.")
+        if state_dataset.option_names != option_names:
+            raise ValueError("Recovery feature option names do not match state dataset.")
+        intervened = intervene_situated_partner_features(
+            state_dataset,
+            intervention=intervention,
+            seed=seed,
+        )
+        option_features = np.asarray(intervened.features, dtype=np.float32)[0, choice]
+        final_and_delta = option_features[4:12].astype(np.float32)
+        feature_blocks.append(final_and_delta)
+    return np.concatenate(feature_blocks).astype(np.float32)
 
 
 def _online_recovery_policy_estimate(
     recovery_policy: OnlineRecoveryPolicy,
     self_model: RecurrentActorCritic,
     observation_history: list[np.ndarray],
+    state_dataset: SituatedPartnerDataset,
     *,
+    intervention: str,
+    seed: int,
     choice: int,
 ) -> float:
     feature = _temporal_recovery_feature_vector(
@@ -2567,6 +2634,10 @@ def _online_recovery_policy_estimate(
         observation_history,
         option_names=recovery_policy.option_names,
         choice=choice,
+        feature_mode=recovery_policy.feature_mode,
+        state_dataset=state_dataset,
+        intervention=intervention,
+        seed=seed,
     )
     normalized = (feature - recovery_policy.feature_mean) / (
         recovery_policy.feature_std + 1e-6
@@ -3079,6 +3150,7 @@ def main() -> None:
             horizon=args.horizon,
             state_policy=args.state_policy,
             source=args.online_recovery_policy_source,
+            feature_mode=args.online_recovery_policy_feature_mode,
             max_samples=args.online_recovery_policy_samples,
             partner_mode=args.train_partner_mode,
             option_action_noise=args.online_option_action_noise,
@@ -3367,6 +3439,11 @@ def _parse_args() -> argparse.Namespace:
         "--online-recovery-policy-source",
         choices=ONLINE_RECOVERY_POLICY_SOURCES,
         default="state_policy",
+    )
+    parser.add_argument(
+        "--online-recovery-policy-feature-mode",
+        choices=ONLINE_RECOVERY_POLICY_FEATURE_MODES,
+        default="history",
     )
     parser.add_argument(
         "--online-recovery-policy-label",

@@ -927,6 +927,17 @@ is that `zero_outcome` still has a strong safety floor (`0.046966` minimum
 viability), so the recovery policy is only partly dependent on communicated
 self-outcome. The next target is online recovery-attempt training with an
 explicit outcome-channel dependence audit.
+That dependence audit is now stronger. `history_outcome` recovery features add
+the learned predicted final self-state and self-state delta to the temporal
+recovery scorer, then route those fields through the same outcome interventions
+as the dialogue model. On the same 60-episode visited-risk audit, original mean
+viability rose to `0.697656`, while `zero_outcome` minimum viability fell to
+`0.008126`; this is the clearest evidence so far that recovery behavior depends
+on learned future/delta self-state features. It is not a clean win yet:
+original minimum viability fell to `0.026969` and regret rose sharply to
+`0.127612`. A threshold `0.12` probe did not fix the tradeoff. The next target
+should therefore be regret-aware online recovery-attempt training, not more
+threshold tuning.
 
 ## Commands
 
