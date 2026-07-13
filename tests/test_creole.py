@@ -1,0 +1,143 @@
+import random
+import tempfile
+import unittest
+from pathlib import Path
+
+from homesocial.creole.bank import UtteranceBank
+from homesocial.creole.generate_bank import build_prompt, filter_valid, parse_variant_texts
+from homesocial.creole.situations import (
+    Situation,
+    enumerate_situations,
+    required_tokens,
+    template_variants,
+)
+from homesocial.creole.vocab import (
+    EOS_TOKEN,
+    PAD_TOKEN,
+    TOKEN_TO_ID,
+    TOKENS_PER_UTTERANCE,
+    UtteranceError,
+    VOCAB,
+    encode_utterance,
+    validate_utterance,
+)
+
+
+class VocabTest(unittest.TestCase):
+    def test_vocab_has_no_duplicates(self):
+        self.assertEqual(len(VOCAB), len(set(VOCAB)))
+
+    def test_vocab_words_are_lowercase_single_tokens(self):
+        for word in VOCAB[3:]:
+            self.assertEqual(word, word.lower())
+            self.assertNotIn(" ", word)
+
+    def test_validate_rejects_oov_and_long(self):
+        with self.assertRaises(UtteranceError):
+            validate_utterance("water banana")
+        with self.assertRaises(UtteranceError):
+            validate_utterance("go go go go go go")
+        with self.assertRaises(UtteranceError):
+            validate_utterance("")
+
+    def test_encode_shape_and_padding(self):
+        encoded = encode_utterance(("water", "north"))
+        self.assertEqual(len(encoded), TOKENS_PER_UTTERANCE)
+        self.assertEqual(encoded[2], TOKEN_TO_ID[EOS_TOKEN])
+        self.assertEqual(encoded[3], TOKEN_TO_ID[PAD_TOKEN])
+        silent = encode_utterance(None)
+        self.assertEqual(set(silent), {TOKEN_TO_ID[PAD_TOKEN]})
+
+
+class SituationTest(unittest.TestCase):
+    def test_enumeration_is_stable_and_keyed(self):
+        situations = enumerate_situations()
+        keys = [situation.key() for situation in situations]
+        self.assertEqual(len(keys), len(set(keys)))
+        self.assertGreater(len(keys), 40)
+        for key in keys:
+            self.assertEqual(Situation.from_key(key).key(), key)
+
+    def test_all_templates_valid_and_satisfy_requirements(self):
+        for situation in enumerate_situations():
+            variants = template_variants(situation)
+            self.assertGreaterEqual(len(variants), 3)
+            required_all, required_any = required_tokens(situation)
+            for words in variants:
+                validate_utterance(" ".join(words))
+                self.assertTrue(required_all <= set(words))
+                if required_any:
+                    self.assertTrue(required_any & set(words))
+
+    def test_label_reveals_hidden_kind(self):
+        situation = Situation("label", (("surface", "berry"),))
+        required_all, _ = required_tokens(situation)
+        self.assertIn("food", required_all)
+
+
+class GeneratorPiecesTest(unittest.TestCase):
+    def test_parse_variant_texts_json_and_lines(self):
+        self.assertEqual(
+            parse_variant_texts(' ["water here", "go north"] '),
+            ["water here", "go north"],
+        )
+        self.assertEqual(
+            parse_variant_texts('"water here",\n"go north"'),
+            ["water here", "go north"],
+        )
+
+    def test_filter_valid_enforces_contract(self):
+        situation = Situation("label", (("surface", "berry"),))
+        valid, rejected = filter_valid(
+            situation,
+            ["berry food", "berry banana", "this berry", "berry food"],
+        )
+        self.assertEqual(valid, [("berry", "food")])
+        self.assertEqual(rejected, 2)
+
+    def test_build_prompt_mentions_requirements(self):
+        situation = Situation("label", (("surface", "berry"),))
+        prompt = build_prompt(situation, 8)
+        self.assertIn("food", prompt)
+        self.assertIn("JSON array", prompt)
+
+
+class BankTest(unittest.TestCase):
+    def _template_bank(self) -> UtteranceBank:
+        return UtteranceBank(
+            {
+                situation.key(): template_variants(situation)
+                for situation in enumerate_situations()
+            }
+        )
+
+    def test_template_bank_validates_and_roundtrips(self):
+        bank = self._template_bank()
+        bank.validate()
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "bank.jsonl"
+            bank.save(path)
+            loaded = UtteranceBank.load(path)
+            self.assertEqual(set(loaded.keys), set(bank.keys))
+
+    def test_sampling_is_seed_deterministic(self):
+        bank = self._template_bank()
+        situation = enumerate_situations()[0]
+        first = [bank.sample(situation, random.Random(7)) for _ in range(5)]
+        second = [bank.sample(situation, random.Random(7)) for _ in range(5)]
+        self.assertEqual(first, second)
+
+    def test_shuffled_bank_is_grounding_destroying_permutation(self):
+        bank = self._template_bank()
+        shuffled = bank.shuffled(seed=3)
+        self.assertEqual(set(shuffled.keys), set(bank.keys))
+        moved = sum(
+            1
+            for situation in enumerate_situations()
+            if shuffled.variants(situation) != bank.variants(situation)
+        )
+        self.assertGreater(moved, len(bank.keys) // 2)
+
+
+if __name__ == "__main__":
+    unittest.main()
