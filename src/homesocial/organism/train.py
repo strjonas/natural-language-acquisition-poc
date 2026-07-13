@@ -50,6 +50,11 @@ class OrganismConfig:
     live_reward_weight: float = 0.02
     death_penalty: float = 1.0
     max_grad_norm: float = 1.0
+    # Infancy curriculum: scale food/water metabolism from `start` at global
+    # step 0 to 1.0 at `steps` (0 disables). Development, not reward hacking:
+    # early lives are metabolically subsidized so consume events get sampled.
+    metabolism_curriculum_start: float = 1.0
+    metabolism_curriculum_steps: int = 0
     seed: int = 1
     max_steps: int = 1000
     log_every_lives: int = 10
@@ -144,12 +149,28 @@ class OrganismTrainer:
 
         self.life_index = 0
         self.life_seed = config.seed
+        self.global_steps = 0
         self.packet = self.world.reset(self.life_seed)
+        self._apply_metabolism_curriculum()
         self.hidden: mx.array | None = None
         self._life_steps = 0
         self._life_viability_sum = 0.0
         self._life_min_viability = 1.0
         self._life_utterances = 0
+
+    def metabolism_factor(self) -> float:
+        config = self.config
+        if config.metabolism_curriculum_steps <= 0:
+            return 1.0
+        progress = min(1.0, self.global_steps / config.metabolism_curriculum_steps)
+        return config.metabolism_curriculum_start + progress * (
+            1.0 - config.metabolism_curriculum_start
+        )
+
+    def _apply_metabolism_curriculum(self) -> None:
+        factor = self.metabolism_factor()
+        self.world.grid.food_metabolism *= factor
+        self.world.grid.water_metabolism *= factor
 
     # ------------------------------------------------------------- acting
 
@@ -202,6 +223,7 @@ class OrganismTrainer:
             segment.next_tokens.append(next_packet.tokens)
 
             self._life_steps += 1
+            self.global_steps += 1
             self._life_viability_sum += mean_viability
             self._life_min_viability = min(
                 self._life_min_viability, float(info["viability"])
@@ -241,6 +263,7 @@ class OrganismTrainer:
         self.life_index += 1
         self.life_seed = self.config.seed + self.life_index
         self.packet = self.world.reset(self.life_seed)
+        self._apply_metabolism_curriculum()
         self.hidden = None
         self._life_steps = 0
         self._life_viability_sum = 0.0

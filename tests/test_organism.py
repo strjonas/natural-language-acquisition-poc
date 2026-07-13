@@ -132,6 +132,26 @@ class TrainingSmokeTest(unittest.TestCase):
         loss = trainer.update(segment, hidden, bootstrap)
         self.assertTrue(math.isfinite(loss))
 
+    def test_metabolism_curriculum_anneals_to_adult(self):
+        from dataclasses import replace as dc_replace
+
+        config = dc_replace(
+            self._config(),
+            metabolism_curriculum_start=0.25,
+            metabolism_curriculum_steps=1000,
+        )
+        trainer = OrganismTrainer(config)
+        self.assertAlmostEqual(trainer.metabolism_factor(), 0.25, places=5)
+        self.assertAlmostEqual(
+            trainer.world.grid.water_metabolism, 0.014 * 0.25, places=6
+        )
+        trainer.global_steps = 500
+        self.assertAlmostEqual(trainer.metabolism_factor(), 0.625, places=5)
+        trainer.global_steps = 5000
+        self.assertAlmostEqual(trainer.metabolism_factor(), 1.0, places=5)
+        trainer._finish_life(survived=False)
+        self.assertAlmostEqual(trainer.world.grid.water_metabolism, 0.014, places=6)
+
 
 if __name__ == "__main__":
     unittest.main()
