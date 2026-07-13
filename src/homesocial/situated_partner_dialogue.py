@@ -554,6 +554,60 @@ def collect_situated_self_model_rank_samples(
     return tuple(samples)
 
 
+def collect_situated_self_model_rank_samples_multi_policy(
+    config: RecurrentConfig,
+    *,
+    episodes: int,
+    seed: int,
+    teacher_mode: str = "grounded",
+    horizon: int = 6,
+    state_policies: tuple[str, ...] = ("cycle",),
+    max_samples: int = 3000,
+    option_action_noise: float = 0.0,
+    option_set: str = "base",
+    value_mode: str = "final_lowest",
+) -> tuple[SituatedSelfModelRankSample, ...]:
+    if episodes <= 0:
+        raise ValueError("Self-model rank sample episodes must be positive.")
+    if max_samples <= 0:
+        raise ValueError("Self-model rank sample max_samples must be positive.")
+    if not state_policies:
+        raise ValueError("At least one self-model rank state policy is required.")
+    for state_policy in state_policies:
+        if state_policy not in STATE_POLICIES:
+            raise ValueError(f"Unknown state policy: {state_policy}.")
+    collected: list[SituatedSelfModelRankSample] = []
+    policy_count = len(state_policies)
+    for policy_index, state_policy in enumerate(state_policies):
+        remaining = max_samples - len(collected)
+        if remaining <= 0:
+            break
+        policy_episodes = max(1, episodes // policy_count)
+        if policy_index < episodes % policy_count:
+            policy_episodes += 1
+        policy_max = min(
+            remaining,
+            max(1, int(np.ceil(max_samples / float(policy_count)))),
+        )
+        collected.extend(
+            collect_situated_self_model_rank_samples(
+                config,
+                episodes=policy_episodes,
+                seed=seed + policy_index * 100_000,
+                teacher_mode=teacher_mode,
+                horizon=horizon,
+                state_policy=state_policy,
+                max_samples=policy_max,
+                option_action_noise=option_action_noise,
+                option_set=option_set,
+                value_mode=value_mode,
+            )
+        )
+    if not collected:
+        raise ValueError("No situated self-model rank samples were collected.")
+    return tuple(collected[:max_samples])
+
+
 def collect_online_adaptation_risk_samples(
     trained: TrainedSituatedPartnerDialogue,
     config: RecurrentConfig,
@@ -3194,6 +3248,9 @@ def main() -> None:
         config = replace(config, renewable_resources=True)
     if args.resource_ecology is not None:
         config = replace(config, resource_ecology=args.resource_ecology)
+    online_self_calibration_state_policies = tuple(
+        args.online_self_calibration_state_policies or [args.state_policy]
+    )
     if args.option_set == "base":
         train_branches = collect_option_branch_dataset(
             config,
@@ -3243,13 +3300,13 @@ def main() -> None:
     )
     rank_samples = None
     if args.online_self_rank_finetune_epochs > 0:
-        rank_samples = collect_situated_self_model_rank_samples(
+        rank_samples = collect_situated_self_model_rank_samples_multi_policy(
             config,
             episodes=args.online_self_rank_finetune_episodes,
             seed=args.seed + 40_000,
             teacher_mode=args.teacher_mode,
             horizon=args.horizon,
-            state_policy=args.state_policy,
+            state_policies=online_self_calibration_state_policies,
             max_samples=args.online_self_rank_finetune_samples,
             option_action_noise=args.online_option_action_noise,
             option_set=args.option_set,
@@ -3268,13 +3325,13 @@ def main() -> None:
     calibrator = None
     if args.online_self_calibration:
         if rank_samples is None:
-            rank_samples = collect_situated_self_model_rank_samples(
+            rank_samples = collect_situated_self_model_rank_samples_multi_policy(
                 config,
                 episodes=args.online_self_calibration_episodes,
                 seed=args.seed + 41_000,
                 teacher_mode=args.teacher_mode,
                 horizon=args.horizon,
-                state_policy=args.state_policy,
+                state_policies=online_self_calibration_state_policies,
                 max_samples=args.online_self_calibration_samples,
                 option_action_noise=args.online_option_action_noise,
                 option_set=args.option_set,
@@ -3579,6 +3636,12 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--online-self-calibration", action="store_true")
     parser.add_argument("--online-self-calibration-episodes", type=int, default=80)
     parser.add_argument("--online-self-calibration-samples", type=int, default=1500)
+    parser.add_argument(
+        "--online-self-calibration-state-policies",
+        nargs="+",
+        choices=STATE_POLICIES,
+        default=None,
+    )
     parser.add_argument("--online-self-calibration-batch-size", type=int, default=128)
     parser.add_argument("--online-self-calibration-ridge", type=float, default=1e-4)
     parser.add_argument(

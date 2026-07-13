@@ -8,3 +8,5 @@ dist/
 build/
 *.egg-info/
 runs/
+.env
+.DS_Store

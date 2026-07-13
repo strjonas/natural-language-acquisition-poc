@@ -13,6 +13,7 @@ from homesocial.situated_partner_dialogue import (
     collect_online_adaptation_risk_samples,
     collect_situated_partner_dataset,
     collect_situated_self_model_rank_samples,
+    collect_situated_self_model_rank_samples_multi_policy,
     _learned_online_state_dataset,
     _option_value,
     _partner_proposals,
@@ -319,6 +320,32 @@ class SituatedPartnerDialogueTests(unittest.TestCase):
                 <= np.asarray(calibrated_dataset.features)[:, :, 4:8] + 1e-6
             )
         )
+        multi_policy_samples = collect_situated_self_model_rank_samples_multi_policy(
+            config,
+            episodes=2,
+            seed=32,
+            horizon=1,
+            state_policies=("cycle", "random"),
+            max_samples=3,
+            option_set="extended",
+            value_mode="trajectory_mean",
+        )
+        self.assertLessEqual(len(multi_policy_samples), 3)
+        self.assertGreater(len(multi_policy_samples), 0)
+        with self.assertRaises(ValueError):
+            collect_situated_self_model_rank_samples_multi_policy(
+                config,
+                episodes=2,
+                seed=32,
+                state_policies=(),
+            )
+        with self.assertRaises(ValueError):
+            collect_situated_self_model_rank_samples_multi_policy(
+                config,
+                episodes=2,
+                seed=32,
+                state_policies=("unknown",),
+            )
 
     def test_partner_proposals_use_partial_body_views(self):
         dataset = situated_partner_dataset_from_branches(_branch_dataset())
