@@ -23,6 +23,32 @@ leakage; no behavior cloning; the adult-world evaluation is unchanged.
 Probe 3 setup: start 0.25, anneal over 300k, total 500k steps, entropy
 0.03, seed 1. Result recorded below after the run.
 
-## Probe 3 result
+## Probe 3 result — NEGATIVE, diagnostically useful
 
-(pending)
+6600+ lives over 500k steps. Infant lives (0.25x metabolism, ~214-step
+thirst clock) lasted ~166 steps — above the ~92-step passive energy clock,
+so the agent genuinely learned to rest — but life length tracked the
+annealing metabolism clock straight back down to ~58 at adult level. Eval
+survival 0%. One late life reached truncation (recent survival 0.01), so
+the ceiling is reachable but not learned.
+
+Diagnosis: longer lives alone do not produce consume-interaction discovery.
+The approach -> face -> consume chain on the right object is too sparse for
+undirected exploration regardless of clock length. This replicates
+probe-era failure F1 (from-scratch RL never discovered ask-then-act) in the
+new substrate.
+
+## Decision
+
+Three negative probes: stop varying exploration pressure. Next mitigation
+in the plan's sanctioned order is the **BC-bootstrap childhood**: clone a
+small number of oracle lives (approach/consume/rest competence only, no
+language behavior to imitate since the oracle ignores tokens), then
+continue online lifelong RL, and always report with/without the bootstrap
+(`--bc-warmstart` ablation). After that works, the G1 grounded vs silent vs
+shuffled comparison becomes meaningful: kind knowledge (which berry is
+food this world) is NOT in the oracle demonstrations' observable state — it
+must come from caregiver labels, so the language effect stays clean.
+An alternative if BC contaminates: caregiver-guided shaping via OFFER
+situations (caregiver hands food to a starving infant), which is
+developmentally natural and keeps all competence in-loop.

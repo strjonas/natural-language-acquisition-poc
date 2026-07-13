@@ -29,12 +29,21 @@ Today's build (all committed, all tests green — 162 tests):
 
 ## What is next
 
-1. First learning probes with `python3 -m homesocial.organism.harness`:
-   does the from-scratch organism learn to drink/eat (outlive the 54-step
-   thirst clock)? If stalled after ~3 probes: raise entropy, try
-   live-reward shaping, then BC bootstrap (with ablation), in that order.
-2. Once survival learning shows life, run the G1 comparison:
-   grounded vs silent vs shuffled on held-out seeds.
+Three learning probes are done and recorded in
+`decisions/2026-07-13-organism-probes2-3.md`: entropy 0.02/0.06 and an
+infancy metabolism curriculum all fail at consume-interaction discovery
+(lives track the metabolic clock; the agent learns resting but never
+drinking). This replicates probe-era failure F1 in the new substrate.
+
+1. **Implement the BC-bootstrap childhood** (sanctioned by PLAN section 4
+   C4): clone ~50-200 oracle lives into the organism (motor competence
+   only; the oracle ignores tokens, and per-world kinds are not in its
+   observable state, so the language effect stays uncontaminated), then
+   continue online lifelong RL. Mandatory with/without ablation.
+   Alternative if BC contaminates: caregiver OFFER-based feeding of
+   starving infants (in-loop, developmentally natural).
+2. When survival learning works: G1 comparison grounded vs silent vs
+   shuffled via `organism.harness` on held-out seeds.
 3. Then caregiver refinements (B3/B4) and fast-mapping probes (gate G2).
 
 ## What is forbidden (closed lines)
