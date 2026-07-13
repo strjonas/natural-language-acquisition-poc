@@ -17,18 +17,19 @@ from dataclasses import dataclass
 
 from homesocial.creole.vocab import UtteranceError, validate_utterance
 
-# What each surface object actually is for the body. Revealing this is the
-# caregiver's main epistemic contribution in language-necessary worlds.
-SURFACE_TO_KIND: dict[str, str] = {
-    "water": "water",
-    "spring": "water",
-    "berry": "food",
-    "roots": "food",
-    "mushroom": "food",
-    "hut": "shelter",
-    "thorn": "danger",
-    "tree": "tree",
-    "rock": "rock",
+# The kinds each surface can plausibly be. Kinds are assigned per world, so
+# perception alone can never resolve them; the caregiver's label is the only
+# source. Revealing kind is the caregiver's main epistemic contribution.
+SURFACE_KINDS: dict[str, tuple[str, ...]] = {
+    "water": ("water",),
+    "spring": ("water", "danger"),
+    "berry": ("food", "danger"),
+    "roots": ("food", "danger"),
+    "mushroom": ("food", "danger"),
+    "hut": ("shelter",),
+    "thorn": ("danger",),
+    "tree": ("tree",),
+    "rock": ("rock",),
 }
 
 RESOURCE_KINDS = ("water", "food", "shelter")
@@ -114,8 +115,11 @@ class Situation:
 
 def enumerate_situations() -> tuple[Situation, ...]:
     situations: list[Situation] = []
-    for surface in SURFACE_TO_KIND:
-        situations.append(Situation("label", (("surface", surface),)))
+    for surface, kinds in SURFACE_KINDS.items():
+        for kind in kinds:
+            situations.append(
+                Situation("label", (("surface", surface), ("kind", kind)))
+            )
     situations.append(Situation("warn"))
     for place in CARDINALS + DEICTICS:
         situations.append(Situation("warn", (("place", place),)))
@@ -151,9 +155,9 @@ def required_tokens(situation: Situation) -> tuple[frozenset[str], frozenset[str
 
     act = situation.act
     if act == "label":
-        surface = situation.slot("surface")
-        assert surface is not None
-        return frozenset({SURFACE_TO_KIND[surface]}), frozenset()
+        kind = situation.slot("kind")
+        assert kind is not None
+        return frozenset({kind}), frozenset()
     if act == "warn":
         place = situation.slot("place")
         required_all = frozenset({place}) if place else frozenset()
@@ -196,8 +200,8 @@ def template_variants(situation: Situation) -> tuple[tuple[str, ...], ...]:
     texts: list[str]
     if act == "label":
         surface = situation.slot("surface")
-        assert surface is not None
-        kind = SURFACE_TO_KIND[surface]
+        kind = situation.slot("kind")
+        assert surface is not None and kind is not None
         if surface == kind:
             texts = [f"this {surface}", f"see {surface}", f"{surface} here"]
         else:
@@ -269,17 +273,17 @@ def situation_gloss(situation: Situation) -> str:
     base = ACT_SEMANTICS[act]
     details: list[str] = []
     surface = situation.slot("surface")
+    kind_slot = situation.slot("kind")
     if surface is not None:
-        kind = SURFACE_TO_KIND[surface]
+        kind = kind_slot or "unknown"
         if surface == kind:
             details.append(f"The object is a {surface}; its name is also its kind.")
         else:
             details.append(
-                f"The object looks like '{surface}' and its bodily kind is '{kind}'. "
-                f"The utterance must reveal the kind '{kind}'."
+                f"The object looks like '{surface}' and, in this world, its bodily "
+                f"kind is '{kind}'. The utterance must reveal the kind '{kind}'."
             )
-    kind_slot = situation.slot("kind")
-    if kind_slot is not None:
+    elif kind_slot is not None:
         details.append(f"The resource asked about is '{kind_slot}'.")
     place = situation.slot("place")
     if place is not None:

@@ -69,9 +69,12 @@ class SituationTest(unittest.TestCase):
                 if required_any:
                     self.assertTrue(required_any & set(words))
 
-    def test_label_reveals_hidden_kind(self):
-        situation = Situation("label", (("surface", "berry"),))
-        required_all, _ = required_tokens(situation)
+    def test_label_reveals_world_assigned_kind(self):
+        poison_berry = Situation("label", (("surface", "berry"), ("kind", "danger")))
+        required_all, _ = required_tokens(poison_berry)
+        self.assertIn("danger", required_all)
+        food_berry = Situation("label", (("surface", "berry"), ("kind", "food")))
+        required_all, _ = required_tokens(food_berry)
         self.assertIn("food", required_all)
 
 
@@ -87,7 +90,7 @@ class GeneratorPiecesTest(unittest.TestCase):
         )
 
     def test_filter_valid_enforces_contract(self):
-        situation = Situation("label", (("surface", "berry"),))
+        situation = Situation("label", (("surface", "berry"), ("kind", "food")))
         valid, rejected = filter_valid(
             situation,
             ["berry food", "berry banana", "this berry", "berry food"],
@@ -96,7 +99,7 @@ class GeneratorPiecesTest(unittest.TestCase):
         self.assertEqual(rejected, 2)
 
     def test_build_prompt_mentions_requirements(self):
-        situation = Situation("label", (("surface", "berry"),))
+        situation = Situation("label", (("surface", "berry"), ("kind", "food")))
         prompt = build_prompt(situation, 8)
         self.assertIn("food", prompt)
         self.assertIn("JSON array", prompt)
