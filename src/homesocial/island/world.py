@@ -17,7 +17,7 @@ Differences from the probe-era grid:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from random import Random
 
 import numpy as np
@@ -106,10 +106,16 @@ class IslandConfig:
     max_visible_slots: int = 8
     low_need_praise_threshold: float = 0.6
     low_need_ask_threshold: float = 0.5
+    caregiver_offer_threshold: float = 0.0
+    caregiver_offer_distance: int = 0
 
     def __post_init__(self) -> None:
         if self.language_mode not in LANGUAGE_MODES:
             raise ValueError(f"Unknown language mode: {self.language_mode}.")
+        if not 0.0 <= self.caregiver_offer_threshold <= 1.0:
+            raise ValueError("caregiver_offer_threshold must be in [0, 1].")
+        if self.caregiver_offer_distance < 0:
+            raise ValueError("caregiver_offer_distance must be nonnegative.")
 
 
 class IslandGrid(HomeostaticSocialGrid):
@@ -133,6 +139,9 @@ class IslandGrid(HomeostaticSocialGrid):
             renewable_resources=True,
         )
         self.kind_by_surface: dict[str, str] = {}
+        self.offered_kind: str | None = None
+        self.offered_surface: str | None = None
+        self.offered_pos: tuple[int, int] | None = None
 
     def _assign_kinds(self) -> dict[str, str]:
         kinds = dict(STABLE_SURFACE_KINDS)
@@ -161,6 +170,9 @@ class IslandGrid(HomeostaticSocialGrid):
         return WorldObject(surface, kind, pos, blocks=True)
 
     def _make_default_world(self) -> list[WorldObject]:
+        self.offered_kind = None
+        self.offered_surface = None
+        self.offered_pos = None
         self.kind_by_surface = self._assign_kinds()
         surfaces = [
             surface for surface, count in ISLAND_POPULATION for _ in range(count)
@@ -176,6 +188,51 @@ class IslandGrid(HomeostaticSocialGrid):
             self._object_for(surface, self.kind_by_surface[surface], pos)
             for surface, pos in zip(surfaces, positions)
         ]
+
+    def offer(self, kind: str, *, distance: int = 0) -> None:
+        """Put a renewable resource in hand or at a visible nearby cell."""
+
+        if kind not in {"food", "water"}:
+            raise ValueError(f"Cannot offer non-consumable kind: {kind}.")
+        candidates = [
+            surface
+            for surface, assigned_kind in self.kind_by_surface.items()
+            if assigned_kind == kind
+        ]
+        self.offered_kind = kind
+        self.offered_surface = self.rng.choice(candidates)
+        if distance <= 0:
+            self.offered_pos = self.agent_pos
+            return
+        ax, ay = self.agent_pos
+        positions = [
+            (x, y)
+            for y in range(self.height)
+            for x in range(self.width)
+            if abs(x - ax) + abs(y - ay) == distance
+            and not (
+                (obj := self.object_at((x, y))) is not None and obj.blocks
+            )
+        ]
+        self.offered_pos = self.rng.choice(positions) if positions else self.agent_pos
+
+    def _consume_ahead(self) -> str | None:
+        can_consume_offer = (
+            self.offered_kind is not None
+            and self.offered_pos in {self.agent_pos, self._ahead_pos()}
+        )
+        if not can_consume_offer:
+            return super()._consume_ahead()
+        assert self.offered_kind is not None
+        kind = self.offered_kind
+        if kind == "food":
+            self.needs = replace(self.needs, food=self.needs.food + 0.40)
+        else:
+            self.needs = replace(self.needs, water=self.needs.water + 0.40)
+        self.offered_kind = None
+        self.offered_surface = None
+        self.offered_pos = None
+        return f"consumed_{kind}"
 
 
 @dataclass(frozen=True)
@@ -347,9 +404,14 @@ class Caregiver:
         needs_before: Needs,
     ) -> tuple[Situation | None, tuple[str, ...] | None]:
         situation = self.situation_for(grid, action, event, needs_before)
+        return situation, self.utter_situation(situation)
+
+    def utter_situation(
+        self, situation: Situation | None
+    ) -> tuple[str, ...] | None:
         if situation is None or self.language_mode == "silent":
-            return situation, None
-        return situation, self.bank.sample(situation, self._rng)
+            return None
+        return self.bank.sample(situation, self._rng)
 
 
 class IslandWorld:
@@ -377,6 +439,8 @@ class IslandWorld:
             low_need_ask_threshold=self.config.low_need_ask_threshold,
             seed=seed if seed is not None else 0,
         )
+        self.caregiver_offer_threshold = self.config.caregiver_offer_threshold
+        self.caregiver_offer_distance = self.config.caregiver_offer_distance
         self._last_action_index = -1
 
     @property
@@ -395,25 +459,71 @@ class IslandWorld:
     ) -> tuple[ObsPacket, float, bool, bool, dict[str, object]]:
         action = Action(action)
         needs_before = self.grid.needs
-        observation, reward, terminated, truncated, info = self.grid.step(action)
-        situation, words = self.caregiver.utter(
-            self.grid, action, info.get("event"), needs_before
+        offered_before = self.grid.offered_kind
+        offered_consumable_before = (
+            action == Action.CONSUME
+            and offered_before is not None
+            and self.grid.offered_pos
+            in {self.grid.agent_pos, self.grid._ahead_pos()}
         )
+        observation, reward, terminated, truncated, info = self.grid.step(action)
+        info["offered_consumed"] = (
+            offered_consumable_before
+            and info.get("event") == f"consumed_{offered_before}"
+        )
+        self._maybe_offer()
+        if self.grid.offered_kind is not None:
+            situation = Situation(
+                "offer", (("kind", self.grid.offered_kind),)
+            )
+            words = self.caregiver.utter_situation(situation)
+        else:
+            situation, words = self.caregiver.utter(
+                self.grid, action, info.get("event"), needs_before
+            )
         self._last_action_index = list(Action).index(action)
         packet = self._packet(observation, words)
         info["situation"] = situation.key() if situation is not None else None
         info["utterance"] = " ".join(words) if words else None
         return packet, reward, terminated, truncated, info
 
+    def _maybe_offer(self) -> None:
+        if self.grid.offered_kind is not None:
+            return
+        threshold = self.caregiver_offer_threshold
+        needs = self.grid.needs
+        candidates = {
+            kind: getattr(needs, kind)
+            for kind in ("food", "water")
+            if getattr(needs, kind) < threshold
+        }
+        if candidates:
+            self.grid.offer(
+                min(candidates, key=candidates.get),
+                distance=self.caregiver_offer_distance,
+            )
+
     def _packet(
         self, observation: Observation, words: tuple[str, ...] | None
     ) -> ObsPacket:
         ax, ay = observation.position
-        visible = sorted(
-            (
+        visible_items = [
                 (obj.pos[0] - ax, obj.pos[1] - ay, SURFACE_INDEX[obj.name])
                 for obj in observation.visible
-            ),
+        ]
+        if (
+            self.grid.offered_surface is not None
+            and self.grid.offered_pos is not None
+        ):
+            visible_items.append(
+                (
+                    self.grid.offered_pos[0] - ax,
+                    self.grid.offered_pos[1] - ay,
+                    SURFACE_INDEX[self.grid.offered_surface],
+                )
+            )
+        visible = sorted(
+            visible_items,
             key=lambda item: (abs(item[0]) + abs(item[1]), item[2]),
         )[: self.config.max_visible_slots]
         return ObsPacket(

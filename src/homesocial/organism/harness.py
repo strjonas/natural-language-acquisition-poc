@@ -17,6 +17,7 @@ from homesocial.island.calibrate import run_policy
 from homesocial.island.world import IslandConfig
 from homesocial.organism.train import (
     OrganismConfig,
+    audit_self_model_actions,
     evaluate_organism,
     train_organism,
 )
@@ -38,18 +39,46 @@ def main() -> None:
         rows.append({"condition": f"baseline_{baseline}", **stats})
 
     for language_mode in args.language_modes:
+        run_label = language_mode
+        if args.bc_warmstart:
+            run_label += f"_bc{args.bc_lives}"
+        if args.offer_childhood:
+            run_label += (
+                f"_offer{args.offer_fade_steps}d{args.offer_distance_end}"
+            )
+        if args.consume_options:
+            run_label += "_options"
+        if args.self_model_planning:
+            run_label += f"_plan{args.planning_scale:g}"
         config = OrganismConfig(
             language_mode=language_mode,
             total_steps=args.train_steps,
             segment_length=args.segment_length,
             hidden_size=args.hidden_size,
+            bc_warmstart_lives=args.bc_lives if args.bc_warmstart else 0,
+            bc_epochs=args.bc_epochs,
+            caregiver_offer_threshold_start=(
+                args.offer_threshold if args.offer_childhood else 0.0
+            ),
+            caregiver_offer_curriculum_steps=(
+                args.offer_fade_steps if args.offer_childhood else 0
+            ),
+            caregiver_offer_distance_end=(
+                args.offer_distance_end if args.offer_childhood else 0
+            ),
+            consume_options=args.consume_options,
+            self_model_planning_scale=(
+                args.planning_scale if args.self_model_planning else 0.0
+            ),
+            self_model_planning_start_steps=args.planning_start_steps,
+            self_model_planning_reward_weight=args.planning_reward_weight,
             seed=args.seed,
             max_steps=args.train_max_steps,
             checkpoint=str(
-                Path(args.run_dir) / f"organism_{language_mode}_seed{args.seed}.npz"
+                Path(args.run_dir) / f"organism_{run_label}_seed{args.seed}.npz"
             ),
             stats_csv=str(
-                Path(args.run_dir) / f"lives_{language_mode}_seed{args.seed}.csv"
+                Path(args.run_dir) / f"lives_{run_label}_seed{args.seed}.csv"
             ),
         )
         print(f"=== training organism under {language_mode} ===")
@@ -60,15 +89,68 @@ def main() -> None:
             episodes=args.eval_episodes,
             base_seed=EVAL_SEED_BASE,
             max_steps=args.eval_max_steps,
+            greedy=args.eval_greedy,
+            consume_options=args.consume_options,
+            self_model_planning_scale=(
+                args.planning_scale if args.self_model_planning else 0.0
+            ),
+            self_model_planning_reward_weight=args.planning_reward_weight,
         )
-        rows.append({"condition": f"organism_{language_mode}", **stats})
+        if args.self_model_audit_decisions > 0:
+            audit = audit_self_model_actions(
+                model,
+                language_mode=language_mode,
+                episodes=args.eval_episodes,
+                base_seed=EVAL_SEED_BASE,
+                max_decisions=args.self_model_audit_decisions,
+                max_steps=args.eval_max_steps,
+                consume_options=args.consume_options,
+                self_model_planning_scale=(
+                    args.planning_scale if args.self_model_planning else 0.0
+                ),
+                reward_weight=args.planning_reward_weight,
+            )
+            stats.update({f"self_model_{key}": value for key, value in audit.items()})
+        rows.append({"condition": f"organism_{run_label}", **stats})
+        if args.self_model_interventions and args.self_model_planning:
+            for intervention, scale, score_sign in (
+                ("planning_removed", 0.0, 1.0),
+                ("planning_reversed", args.planning_scale, -1.0),
+            ):
+                intervention_stats = evaluate_organism(
+                    model,
+                    language_mode=language_mode,
+                    episodes=args.eval_episodes,
+                    base_seed=EVAL_SEED_BASE,
+                    max_steps=args.eval_max_steps,
+                    greedy=args.eval_greedy,
+                    consume_options=args.consume_options,
+                    self_model_planning_scale=scale,
+                    self_model_planning_reward_weight=args.planning_reward_weight,
+                    self_model_planning_score_sign=score_sign,
+                )
+                rows.append(
+                    {
+                        "condition": f"organism_{run_label}_{intervention}",
+                        **intervention_stats,
+                    }
+                )
 
     _write_and_print(rows, args)
 
 
 def _write_and_print(rows: list[dict[str, object]], args: argparse.Namespace) -> None:
-    keys = ["condition"] + [key for key in rows[0] if key != "condition"]
-    out_path = Path(args.run_dir) / f"harness_seed{args.seed}.csv"
+    keys = ["condition"]
+    for row in rows:
+        keys.extend(key for key in row if key not in keys)
+    suffix = f"_bc{args.bc_lives}" if args.bc_warmstart else ""
+    if args.offer_childhood:
+        suffix += f"_offer{args.offer_fade_steps}d{args.offer_distance_end}"
+    if args.consume_options:
+        suffix += "_options"
+    if args.self_model_planning:
+        suffix += f"_plan{args.planning_scale:g}"
+    out_path = Path(args.run_dir) / f"harness_seed{args.seed}{suffix}.csv"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with out_path.open("w", encoding="utf-8") as handle:
         handle.write(",".join(keys) + "\n")
@@ -96,10 +178,57 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--train-steps", type=int, default=200_000)
     parser.add_argument("--segment-length", type=int, default=64)
     parser.add_argument("--hidden-size", type=int, default=256)
+    parser.add_argument(
+        "--bc-warmstart",
+        action="store_true",
+        help="Pretrain on token-masked oracle lives before online learning.",
+    )
+    parser.add_argument("--bc-lives", type=int, default=100)
+    parser.add_argument("--bc-epochs", type=int, default=2)
+    parser.add_argument(
+        "--offer-childhood",
+        action="store_true",
+        help="Fade in-loop caregiver food/water offers to zero during training.",
+    )
+    parser.add_argument("--offer-threshold", type=float, default=0.75)
+    parser.add_argument("--offer-fade-steps", type=int, default=100_000)
+    parser.add_argument("--offer-distance-end", type=int, default=0)
+    parser.add_argument(
+        "--consume-options",
+        action="store_true",
+        help="Add kind-blind visible-slot navigate-and-consume actions.",
+    )
+    parser.add_argument(
+        "--self-model-planning",
+        action="store_true",
+        help="Bias action logits with detached predicted future-body value.",
+    )
+    parser.add_argument("--planning-start-steps", type=int, default=100_000)
+    parser.add_argument("--planning-scale", type=float, default=6.0)
+    parser.add_argument("--planning-reward-weight", type=float, default=0.5)
+    parser.add_argument(
+        "--self-model-audit-decisions",
+        type=int,
+        default=0,
+        help=(
+            "For this many held-out states, branch simulator copies to score "
+            "all available actions against the model's bodily predictions."
+        ),
+    )
+    parser.add_argument(
+        "--self-model-interventions",
+        action="store_true",
+        help="Also evaluate the trained checkpoint with planning removed/reversed.",
+    )
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--train-max-steps", type=int, default=1000)
     parser.add_argument("--eval-max-steps", type=int, default=1000)
     parser.add_argument("--eval-episodes", type=int, default=20)
+    parser.add_argument(
+        "--eval-greedy",
+        action="store_true",
+        help="Use argmax actions for a deterministic policy diagnostic.",
+    )
     parser.add_argument(
         "--language-modes",
         nargs="+",

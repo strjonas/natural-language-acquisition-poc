@@ -28,7 +28,10 @@ def run_policy(
     min_viability_sum = 0.0
     steps_sum = 0
     harm_sum = 0
-    consume_sum = 0
+    consume_attempt_sum = 0
+    resource_consume_sum = 0
+    food_consume_sum = 0
+    water_consume_sum = 0
     for episode in range(episodes):
         seed = base_seed + episode
         world = IslandWorld(config, seed=seed)
@@ -49,7 +52,11 @@ def run_policy(
             if info.get("event") in HARM_EVENTS:
                 harm_sum += 1
             if str(info.get("event", "")).startswith("consumed_"):
-                consume_sum += 1
+                consume_attempt_sum += 1
+            if info.get("event") in {"consumed_food", "consumed_water"}:
+                resource_consume_sum += 1
+            food_consume_sum += int(info.get("event") == "consumed_food")
+            water_consume_sum += int(info.get("event") == "consumed_water")
             if terminated or truncated:
                 if truncated and not terminated:
                     survived += 1
@@ -63,7 +70,10 @@ def run_policy(
         "mean_min_viability": min_viability_sum / episodes,
         "mean_steps": steps_sum / episodes,
         "harm_events_per_episode": harm_sum / episodes,
-        "consume_events_per_episode": consume_sum / episodes,
+        "consume_attempts_per_episode": consume_attempt_sum / episodes,
+        "resource_consumes_per_episode": resource_consume_sum / episodes,
+        "food_consumes_per_episode": food_consume_sum / episodes,
+        "water_consumes_per_episode": water_consume_sum / episodes,
     }
 
 

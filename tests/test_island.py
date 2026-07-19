@@ -127,6 +127,53 @@ class CaregiverTest(unittest.TestCase):
         self.assertIsNotNone(info["utterance"])
         self.assertNotEqual(set(packet.tokens), {TOKEN_TO_ID[PAD_TOKEN]})
 
+    def test_offer_is_visible_actionable_and_spoken(self):
+        world = IslandWorld(
+            IslandConfig(caregiver_offer_threshold=1.0), seed=41
+        )
+        world.reset(41)
+        packet, _, _, _, info = world.step(Action.WAIT)
+        self.assertEqual(Situation.from_key(info["situation"]).act, "offer")
+        self.assertIsNotNone(info["utterance"])
+        self.assertIsNotNone(world.grid.offered_kind)
+        self.assertIn((0, 0), {(dx, dy) for dx, dy, _ in packet.visible})
+        offered_kind = world.grid.offered_kind
+        before = getattr(world.grid.needs, offered_kind)
+        _, _, _, _, consume_info = world.step(Action.CONSUME)
+        self.assertEqual(consume_info["event"], f"consumed_{offered_kind}")
+        self.assertGreater(getattr(world.grid.needs, offered_kind), before)
+        self.assertTrue(consume_info["offered_consumed"])
+
+    def test_silent_offer_has_matched_visible_resource_without_tokens(self):
+        world = IslandWorld(
+            IslandConfig(
+                language_mode="silent", caregiver_offer_threshold=1.0
+            ),
+            seed=42,
+        )
+        world.reset(42)
+        packet, _, _, _, info = world.step(Action.WAIT)
+        self.assertEqual(Situation.from_key(info["situation"]).act, "offer")
+        self.assertIsNone(info["utterance"])
+        self.assertIn((0, 0), {(dx, dy) for dx, dy, _ in packet.visible})
+
+    def test_distal_offer_requires_approach(self):
+        world = IslandWorld(
+            IslandConfig(
+                caregiver_offer_threshold=1.0,
+                caregiver_offer_distance=2,
+            ),
+            seed=43,
+        )
+        world.reset(43)
+        packet, _, _, _, _ = world.step(Action.WAIT)
+        offered = next(
+            (dx, dy) for dx, dy, _ in packet.visible if abs(dx) + abs(dy) == 2
+        )
+        self.assertEqual(abs(offered[0]) + abs(offered[1]), 2)
+        _, _, _, _, info = world.step(Action.CONSUME)
+        self.assertFalse(info["offered_consumed"])
+
 
 class OracleTest(unittest.TestCase):
     def test_oracle_survives_full_lives(self):
