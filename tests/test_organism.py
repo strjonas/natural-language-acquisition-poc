@@ -21,6 +21,7 @@ if mx is not None:
         compute_gae,
         decode_object_option,
         evaluate_organism,
+        evaluate_semantic_choice,
         execute_agent_action,
         planned_policy_logits,
     )
@@ -271,6 +272,98 @@ class TrainingSmokeTest(unittest.TestCase):
         self.assertIn("option_decisions_per_episode", stats)
         self.assertGreaterEqual(stats["mean_steps"], 1.0)
 
+    def test_semantic_choice_evaluation_reports_coverage_and_accuracy(self):
+        from dataclasses import replace as dc_replace
+
+        trainer = OrganismTrainer(
+            dc_replace(
+                self._config(),
+                consume_options=True,
+                inspect_options=True,
+                island=IslandConfig(semantic_choice_horizon=12),
+            )
+        )
+        stats = evaluate_semantic_choice(
+            trainer.model,
+            language_mode="grounded",
+            episodes=4,
+            base_seed=1_090,
+            semantic_choice_horizon=12,
+            consume_options=True,
+            inspect_options=True,
+        )
+        self.assertEqual(stats["trials"], 4.0)
+        self.assertAlmostEqual(
+            stats["choice_rate"] + stats["timeout_rate"], 1.0
+        )
+        self.assertLessEqual(stats["correct_choices"], stats["choices_made"])
+        self.assertLessEqual(stats["inspected_choices"], stats["choices_made"])
+        for value in stats.values():
+            self.assertTrue(math.isfinite(value))
+
+    def test_semantic_choice_childhood_switches_without_resetting_model(self):
+        from dataclasses import replace as dc_replace
+
+        trainer = OrganismTrainer(
+            dc_replace(
+                self._config(),
+                semantic_choice_childhood_steps=10,
+                consume_options=True,
+                inspect_options=True,
+                island=IslandConfig(semantic_choice_horizon=8),
+            )
+        )
+        model_id = id(trainer.model)
+        self.assertTrue(trainer.world.config.semantic_choice_trial)
+        self.assertEqual(trainer.world.grid.choice_need in {"food", "water"}, True)
+        trainer.global_steps = 10
+        trainer._finish_life(survived=True)
+        self.assertTrue(trainer.life_stats[-1].semantic_choice_trial)
+        self.assertFalse(trainer.world.config.semantic_choice_trial)
+        self.assertIsNone(trainer.world.grid.choice_need)
+        self.assertEqual(id(trainer.model), model_id)
+
+    def test_choice_policy_targets_preserve_raw_delayed_returns(self):
+        from homesocial.organism.train import _Segment
+
+        trainer = OrganismTrainer(self._config())
+        segment = _Segment()
+        segment.semantic_choice_trial = True
+        segment.values = [0.0, 0.0]
+        segment.shaped_rewards = [0.002, 0.104]
+        segment.dones = [False, False]
+        segment.durations = [3, 3]
+        advantages, returns = trainer._policy_targets(segment, bootstrap=0.0)
+        expected, expected_returns = compute_gae(
+            np.asarray(segment.shaped_rewards, dtype=np.float32),
+            np.asarray(segment.values, dtype=np.float32),
+            0.0,
+            np.asarray(segment.dones, dtype=np.float32),
+            np.asarray(segment.durations, dtype=np.float32),
+            discount=trainer.config.discount,
+            gae_lambda=trainer.config.gae_lambda,
+        )
+        np.testing.assert_allclose(advantages, expected)
+        np.testing.assert_allclose(returns, expected_returns)
+        self.assertGreater(advantages[0], 0.0)
+
+    def test_choice_training_uses_exact_primitive_tick_budget(self):
+        from dataclasses import replace as dc_replace
+
+        trainer = OrganismTrainer(
+            dc_replace(
+                self._config(),
+                total_steps=37,
+                semantic_choice_childhood_steps=37,
+                consume_options=True,
+                inspect_options=True,
+                island=IslandConfig(semantic_choice_horizon=20),
+            )
+        )
+        trainer.train()
+        self.assertEqual(trainer.loss_log[-1]["steps"], 37.0)
+        self.assertEqual(trainer.global_steps, 37)
+
     def test_counterfactual_self_model_audit_reports_finite_metrics(self):
         trainer = OrganismTrainer(self._config())
         stats = audit_self_model_actions(
@@ -302,9 +395,16 @@ class TrainingSmokeTest(unittest.TestCase):
             base_seed=1_991,
             max_inspections=2,
             max_steps=120,
+            semantic_choice_trial=True,
+            semantic_choice_horizon=20,
         )
-        self.assertGreater(stats["audited_inspections"], 0.0)
-        self.assertLessEqual(stats["audited_inspections"], 2.0)
+        self.assertEqual(stats["audited_inspections"], 2.0)
+        self.assertEqual(stats["unique_episodes"], 2.0)
+        self.assertEqual(stats["unique_target_contexts"], 2.0)
+        self.assertEqual(stats["resource_cases"], 1.0)
+        self.assertEqual(stats["danger_cases"], 1.0)
+        self.assertEqual(stats["resource_swap_cases"], 1.0)
+        self.assertIn("resource_swap_counterfactual_kind_accuracy", stats)
         for value in stats.values():
             self.assertTrue(math.isfinite(value))
 
@@ -475,7 +575,6 @@ class TrainingSmokeTest(unittest.TestCase):
         mask = available_action_mask(
             trainer.packet,
             trainer.model.action_size,
-            visible_slots=slots,
         )
         visible = len(trainer.packet.visible)
         self.assertEqual(int(mask[len(ACTIONS) : len(ACTIONS) + slots].sum()), visible)
@@ -524,6 +623,117 @@ class TrainingSmokeTest(unittest.TestCase):
         self.assertFalse(any(str(event).startswith("consumed_") for event in info["events"]))
         self.assertEqual(len(world.grid.objects), 1)
         self.assertNotEqual(packet.tokens, next_packet.tokens)
+
+    def test_option_routes_off_selected_under_agent_object(self):
+        from dataclasses import replace as dc_replace
+
+        from homesocial.env import Direction
+        from homesocial.island.world import IslandWorld, SURFACE_INDEX
+
+        world = IslandWorld(seed=74)
+        world.reset(74)
+        target = next(obj for obj in world.grid.objects if obj.name == "mushroom")
+        target = dc_replace(target, pos=(3, 3))
+        world.grid.objects = [target]
+        world.grid.agent_pos = target.pos
+        world.grid.direction = Direction.NORTH
+        packet = world._packet(world.grid._observe(None, None), None)
+        slot = next(
+            index
+            for index, (dx, dy, surface) in enumerate(packet.visible)
+            if (dx, dy, surface) == (0, 0, SURFACE_INDEX[target.name])
+        )
+        slots = world.config.max_visible_slots
+        inspected, _, terminated, truncated, info = execute_agent_action(
+            world,
+            packet,
+            len(ACTIONS) + slots + slot,
+            consume_options=True,
+            inspect_options=True,
+        )
+        self.assertFalse(terminated)
+        self.assertFalse(truncated)
+        self.assertTrue(str(info["situation"]).startswith("label|"))
+        self.assertEqual(info["situation"].split("|")[1], f"surface={target.name}")
+        self.assertNotEqual(world.grid.agent_pos, target.pos)
+        self.assertEqual(world.grid.object_ahead().name, target.name)
+
+        consume_slot = next(
+            index
+            for index, (dx, dy, surface) in enumerate(inspected.visible)
+            if (
+                inspected.position[0] + dx,
+                inspected.position[1] + dy,
+                surface,
+            )
+            == (target.pos[0], target.pos[1], SURFACE_INDEX[target.name])
+        )
+        _, _, _, _, consume_info = execute_agent_action(
+            world,
+            inspected,
+            len(ACTIONS) + consume_slot,
+            consume_options=True,
+            inspect_options=True,
+        )
+        self.assertEqual(consume_info["event"], f"consumed_{target.kind}")
+
+    def test_inspect_option_routes_around_visible_blocker(self):
+        from dataclasses import replace as dc_replace
+
+        from homesocial.env import Direction
+        from homesocial.island.world import IslandWorld, SURFACE_INDEX
+
+        world = IslandWorld(seed=75)
+        world.reset(75)
+        target = next(obj for obj in world.grid.objects if obj.name == "mushroom")
+        blocker = next(obj for obj in world.grid.objects if obj.name == "rock")
+        target = dc_replace(target, pos=(3, 1))
+        blocker = dc_replace(blocker, pos=(3, 2))
+        world.grid.objects = [target, blocker]
+        world.grid.agent_pos = (3, 3)
+        world.grid.direction = Direction.NORTH
+        packet = world._packet(world.grid._observe(None, None), None)
+        slot = next(
+            index
+            for index, (_, _, surface) in enumerate(packet.visible)
+            if surface == SURFACE_INDEX[target.name]
+        )
+        _, _, terminated, truncated, info = execute_agent_action(
+            world,
+            packet,
+            len(ACTIONS) + world.config.max_visible_slots + slot,
+            consume_options=True,
+            inspect_options=True,
+        )
+        self.assertFalse(terminated)
+        self.assertFalse(truncated)
+        self.assertTrue(str(info["situation"]).startswith("label|"))
+        self.assertEqual(world.grid.object_ahead().name, target.name)
+        self.assertLessEqual(info["duration"], 12)
+
+    def test_nondefault_visible_slot_layout_is_consistent(self):
+        from dataclasses import replace as dc_replace
+
+        trainer = OrganismTrainer(
+            dc_replace(
+                self._config(),
+                consume_options=True,
+                inspect_options=True,
+                island=IslandConfig(max_visible_slots=2),
+            )
+        )
+        self.assertEqual(len(trainer.packet.vector()), trainer.model.vector_size)
+        self.assertEqual(trainer.model.visible_slots, 2)
+        stats = evaluate_semantic_choice(
+            trainer.model,
+            language_mode="grounded",
+            episodes=2,
+            base_seed=2_090,
+            semantic_choice_horizon=12,
+            consume_options=True,
+            inspect_options=True,
+        )
+        self.assertEqual(stats["trials"], 2.0)
 
     def test_planned_option_training_smoke(self):
         from dataclasses import replace as dc_replace

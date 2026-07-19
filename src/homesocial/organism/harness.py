@@ -15,11 +15,13 @@ from pathlib import Path
 
 from homesocial.island.calibrate import run_policy
 from homesocial.island.world import IslandConfig
+from homesocial.organism.model import OrganismModel
 from homesocial.organism.train import (
     OrganismConfig,
     audit_label_to_self_model,
     audit_self_model_actions,
     evaluate_organism,
+    evaluate_semantic_choice,
     train_organism,
 )
 
@@ -30,14 +32,15 @@ def main() -> None:
     args = _parse_args()
     rows: list[dict[str, object]] = []
 
-    for baseline in args.baselines:
-        stats = run_policy(
-            baseline,
-            episodes=args.eval_episodes,
-            config=IslandConfig(max_steps=args.eval_max_steps),
-            base_seed=EVAL_SEED_BASE,
-        )
-        rows.append({"condition": f"baseline_{baseline}", **stats})
+    if args.eval_episodes > 0:
+        for baseline in args.baselines:
+            stats = run_policy(
+                baseline,
+                episodes=args.eval_episodes,
+                config=IslandConfig(max_steps=args.eval_max_steps),
+                base_seed=EVAL_SEED_BASE,
+            )
+            rows.append({"condition": f"baseline_{baseline}", **stats})
 
     for language_mode in args.language_modes:
         model_horizon = args.model_horizon or args.planning_horizon
@@ -47,6 +50,11 @@ def main() -> None:
         if args.offer_childhood:
             run_label += (
                 f"_offer{args.offer_fade_steps}d{args.offer_distance_end}"
+            )
+        if args.semantic_choice_childhood_steps > 0:
+            run_label += (
+                f"_choice{args.semantic_choice_childhood_steps}"
+                f"h{args.semantic_choice_horizon}"
             )
         if args.consume_options:
             run_label += "_options"
@@ -76,6 +84,9 @@ def main() -> None:
             caregiver_offer_distance_end=(
                 args.offer_distance_end if args.offer_childhood else 0
             ),
+            semantic_choice_childhood_steps=(
+                args.semantic_choice_childhood_steps
+            ),
             consume_options=args.consume_options,
             inspect_options=args.inspect_options,
             self_model_planning_scale=(
@@ -90,6 +101,9 @@ def main() -> None:
             world_model_replay_updates=args.replay_updates,
             seed=args.seed,
             max_steps=args.train_max_steps,
+            island=IslandConfig(
+                semantic_choice_horizon=args.semantic_choice_horizon,
+            ),
             checkpoint=str(
                 Path(args.run_dir) / f"organism_{run_label}_seed{args.seed}.npz"
             ),
@@ -99,6 +113,15 @@ def main() -> None:
         )
         print(f"=== training organism under {language_mode} ===")
         model, _ = train_organism(config)
+        if args.eval_episodes <= 0:
+            _append_semantic_choice_rows(
+                rows,
+                model=model,
+                language_mode=language_mode,
+                run_label=run_label,
+                args=args,
+            )
+            continue
         stats = evaluate_organism(
             model,
             language_mode=language_mode,
@@ -231,7 +254,125 @@ def main() -> None:
                     }
                 )
 
+        _append_semantic_choice_rows(
+            rows,
+            model=model,
+            language_mode=language_mode,
+            run_label=run_label,
+            args=args,
+        )
+
     _write_and_print(rows, args)
+
+
+def _append_semantic_choice_rows(
+    rows: list[dict[str, object]],
+    *,
+    model: OrganismModel,
+    language_mode: str,
+    run_label: str,
+    args: argparse.Namespace,
+) -> None:
+    """Append fixed-seed paired-choice evaluations and causal audits."""
+
+    if args.semantic_choice_eval_episodes <= 0:
+        return
+
+    planning_scale = args.planning_scale if args.self_model_planning else 0.0
+    for greedy, policy_name in ((False, "stochastic"), (True, "greedy")):
+        stats = evaluate_semantic_choice(
+            model,
+            language_mode=language_mode,
+            episodes=args.semantic_choice_eval_episodes,
+            base_seed=EVAL_SEED_BASE,
+            semantic_choice_horizon=args.semantic_choice_horizon,
+            sample_seed=0,
+            greedy=greedy,
+            consume_options=args.consume_options,
+            inspect_options=args.inspect_options,
+            self_model_planning_scale=planning_scale,
+            self_model_planning_reward_weight=args.planning_reward_weight,
+            self_model_planning_horizon=args.planning_horizon,
+        )
+
+        # Audits are policy-sampled diagnostics, so one stochastic fixed-seed
+        # row is the canonical home for them. The greedy row remains a compact
+        # behavioral diagnostic over the exact same environment seeds.
+        if not greedy and args.self_model_audit_decisions > 0:
+            audit = audit_self_model_actions(
+                model,
+                language_mode=language_mode,
+                episodes=args.semantic_choice_eval_episodes,
+                base_seed=EVAL_SEED_BASE,
+                max_decisions=args.self_model_audit_decisions,
+                max_steps=args.semantic_choice_horizon,
+                consume_options=args.consume_options,
+                inspect_options=args.inspect_options,
+                self_model_planning_scale=planning_scale,
+                reward_weight=args.planning_reward_weight,
+                self_model_planning_horizon=args.planning_horizon,
+                semantic_choice_trial=True,
+                semantic_choice_horizon=args.semantic_choice_horizon,
+            )
+            stats.update(
+                {
+                    f"prelabel_self_model_{key}": value
+                    for key, value in audit.items()
+                }
+            )
+
+        if not greedy and args.label_self_model_audit_inspections > 0:
+            label_audit = audit_label_to_self_model(
+                model,
+                episodes=args.semantic_choice_eval_episodes,
+                base_seed=EVAL_SEED_BASE,
+                max_inspections=args.label_self_model_audit_inspections,
+                max_steps=args.semantic_choice_horizon,
+                self_model_planning_scale=planning_scale,
+                self_model_planning_horizon=args.planning_horizon,
+                semantic_choice_trial=True,
+                semantic_choice_horizon=args.semantic_choice_horizon,
+            )
+            stats.update(
+                {f"label_audit_{key}": value for key, value in label_audit.items()}
+            )
+
+        if (
+            not greedy
+            and args.body_only_self_model_audit
+            and args.self_model_planning
+            and args.self_model_audit_decisions > 0
+        ):
+            body_audit = audit_self_model_actions(
+                model,
+                language_mode=language_mode,
+                episodes=args.semantic_choice_eval_episodes,
+                base_seed=EVAL_SEED_BASE,
+                max_decisions=args.self_model_audit_decisions,
+                max_steps=args.semantic_choice_horizon,
+                consume_options=args.consume_options,
+                inspect_options=args.inspect_options,
+                self_model_planning_scale=args.planning_scale,
+                reward_weight=0.0,
+                self_model_planning_horizon=args.planning_horizon,
+                semantic_choice_trial=True,
+                semantic_choice_horizon=args.semantic_choice_horizon,
+            )
+            stats.update(
+                {
+                    f"prelabel_body_only_self_model_{key}": value
+                    for key, value in body_audit.items()
+                }
+            )
+
+        rows.append(
+            {
+                "condition": (
+                    f"organism_{run_label}_semantic_choice_{policy_name}"
+                ),
+                **stats,
+            }
+        )
 
 
 def _write_and_print(rows: list[dict[str, object]], args: argparse.Namespace) -> None:
@@ -241,6 +382,11 @@ def _write_and_print(rows: list[dict[str, object]], args: argparse.Namespace) ->
     suffix = f"_bc{args.bc_lives}" if args.bc_warmstart else ""
     if args.offer_childhood:
         suffix += f"_offer{args.offer_fade_steps}d{args.offer_distance_end}"
+    if args.semantic_choice_childhood_steps > 0:
+        suffix += (
+            f"_choice{args.semantic_choice_childhood_steps}"
+            f"h{args.semantic_choice_horizon}"
+        )
     if args.consume_options:
         suffix += "_options"
     if args.inspect_options:
@@ -299,6 +445,30 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--offer-threshold", type=float, default=0.75)
     parser.add_argument("--offer-fade-steps", type=int, default=100_000)
     parser.add_argument("--offer-distance-end", type=int, default=0)
+    parser.add_argument(
+        "--semantic-choice-childhood-steps",
+        type=int,
+        default=0,
+        help=(
+            "Train in paired need-matched-resource versus poison trials for "
+            "this many primitive ticks before switching to the open island."
+        ),
+    )
+    parser.add_argument(
+        "--semantic-choice-horizon",
+        type=int,
+        default=20,
+        help="Maximum primitive ticks in each paired semantic-choice trial.",
+    )
+    parser.add_argument(
+        "--semantic-choice-eval-episodes",
+        type=int,
+        default=0,
+        help=(
+            "Evaluate both stochastic and greedy policies on this many "
+            "fixed-seed held-out paired-choice trials."
+        ),
+    )
     parser.add_argument(
         "--consume-options",
         action="store_true",
@@ -369,7 +539,7 @@ def _parse_args() -> argparse.Namespace:
         choices=["grounded", "silent", "shuffled"],
     )
     parser.add_argument(
-        "--baselines", nargs="+", default=["oracle", "random"],
+        "--baselines", nargs="*", default=["oracle", "random"],
         choices=["oracle", "random"],
     )
     parser.add_argument("--run-dir", default="runs/organism")

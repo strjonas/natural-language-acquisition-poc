@@ -15,6 +15,7 @@ from homesocial.island.world import (
     IslandGrid,
     IslandWorld,
     ObsPacket,
+    SURFACE_INDEX,
 )
 
 
@@ -222,6 +223,299 @@ class CaregiverTest(unittest.TestCase):
         self.assertEqual(abs(offered[0]) + abs(offered[1]), 2)
         _, _, _, _, info = world.step(Action.CONSUME)
         self.assertFalse(info["offered_consumed"])
+
+
+class SemanticChoiceTrialTest(unittest.TestCase):
+    @staticmethod
+    def _face(world: IslandWorld, target) -> None:
+        ax, ay = target.pos
+        if ax > 0:
+            world.grid.agent_pos = (ax - 1, ay)
+            world.grid.direction = Direction.EAST
+        else:
+            world.grid.agent_pos = (ax + 1, ay)
+            world.grid.direction = Direction.WEST
+
+    def test_reset_builds_only_visible_need_matched_and_poison_pair(self):
+        config = IslandConfig(semantic_choice_trial=True)
+        expected_quota = Counter(CONSUMABLE_KIND_QUOTA)
+        for seed in range(100):
+            world = IslandWorld(config, seed=seed)
+            packet = world.reset(seed)
+            grid = world.grid
+
+            self.assertEqual(
+                Counter(
+                    grid.kind_by_surface[surface]
+                    for surface in CONSUMABLE_SURFACES
+                ),
+                expected_quota,
+            )
+            self.assertIn(grid.choice_need, ("food", "water"))
+            self.assertAlmostEqual(getattr(grid.needs, grid.choice_need), 0.35)
+            other_need = "water" if grid.choice_need == "food" else "food"
+            self.assertAlmostEqual(getattr(grid.needs, other_need), 0.75)
+
+            self.assertEqual(len(grid.objects), 2)
+            self.assertEqual(
+                Counter(obj.kind for obj in grid.objects),
+                Counter((grid.choice_need, "poison")),
+            )
+            self.assertTrue(all(obj.consumable for obj in grid.objects))
+            self.assertTrue(
+                all(
+                    abs(obj.pos[0] - grid.agent_pos[0])
+                    + abs(obj.pos[1] - grid.agent_pos[1])
+                    == 2
+                    for obj in grid.objects
+                )
+            )
+            self.assertEqual(
+                {surface_index for _, _, surface_index in packet.visible},
+                {SURFACE_INDEX[obj.name] for obj in grid.objects},
+            )
+
+    def test_seed_replays_pair_body_pose_and_packet(self):
+        config = IslandConfig(semantic_choice_trial=True)
+        first = IslandWorld(config, seed=71)
+        second = IslandWorld(config, seed=71)
+        first_packet = first.reset(71)
+        second_packet = second.reset(71)
+
+        self.assertEqual(first_packet, second_packet)
+        self.assertEqual(first.grid.kind_by_surface, second.grid.kind_by_surface)
+        self.assertEqual(first.grid.choice_need, second.grid.choice_need)
+        self.assertEqual(first.grid.direction, second.grid.direction)
+        self.assertEqual(first.grid.objects, second.grid.objects)
+
+    def test_need_and_resource_position_are_balanced_over_seeds(self):
+        needs = Counter()
+        resource_offsets = Counter()
+        config = IslandConfig(semantic_choice_trial=True)
+        for seed in range(1000):
+            world = IslandWorld(config, seed=seed)
+            world.reset(seed)
+            grid = world.grid
+            needs[grid.choice_need] += 1
+            resource = next(
+                obj for obj in grid.objects if obj.kind == grid.choice_need
+            )
+            resource_offsets[
+                (
+                    resource.pos[0] - grid.agent_pos[0],
+                    resource.pos[1] - grid.agent_pos[1],
+                )
+            ] += 1
+
+        self.assertAlmostEqual(needs["food"] / 1000, 0.5, delta=0.04)
+        self.assertEqual(
+            set(resource_offsets), {(-2, 0), (2, 0), (0, -2), (0, 2)}
+        )
+        for count in resource_offsets.values():
+            self.assertAlmostEqual(count / 1000, 0.25, delta=0.04)
+
+    def test_real_consumption_truncates_and_audits_without_shaping_reward(self):
+        config = IslandConfig(semantic_choice_trial=True)
+
+        correct_world = IslandWorld(config, seed=82)
+        correct_world.reset(82)
+        correct_target = next(
+            obj
+            for obj in correct_world.grid.objects
+            if obj.kind == correct_world.grid.choice_need
+        )
+        self._face(correct_world, correct_target)
+        need = correct_world.grid.choice_need
+        before = getattr(correct_world.grid.needs, need)
+        _, correct_reward, terminated, truncated, info = correct_world.step(
+            Action.CONSUME
+        )
+        self.assertFalse(terminated)
+        self.assertTrue(truncated)
+        self.assertGreater(getattr(correct_world.grid.needs, need), before)
+        self.assertGreater(correct_reward, 0.0)
+        self.assertTrue(info["semantic_choice_trial"])
+        self.assertTrue(info["correct"])
+        self.assertFalse(info["poison"])
+        self.assertEqual(info["chosen_kind"], need)
+        self.assertEqual(info["chosen_surface"], correct_target.name)
+        self.assertFalse(info["chosen_surface_inspected"])
+        self.assertFalse(info["timeout"])
+
+        poison_world = IslandWorld(config, seed=83)
+        poison_world.reset(83)
+        poison_target = next(
+            obj for obj in poison_world.grid.objects if obj.kind == "poison"
+        )
+        self._face(poison_world, poison_target)
+        safety_before = poison_world.grid.needs.safety
+        _, poison_reward, terminated, truncated, info = poison_world.step(
+            Action.CONSUME
+        )
+        self.assertFalse(terminated)
+        self.assertTrue(truncated)
+        self.assertLess(poison_world.grid.needs.safety, safety_before)
+        self.assertLess(poison_reward, 0.0)
+        self.assertFalse(info["correct"])
+        self.assertTrue(info["poison"])
+        self.assertEqual(info["chosen_kind"], "poison")
+        self.assertEqual(info["chosen_surface"], poison_target.name)
+
+    def test_ask_and_point_label_interactions_mark_prior_inspection(self):
+        for inspect_action in (Action.ASK, Action.POINT):
+            with self.subTest(inspect_action=inspect_action):
+                world = IslandWorld(
+                    IslandConfig(semantic_choice_trial=True), seed=91
+                )
+                world.reset(91)
+                target = next(
+                    obj
+                    for obj in world.grid.objects
+                    if obj.kind == world.grid.choice_need
+                )
+                self._face(world, target)
+                _, _, _, truncated, inspect_info = world.step(inspect_action)
+                self.assertFalse(truncated)
+                self.assertEqual(
+                    Situation.from_key(inspect_info["situation"]).act, "label"
+                )
+                expected_kind = (
+                    "danger" if target.kind == "poison" else target.kind
+                )
+                self.assertEqual(
+                    inspect_info["utterance"], f"this {expected_kind}"
+                )
+
+                _, _, _, truncated, choice_info = world.step(Action.CONSUME)
+                self.assertTrue(truncated)
+                self.assertEqual(choice_info["chosen_surface"], target.name)
+                self.assertTrue(choice_info["chosen_surface_inspected"])
+
+    def test_shuffled_choice_labels_match_length_but_not_true_slots(self):
+        emitted = Counter()
+        matches = 0
+        for seed in range(200):
+            world = IslandWorld(
+                IslandConfig(
+                    semantic_choice_trial=True,
+                    language_mode="shuffled",
+                ),
+                seed=seed,
+            )
+            world.reset(seed)
+            target = world.grid.objects[0]
+            self._face(world, target)
+            _, _, _, _, info = world.step(Action.ASK)
+            words = info["utterance"].split()
+            self.assertEqual(words[0], "this")
+            self.assertEqual(len(words), 2)
+            self.assertIn(words[1], {"food", "water", "danger"})
+            emitted[words[1]] += 1
+            true_kind = "danger" if target.kind == "poison" else target.kind
+            matches += int(words[1] == true_kind)
+        self.assertAlmostEqual(emitted["danger"] / 200, 0.5, delta=0.1)
+        self.assertAlmostEqual(emitted["food"] / 200, 0.25, delta=0.1)
+        self.assertAlmostEqual(emitted["water"] / 200, 0.25, delta=0.1)
+        self.assertAlmostEqual(matches / 200, 0.375, delta=0.1)
+
+    def test_empty_consume_does_not_end_trial_and_horizon_times_out(self):
+        world = IslandWorld(
+            IslandConfig(
+                semantic_choice_trial=True,
+                semantic_choice_horizon=3,
+            ),
+            seed=101,
+        )
+        world.reset(101)
+        # The initial heading is perpendicular to the pair, so ahead is empty.
+        _, _, _, truncated, info = world.step(Action.CONSUME)
+        self.assertFalse(truncated)
+        self.assertIsNone(info["chosen_surface"])
+        self.assertFalse(info["timeout"])
+
+        _, _, _, truncated, info = world.step(Action.WAIT)
+        self.assertFalse(truncated)
+        self.assertFalse(info["timeout"])
+        _, _, _, truncated, info = world.step(Action.WAIT)
+        self.assertTrue(truncated)
+        self.assertTrue(info["timeout"])
+        self.assertFalse(info["correct"])
+        self.assertFalse(info["poison"])
+
+    def test_empty_ask_cannot_bypass_object_label_inspection(self):
+        for mode in ("grounded", "silent", "shuffled"):
+            with self.subTest(mode=mode):
+                world = IslandWorld(
+                    IslandConfig(
+                        semantic_choice_trial=True,
+                        language_mode=mode,
+                    ),
+                    seed=106,
+                )
+                world.reset(106)
+                # Initial heading is perpendicular to the pair by construction.
+                self.assertIsNone(world.grid.object_ahead())
+                packet, _, terminated, truncated, info = world.step(Action.ASK)
+                self.assertFalse(terminated)
+                self.assertFalse(truncated)
+                self.assertIsNone(info["situation"])
+                self.assertIsNone(info["utterance"])
+                self.assertEqual(set(packet.tokens), {TOKEN_TO_ID[PAD_TOKEN]})
+
+    def test_language_modes_have_identical_pair_body_motion_and_reward(self):
+        worlds = [
+            IslandWorld(
+                IslandConfig(
+                    semantic_choice_trial=True,
+                    language_mode=mode,
+                    caregiver_offer_threshold=1.0,
+                ),
+                seed=111,
+            )
+            for mode in ("grounded", "silent", "shuffled")
+        ]
+        packets = [world.reset(111) for world in worlds]
+        first = worlds[0].grid
+        for world, packet in zip(worlds[1:], packets[1:]):
+            self.assertEqual(world.grid.kind_by_surface, first.kind_by_surface)
+            self.assertEqual(world.grid.objects, first.objects)
+            self.assertEqual(world.grid.needs, first.needs)
+            self.assertEqual(world.grid.agent_pos, first.agent_pos)
+            self.assertEqual(world.grid.direction, first.direction)
+            self.assertEqual(packet.vector().tolist(), packets[0].vector().tolist())
+            self.assertEqual(packet.vector().shape, packets[0].vector().shape)
+            self.assertEqual(len(packet.tokens), len(packets[0].tokens))
+
+        target = first.objects[0]
+        for world in worlds:
+            matching_target = next(
+                obj for obj in world.grid.objects if obj.name == target.name
+            )
+            self._face(world, matching_target)
+        results = [world.step(Action.POINT) for world in worlds]
+        rewards = [result[1] for result in results]
+        self.assertEqual(rewards, [rewards[0]] * len(rewards))
+        self.assertEqual(
+            [world.grid.agent_pos for world in worlds],
+            [worlds[0].grid.agent_pos] * len(worlds),
+        )
+        self.assertEqual(
+            [world.grid.needs for world in worlds],
+            [worlds[0].grid.needs] * len(worlds),
+        )
+        self.assertTrue(all(len(world.grid.objects) == 2 for world in worlds))
+        self.assertTrue(all(world.grid.offered_kind is None for world in worlds))
+
+    def test_horizon_must_be_positive(self):
+        with self.assertRaisesRegex(ValueError, "must be positive"):
+            IslandConfig(semantic_choice_horizon=0)
+
+    def test_choice_trial_requires_two_visible_slots(self):
+        with self.assertRaisesRegex(ValueError, "at least two"):
+            IslandConfig(
+                semantic_choice_trial=True,
+                max_visible_slots=1,
+            )
 
 
 class OracleTest(unittest.TestCase):

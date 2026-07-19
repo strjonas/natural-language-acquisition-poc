@@ -194,3 +194,25 @@ bodily outcome. Do not call this comprehension. Labels are voluntarily sampled
 but their consequence association is too sparse/noisy in the open island. The
 next probe is the preregistered paired inspect--remember--choose childhood,
 not token-loss tuning or larger models.
+
+## Post-result audit correction
+
+A subsequent code-and-data audit invalidated the narrower causal interpretation
+of the label intervention. The 200 nominal rows per checkpoint came from only
+1--9 policy-driven episodes and 3--14 unique object targets, with radically
+different resource/danger mixtures. Some zero-distance options also labeled or
+consumed the object ahead instead of the selected object; shuffled seed 2 had 28
+wrong-referent rows. The consume-probability shift was mostly a direct
+token-to-policy effect: removing planning retained 0.00835/0.01156 of seed 1's
+reported shift, 0.01088/0.01357 for grounded seed 2, and 0.00952/0.01143 for
+shuffled seed 2. The planning-specific increment had only 52--58% directional
+hits. Finally, grid generation and shuffled speech used separately constructed
+PRNGs but the same seed, leaving a small measurable hidden-kind association.
+
+Therefore withdraw the statement that these runs establish a positive
+label-to-self-model mechanism. They establish only (a) replicated use of an
+action-conditioned bodily model, (b) voluntary inspection, and (c) a
+descriptive grounded-training lifespan advantage that failed its locked
+replication gate. The headline negative conclusion is unchanged. The next
+probe splits the RNG streams and uses balanced, unique, fixed-context causal
+audits with direct-policy and planning-mediated effects reported separately.

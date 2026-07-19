@@ -12,6 +12,7 @@ language must come through behavior.
 
 from __future__ import annotations
 
+from collections import deque
 from copy import deepcopy
 import json
 from dataclasses import asdict, dataclass, field
@@ -23,7 +24,13 @@ import mlx.nn as nn
 import mlx.optimizers as optim
 import numpy as np
 
-from homesocial.creole.vocab import PAD_TOKEN, TOKEN_TO_ID, VOCAB
+from homesocial.creole.vocab import (
+    PAD_TOKEN,
+    TOKEN_TO_ID,
+    VOCAB,
+    encode_utterance,
+)
+from homesocial.creole.situations import Situation
 from homesocial.env import Action, DELTAS, DIRECTION_ORDER, Direction
 from homesocial.island.oracle import OraclePolicy
 from homesocial.island.world import (
@@ -116,7 +123,7 @@ def available_action_mask(
     mask = np.ones(action_size, dtype=np.bool_)
     extra_actions = action_size - len(ACTIONS)
     if extra_actions > 0:
-        slots = extra_actions if visible_slots is None else visible_slots
+        slots = packet.max_visible_slots if visible_slots is None else visible_slots
         if slots <= 0 or extra_actions % slots:
             raise ValueError("Object-option actions must form visible-slot blocks.")
         mask[len(ACTIONS) :] = False
@@ -148,19 +155,65 @@ def _motor_action_toward(
     target: tuple[int, int],
     terminal_action: Action,
 ) -> Action:
-    """Kind-blind low-level action toward and then upon a perceived object."""
+    """Kind-blind routed action toward and then upon a perceived object."""
 
     grid = world.grid
     distance = abs(target[0] - grid.agent_pos[0]) + abs(
         target[1] - grid.agent_pos[1]
     )
-    if distance == 0:
-        return terminal_action
-    desired = _desired_direction(grid.agent_pos, target)
     if distance == 1:
+        desired = _desired_direction(grid.agent_pos, target)
         if grid.direction == desired:
             return terminal_action
         return _turn_toward(grid.direction, desired)
+
+    # Consumables are non-blocking, so ordinary movement can leave the agent
+    # standing on a selected object (distance zero).  Route to a free adjacent
+    # cell rather than incorrectly applying ASK/CONSUME to whatever is ahead.
+    # The servo reads only positions and the public physical ``blocks`` flag;
+    # it never reads a target's hidden bodily kind.
+    goals = {
+        (target[0] + dx, target[1] + dy)
+        for dx, dy in DELTAS.values()
+        if 0 <= target[0] + dx < grid.width
+        and 0 <= target[1] + dy < grid.height
+        and not (
+            (obj := grid.object_at((target[0] + dx, target[1] + dy)))
+            is not None
+            and obj.blocks
+        )
+    }
+    queue = deque([grid.agent_pos])
+    parent: dict[tuple[int, int], tuple[int, int] | None] = {
+        grid.agent_pos: None
+    }
+    goal: tuple[int, int] | None = None
+    while queue:
+        current = queue.popleft()
+        if current in goals and current != target:
+            goal = current
+            break
+        for direction in DIRECTION_ORDER:
+            dx, dy = DELTAS[direction]
+            neighbor = (current[0] + dx, current[1] + dy)
+            if neighbor in parent or neighbor == target:
+                continue
+            if not (0 <= neighbor[0] < grid.width and 0 <= neighbor[1] < grid.height):
+                continue
+            obj = grid.object_at(neighbor)
+            if obj is not None and obj.blocks:
+                continue
+            parent[neighbor] = current
+            queue.append(neighbor)
+    if goal is None:
+        return Action.WAIT
+    waypoint = goal
+    while parent[waypoint] != grid.agent_pos:
+        previous = parent[waypoint]
+        if previous is None:
+            return Action.WAIT
+        waypoint = previous
+    desired = _desired_direction(grid.agent_pos, waypoint)
     if grid.direction != desired:
         return _turn_toward(grid.direction, desired)
     return Action.MOVE_FORWARD
@@ -227,9 +280,9 @@ def execute_agent_action(
     terminated = False
     truncated = False
     final_info: dict[str, object] = {}
-    # Radius-two targets require at most two moves, two turns, and consume.
-    # The small margin lets the servo recover from one blocked direct route.
-    for _ in range(7):
+    # Chebyshev-radius-two targets can require four moves; twelve primitives
+    # cover turns and a short detour around a visible blocker.
+    for _ in range(12):
         primitive = _motor_action_toward(world, target, terminal_action)
         current_packet, reward, terminated, truncated, info = world.step(primitive)
         reward_sum += float(reward)
@@ -237,7 +290,7 @@ def execute_agent_action(
         min_viability = min(min_viability, float(info["viability"]))
         events.append(info.get("event"))
         final_info = dict(info)
-        if primitive == terminal_action or terminated or truncated:
+        if primitive in {terminal_action, Action.WAIT} or terminated or truncated:
             break
     final_info["duration"] = len(events)
     final_info["mean_viability_sum"] = viability_sum
@@ -468,6 +521,12 @@ class OrganismConfig:
     caregiver_offer_threshold_start: float = 0.0
     caregiver_offer_curriculum_steps: int = 0
     caregiver_offer_distance_end: int = 0
+    # A concentrated developmental phase: every life presents a symmetric
+    # needed-resource versus poison pair whose surface meanings are remapped.
+    # Zero preserves the ordinary island (unless ``island`` explicitly enables
+    # the diagnostic trial).  Positive values switch to the ordinary island at
+    # the first life boundary after this many primitive ticks.
+    semantic_choice_childhood_steps: int = 0
     consume_options: bool = False
     inspect_options: bool = False
     self_model_planning_scale: float = 0.0
@@ -490,12 +549,23 @@ class OrganismConfig:
             raise ValueError("world_model_replay_capacity must be nonnegative.")
         if self.world_model_replay_updates < 0:
             raise ValueError("world_model_replay_updates must be nonnegative.")
+        if self.semantic_choice_childhood_steps < 0:
+            raise ValueError("semantic_choice_childhood_steps must be nonnegative.")
 
-    def island_config(self) -> IslandConfig:
+    def island_config(
+        self, *, semantic_choice_trial: bool | None = None
+    ) -> IslandConfig:
+        choice_trial = (
+            self.island.semantic_choice_trial
+            if semantic_choice_trial is None
+            else semantic_choice_trial
+        )
         return IslandConfig(
             width=self.island.width,
             height=self.island.height,
             max_steps=self.max_steps,
+            semantic_choice_trial=choice_trial,
+            semantic_choice_horizon=self.island.semantic_choice_horizon,
             language_mode=self.language_mode,
             ask_state_period=self.island.ask_state_period,
             visible_radius=self.island.visible_radius,
@@ -525,6 +595,14 @@ class LifeStats:
     inspect_option_decisions: int
     labels_received: int
     harm_events: int
+    semantic_choice_trial: bool
+    choice_need: str
+    chosen_kind: str
+    chosen_surface: str
+    chosen_surface_inspected: bool
+    choice_correct: bool
+    choice_poison: bool
+    choice_timeout: bool
 
 
 @dataclass(frozen=True)
@@ -612,6 +690,7 @@ def compute_gae(
 
 class _Segment:
     def __init__(self) -> None:
+        self.semantic_choice_trial = False
         self.vectors: list[np.ndarray] = []
         self.tokens: list[tuple[int, ...]] = []
         self.actions: list[int] = []
@@ -634,7 +713,14 @@ class OrganismTrainer:
     def __init__(self, config: OrganismConfig) -> None:
         self.config = config
         mx.random.seed(config.seed)
-        self.world = IslandWorld(config.island_config(), seed=config.seed)
+        initial_choice_trial = (
+            config.semantic_choice_childhood_steps > 0
+            or config.island.semantic_choice_trial
+        )
+        self.world = IslandWorld(
+            config.island_config(semantic_choice_trial=initial_choice_trial),
+            seed=config.seed,
+        )
         self.model = build_model(config, self.world)
         self.optimizer = optim.Adam(learning_rate=config.learning_rate)
         self.rng = Random(config.seed)
@@ -658,6 +744,9 @@ class OrganismTrainer:
         self.packet = self.world.reset(self.life_seed)
         self._apply_development_curricula()
         self.hidden: mx.array | None = None
+        self._reset_life_counters()
+
+    def _reset_life_counters(self) -> None:
         self._life_steps = 0
         self._life_viability_sum = 0.0
         self._life_min_viability = 1.0
@@ -671,6 +760,31 @@ class OrganismTrainer:
         self._life_inspect_option_decisions = 0
         self._life_labels_received = 0
         self._life_harm_events = 0
+        self._life_semantic_choice_trial = self.world.config.semantic_choice_trial
+        self._life_choice_need = self.world.grid.choice_need or ""
+        self._life_chosen_kind = ""
+        self._life_chosen_surface = ""
+        self._life_chosen_surface_inspected = False
+        self._life_choice_correct = False
+        self._life_choice_poison = False
+        self._life_choice_timeout = False
+
+    def _semantic_choice_active(self) -> bool:
+        if self.config.semantic_choice_childhood_steps > 0:
+            return self.global_steps < self.config.semantic_choice_childhood_steps
+        return self.config.island.semantic_choice_trial
+
+    def _start_next_life(self) -> None:
+        choice_trial = self._semantic_choice_active()
+        if self.world.config.semantic_choice_trial != choice_trial:
+            self.world = IslandWorld(
+                self.config.island_config(semantic_choice_trial=choice_trial),
+                seed=self.life_seed,
+            )
+        self.packet = self.world.reset(self.life_seed)
+        self._apply_development_curricula()
+        self.hidden = None
+        self._reset_life_counters()
 
     # --------------------------------------------------- childhood bootstrap
 
@@ -979,6 +1093,7 @@ class OrganismTrainer:
         """Collect experience until segment length or end of life."""
 
         segment = _Segment()
+        segment.semantic_choice_trial = self.world.config.semantic_choice_trial
         initial_hidden = self.hidden
         pad_id = TOKEN_TO_ID[PAD_TOKEN]
         while len(segment) < self.config.segment_length:
@@ -1005,9 +1120,18 @@ class OrganismTrainer:
             duration = int(info["duration"])
             mean_viability_sum = float(info["mean_viability_sum"])
             mean_viability = mean_viability_sum / duration
+            # A fixed short choice trial would otherwise pay the open-island
+            # per-tick survival bonus for delaying until timeout.  Its real
+            # homeostatic delta already rewards repair, penalizes poison and
+            # telescopes over waiting, so keep that unshaped signal here.
+            live_reward_weight = (
+                0.0
+                if self.world.config.semantic_choice_trial
+                else self.config.live_reward_weight
+            )
             shaped = (
                 env_reward
-                + self.config.live_reward_weight * mean_viability_sum
+                + live_reward_weight * mean_viability_sum
                 - (self.config.death_penalty if terminated else 0.0)
             )
             segment.vectors.append(vector_before)
@@ -1048,6 +1172,20 @@ class OrganismTrainer:
             self._life_harm_events += sum(
                 event in {"hit_danger", "consumed_poison"} for event in events
             )
+            if bool(info.get("semantic_choice_trial")):
+                self._life_choice_need = str(info.get("choice_need") or "")
+                chosen_kind = info.get("chosen_kind")
+                if chosen_kind is not None:
+                    self._life_chosen_kind = str(chosen_kind)
+                    self._life_chosen_surface = str(
+                        info.get("chosen_surface") or ""
+                    )
+                    self._life_chosen_surface_inspected = bool(
+                        info.get("chosen_surface_inspected")
+                    )
+                    self._life_choice_correct = bool(info.get("correct"))
+                    self._life_choice_poison = bool(info.get("poison"))
+                self._life_choice_timeout = bool(info.get("timeout"))
 
             if terminated or truncated:
                 self._finish_life(survived=not terminated)
@@ -1085,26 +1223,19 @@ class OrganismTrainer:
                 inspect_option_decisions=self._life_inspect_option_decisions,
                 labels_received=self._life_labels_received,
                 harm_events=self._life_harm_events,
+                semantic_choice_trial=self._life_semantic_choice_trial,
+                choice_need=self._life_choice_need,
+                chosen_kind=self._life_chosen_kind,
+                chosen_surface=self._life_chosen_surface,
+                chosen_surface_inspected=self._life_chosen_surface_inspected,
+                choice_correct=self._life_choice_correct,
+                choice_poison=self._life_choice_poison,
+                choice_timeout=self._life_choice_timeout,
             )
         )
         self.life_index += 1
         self.life_seed = self.config.seed + self.life_index
-        self.packet = self.world.reset(self.life_seed)
-        self._apply_development_curricula()
-        self.hidden = None
-        self._life_steps = 0
-        self._life_viability_sum = 0.0
-        self._life_min_viability = 1.0
-        self._life_utterances = 0
-        self._life_consume_attempts = 0
-        self._life_resource_consumes = 0
-        self._life_food_consumes = 0
-        self._life_water_consumes = 0
-        self._life_offered_consumes = 0
-        self._life_option_decisions = 0
-        self._life_inspect_option_decisions = 0
-        self._life_labels_received = 0
-        self._life_harm_events = 0
+        self._start_next_life()
 
     # ------------------------------------------------------------ learning
 
@@ -1116,6 +1247,7 @@ class OrganismTrainer:
         next_vectors: mx.array,
         next_needs: mx.array,
         env_rewards: mx.array,
+        next_tokens: mx.array,
     ) -> mx.array:
         """Open-loop latent rollout loss over consecutive lived actions."""
 
@@ -1153,13 +1285,34 @@ class OrganismTrainer:
         target_reward = mx.zeros((usable,))
         for offset in range(horizon):
             target_reward = target_reward + env_rewards[offset : offset + usable]
-        vector_loss = ((imagined_vector[0] - target_vectors) ** 2).mean()
-        needs_loss = bodily_delta_prediction_loss(
-            predicted_needs - start_needs,
-            target_needs - start_needs,
-            change_boost=config.bodily_change_loss_boost,
+        valid = mx.ones((usable,), dtype=mx.bool_)
+        pad_id = TOKEN_TO_ID[PAD_TOKEN]
+        for offset in range(horizon - 1):
+            valid = valid & mx.all(
+                next_tokens[offset : offset + usable] == pad_id,
+                axis=-1,
+            )
+        valid_float = valid.astype(mx.float32)
+        valid_count = mx.maximum(valid_float.sum(), mx.array(1.0))
+        vector_error = ((imagined_vector[0] - target_vectors) ** 2).mean(
+            axis=-1
         )
-        reward_loss = ((cumulative_reward[0] - target_reward) ** 2).mean()
+        vector_loss = (vector_error * valid_float).sum() / valid_count
+        need_error = (
+            (
+                (predicted_needs - start_needs)
+                - (target_needs - start_needs)
+            )
+            ** 2
+        ).mean(axis=-1)
+        need_weights = 1.0 + config.bodily_change_loss_boost * mx.max(
+            mx.abs(target_needs - start_needs), axis=-1
+        )
+        needs_loss = (need_error * need_weights * valid_float).sum() / mx.maximum(
+            (need_weights * valid_float).sum(), mx.array(1.0)
+        )
+        reward_error = (cumulative_reward[0] - target_reward) ** 2
+        reward_loss = (reward_error * valid_float).sum() / valid_count
         return (
             config.next_vector_weight * vector_loss
             + config.next_needs_weight * needs_loss
@@ -1210,6 +1363,7 @@ class OrganismTrainer:
             next_vectors,
             next_needs,
             env_rewards,
+            next_tokens,
         )
         return (
             config.next_vector_weight * vector_loss
@@ -1287,6 +1441,7 @@ class OrganismTrainer:
             next_vectors,
             next_needs,
             env_rewards,
+            next_tokens,
         )
 
         return (
@@ -1300,9 +1455,9 @@ class OrganismTrainer:
             + config.multi_step_model_weight * multi_step_loss
         )
 
-    def update(
-        self, segment: _Segment, hidden: mx.array | None, bootstrap: float
-    ) -> float:
+    def _policy_targets(
+        self, segment: _Segment, bootstrap: float
+    ) -> tuple[np.ndarray, np.ndarray]:
         config = self.config
         values = np.asarray(segment.values, dtype=np.float32)
         rewards = np.asarray(segment.shaped_rewards, dtype=np.float32)
@@ -1317,8 +1472,19 @@ class OrganismTrainer:
             discount=config.discount,
             gae_lambda=config.gae_lambda,
         )
-        if len(advantages) > 1:
+        # Centering within one short choice life makes every early information
+        # action negative whenever the later consume has the larger return,
+        # even when both are successful. Preserve raw cross-time return scale
+        # in paired childhood; ordinary longer island segments keep the
+        # variance-reducing normalization.
+        if len(advantages) > 1 and not segment.semantic_choice_trial:
             advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-6)
+        return advantages, returns
+
+    def update(
+        self, segment: _Segment, hidden: mx.array | None, bootstrap: float
+    ) -> float:
+        advantages, returns = self._policy_targets(segment, bootstrap)
 
         loss, grads = self._loss_and_grad(
             mx.array(np.stack(segment.vectors)[None, ...]),
@@ -1334,7 +1500,7 @@ class OrganismTrainer:
             mx.array(np.asarray(segment.env_rewards, dtype=np.float32)),
             mx.array(np.asarray(segment.next_tokens, dtype=np.int32)),
         )
-        grads, _ = optim.clip_grad_norm(grads, config.max_grad_norm)
+        grads, _ = optim.clip_grad_norm(grads, self.config.max_grad_norm)
         self.optimizer.update(self.model, grads)
         mx.eval(self.model.parameters(), self.optimizer.state, loss)
         return float(loss)
@@ -1395,6 +1561,23 @@ class OrganismTrainer:
         steps_done = 0
         lives_logged = 0
         while steps_done < config.total_steps:
+            remaining_steps = config.total_steps - steps_done
+            if self.world.config.semantic_choice_trial:
+                # Choice collection normally ends only at a trial boundary.
+                # Shorten the final held-out training life so the declared
+                # primitive-tick budget is exact even when it is not divisible
+                # by the trial horizon or an option duration.
+                choice_steps_left = remaining_steps
+                if config.semantic_choice_childhood_steps > 0:
+                    choice_steps_left = min(
+                        choice_steps_left,
+                        config.semantic_choice_childhood_steps
+                        - self.global_steps,
+                    )
+                exact_limit = self.world.grid.step_count + choice_steps_left
+                self.world.grid.max_steps = min(
+                    self.world.grid.max_steps, exact_limit
+                )
             segment, hidden, bootstrap = self.collect_segment()
             if len(segment) == 0:
                 continue
@@ -1474,7 +1657,12 @@ def evaluate_organism(
     for episode in range(episodes):
         seed = base_seed + episode
         world = IslandWorld(
-            IslandConfig(language_mode=language_mode, max_steps=max_steps), seed=seed
+            IslandConfig(
+                language_mode=language_mode,
+                max_steps=max_steps,
+                max_visible_slots=model.visible_slots or 8,
+            ),
+            seed=seed,
         )
         packet = world.reset(seed)
         hidden: mx.array | None = None
@@ -1588,6 +1776,157 @@ def evaluate_organism(
     }
 
 
+def evaluate_semantic_choice(
+    model: OrganismModel,
+    *,
+    language_mode: str,
+    episodes: int,
+    base_seed: int,
+    semantic_choice_horizon: int = 20,
+    sample_seed: int = 0,
+    greedy: bool = False,
+    consume_options: bool = True,
+    inspect_options: bool = True,
+    self_model_planning_scale: float = 0.0,
+    self_model_planning_reward_weight: float = 0.5,
+    self_model_planning_score_sign: float = 1.0,
+    self_model_planning_horizon: int = 1,
+) -> dict[str, float]:
+    """Evaluate the held-out inspect--remember--choose developmental task.
+
+    Every episode independently remaps visible surfaces and presents one
+    need-matched resource against poison.  The returned rates expose both
+    coverage and conditional accuracy so timing out cannot masquerade as a
+    competent selective policy.
+    """
+
+    if episodes <= 0:
+        raise ValueError("episodes must be positive.")
+    rng = Random(sample_seed)
+    pad_id = TOKEN_TO_ID[PAD_TOKEN]
+    choices = 0
+    correct = 0
+    poison = 0
+    timeouts = 0
+    inspected_trials = 0
+    inspected_choices = 0
+    inspected_correct = 0
+    inspect_decisions = 0
+    label_opportunities = 0
+    utterances = 0
+    steps_sum = 0
+
+    for episode in range(episodes):
+        seed = base_seed + episode
+        world = IslandWorld(
+            IslandConfig(
+                language_mode=language_mode,
+                semantic_choice_trial=True,
+                semantic_choice_horizon=semantic_choice_horizon,
+                max_visible_slots=model.visible_slots or 8,
+            ),
+            seed=seed,
+        )
+        packet = world.reset(seed)
+        hidden: mx.array | None = None
+        trial_inspected = False
+        steps = 0
+        while True:
+            vector = mx.array(packet.vector()[None, None, :])
+            tokens = mx.array(
+                np.asarray(packet.tokens, dtype=np.int32)[None, None, :]
+            )
+            states, hidden = model.core_states(vector, tokens, hidden)
+            logits = model.policy(states)
+            if self_model_planning_scale > 0.0:
+                logits = planned_policy_logits(
+                    model,
+                    states,
+                    vector,
+                    logits,
+                    mx.array([[self_model_planning_scale]]),
+                    reward_weight=self_model_planning_reward_weight,
+                    score_sign=self_model_planning_score_sign,
+                    horizon=self_model_planning_horizon,
+                )
+            action_mask = available_action_mask(
+                packet,
+                model.action_size,
+                visible_slots=model.visible_slots or None,
+            )
+            logits = mx.where(
+                mx.array(action_mask)[None, None, :], logits, -1e9
+            )
+            mx.eval(logits, hidden)
+            if greedy:
+                action_index = int(mx.argmax(logits[0, 0]).item())
+            else:
+                probabilities = np.asarray(
+                    mx.softmax(logits[0, 0], axis=-1), dtype=np.float64
+                )
+                probabilities /= probabilities.sum()
+                action_index = int(
+                    rng.choices(
+                        range(model.action_size), weights=probabilities
+                    )[0]
+                )
+            decoded = decode_object_option(
+                action_index,
+                consume_options=consume_options,
+                inspect_options=inspect_options,
+                visible_slots=world.config.max_visible_slots,
+            )
+            if decoded is not None and decoded[0] == "inspect":
+                inspect_decisions += 1
+                trial_inspected = True
+            packet, _, terminated, truncated, info = execute_agent_action(
+                world,
+                packet,
+                action_index,
+                consume_options=consume_options,
+                inspect_options=inspect_options,
+            )
+            steps += int(info["duration"])
+            label_opportunities += int(
+                str(info.get("situation", "")).startswith("label|")
+            )
+            utterances += int(any(token != pad_id for token in packet.tokens))
+            if terminated or truncated:
+                inspected_trials += int(trial_inspected)
+                chosen = info.get("chosen_kind") is not None
+                choices += int(chosen)
+                correct += int(bool(info.get("correct")))
+                poison += int(bool(info.get("poison")))
+                timeouts += int(bool(info.get("timeout")))
+                if chosen and bool(info.get("chosen_surface_inspected")):
+                    inspected_choices += 1
+                    inspected_correct += int(bool(info.get("correct")))
+                break
+        steps_sum += steps
+
+    return {
+        "trials": float(episodes),
+        "choices_made": float(choices),
+        "choice_rate": choices / episodes,
+        "correct_choices": float(correct),
+        "correct_rate_all_trials": correct / episodes,
+        "choice_accuracy": correct / max(1, choices),
+        "poison_choices": float(poison),
+        "poison_rate_all_trials": poison / episodes,
+        "timeout_rate": timeouts / episodes,
+        "trials_with_inspection": float(inspected_trials),
+        "inspection_trial_rate": inspected_trials / episodes,
+        "inspected_choices": float(inspected_choices),
+        "inspected_choice_rate": inspected_choices / episodes,
+        "inspected_choice_accuracy": inspected_correct
+        / max(1, inspected_choices),
+        "inspect_decisions_per_trial": inspect_decisions / episodes,
+        "label_opportunities_per_trial": label_opportunities / episodes,
+        "utterances_heard_per_trial": utterances / episodes,
+        "mean_steps": steps_sum / episodes,
+    }
+
+
 def audit_self_model_actions(
     model: OrganismModel,
     *,
@@ -1602,6 +1941,8 @@ def audit_self_model_actions(
     self_model_planning_scale: float = 0.0,
     reward_weight: float = 0.5,
     self_model_planning_horizon: int = 1,
+    semantic_choice_trial: bool = False,
+    semantic_choice_horizon: int = 20,
 ) -> dict[str, float]:
     """Compare predicted and simulator-realized outcomes for every action.
 
@@ -1630,13 +1971,20 @@ def audit_self_model_actions(
     best_action_hits = 0
     best_action_regret = 0.0
     best_over_worst_advantage = 0.0
+    audited_episodes: set[int] = set()
 
     for episode in range(episodes):
         if audited_decisions >= max_decisions:
             break
         seed = base_seed + episode
         world = IslandWorld(
-            IslandConfig(language_mode=language_mode, max_steps=max_steps),
+            IslandConfig(
+                language_mode=language_mode,
+                max_steps=max_steps,
+                semantic_choice_trial=semantic_choice_trial,
+                semantic_choice_horizon=semantic_choice_horizon,
+                max_visible_slots=model.visible_slots or 8,
+            ),
             seed=seed,
         )
         packet = world.reset(seed)
@@ -1754,7 +2102,10 @@ def audit_self_model_actions(
                 actual_scores[predicted_best] - actual_scores[predicted_worst]
             )
             audited_decisions += 1
+            audited_episodes.add(seed)
 
+            if semantic_choice_trial:
+                break
             packet, _, terminated, truncated, _ = execute_agent_action(
                 world,
                 packet,
@@ -1768,6 +2119,7 @@ def audit_self_model_actions(
     correlation_denominator = (predicted_square * actual_square) ** 0.5
     return {
         "audited_decisions": float(audited_decisions),
+        "unique_episodes": float(len(audited_episodes)),
         "candidate_outcomes": float(candidate_outcomes),
         "counterfactual_needs_mae": needs_abs_error
         / max(1, 4 * candidate_outcomes),
@@ -1799,14 +2151,17 @@ def audit_label_to_self_model(
     sample_seed: int = 0,
     self_model_planning_scale: float = 0.0,
     self_model_planning_horizon: int = 2,
+    semantic_choice_trial: bool = False,
+    semantic_choice_horizon: int = 20,
 ) -> dict[str, float]:
     """Causally test whether an inspected label changes bodily prediction.
 
     Each audit branch executes the same kind-blind inspect option.  From the
     exact same pre-token recurrent state and resulting visual/body observation,
-    the core then receives either the true grounded label, padding, or a label
-    whose functional-kind words are replaced counterfactually.  Simulator
-    copies supply audit targets only and never enter learning or acting.
+    the core then receives either a controlled in-distribution true-kind label,
+    padding, or the same controlled label with its one functional-kind token
+    changed counterfactually.  Simulator copies supply audit targets only and
+    never enter learning or acting.
     """
 
     if episodes <= 0:
@@ -1817,7 +2172,6 @@ def audit_label_to_self_model(
         raise ValueError("Label audit requires consume and inspect object options.")
 
     kind_words = ("food", "water", "danger")
-    kind_ids = {TOKEN_TO_ID[word] for word in kind_words}
     pad_tokens = (TOKEN_TO_ID[PAD_TOKEN],) * model.tokens_per_utterance
     rng = Random(sample_seed)
 
@@ -1834,9 +2188,24 @@ def audit_label_to_self_model(
     prediction_l1_shift = 0.0
     consume_probability_direction = 0.0
     consume_probability_direction_hits = 0
+    direct_policy_probability_direction = 0.0
+    direct_policy_probability_direction_hits = 0
+    planning_mediated_probability_direction = 0.0
+    planning_mediated_probability_direction_hits = 0
     action_flip_count = 0
     resource_cases = 0
     danger_cases = 0
+    resource_swap_cases = 0
+    resource_swap_correct = 0
+    resource_swap_substituted_shift = 0.0
+    resource_swap_true_suppression = 0.0
+    resource_swap_prediction_l1_shift = 0.0
+    resource_swap_probability_direction = 0.0
+    resource_swap_probability_direction_hits = 0
+    resource_swap_direct_probability_direction = 0.0
+    resource_swap_planner_increment = 0.0
+    audited_episodes: set[int] = set()
+    audited_target_keys: set[tuple[int, tuple[int, int], int]] = set()
 
     def semantic_scores(delta: np.ndarray) -> np.ndarray:
         return np.asarray([delta[0], delta[1], -delta[3]], dtype=np.float64)
@@ -1846,18 +2215,20 @@ def audit_label_to_self_model(
             return "food" if needs[0] <= needs[1] else "water"
         return "danger"
 
-    def counterfactual_tokens(
-        tokens: tuple[int, ...], counter_kind: str
-    ) -> tuple[int, ...]:
-        counter_id = TOKEN_TO_ID[counter_kind]
-        return tuple(counter_id if token in kind_ids else token for token in tokens)
+    def controlled_kind_tokens(kind: str) -> tuple[int, ...]:
+        # ``water`` is both a surface word and a functional-kind word.  Using
+        # the bank's sampled sentence and replacing every matching token would
+        # sometimes change the named surface as well as the kind.  The
+        # in-distribution "this <kind>" variants isolate one functional token
+        # while the post-inspect visual packet keeps surface identity fixed.
+        return encode_utterance(("this", kind))
 
     def measure_variant(
         packet: ObsPacket,
         hidden: mx.array,
         tokens: tuple[int, ...],
         consume_action: int,
-    ) -> tuple[np.ndarray, float, int]:
+    ) -> tuple[np.ndarray, float, float, int, int]:
         vector = mx.array(packet.vector()[None, None, :])
         token_array = mx.array(np.asarray(tokens, dtype=np.int32)[None, None, :])
         states, _ = model.core_states(vector, token_array, hidden)
@@ -1866,13 +2237,14 @@ def audit_label_to_self_model(
             mx.array(np.asarray([[consume_action]], dtype=np.int32)),
             vector,
         )
-        logits = model.policy(states)
+        base_logits = model.policy(states)
+        planned_logits = base_logits
         if self_model_planning_scale > 0.0:
-            logits = planned_policy_logits(
+            planned_logits = planned_policy_logits(
                 model,
                 states,
                 vector,
-                logits,
+                base_logits,
                 mx.array([[self_model_planning_scale]]),
                 reward_weight=0.0,
                 horizon=self_model_planning_horizon,
@@ -1882,13 +2254,18 @@ def audit_label_to_self_model(
             model.action_size,
             visible_slots=model.visible_slots,
         )
-        logits = mx.where(mx.array(action_mask)[None, None, :], logits, -1e9)
-        probabilities = mx.softmax(logits[0, 0], axis=-1)
-        mx.eval(predicted_delta, probabilities)
+        mask = mx.array(action_mask)[None, None, :]
+        base_logits = mx.where(mask, base_logits, -1e9)
+        planned_logits = mx.where(mask, planned_logits, -1e9)
+        base_probabilities = mx.softmax(base_logits[0, 0], axis=-1)
+        planned_probabilities = mx.softmax(planned_logits[0, 0], axis=-1)
+        mx.eval(predicted_delta, base_probabilities, planned_probabilities)
         return (
             np.asarray(predicted_delta[0, 0], dtype=np.float64),
-            float(probabilities[consume_action].item()),
-            int(mx.argmax(probabilities).item()),
+            float(base_probabilities[consume_action].item()),
+            float(planned_probabilities[consume_action].item()),
+            int(mx.argmax(base_probabilities).item()),
+            int(mx.argmax(planned_probabilities).item()),
         )
 
     for episode in range(episodes):
@@ -1896,7 +2273,13 @@ def audit_label_to_self_model(
             break
         seed = base_seed + episode
         world = IslandWorld(
-            IslandConfig(language_mode="grounded", max_steps=max_steps),
+            IslandConfig(
+                language_mode="grounded",
+                max_steps=max_steps,
+                semantic_choice_trial=semantic_choice_trial,
+                semantic_choice_horizon=semantic_choice_horizon,
+                max_visible_slots=model.visible_slots or 8,
+            ),
             seed=seed,
         )
         packet = world.reset(seed)
@@ -1909,14 +2292,53 @@ def audit_label_to_self_model(
             states, hidden = model.core_states(vector, token_array, hidden)
             mx.eval(states, hidden)
 
-            target_slot = next(
-                (
-                    slot
-                    for slot, (_, _, surface_index) in enumerate(packet.visible)
-                    if SURFACES[surface_index] in CONSUMABLE_SURFACES
-                ),
-                None,
-            )
+            candidate_slots = [
+                slot
+                for slot, (_, _, surface_index) in enumerate(packet.visible)
+                if SURFACES[surface_index] in CONSUMABLE_SURFACES
+            ]
+            if semantic_choice_trial:
+                # One independent target per held-out trial, alternating the
+                # need-matched resource and poison. This gives an exactly
+                # balanced consequence audit rather than counting the same
+                # three objects hundreds of times along one policy trajectory.
+                want_danger = episode % 2 == 1
+                target_slot = next(
+                    (
+                        slot
+                        for slot in candidate_slots
+                        if (
+                            (
+                                world.grid.object_at(
+                                    (
+                                        packet.position[0] + packet.visible[slot][0],
+                                        packet.position[1] + packet.visible[slot][1],
+                                    )
+                                ).kind
+                                == "poison"
+                            )
+                            == want_danger
+                        )
+                    ),
+                    None,
+                )
+            else:
+                target_slot = next(
+                    (
+                        slot
+                        for slot in candidate_slots
+                        if (
+                            seed,
+                            (
+                                packet.position[0] + packet.visible[slot][0],
+                                packet.position[1] + packet.visible[slot][1],
+                            ),
+                            packet.visible[slot][2],
+                        )
+                        not in audited_target_keys
+                    ),
+                    None,
+                )
             if target_slot is not None:
                 dx, dy, surface_index = packet.visible[target_slot]
                 target_pos = (packet.position[0] + dx, packet.position[1] + dy)
@@ -1962,7 +2384,12 @@ def audit_label_to_self_model(
                     target = inspected_world.grid.object_at(target_pos)
                     if target is not None:
                         true_kind = "danger" if target.kind == "poison" else target.kind
-                        if true_kind in kind_words:
+                        label_situation = Situation.from_key(situation)
+                        if (
+                            true_kind in kind_words
+                            and label_situation.slot("surface") == target.name
+                            and label_situation.slot("kind") == true_kind
+                        ):
                             consume_action = object_option_action_index(
                                 "consume",
                                 post_slot,
@@ -1973,31 +2400,60 @@ def audit_label_to_self_model(
                             counter_kind = counter_kind_for(
                                 true_kind, inspected_packet.needs
                             )
-                            counter_tokens = counterfactual_tokens(
-                                inspected_packet.tokens, counter_kind
-                            )
-                            true_delta, true_probability, true_action = measure_variant(
+                            true_tokens = controlled_kind_tokens(true_kind)
+                            counter_tokens = controlled_kind_tokens(counter_kind)
+                            (
+                                true_delta,
+                                true_base_probability,
+                                true_probability,
+                                _,
+                                true_action,
+                            ) = measure_variant(
                                 inspected_packet,
                                 hidden,
-                                inspected_packet.tokens,
+                                true_tokens,
                                 consume_action,
                             )
-                            silent_delta, silent_probability, silent_action = (
-                                measure_variant(
-                                    inspected_packet,
-                                    hidden,
-                                    pad_tokens,
-                                    consume_action,
-                                )
+                            (
+                                silent_delta,
+                                _,
+                                _,
+                                _,
+                                _,
+                            ) = measure_variant(
+                                inspected_packet,
+                                hidden,
+                                pad_tokens,
+                                consume_action,
                             )
-                            counter_delta, counter_probability, counter_action = (
-                                measure_variant(
-                                    inspected_packet,
-                                    hidden,
-                                    counter_tokens,
-                                    consume_action,
-                                )
+                            (
+                                counter_delta,
+                                counter_base_probability,
+                                counter_probability,
+                                _,
+                                counter_action,
+                            ) = measure_variant(
+                                inspected_packet,
+                                hidden,
+                                counter_tokens,
+                                consume_action,
                             )
+                            resource_swap_measure = None
+                            if true_kind in {"food", "water"}:
+                                resource_swap_kind = (
+                                    "water" if true_kind == "food" else "food"
+                                )
+                                resource_swap_measure = (
+                                    resource_swap_kind,
+                                    *measure_variant(
+                                        inspected_packet,
+                                        hidden,
+                                        controlled_kind_tokens(
+                                            resource_swap_kind
+                                        ),
+                                        consume_action,
+                                    ),
+                                )
 
                             outcome_world = deepcopy(inspected_world)
                             actual_packet, _, _, _, _ = execute_agent_action(
@@ -2017,6 +2473,10 @@ def audit_label_to_self_model(
                             counter_index = kind_words.index(counter_kind)
 
                             audited += 1
+                            audited_episodes.add(seed)
+                            audited_target_keys.add(
+                                (seed, target_pos, surface_index)
+                            )
                             resource_cases += int(true_kind != "danger")
                             danger_cases += int(true_kind == "danger")
                             true_correct += int(int(np.argmax(true_scores)) == true_index)
@@ -2050,12 +2510,88 @@ def audit_label_to_self_model(
                             directed_probability_shift = direction * (
                                 counter_probability - true_probability
                             )
+                            direct_probability_shift = direction * (
+                                counter_base_probability
+                                - true_base_probability
+                            )
+                            mediated_probability_shift = (
+                                directed_probability_shift
+                                - direct_probability_shift
+                            )
                             consume_probability_direction += directed_probability_shift
                             consume_probability_direction_hits += int(
-                                directed_probability_shift > 0.0
+                                directed_probability_shift > 1e-6
+                            )
+                            direct_policy_probability_direction += (
+                                direct_probability_shift
+                            )
+                            direct_policy_probability_direction_hits += int(
+                                direct_probability_shift > 1e-6
+                            )
+                            planning_mediated_probability_direction += (
+                                mediated_probability_shift
+                            )
+                            planning_mediated_probability_direction_hits += int(
+                                mediated_probability_shift > 1e-6
                             )
                             action_flip_count += int(counter_action != true_action)
+                            if resource_swap_measure is not None:
+                                (
+                                    resource_swap_kind,
+                                    resource_swap_delta,
+                                    resource_swap_base_probability,
+                                    resource_swap_probability,
+                                    _,
+                                    _,
+                                ) = resource_swap_measure
+                                resource_swap_scores = semantic_scores(
+                                    resource_swap_delta
+                                )
+                                resource_swap_index = kind_words.index(
+                                    resource_swap_kind
+                                )
+                                resource_swap_cases += 1
+                                resource_swap_correct += int(
+                                    int(np.argmax(resource_swap_scores))
+                                    == resource_swap_index
+                                )
+                                resource_swap_substituted_shift += float(
+                                    resource_swap_scores[resource_swap_index]
+                                    - true_scores[resource_swap_index]
+                                )
+                                resource_swap_true_suppression += float(
+                                    true_scores[true_index]
+                                    - resource_swap_scores[true_index]
+                                )
+                                resource_swap_prediction_l1_shift += float(
+                                    np.abs(
+                                        resource_swap_delta - true_delta
+                                    ).mean()
+                                )
+                                resource_probability_shift = (
+                                    true_probability
+                                    - resource_swap_probability
+                                )
+                                resource_direct_shift = (
+                                    true_base_probability
+                                    - resource_swap_base_probability
+                                )
+                                resource_swap_probability_direction += (
+                                    resource_probability_shift
+                                )
+                                resource_swap_probability_direction_hits += int(
+                                    resource_probability_shift > 1e-6
+                                )
+                                resource_swap_direct_probability_direction += (
+                                    resource_direct_shift
+                                )
+                                resource_swap_planner_increment += (
+                                    resource_probability_shift
+                                    - resource_direct_shift
+                                )
 
+            if semantic_choice_trial:
+                break
             logits = model.policy(states)
             if self_model_planning_scale > 0.0:
                 logits = planned_policy_logits(
@@ -2094,8 +2630,11 @@ def audit_label_to_self_model(
     denominator = max(1, audited)
     return {
         "audited_inspections": float(audited),
+        "unique_episodes": float(len(audited_episodes)),
+        "unique_target_contexts": float(len(audited_target_keys)),
         "resource_cases": float(resource_cases),
         "danger_cases": float(danger_cases),
+        "resource_swap_cases": float(resource_swap_cases),
         "true_label_kind_accuracy": true_correct / denominator,
         "silent_kind_accuracy": silent_correct / denominator,
         "counterfactual_label_kind_accuracy": counterfactual_correct / denominator,
@@ -2113,6 +2652,44 @@ def audit_label_to_self_model(
         ),
         "directed_consume_probability_hit_rate": (
             consume_probability_direction_hits / denominator
+        ),
+        "direct_policy_consume_probability_shift": (
+            direct_policy_probability_direction / denominator
+        ),
+        "direct_policy_consume_probability_hit_rate": (
+            direct_policy_probability_direction_hits / denominator
+        ),
+        "incremental_planner_enabled_consume_probability_shift": (
+            planning_mediated_probability_direction / denominator
+        ),
+        "incremental_planner_enabled_consume_probability_hit_rate": (
+            planning_mediated_probability_direction_hits / denominator
+        ),
+        "resource_swap_counterfactual_kind_accuracy": (
+            resource_swap_correct / max(1, resource_swap_cases)
+        ),
+        "resource_swap_substituted_kind_score_shift": (
+            resource_swap_substituted_shift / max(1, resource_swap_cases)
+        ),
+        "resource_swap_true_kind_score_suppression": (
+            resource_swap_true_suppression / max(1, resource_swap_cases)
+        ),
+        "resource_swap_prediction_l1_shift": (
+            resource_swap_prediction_l1_shift / max(1, resource_swap_cases)
+        ),
+        "resource_swap_directed_consume_probability_shift": (
+            resource_swap_probability_direction / max(1, resource_swap_cases)
+        ),
+        "resource_swap_directed_consume_probability_hit_rate": (
+            resource_swap_probability_direction_hits
+            / max(1, resource_swap_cases)
+        ),
+        "resource_swap_direct_policy_probability_shift": (
+            resource_swap_direct_probability_direction
+            / max(1, resource_swap_cases)
+        ),
+        "resource_swap_incremental_planner_enabled_probability_shift": (
+            resource_swap_planner_increment / max(1, resource_swap_cases)
         ),
         "argmax_action_flip_rate": action_flip_count / denominator,
     }
@@ -2135,7 +2712,9 @@ def write_life_stats(stats: list[LifeStats], path: str) -> None:
         "life_index,seed,steps,survived,mean_viability,min_viability,"
         "utterances_heard,consume_attempts,resource_consumes,"
         "food_consumes,water_consumes,offered_consumes,"
-        "option_decisions,inspect_option_decisions,labels_received,harm_events\n"
+        "option_decisions,inspect_option_decisions,labels_received,harm_events,"
+        "semantic_choice_trial,choice_need,chosen_kind,chosen_surface,"
+        "chosen_surface_inspected,choice_correct,choice_poison,choice_timeout\n"
     )
     with target.open("w", encoding="utf-8") as handle:
         handle.write(header)
@@ -2147,5 +2726,10 @@ def write_life_stats(stats: list[LifeStats], path: str) -> None:
                 f"{life.resource_consumes},{life.food_consumes},"
                 f"{life.water_consumes},{life.offered_consumes},"
                 f"{life.option_decisions},{life.inspect_option_decisions},"
-                f"{life.labels_received},{life.harm_events}\n"
+                f"{life.labels_received},{life.harm_events},"
+                f"{int(life.semantic_choice_trial)},{life.choice_need},"
+                f"{life.chosen_kind},{life.chosen_surface},"
+                f"{int(life.chosen_surface_inspected)},"
+                f"{int(life.choice_correct)},{int(life.choice_poison)},"
+                f"{int(life.choice_timeout)}\n"
             )

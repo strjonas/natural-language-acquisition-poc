@@ -92,6 +92,22 @@ STABLE_SURFACE_KINDS = {
 }
 
 LANGUAGE_MODES = ("grounded", "silent", "shuffled")
+CAREGIVER_SEED_SALT = 1_000_003
+SEMANTIC_CHOICE_SHUFFLED_KINDS = ("food", "water", "danger", "danger")
+
+
+def _caregiver_seed(seed: int | None) -> int:
+    """Derive a deterministic language RNG stream independent of the grid.
+
+    SplitMix64-style avalanche mixing avoids the measurable cross-life
+    association produced when two Mersenne Twister instances received merely
+    offset versions of the same small integer seed.
+    """
+
+    value = ((0 if seed is None else seed) + CAREGIVER_SEED_SALT) & ((1 << 64) - 1)
+    value = (value ^ (value >> 30)) * 0xBF58476D1CE4E5B9 & ((1 << 64) - 1)
+    value = (value ^ (value >> 27)) * 0x94D049BB133111EB & ((1 << 64) - 1)
+    return value ^ (value >> 31)
 
 
 @dataclass(frozen=True)
@@ -99,6 +115,8 @@ class IslandConfig:
     width: int = 9
     height: int = 9
     max_steps: int = 1000
+    semantic_choice_trial: bool = False
+    semantic_choice_horizon: int = 20
     language_mode: str = "grounded"
     ask_state_period: int = 25
     visible_radius: int = 2
@@ -111,6 +129,12 @@ class IslandConfig:
     def __post_init__(self) -> None:
         if self.language_mode not in LANGUAGE_MODES:
             raise ValueError(f"Unknown language mode: {self.language_mode}.")
+        if self.semantic_choice_horizon <= 0:
+            raise ValueError("semantic_choice_horizon must be positive.")
+        if self.semantic_choice_trial and self.max_visible_slots < 2:
+            raise ValueError(
+                "semantic_choice_trial requires at least two visible slots."
+            )
         if not 0.0 <= self.caregiver_offer_threshold <= 1.0:
             raise ValueError("caregiver_offer_threshold must be in [0, 1].")
         if self.caregiver_offer_distance < 0:
@@ -126,6 +150,7 @@ class IslandGrid(HomeostaticSocialGrid):
         width: int = 9,
         height: int = 9,
         max_steps: int = 1000,
+        semantic_choice_trial: bool = False,
         seed: int | None = None,
     ) -> None:
         super().__init__(
@@ -138,6 +163,9 @@ class IslandGrid(HomeostaticSocialGrid):
             renewable_resources=True,
         )
         self.kind_by_surface: dict[str, str] = {}
+        self.semantic_choice_trial = semantic_choice_trial
+        self.choice_need: str | None = None
+        self.choice_surfaces: tuple[str, ...] = ()
         self.offered_kind: str | None = None
         self.offered_surface: str | None = None
         self.offered_pos: tuple[int, int] | None = None
@@ -170,6 +198,10 @@ class IslandGrid(HomeostaticSocialGrid):
         self.offered_surface = None
         self.offered_pos = None
         self.kind_by_surface = self._assign_kinds()
+        self.choice_need = None
+        self.choice_surfaces = ()
+        if self.semantic_choice_trial:
+            return self._make_semantic_choice_world()
         surfaces = [
             surface for surface, count in ISLAND_POPULATION for _ in range(count)
         ]
@@ -180,6 +212,54 @@ class IslandGrid(HomeostaticSocialGrid):
             if (x, y) != self.agent_pos
         ]
         positions = self.rng.sample(free_cells, len(surfaces))
+        return [
+            self._object_for(surface, self.kind_by_surface[surface], pos)
+            for surface, pos in zip(surfaces, positions)
+        ]
+
+    def _make_semantic_choice_world(self) -> list[WorldObject]:
+        """Make one symmetric need-matched versus poison choice.
+
+        The full five-surface hidden assignment still exists in
+        ``kind_by_surface``.  Only the two trial surfaces are instantiated, so
+        no third consumable can dilute the inspect--remember--choose event.
+        """
+
+        self.choice_need = self.rng.choice(("food", "water"))
+        self.needs = replace(self.needs, **{self.choice_need: 0.35})
+
+        matching_surfaces = [
+            surface
+            for surface in CONSUMABLE_SURFACES
+            if self.kind_by_surface[surface] == self.choice_need
+        ]
+        poison_surface = next(
+            surface
+            for surface in CONSUMABLE_SURFACES
+            if self.kind_by_surface[surface] == "poison"
+        )
+        resource_surface = self.rng.choice(matching_surfaces)
+        surfaces = [resource_surface, poison_surface]
+        self.rng.shuffle(surfaces)
+        self.choice_surfaces = tuple(surfaces)
+
+        # Put the body at the center and the pair on opposite sides of a
+        # randomly selected axis.  Its initial heading is perpendicular to the
+        # pair, making either option require the same turn/move/consume motion.
+        center = (self.width // 2, self.height // 2)
+        self.agent_pos = center
+        if self.rng.choice((False, True)):
+            positions = [
+                (center[0] - 2, center[1]),
+                (center[0] + 2, center[1]),
+            ]
+            self.direction = self.rng.choice((Direction.NORTH, Direction.SOUTH))
+        else:
+            positions = [
+                (center[0], center[1] - 2),
+                (center[0], center[1] + 2),
+            ]
+            self.direction = self.rng.choice((Direction.EAST, Direction.WEST))
         return [
             self._object_for(surface, self.kind_by_surface[surface], pos)
             for surface, pos in zip(surfaces, positions)
@@ -243,8 +323,19 @@ class ObsPacket:
     visible: tuple[tuple[int, int, int], ...]  # (dx, dy, surface_index)
     tokens: tuple[int, ...]
     grid_size: tuple[int, int] = (9, 9)
+    max_visible_slots: int = 8
+    visible_radius: int = 2
 
-    def vector(self, *, max_visible_slots: int = 8, visible_radius: int = 2) -> np.ndarray:
+    def vector(
+        self,
+        *,
+        max_visible_slots: int | None = None,
+        visible_radius: int | None = None,
+    ) -> np.ndarray:
+        if max_visible_slots is None:
+            max_visible_slots = self.max_visible_slots
+        if visible_radius is None:
+            visible_radius = self.visible_radius
         parts: list[float] = list(self.needs)
         direction_onehot = [0.0] * len(DIRECTION_ORDER)
         direction_onehot[self.direction_index] = 1.0
@@ -416,6 +507,22 @@ class Caregiver:
             return self.bank.sample_from_act(situation.act, self._rng)
         return self.bank.sample(situation, self._rng)
 
+    def utter_semantic_choice_label(
+        self, situation: Situation
+    ) -> tuple[str, ...] | None:
+        """Emit a length-matched minimal label for the paired-choice trial."""
+
+        if situation.act != "label":
+            raise ValueError("Semantic-choice speech must be an object label.")
+        if self.language_mode == "silent":
+            return None
+        if self.language_mode == "shuffled":
+            kind = self._rng.choice(SEMANTIC_CHOICE_SHUFFLED_KINDS)
+        else:
+            kind = situation.slot("kind")
+            assert kind is not None
+        return ("this", kind)
+
 
 class IslandWorld:
     """Environment facade: recalibrated grid + caregiver + token observations."""
@@ -428,10 +535,16 @@ class IslandWorld:
         seed: int | None = None,
     ) -> None:
         self.config = config or IslandConfig()
+        grid_max_steps = (
+            self.config.semantic_choice_horizon
+            if self.config.semantic_choice_trial
+            else self.config.max_steps
+        )
         self.grid = IslandGrid(
             width=self.config.width,
             height=self.config.height,
-            max_steps=self.config.max_steps,
+            max_steps=grid_max_steps,
+            semantic_choice_trial=self.config.semantic_choice_trial,
             seed=seed,
         )
         self.caregiver = Caregiver(
@@ -440,11 +553,12 @@ class IslandWorld:
             ask_state_period=self.config.ask_state_period,
             low_need_praise_threshold=self.config.low_need_praise_threshold,
             low_need_ask_threshold=self.config.low_need_ask_threshold,
-            seed=seed if seed is not None else 0,
+            seed=_caregiver_seed(seed),
         )
         self.caregiver_offer_threshold = self.config.caregiver_offer_threshold
         self.caregiver_offer_distance = self.config.caregiver_offer_distance
         self._last_action_index = -1
+        self._inspected_surfaces: set[str] = set()
 
     @property
     def tokens_per_utterance(self) -> int:
@@ -453,8 +567,9 @@ class IslandWorld:
     def reset(self, seed: int | None = None) -> ObsPacket:
         observation = self.grid.reset(seed)
         if seed is not None:
-            self.caregiver.reset(seed)
+            self.caregiver.reset(_caregiver_seed(seed))
         self._last_action_index = -1
+        self._inspected_surfaces.clear()
         return self._packet(observation, None)
 
     def step(
@@ -462,6 +577,8 @@ class IslandWorld:
     ) -> tuple[ObsPacket, float, bool, bool, dict[str, object]]:
         action = Action(action)
         needs_before = self.grid.needs
+        object_ahead_before = self.grid.object_ahead()
+        inspected_before = set(self._inspected_surfaces)
         offered_before = self.grid.offered_kind
         offered_consumable_before = (
             action == Action.CONSUME
@@ -480,10 +597,70 @@ class IslandWorld:
                 "offer", (("kind", self.grid.offered_kind),)
             )
             words = self.caregiver.utter_situation(situation)
+        elif self.config.semantic_choice_trial and not (
+            action in (Action.ASK, Action.POINT)
+            and object_ahead_before is not None
+        ):
+            # Paired childhood isolates one linguistic pathway: jointly attend
+            # to an object and ask/point for its label. Empty-space ASK must not
+            # leak the ordinary island's need-matched ``answer_where`` hint,
+            # and terminal praise/correction cannot become an extra target.
+            situation, words = None, None
+        elif self.config.semantic_choice_trial:
+            situation = self.caregiver.situation_for(
+                self.grid, action, info.get("event"), needs_before
+            )
+            assert situation is not None and situation.act == "label"
+            words = self.caregiver.utter_semantic_choice_label(situation)
         else:
             situation, words = self.caregiver.utter(
                 self.grid, action, info.get("event"), needs_before
             )
+        if (
+            action in (Action.ASK, Action.POINT)
+            and object_ahead_before is not None
+            and situation is not None
+            and situation.act == "label"
+        ):
+            self._inspected_surfaces.add(object_ahead_before.name)
+
+        consumed_kind: str | None = None
+        consumed_surface: str | None = None
+        event = info.get("event")
+        if (
+            self.config.semantic_choice_trial
+            and object_ahead_before is not None
+            and object_ahead_before.consumable
+            and event in {"consumed_food", "consumed_water", "consumed_poison"}
+        ):
+            consumed_kind = object_ahead_before.kind
+            consumed_surface = object_ahead_before.name
+            truncated = True
+
+        timeout = (
+            self.config.semantic_choice_trial
+            and consumed_surface is None
+            and self.grid.step_count >= self.config.semantic_choice_horizon
+        )
+        info.update(
+            {
+                "semantic_choice_trial": self.config.semantic_choice_trial,
+                "choice_need": self.grid.choice_need,
+                "chosen_kind": consumed_kind,
+                "chosen_surface": consumed_surface,
+                "chosen_surface_inspected": (
+                    consumed_surface in inspected_before
+                    if consumed_surface is not None
+                    else False
+                ),
+                "correct": (
+                    consumed_kind is not None
+                    and consumed_kind == self.grid.choice_need
+                ),
+                "poison": consumed_kind == "poison",
+                "timeout": timeout,
+            }
+        )
         self._last_action_index = list(Action).index(action)
         packet = self._packet(observation, words)
         info["situation"] = situation.key() if situation is not None else None
@@ -491,7 +668,7 @@ class IslandWorld:
         return packet, reward, terminated, truncated, info
 
     def _maybe_offer(self) -> None:
-        if self.grid.offered_kind is not None:
+        if self.config.semantic_choice_trial or self.grid.offered_kind is not None:
             return
         threshold = self.caregiver_offer_threshold
         needs = self.grid.needs
@@ -543,4 +720,6 @@ class IslandWorld:
             visible=tuple(visible),
             tokens=encode_utterance(words),
             grid_size=(self.config.width, self.config.height),
+            max_visible_slots=self.config.max_visible_slots,
+            visible_radius=self.config.visible_radius,
         )
