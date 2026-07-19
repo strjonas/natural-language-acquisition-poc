@@ -275,6 +275,50 @@ class SemanticChoiceTrialTest(unittest.TestCase):
                 {SURFACE_INDEX[obj.name] for obj in grid.objects},
             )
 
+    def test_three_way_reset_crosses_food_water_and_poison_with_body_need(self):
+        config = IslandConfig(
+            semantic_choice_trial=True,
+            semantic_choice_objects=3,
+        )
+        need_by_kind = Counter()
+        kind_positions = {kind: Counter() for kind in ("food", "water", "poison")}
+        for seed in range(1000):
+            world = IslandWorld(config, seed=seed)
+            packet = world.reset(seed)
+            grid = world.grid
+            self.assertEqual(len(grid.objects), 3)
+            self.assertEqual(
+                Counter(obj.kind for obj in grid.objects),
+                Counter(("food", "water", "poison")),
+            )
+            self.assertEqual(len(packet.visible), 3)
+            for obj in grid.objects:
+                self.assertEqual(
+                    abs(obj.pos[0] - grid.agent_pos[0])
+                    + abs(obj.pos[1] - grid.agent_pos[1]),
+                    2,
+                )
+                need_by_kind[(grid.choice_need, obj.kind)] += 1
+                kind_positions[obj.kind][
+                    (
+                        obj.pos[0] - grid.agent_pos[0],
+                        obj.pos[1] - grid.agent_pos[1],
+                    )
+                ] += 1
+
+        for kind in ("food", "water", "poison"):
+            self.assertAlmostEqual(
+                need_by_kind[("food", kind)] / 1000,
+                0.5,
+                delta=0.04,
+            )
+            self.assertEqual(
+                set(kind_positions[kind]),
+                {(-2, 0), (2, 0), (0, -2), (0, 2)},
+            )
+            for count in kind_positions[kind].values():
+                self.assertAlmostEqual(count / 1000, 0.25, delta=0.04)
+
     def test_seed_replays_pair_body_pose_and_packet(self):
         config = IslandConfig(semantic_choice_trial=True)
         first = IslandWorld(config, seed=71)
@@ -361,6 +405,27 @@ class SemanticChoiceTrialTest(unittest.TestCase):
         self.assertEqual(info["chosen_kind"], "poison")
         self.assertEqual(info["chosen_surface"], poison_target.name)
 
+        three_way = IslandWorld(
+            IslandConfig(
+                semantic_choice_trial=True,
+                semantic_choice_objects=3,
+            ),
+            seed=84,
+        )
+        three_way.reset(84)
+        wrong_target = next(
+            obj
+            for obj in three_way.grid.objects
+            if obj.kind in {"food", "water"}
+            and obj.kind != three_way.grid.choice_need
+        )
+        self._face(three_way, wrong_target)
+        _, _, _, truncated, info = three_way.step(Action.CONSUME)
+        self.assertTrue(truncated)
+        self.assertFalse(info["correct"])
+        self.assertFalse(info["poison"])
+        self.assertTrue(info["wrong_resource"])
+
     def test_ask_and_point_label_interactions_mark_prior_inspection(self):
         for inspect_action in (Action.ASK, Action.POINT):
             with self.subTest(inspect_action=inspect_action):
@@ -417,6 +482,25 @@ class SemanticChoiceTrialTest(unittest.TestCase):
         self.assertAlmostEqual(emitted["food"] / 200, 0.25, delta=0.1)
         self.assertAlmostEqual(emitted["water"] / 200, 0.25, delta=0.1)
         self.assertAlmostEqual(matches / 200, 0.375, delta=0.1)
+
+    def test_three_way_shuffled_labels_have_uniform_functional_marginal(self):
+        emitted = Counter()
+        for seed in range(600):
+            world = IslandWorld(
+                IslandConfig(
+                    semantic_choice_trial=True,
+                    semantic_choice_objects=3,
+                    language_mode="shuffled",
+                ),
+                seed=seed,
+            )
+            world.reset(seed)
+            target = world.grid.objects[0]
+            self._face(world, target)
+            _, _, _, _, info = world.step(Action.ASK)
+            emitted[info["utterance"].split()[1]] += 1
+        for kind in ("food", "water", "danger"):
+            self.assertAlmostEqual(emitted[kind] / 600, 1 / 3, delta=0.06)
 
     def test_empty_consume_does_not_end_trial_and_horizon_times_out(self):
         world = IslandWorld(
@@ -506,6 +590,41 @@ class SemanticChoiceTrialTest(unittest.TestCase):
         self.assertTrue(all(len(world.grid.objects) == 2 for world in worlds))
         self.assertTrue(all(world.grid.offered_kind is None for world in worlds))
 
+    def test_language_modes_have_identical_three_way_body_and_geometry(self):
+        worlds = [
+            IslandWorld(
+                IslandConfig(
+                    semantic_choice_trial=True,
+                    semantic_choice_objects=3,
+                    language_mode=mode,
+                ),
+                seed=117,
+            )
+            for mode in ("grounded", "silent", "shuffled")
+        ]
+        packets = [world.reset(117) for world in worlds]
+        reference = worlds[0]
+        for world, packet in zip(worlds[1:], packets[1:]):
+            self.assertEqual(world.grid.kind_by_surface, reference.grid.kind_by_surface)
+            self.assertEqual(world.grid.objects, reference.grid.objects)
+            self.assertEqual(world.grid.needs, reference.grid.needs)
+            self.assertEqual(world.grid.direction, reference.grid.direction)
+            self.assertEqual(packet.vector().tolist(), packets[0].vector().tolist())
+
+        target_name = reference.grid.objects[0].name
+        for world in worlds:
+            target = next(obj for obj in world.grid.objects if obj.name == target_name)
+            self._face(world, target)
+        results = [world.step(Action.ASK) for world in worlds]
+        self.assertEqual(
+            [result[1] for result in results],
+            [results[0][1]] * len(results),
+        )
+        self.assertEqual(
+            [world.grid.needs for world in worlds],
+            [reference.grid.needs] * len(worlds),
+        )
+
     def test_horizon_must_be_positive(self):
         with self.assertRaisesRegex(ValueError, "must be positive"):
             IslandConfig(semantic_choice_horizon=0)
@@ -515,6 +634,14 @@ class SemanticChoiceTrialTest(unittest.TestCase):
             IslandConfig(
                 semantic_choice_trial=True,
                 max_visible_slots=1,
+            )
+
+    def test_three_way_choice_trial_requires_three_visible_slots(self):
+        with self.assertRaisesRegex(ValueError, "at least three"):
+            IslandConfig(
+                semantic_choice_trial=True,
+                semantic_choice_objects=3,
+                max_visible_slots=2,
             )
 
 

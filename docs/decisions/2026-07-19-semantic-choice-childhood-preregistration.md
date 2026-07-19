@@ -155,3 +155,46 @@ for a random side, 49.40% for a deterministic lowest-surface-index policy, and
 label plus remembered learner-visible coordinates. The task is therefore
 solvable through the intended channel while the tested nonlinguistic priors are
 at chance.
+
+## Sealed seed-1 result
+
+The preregistered grounded seed-1 run used exactly 20,000 primitive ticks. It
+does not promote. Stochastic evaluation made 496 choices in 500 held-out
+trials and was correct on 250/500 (50.00%; 95% Wilson interval 45.63--54.37%).
+It first inspected the selected surface in 155 trials but was correct on only
+83/155 (53.55%; 45.71--61.22%). Greedy evaluation was likewise at chance
+(247/500, 49.40%) and inspected only 6 selected surfaces.
+
+The causal audit isolates a narrower positive result. True labels classified
+the bodily consequence correctly in 200/200 cases, compared with 96/200 under
+padding, and reduced consequence MAE from 0.1140 to 0.0338. Substituting a
+resource label for `danger` or vice versa produced the substituted class in
+200/200 cases, a 0.1637 mean bodily-prediction L1 shift, and a body-only
+planner consume-preference shift in the intended direction in 192/200 cases.
+Thus the learned predictor contains a strong causal resource-versus-danger
+token axis.
+
+It did not learn distinct food and water meanings. On 100 resource contexts,
+swapping `food` and `water` produced the counterfactual bodily class in 0/100
+cases and moved consume preference in the intended direction in only 56/100.
+This is not surprising in retrospect: every paired trial contains only the
+currently needed resource and poison, so the observable low body need already
+identifies whether the safe object is food or water. A binary safe/danger code
+is sufficient for this training distribution. The stronger swap gate correctly
+prevented that code from being reported as three-way semantics.
+
+Replication, controls, and transfer are stopped. The preregistered memory
+branch remains appropriate because a separate held-out referent-specificity
+audit found that the recurrent state applies the last inspected label globally:
+after returning to a state where both objects were visible, it assigned the
+same predicted kind to the labeled and unlabeled objects in 98.25% of 400
+trials. But memory cannot identify distinctions absent from experience. The
+next comparison must therefore combine an explicit visual-key/lexical-value
+episodic memory with crossed three-object childhoods containing one food, one
+water, and one poison object. The same task without external memory is the
+architectural control.
+
+The reported consume-preference interventions used bodily planning only
+(`reward_weight=0`) even though deployed behavior also used the learned reward
+head at weight 0.5. They are therefore body-channel diagnostics, not a complete
+mediation estimate. This does not affect the failed promotion decision.

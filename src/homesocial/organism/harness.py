@@ -18,6 +18,7 @@ from homesocial.island.world import IslandConfig
 from homesocial.organism.model import OrganismModel
 from homesocial.organism.train import (
     OrganismConfig,
+    audit_label_referent_binding,
     audit_label_to_self_model,
     audit_self_model_actions,
     evaluate_organism,
@@ -54,12 +55,31 @@ def main() -> None:
         if args.semantic_choice_childhood_steps > 0:
             run_label += (
                 f"_choice{args.semantic_choice_childhood_steps}"
-                f"h{args.semantic_choice_horizon}"
+                + (
+                    f"x{args.semantic_choice_objects}"
+                    if args.semantic_choice_objects != 2
+                    else ""
+                )
+                + f"h{args.semantic_choice_horizon}"
+                + (
+                    f"r{args.semantic_choice_return_duration}"
+                    if args.semantic_choice_return_duration > 0
+                    else ""
+                )
+                + (
+                    f"n{args.semantic_choice_low_need:g}"
+                    if args.semantic_choice_low_need != 0.35
+                    else ""
+                )
             )
         if args.consume_options:
             run_label += "_options"
         if args.inspect_options:
             run_label += "_inspect"
+        if args.episodic_binding_size > 0:
+            run_label += f"_bind{args.episodic_binding_size}"
+            if args.disable_episodic_binding_writes:
+                run_label += "nowrite"
         if args.self_model_planning:
             run_label += (
                 f"_plan{args.planning_scale:g}h{args.planning_horizon}"
@@ -89,6 +109,8 @@ def main() -> None:
             ),
             consume_options=args.consume_options,
             inspect_options=args.inspect_options,
+            episodic_binding_size=args.episodic_binding_size,
+            episodic_binding_writes=not args.disable_episodic_binding_writes,
             self_model_planning_scale=(
                 args.planning_scale if args.self_model_planning else 0.0
             ),
@@ -103,6 +125,11 @@ def main() -> None:
             max_steps=args.train_max_steps,
             island=IslandConfig(
                 semantic_choice_horizon=args.semantic_choice_horizon,
+                semantic_choice_objects=args.semantic_choice_objects,
+                semantic_choice_low_need=args.semantic_choice_low_need,
+                semantic_choice_return_duration=(
+                    args.semantic_choice_return_duration
+                ),
             ),
             checkpoint=str(
                 Path(args.run_dir) / f"organism_{run_label}_seed{args.seed}.npz"
@@ -273,7 +300,7 @@ def _append_semantic_choice_rows(
     run_label: str,
     args: argparse.Namespace,
 ) -> None:
-    """Append fixed-seed paired-choice evaluations and causal audits."""
+    """Append fixed-seed semantic-choice evaluations and causal audits."""
 
     if args.semantic_choice_eval_episodes <= 0:
         return
@@ -286,6 +313,11 @@ def _append_semantic_choice_rows(
             episodes=args.semantic_choice_eval_episodes,
             base_seed=EVAL_SEED_BASE,
             semantic_choice_horizon=args.semantic_choice_horizon,
+            semantic_choice_objects=args.semantic_choice_objects,
+            semantic_choice_low_need=args.semantic_choice_low_need,
+            semantic_choice_return_duration=(
+                args.semantic_choice_return_duration
+            ),
             sample_seed=0,
             greedy=greedy,
             consume_options=args.consume_options,
@@ -313,6 +345,11 @@ def _append_semantic_choice_rows(
                 self_model_planning_horizon=args.planning_horizon,
                 semantic_choice_trial=True,
                 semantic_choice_horizon=args.semantic_choice_horizon,
+                semantic_choice_objects=args.semantic_choice_objects,
+                semantic_choice_low_need=args.semantic_choice_low_need,
+                semantic_choice_return_duration=(
+                    args.semantic_choice_return_duration
+                ),
             )
             stats.update(
                 {
@@ -332,9 +369,34 @@ def _append_semantic_choice_rows(
                 self_model_planning_horizon=args.planning_horizon,
                 semantic_choice_trial=True,
                 semantic_choice_horizon=args.semantic_choice_horizon,
+                semantic_choice_objects=args.semantic_choice_objects,
+                semantic_choice_low_need=args.semantic_choice_low_need,
+                semantic_choice_return_duration=(
+                    args.semantic_choice_return_duration
+                ),
             )
             stats.update(
                 {f"label_audit_{key}": value for key, value in label_audit.items()}
+            )
+
+        if not greedy and args.label_referent_audit_contexts > 0:
+            referent_audit = audit_label_referent_binding(
+                model,
+                episodes=args.semantic_choice_eval_episodes,
+                base_seed=EVAL_SEED_BASE,
+                max_contexts=args.label_referent_audit_contexts,
+                semantic_choice_horizon=args.semantic_choice_horizon,
+                semantic_choice_objects=args.semantic_choice_objects,
+                semantic_choice_low_need=args.semantic_choice_low_need,
+                semantic_choice_return_duration=(
+                    args.semantic_choice_return_duration
+                ),
+            )
+            stats.update(
+                {
+                    f"referent_audit_{key}": value
+                    for key, value in referent_audit.items()
+                }
             )
 
         if (
@@ -357,6 +419,11 @@ def _append_semantic_choice_rows(
                 self_model_planning_horizon=args.planning_horizon,
                 semantic_choice_trial=True,
                 semantic_choice_horizon=args.semantic_choice_horizon,
+                semantic_choice_objects=args.semantic_choice_objects,
+                semantic_choice_low_need=args.semantic_choice_low_need,
+                semantic_choice_return_duration=(
+                    args.semantic_choice_return_duration
+                ),
             )
             stats.update(
                 {
@@ -374,6 +441,73 @@ def _append_semantic_choice_rows(
             }
         )
 
+    for acute_mode in args.semantic_choice_acute_modes:
+        acute_stats = evaluate_semantic_choice(
+            model,
+            language_mode=acute_mode,
+            episodes=args.semantic_choice_eval_episodes,
+            base_seed=EVAL_SEED_BASE,
+            semantic_choice_horizon=args.semantic_choice_horizon,
+            semantic_choice_objects=args.semantic_choice_objects,
+            semantic_choice_low_need=args.semantic_choice_low_need,
+            semantic_choice_return_duration=(
+                args.semantic_choice_return_duration
+            ),
+            sample_seed=0,
+            greedy=False,
+            consume_options=args.consume_options,
+            inspect_options=args.inspect_options,
+            self_model_planning_scale=planning_scale,
+            self_model_planning_reward_weight=args.planning_reward_weight,
+            self_model_planning_horizon=args.planning_horizon,
+        )
+        rows.append(
+            {
+                "condition": (
+                    f"organism_{run_label}_semantic_choice_acute_{acute_mode}"
+                ),
+                **acute_stats,
+            }
+        )
+
+    if args.semantic_choice_acute_disable_binding_writes:
+        if not model.has_episodic_bindings:
+            raise ValueError(
+                "Acute binding-write ablation requires episodic bindings."
+            )
+        writes_before = model.episodic_binding_writes
+        model.episodic_binding_writes = False
+        try:
+            acute_stats = evaluate_semantic_choice(
+                model,
+                language_mode=language_mode,
+                episodes=args.semantic_choice_eval_episodes,
+                base_seed=EVAL_SEED_BASE,
+                semantic_choice_horizon=args.semantic_choice_horizon,
+                semantic_choice_objects=args.semantic_choice_objects,
+                semantic_choice_low_need=args.semantic_choice_low_need,
+                semantic_choice_return_duration=(
+                    args.semantic_choice_return_duration
+                ),
+                sample_seed=0,
+                greedy=False,
+                consume_options=args.consume_options,
+                inspect_options=args.inspect_options,
+                self_model_planning_scale=planning_scale,
+                self_model_planning_reward_weight=args.planning_reward_weight,
+                self_model_planning_horizon=args.planning_horizon,
+            )
+        finally:
+            model.episodic_binding_writes = writes_before
+        rows.append(
+            {
+                "condition": (
+                    f"organism_{run_label}_semantic_choice_acute_no_writes"
+                ),
+                **acute_stats,
+            }
+        )
+
 
 def _write_and_print(rows: list[dict[str, object]], args: argparse.Namespace) -> None:
     keys = ["condition"]
@@ -385,12 +519,31 @@ def _write_and_print(rows: list[dict[str, object]], args: argparse.Namespace) ->
     if args.semantic_choice_childhood_steps > 0:
         suffix += (
             f"_choice{args.semantic_choice_childhood_steps}"
-            f"h{args.semantic_choice_horizon}"
+            + (
+                f"x{args.semantic_choice_objects}"
+                if args.semantic_choice_objects != 2
+                else ""
+            )
+            + f"h{args.semantic_choice_horizon}"
+            + (
+                f"r{args.semantic_choice_return_duration}"
+                if args.semantic_choice_return_duration > 0
+                else ""
+            )
+            + (
+                f"n{args.semantic_choice_low_need:g}"
+                if args.semantic_choice_low_need != 0.35
+                else ""
+            )
         )
     if args.consume_options:
         suffix += "_options"
     if args.inspect_options:
         suffix += "_inspect"
+    if args.episodic_binding_size > 0:
+        suffix += f"_bind{args.episodic_binding_size}"
+        if args.disable_episodic_binding_writes:
+            suffix += "nowrite"
     if args.self_model_planning:
         suffix += f"_plan{args.planning_scale:g}h{args.planning_horizon}"
     if args.replay_updates > 0:
@@ -450,15 +603,40 @@ def _parse_args() -> argparse.Namespace:
         type=int,
         default=0,
         help=(
-            "Train in paired need-matched-resource versus poison trials for "
-            "this many primitive ticks before switching to the open island."
+            "Train in remapped semantic-choice trials for this many primitive "
+            "ticks before switching to the open island."
         ),
     )
     parser.add_argument(
         "--semantic-choice-horizon",
         type=int,
         default=20,
-        help="Maximum primitive ticks in each paired semantic-choice trial.",
+        help="Maximum primitive ticks in each semantic-choice trial.",
+    )
+    parser.add_argument(
+        "--semantic-choice-objects",
+        type=int,
+        choices=[2, 3],
+        default=2,
+        help=(
+            "Use the original resource/poison pair or a crossed "
+            "food/water/poison choice."
+        ),
+    )
+    parser.add_argument(
+        "--semantic-choice-return-duration",
+        type=int,
+        default=0,
+        help=(
+            "After each label in the delayed probe, force a fixed-duration "
+            "padding-only return to center/NORTH; zero disables."
+        ),
+    )
+    parser.add_argument(
+        "--semantic-choice-low-need",
+        type=float,
+        default=0.35,
+        help="Initial value of the independently selected low bodily need.",
     )
     parser.add_argument(
         "--semantic-choice-eval-episodes",
@@ -466,7 +644,25 @@ def _parse_args() -> argparse.Namespace:
         default=0,
         help=(
             "Evaluate both stochastic and greedy policies on this many "
-            "fixed-seed held-out paired-choice trials."
+            "fixed-seed held-out semantic-choice trials."
+        ),
+    )
+    parser.add_argument(
+        "--semantic-choice-acute-modes",
+        nargs="*",
+        default=[],
+        choices=["silent", "shuffled"],
+        help=(
+            "Also evaluate the trained model under these acute token-channel "
+            "interventions without parameter updates."
+        ),
+    )
+    parser.add_argument(
+        "--semantic-choice-acute-disable-binding-writes",
+        action="store_true",
+        help=(
+            "Evaluate the trained checkpoint with every episodic write "
+            "suppressed, without parameter updates."
         ),
     )
     parser.add_argument(
@@ -478,6 +674,23 @@ def _parse_args() -> argparse.Namespace:
         "--inspect-options",
         action="store_true",
         help="Add kind-blind visible-slot navigate-face-and-ask actions.",
+    )
+    parser.add_argument(
+        "--episodic-binding-size",
+        type=int,
+        default=0,
+        help=(
+            "Width of each per-life visual-key/lexical-value binding; zero "
+            "uses the recurrent-only control."
+        ),
+    )
+    parser.add_argument(
+        "--disable-episodic-binding-writes",
+        action="store_true",
+        help=(
+            "Keep the binding architecture and parameters but suppress every "
+            "episodic write as a matched causal ablation."
+        ),
     )
     parser.add_argument(
         "--self-model-planning",
@@ -508,6 +721,15 @@ def _parse_args() -> argparse.Namespace:
         help=(
             "Audit this many held-out inspect events under true, silent, and "
             "counterfactual kind labels. Requires consume and inspect options."
+        ),
+    )
+    parser.add_argument(
+        "--label-referent-audit-contexts",
+        type=int,
+        default=0,
+        help=(
+            "Audit delayed target versus nonreferent consequence binding in "
+            "this many fixed held-out choice contexts."
         ),
     )
     parser.add_argument(
@@ -543,7 +765,20 @@ def _parse_args() -> argparse.Namespace:
         choices=["oracle", "random"],
     )
     parser.add_argument("--run-dir", default="runs/organism")
-    return parser.parse_args()
+    args = parser.parse_args()
+    if args.disable_episodic_binding_writes and args.episodic_binding_size <= 0:
+        parser.error(
+            "--disable-episodic-binding-writes requires --episodic-binding-size."
+        )
+    if (
+        args.semantic_choice_acute_disable_binding_writes
+        and args.episodic_binding_size <= 0
+    ):
+        parser.error(
+            "--semantic-choice-acute-disable-binding-writes requires "
+            "--episodic-binding-size."
+        )
+    return args
 
 
 if __name__ == "__main__":

@@ -9,26 +9,63 @@ except ImportError:  # pragma: no cover
     mx = None
 
 if mx is not None:
-    from homesocial.island.world import IslandConfig
+    from homesocial.creole.vocab import PAD_TOKEN, TOKEN_TO_ID
+    from homesocial.env import Action
+    from homesocial.island.world import IslandConfig, SURFACE_INDEX
     from homesocial.organism.model import OrganismModel
     from homesocial.organism.train import (
         ACTIONS,
         OrganismConfig,
         OrganismTrainer,
+        audit_label_referent_binding,
         audit_label_to_self_model,
         audit_self_model_actions,
+        _directed_resource_swap_probability_shift,
         available_action_mask,
         compute_gae,
         decode_object_option,
         evaluate_organism,
         evaluate_semantic_choice,
         execute_agent_action,
+        _is_voluntary_inspection_event,
+        object_option_action_index,
         planned_policy_logits,
+        predict_all_action_consequences,
+        two_step_action_scores,
     )
 
 
 @unittest.skipIf(mx is None, "MLX is unavailable")
 class GaeTest(unittest.TestCase):
+    def test_resource_swap_direction_tracks_current_body_need(self):
+        self.assertAlmostEqual(
+            _directed_resource_swap_probability_shift(
+                true_kind="food",
+                choice_need="food",
+                true_probability=0.8,
+                swapped_probability=0.2,
+            ),
+            0.6,
+        )
+        self.assertAlmostEqual(
+            _directed_resource_swap_probability_shift(
+                true_kind="food",
+                choice_need="water",
+                true_probability=0.2,
+                swapped_probability=0.8,
+            ),
+            0.6,
+        )
+        self.assertAlmostEqual(
+            _directed_resource_swap_probability_shift(
+                true_kind="water",
+                choice_need="food",
+                true_probability=0.75,
+                swapped_probability=0.25,
+            ),
+            -0.5,
+        )
+
     def test_single_step_matches_td_error(self):
         advantages, returns = compute_gae(
             np.array([1.0], dtype=np.float32),
@@ -221,17 +258,469 @@ class ModelTest(unittest.TestCase):
             object_option_types=2,
         )
         vectors = mx.array([[[1.0, 0.25, -0.5, 1.0, -0.75, 0.5]]])
-        action_features, object_features = model._transition_features(
-            mx.array([[5, 7]]),
-            mx.broadcast_to(vectors, (1, 2, 6)),
+        states = mx.zeros((1, 2, model.state_size))
+        action_features, object_features, binding_features = (
+            model._transition_features(
+                states,
+                mx.array([[5, 7]]),
+                mx.broadcast_to(vectors, (1, 2, 6)),
+            )
         )
-        mx.eval(action_features, object_features)
+        mx.eval(action_features, object_features, binding_features)
         self.assertEqual(action_features.shape, (1, 2, 7))
         self.assertEqual(int(mx.argmax(action_features[0, 0]).item()), 5)
         self.assertEqual(int(mx.argmax(action_features[0, 1]).item()), 6)
         self.assertLess(
             float(mx.abs(object_features[0, 0] - object_features[0, 1]).max()),
             1e-7,
+        )
+
+
+@unittest.skipIf(mx is None, "MLX is unavailable")
+class EpisodicBindingMemoryTest(unittest.TestCase):
+    def _trainer(self, *, writes: bool = True) -> "OrganismTrainer":
+        return OrganismTrainer(
+            OrganismConfig(
+                total_steps=1,
+                segment_length=8,
+                hidden_size=16,
+                token_embed_size=8,
+                semantic_choice_childhood_steps=1,
+                consume_options=True,
+                inspect_options=True,
+                episodic_binding_size=4,
+                episodic_binding_writes=writes,
+                seed=311,
+                log_every_lives=1000,
+                island=IslandConfig(
+                    semantic_choice_horizon=20,
+                    semantic_choice_objects=3,
+                ),
+            )
+        )
+
+    @staticmethod
+    def _model_step(model, packet, hidden=None):
+        vector = mx.array(packet.vector()[None, None, :])
+        tokens = mx.array(np.asarray(packet.tokens, dtype=np.int32)[None, None, :])
+        return (*model.core_states(vector, tokens, hidden), vector)
+
+    def _inspect_first_object(self):
+        trainer = self._trainer()
+        packet = trainer.packet
+        model = trainer.model
+        _, hidden, initial_vector = self._model_step(model, packet)
+        target = trainer.world.grid.objects[0]
+        target_slot = next(
+            slot
+            for slot, (_, _, surface) in enumerate(packet.visible)
+            if surface == SURFACE_INDEX[target.name]
+        )
+        inspect_action = object_option_action_index(
+            "inspect",
+            target_slot,
+            consume_options=True,
+            inspect_options=True,
+            visible_slots=model.visible_slots,
+        )
+        post_packet, _, terminated, truncated, info = execute_agent_action(
+            trainer.world,
+            packet,
+            inspect_action,
+            consume_options=True,
+            inspect_options=True,
+        )
+        self.assertFalse(terminated)
+        self.assertFalse(truncated)
+        self.assertTrue(str(info["situation"]).startswith("label|"))
+        post_states, carry, post_vector = self._model_step(
+            model, post_packet, hidden
+        )
+        return (
+            trainer,
+            packet,
+            initial_vector,
+            hidden,
+            target,
+            post_packet,
+            post_vector,
+            post_states,
+            carry,
+        )
+
+    def test_label_writes_only_attended_surface_and_persists_through_padding(self):
+        from dataclasses import replace as dc_replace
+
+        (
+            trainer,
+            _,
+            _,
+            hidden,
+            target,
+            post_packet,
+            post_vector,
+            _,
+            carry,
+        ) = self._inspect_first_object()
+        model = trainer.model
+        _, memory, valid = model.split_carry(carry, post_vector)
+        mx.eval(memory, valid)
+        target_index = SURFACE_INDEX[target.name]
+        self.assertEqual(float(valid.sum().item()), 1.0)
+        self.assertEqual(float(valid[0, target_index].item()), 1.0)
+        self.assertGreater(float(mx.abs(memory[0, target_index]).max().item()), 0.0)
+
+        padding = (TOKEN_TO_ID[PAD_TOKEN],) * model.tokens_per_utterance
+        padded_packet = dc_replace(
+            post_packet,
+            tokens=padding,
+            last_action_index=ACTIONS.index(Action.WAIT),
+        )
+        _, padded_carry, padded_vector = self._model_step(
+            model, padded_packet, carry
+        )
+        _, padded_memory, padded_valid = model.split_carry(
+            padded_carry, padded_vector
+        )
+        mx.eval(padded_memory, padded_valid)
+        np.testing.assert_allclose(
+            np.asarray(padded_memory), np.asarray(memory), atol=1e-7
+        )
+        np.testing.assert_allclose(
+            np.asarray(padded_valid), np.asarray(valid), atol=1e-7
+        )
+
+        reordered_packet = dc_replace(
+            padded_packet,
+            visible=tuple(reversed(padded_packet.visible)),
+        )
+        reordered_vector = mx.array(reordered_packet.vector()[None, :])
+        original_reads = model._binding_reads(
+            padded_vector[:, 0, :], padded_memory, padded_valid
+        ).reshape(1, model.visible_slots, model.episodic_binding_size + 1)
+        reordered_reads = model._binding_reads(
+            reordered_vector, padded_memory, padded_valid
+        ).reshape(1, model.visible_slots, model.episodic_binding_size + 1)
+        original_target_slot = next(
+            slot
+            for slot, (_, _, surface) in enumerate(padded_packet.visible)
+            if surface == target_index
+        )
+        reordered_target_slot = next(
+            slot
+            for slot, (_, _, surface) in enumerate(reordered_packet.visible)
+            if surface == target_index
+        )
+        mx.eval(original_reads, reordered_reads)
+        np.testing.assert_allclose(
+            np.asarray(original_reads[0, original_target_slot]),
+            np.asarray(reordered_reads[0, reordered_target_slot]),
+            atol=1e-7,
+        )
+
+        nonreferential = dc_replace(
+            post_packet,
+            last_action_index=ACTIONS.index(Action.MOVE_FORWARD),
+        )
+        _, no_write_carry, no_write_vector = self._model_step(
+            model, nonreferential, hidden
+        )
+        _, _, no_write_valid = model.split_carry(
+            no_write_carry, no_write_vector
+        )
+        mx.eval(no_write_valid)
+        self.assertEqual(float(no_write_valid.sum().item()), 0.0)
+
+    def test_binding_value_is_token_only_and_transition_read_is_object_local(self):
+        from dataclasses import replace as dc_replace
+
+        (
+            trainer,
+            _,
+            _,
+            hidden,
+            target,
+            post_packet,
+            post_vector,
+            post_states,
+            carry,
+        ) = self._inspect_first_object()
+        model = trainer.model
+        swapped_needs = (
+            post_packet.needs[1],
+            post_packet.needs[0],
+            post_packet.needs[2],
+            post_packet.needs[3],
+        )
+        swapped_packet = dc_replace(post_packet, needs=swapped_needs)
+        _, swapped_carry, swapped_vector = self._model_step(
+            model, swapped_packet, hidden
+        )
+        _, memory, _ = model.split_carry(carry, post_vector)
+        _, swapped_memory, _ = model.split_carry(swapped_carry, swapped_vector)
+        mx.eval(memory, swapped_memory)
+        np.testing.assert_allclose(
+            np.asarray(memory), np.asarray(swapped_memory), atol=1e-7
+        )
+
+        target_surface = SURFACE_INDEX[target.name]
+        target_slot = next(
+            slot
+            for slot, (_, _, surface) in enumerate(post_packet.visible)
+            if surface == target_surface
+        )
+        other_slot = next(
+            slot
+            for slot, (_, _, surface) in enumerate(post_packet.visible)
+            if surface != target_surface
+        )
+        target_action = object_option_action_index(
+            "consume",
+            target_slot,
+            consume_options=True,
+            inspect_options=True,
+            visible_slots=model.visible_slots,
+        )
+        other_action = object_option_action_index(
+            "consume",
+            other_slot,
+            consume_options=True,
+            inspect_options=True,
+            visible_slots=model.visible_slots,
+        )
+        actions = mx.array([[target_action, other_action]])
+        states = mx.broadcast_to(post_states, (1, 2, model.state_size))
+        vectors = mx.broadcast_to(post_vector, (1, 2, model.vector_size))
+        _, _, binding_features = model._transition_features(
+            states, actions, vectors
+        )
+        mx.eval(binding_features)
+        self.assertEqual(float(binding_features[0, 0, -1].item()), 1.0)
+        self.assertEqual(float(binding_features[0, 1, -1].item()), 0.0)
+        self.assertGreater(
+            float(mx.abs(binding_features[0, 0, :-1]).max().item()), 0.0
+        )
+        self.assertEqual(
+            float(mx.abs(binding_features[0, 1, :-1]).max().item()), 0.0
+        )
+
+        # The consequence transition may use the selected object's lexical
+        # row, but no unrelated row from the external bank.  This guards
+        # against an accidental global-memory bypass of referent locality.
+        altered = np.asarray(post_states).copy()
+        memory_start = model.hidden_size
+        memory_stop = memory_start + model.binding_bank_size
+        altered_memory = altered[..., memory_start:memory_stop].reshape(
+            1,
+            1,
+            model.surface_count,
+            model.episodic_binding_size,
+        )
+        other_surface = post_packet.visible[other_slot][2]
+        altered_memory[..., other_surface, :] += 7.0
+        altered[..., memory_stop + other_surface] = 1.0
+        base_outputs = model.predict_consequences(
+            post_states,
+            mx.array([[target_action]]),
+            post_vector,
+        )
+        altered_outputs = model.predict_consequences(
+            mx.array(altered),
+            mx.array([[target_action]]),
+            post_vector,
+        )
+        mx.eval(*base_outputs, *altered_outputs)
+        for base, changed in zip(base_outputs, altered_outputs, strict=True):
+            np.testing.assert_allclose(
+                np.asarray(base), np.asarray(changed), atol=0.0, rtol=0.0
+            )
+
+    def test_whole_sequence_and_stepwise_memory_execution_match_and_reset(self):
+        from dataclasses import replace as dc_replace
+
+        (
+            trainer,
+            initial_packet,
+            _,
+            _,
+            _,
+            post_packet,
+            _,
+            _,
+            carry,
+        ) = self._inspect_first_object()
+        model = trainer.model
+        padding = (TOKEN_TO_ID[PAD_TOKEN],) * model.tokens_per_utterance
+        padded_packet = dc_replace(
+            post_packet,
+            tokens=padding,
+            last_action_index=ACTIONS.index(Action.WAIT),
+        )
+        packets = (initial_packet, post_packet, padded_packet)
+        vectors = mx.array(np.stack([packet.vector() for packet in packets])[None])
+        tokens = mx.array(
+            np.asarray([packet.tokens for packet in packets], dtype=np.int32)[None]
+        )
+        whole_states, whole_carry = model.core_states(vectors, tokens)
+        step_hidden = None
+        step_states = []
+        for packet in packets:
+            states, step_hidden, _ = self._model_step(
+                model, packet, step_hidden
+            )
+            step_states.append(states)
+        concatenated = mx.concatenate(step_states, axis=1)
+        mx.eval(whole_states, whole_carry, concatenated, step_hidden)
+        np.testing.assert_allclose(
+            np.asarray(whole_states), np.asarray(concatenated), atol=1e-6
+        )
+        np.testing.assert_allclose(
+            np.asarray(whole_carry), np.asarray(step_hidden), atol=1e-6
+        )
+
+        trainer.hidden = carry
+        trainer._finish_life(survived=True)
+        self.assertIsNone(trainer.hidden)
+        reset_vector = mx.array(trainer.packet.vector()[None, None, :])
+        _, _, reset_valid = model.split_carry(None, reset_vector)
+        mx.eval(reset_valid)
+        self.assertEqual(float(reset_valid.sum().item()), 0.0)
+
+    def test_write_disabled_control_keeps_matched_bank_empty(self):
+        trainer = self._trainer(writes=False)
+        packet = trainer.packet
+        model = trainer.model
+        _, hidden, _ = self._model_step(model, packet)
+        target = trainer.world.grid.objects[0]
+        slot = next(
+            slot
+            for slot, (_, _, surface) in enumerate(packet.visible)
+            if surface == SURFACE_INDEX[target.name]
+        )
+        action = object_option_action_index(
+            "inspect",
+            slot,
+            consume_options=True,
+            inspect_options=True,
+            visible_slots=model.visible_slots,
+        )
+        post_packet, _, _, _, _ = execute_agent_action(
+            trainer.world,
+            packet,
+            action,
+            consume_options=True,
+            inspect_options=True,
+        )
+        _, carry, vector = self._model_step(model, post_packet, hidden)
+        _, memory, valid = model.split_carry(carry, vector)
+        mx.eval(memory, valid)
+        self.assertEqual(float(mx.abs(memory).max().item()), 0.0)
+        self.assertEqual(float(valid.sum().item()), 0.0)
+
+    def test_write_ablation_has_identical_parameters_and_initialization(self):
+        from mlx.utils import tree_flatten
+
+        enabled = self._trainer(writes=True)
+        disabled = self._trainer(writes=False)
+        enabled_parameters = tree_flatten(enabled.model.parameters())
+        disabled_parameters = tree_flatten(disabled.model.parameters())
+        self.assertEqual(
+            [name for name, _ in enabled_parameters],
+            [name for name, _ in disabled_parameters],
+        )
+        for (name, left), (_, right) in zip(
+            enabled_parameters, disabled_parameters
+        ):
+            mx.eval(left, right)
+            self.assertEqual(left.shape, right.shape, name)
+            self.assertEqual(float(mx.abs(left - right).max().item()), 0.0, name)
+
+    def test_locked_binding_architecture_parameter_count(self):
+        from dataclasses import replace as dc_replace
+
+        from mlx.utils import tree_flatten
+
+        trainer = OrganismTrainer(
+            dc_replace(
+                self._trainer().config,
+                hidden_size=64,
+                token_embed_size=32,
+                episodic_binding_size=16,
+            )
+        )
+        count = sum(
+            int(parameter.size)
+            for _, parameter in tree_flatten(trainer.model.parameters())
+        )
+        self.assertEqual(count, 105_930)
+
+    def test_delayed_bodily_loss_reaches_earlier_lexical_value(self):
+        from copy import deepcopy
+
+        import mlx.nn as nn
+        from mlx.utils import tree_flatten
+
+        (
+            trainer,
+            initial_packet,
+            _,
+            _,
+            target,
+            post_packet,
+            _,
+            _,
+            _,
+        ) = self._inspect_first_object()
+        wait_packet, _, _, _, _ = trainer.world.step(Action.WAIT)
+        model = trainer.model
+        target_slot = next(
+            slot
+            for slot, (_, _, surface) in enumerate(wait_packet.visible)
+            if surface == SURFACE_INDEX[target.name]
+        )
+        consume_action = object_option_action_index(
+            "consume",
+            target_slot,
+            consume_options=True,
+            inspect_options=True,
+            visible_slots=model.visible_slots,
+        )
+        outcome_world = deepcopy(trainer.world)
+        outcome_packet, _, _, _, _ = execute_agent_action(
+            outcome_world,
+            wait_packet,
+            consume_action,
+            consume_options=True,
+            inspect_options=True,
+        )
+        target_delta = np.asarray(outcome_packet.needs, dtype=np.float32) - np.asarray(
+            wait_packet.needs, dtype=np.float32
+        )
+        packets = (initial_packet, post_packet, wait_packet)
+        vectors = mx.array(np.stack([packet.vector() for packet in packets])[None])
+        tokens = mx.array(
+            np.asarray([packet.tokens for packet in packets], dtype=np.int32)[None]
+        )
+
+        def delayed_loss(active_model):
+            states, _ = active_model.core_states(vectors, tokens, None)
+            _, predicted_delta, _, _ = active_model.predict_consequences(
+                states[:, -1:, :],
+                mx.array([[consume_action]], dtype=mx.int32),
+                vectors[:, -1:, :],
+            )
+            return ((predicted_delta[0, 0] - mx.array(target_delta)) ** 2).mean()
+
+        loss, grads = nn.value_and_grad(model, delayed_loss)(model)
+        flat_grads = dict(tree_flatten(grads))
+        mx.eval(loss, grads)
+        self.assertGreater(
+            float(mx.abs(flat_grads["binding_value.weight"]).sum().item()),
+            0.0,
+        )
+        self.assertGreater(
+            float(mx.abs(flat_grads["token_embedding.weight"]).sum().item()),
+            0.0,
         )
 
 
@@ -405,6 +894,41 @@ class TrainingSmokeTest(unittest.TestCase):
         self.assertEqual(stats["danger_cases"], 1.0)
         self.assertEqual(stats["resource_swap_cases"], 1.0)
         self.assertIn("resource_swap_counterfactual_kind_accuracy", stats)
+        for value in stats.values():
+            self.assertTrue(math.isfinite(value))
+
+    def test_delayed_referent_binding_audit_runs_on_three_way_memory(self):
+        from dataclasses import replace as dc_replace
+
+        trainer = OrganismTrainer(
+            dc_replace(
+                self._config(),
+                semantic_choice_childhood_steps=1,
+                consume_options=True,
+                inspect_options=True,
+                episodic_binding_size=4,
+                island=IslandConfig(
+                    semantic_choice_horizon=40,
+                    semantic_choice_objects=3,
+                    semantic_choice_return_duration=6,
+                ),
+            )
+        )
+        stats = audit_label_referent_binding(
+            trainer.model,
+            episodes=6,
+            base_seed=3_090,
+            max_contexts=6,
+            semantic_choice_horizon=40,
+            semantic_choice_objects=3,
+            semantic_choice_return_duration=6,
+        )
+        self.assertEqual(stats["audited_contexts"], 6.0)
+        self.assertEqual(stats["episodic_memory_available"], 1.0)
+        self.assertIn(
+            "final_state_controlled_direct_key_reassignment_hit_rate",
+            stats,
+        )
         for value in stats.values():
             self.assertTrue(math.isfinite(value))
 
@@ -620,9 +1144,178 @@ class TrainingSmokeTest(unittest.TestCase):
         self.assertEqual(info["option_kind"], "inspect")
         self.assertGreaterEqual(int(info["duration"]), 2)
         self.assertTrue(str(info["situation"]).startswith("label|"))
+        self.assertTrue(_is_voluntary_inspection_event(info))
         self.assertFalse(any(str(event).startswith("consumed_") for event in info["events"]))
         self.assertEqual(len(world.grid.objects), 1)
         self.assertNotEqual(packet.tokens, next_packet.tokens)
+
+    def test_delayed_choice_options_and_return_are_geometry_neutral(self):
+        from copy import deepcopy
+        from dataclasses import replace as dc_replace
+
+        from homesocial.env import Direction
+
+        trainer = OrganismTrainer(
+            dc_replace(
+                self._config(),
+                semantic_choice_childhood_steps=1,
+                consume_options=True,
+                inspect_options=True,
+                island=IslandConfig(
+                    semantic_choice_horizon=40,
+                    semantic_choice_objects=3,
+                    semantic_choice_return_duration=6,
+                ),
+            )
+        )
+        packet = trainer.packet
+        returned_packets = []
+        for slot in range(len(packet.visible)):
+            world = deepcopy(trainer.world)
+            inspect_action = object_option_action_index(
+                "inspect",
+                slot,
+                consume_options=True,
+                inspect_options=True,
+                visible_slots=trainer.model.visible_slots,
+            )
+            labeled, _, terminated, truncated, inspect_info = execute_agent_action(
+                world,
+                packet,
+                inspect_action,
+                consume_options=True,
+                inspect_options=True,
+            )
+            self.assertFalse(terminated)
+            self.assertFalse(truncated)
+            self.assertEqual(inspect_info["duration"], 4)
+            self.assertTrue(_is_voluntary_inspection_event(inspect_info))
+            self.assertTrue(world.semantic_choice_return_pending)
+
+            pending_mask = available_action_mask(
+                labeled,
+                trainer.model.action_size,
+                visible_slots=trainer.model.visible_slots,
+                semantic_choice_delayed=True,
+                return_pending=True,
+            )
+            self.assertEqual(int(pending_mask.sum()), 1)
+            self.assertTrue(pending_mask[ACTIONS.index(Action.WAIT)])
+
+            returned, _, terminated, truncated, return_info = execute_agent_action(
+                world,
+                labeled,
+                ACTIONS.index(Action.WAIT),
+                consume_options=True,
+                inspect_options=True,
+            )
+            self.assertFalse(terminated)
+            self.assertFalse(truncated)
+            self.assertEqual(return_info["duration"], 6)
+            self.assertTrue(return_info["forced_return"])
+            self.assertFalse(world.semantic_choice_return_pending)
+            self.assertEqual(returned.position, world.semantic_choice_center)
+            self.assertEqual(world.grid.direction, Direction.NORTH)
+            self.assertEqual(
+                returned.last_action_index, ACTIONS.index(Action.WAIT)
+            )
+            self.assertEqual(
+                set(returned.tokens), {TOKEN_TO_ID[PAD_TOKEN]}
+            )
+            returned_packets.append(returned)
+
+        for returned in returned_packets[1:]:
+            np.testing.assert_allclose(
+                returned.needs, returned_packets[0].needs, atol=0.0, rtol=0.0
+            )
+            self.assertEqual(returned.position, returned_packets[0].position)
+            self.assertEqual(
+                returned.direction_index, returned_packets[0].direction_index
+            )
+
+        trainer.packet = execute_agent_action(
+            trainer.world,
+            packet,
+            object_option_action_index(
+                "inspect",
+                0,
+                consume_options=True,
+                inspect_options=True,
+                visible_slots=trainer.model.visible_slots,
+            ),
+            consume_options=True,
+            inspect_options=True,
+        )[0]
+        _, _, _, forced_mask, decision_weight = trainer._act()
+        self.assertEqual(decision_weight, 0.0)
+        self.assertEqual(int(forced_mask.sum()), 1)
+
+    def test_delayed_choice_planner_stops_after_terminal_consume(self):
+        from dataclasses import replace as dc_replace
+
+        trainer = OrganismTrainer(
+            dc_replace(
+                self._config(),
+                semantic_choice_childhood_steps=1,
+                consume_options=True,
+                inspect_options=True,
+                island=IslandConfig(
+                    semantic_choice_horizon=40,
+                    semantic_choice_objects=3,
+                    semantic_choice_low_need=0.55,
+                    semantic_choice_return_duration=6,
+                ),
+            )
+        )
+        vector = mx.array(trainer.packet.vector()[None, None, :])
+        tokens = mx.array(
+            np.asarray(trainer.packet.tokens, dtype=np.int32)[None, None, :]
+        )
+        states, _ = trainer.model.core_states(vector, tokens, None)
+        predicted_needs, predicted_rewards = predict_all_action_consequences(
+            trainer.model, states, vector
+        )
+        one_step = mx.min(predicted_needs, axis=-1) + 0.5 * predicted_rewards
+        two_step = two_step_action_scores(
+            trainer.model,
+            states,
+            vector,
+            reward_weight=0.5,
+            force_return_after_inspect=True,
+        )
+        consume_start = len(ACTIONS)
+        consume_stop = consume_start + trainer.model.visible_slots
+        mx.eval(one_step, two_step)
+        np.testing.assert_allclose(
+            np.asarray(two_step[..., consume_start:consume_stop]),
+            np.asarray(one_step[..., consume_start:consume_stop]),
+            atol=0.0,
+            rtol=0.0,
+        )
+
+    def test_primitive_inspection_label_uses_same_evaluation_criterion(self):
+        from dataclasses import replace as dc_replace
+
+        from homesocial.env import Direction
+        from homesocial.island.world import IslandWorld
+
+        world = IslandWorld(seed=731)
+        world.reset(731)
+        target = next(obj for obj in world.grid.objects if obj.consumable)
+        world.grid.agent_pos = (3, 3)
+        world.grid.direction = Direction.NORTH
+        world.grid.objects = [dc_replace(target, pos=(3, 2))]
+        packet = world._packet(world.grid._observe(None, None), None)
+        _, _, terminated, truncated, info = execute_agent_action(
+            world,
+            packet,
+            ACTIONS.index(Action.ASK),
+            consume_options=True,
+            inspect_options=True,
+        )
+        self.assertFalse(terminated)
+        self.assertFalse(truncated)
+        self.assertTrue(_is_voluntary_inspection_event(info))
 
     def test_option_routes_off_selected_under_agent_object(self):
         from dataclasses import replace as dc_replace
@@ -771,6 +1464,36 @@ class TrainingSmokeTest(unittest.TestCase):
         trainer.train()
         self.assertGreater(len(trainer.world_model_replay), 0)
         self.assertLessEqual(len(trainer.world_model_replay), 2)
+        self.assertTrue(math.isfinite(trainer.loss_log[-1]["loss"]))
+        self.assertTrue(math.isfinite(trainer.loss_log[-1]["replay_loss"]))
+
+    def test_three_way_episodic_binding_training_smoke(self):
+        from dataclasses import replace as dc_replace
+
+        trainer = OrganismTrainer(
+            dc_replace(
+                self._config(),
+                total_steps=83,
+                semantic_choice_childhood_steps=83,
+                consume_options=True,
+                inspect_options=True,
+                episodic_binding_size=4,
+                self_model_planning_scale=2.0,
+                self_model_planning_start_steps=40,
+                self_model_planning_horizon=2,
+                multi_step_model_horizon=2,
+                multi_step_model_weight=1.0,
+                world_model_replay_capacity=2,
+                world_model_replay_updates=1,
+                island=IslandConfig(
+                    semantic_choice_horizon=40,
+                    semantic_choice_objects=3,
+                    semantic_choice_return_duration=6,
+                ),
+            )
+        )
+        trainer.train()
+        self.assertEqual(trainer.global_steps, 83)
         self.assertTrue(math.isfinite(trainer.loss_log[-1]["loss"]))
         self.assertTrue(math.isfinite(trainer.loss_log[-1]["replay_loss"]))
 

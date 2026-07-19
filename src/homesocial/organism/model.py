@@ -29,6 +29,11 @@ class OrganismModel(nn.Module):
         object_feature_offset: int = 0,
         object_feature_size: int = 0,
         object_option_types: int | None = None,
+        episodic_binding_size: int = 0,
+        episodic_binding_writes: bool = True,
+        visible_radius: int = 2,
+        pad_token_id: int = 0,
+        referential_action_indices: tuple[int, ...] = (3, 4),
     ) -> None:
         super().__init__()
         self.vector_size = vector_size
@@ -70,17 +75,65 @@ class OrganismModel(nn.Module):
             raise ValueError(
                 "Object options require visible slots and object features."
             )
+        if episodic_binding_size < 0:
+            raise ValueError("episodic_binding_size must be nonnegative.")
+        if episodic_binding_size > 0 and not self.has_object_options:
+            raise ValueError("Episodic bindings require learner-visible object options.")
+        if visible_radius <= 0:
+            raise ValueError("visible_radius must be positive.")
+        self.episodic_binding_size = episodic_binding_size
+        self.episodic_binding_writes = episodic_binding_writes
+        self.surface_count = max(0, self.object_feature_size - 3)
+        self.visible_radius = visible_radius
+        self.pad_token_id = pad_token_id
+        self.referential_action_indices = referential_action_indices
+        self.has_episodic_bindings = episodic_binding_size > 0
+        if self.has_episodic_bindings and self.surface_count <= 0:
+            raise ValueError("Episodic bindings require surface identity features.")
+
+        # The external bank is carried alongside, rather than compressed into,
+        # the recurrent core.  Each learner-visible surface is an episodic key;
+        # the value written there depends only on the heard utterance.  Validity
+        # bits prevent an uninspected surface from reading a zero vector as if
+        # it were a learned meaning.
+        self.binding_bank_size = self.surface_count * episodic_binding_size
+        self.binding_valid_size = self.surface_count if self.has_episodic_bindings else 0
+        self.state_size = (
+            hidden_size + self.binding_bank_size + self.binding_valid_size
+        )
+        self.carry_size = self.state_size
 
         self.token_embedding = nn.Embedding(vocab_size, token_embed_size)
         self.token_rnn = nn.GRU(token_embed_size, token_embed_size)
-        self.input = nn.Linear(vector_size + token_embed_size, hidden_size)
+        binding_read_size = (
+            visible_slots * (episodic_binding_size + 1)
+            if self.has_episodic_bindings
+            else 0
+        )
+        if self.has_episodic_bindings:
+            self.binding_value = nn.Linear(token_embed_size, episodic_binding_size)
+            self.binding_read = nn.Linear(episodic_binding_size, episodic_binding_size)
+        self.input = nn.Linear(
+            vector_size + token_embed_size + binding_read_size,
+            hidden_size,
+        )
         self.input_norm = nn.LayerNorm(hidden_size)
         self.core = nn.GRU(hidden_size, hidden_size)
         self.post = nn.Linear(hidden_size, hidden_size)
         self.post_norm = nn.LayerNorm(hidden_size)
 
-        self.policy = nn.Linear(hidden_size, action_size)
-        self.value = nn.Linear(hidden_size, 1)
+        self.policy = nn.Linear(self.state_size, action_size)
+        self.value = nn.Linear(self.state_size, 1)
+        if self.has_episodic_bindings:
+            option_policy_input = (
+                hidden_size
+                + self.object_feature_size
+                + episodic_binding_size
+                + 1
+                + self.object_option_types
+            )
+            self.binding_option_policy = nn.Linear(option_policy_input, hidden_size)
+            self.binding_option_policy_out = nn.Linear(hidden_size, 1)
 
         # Every visible-slot option is the same abstract act applied to a
         # different perceived object. Sharing its action identity makes the
@@ -90,7 +143,10 @@ class OrganismModel(nn.Module):
             self.primitive_action_size + self.object_option_types
         )
         self.transition = nn.Linear(
-            hidden_size + transition_action_size + self.object_feature_size,
+            hidden_size
+            + transition_action_size
+            + self.object_feature_size
+            + (episodic_binding_size + 1 if self.has_episodic_bindings else 0),
             hidden_size,
         )
         self.transition_norm = nn.LayerNorm(hidden_size)
@@ -107,10 +163,136 @@ class OrganismModel(nn.Module):
         states = self.token_rnn(embedded)
         return states[:, -1, :].reshape(batch, steps, -1)
 
-    def _features(self, vectors: mx.array, tokens: mx.array) -> mx.array:
-        token_encoding = self._encode_tokens(tokens)
-        x = mx.concatenate([vectors, token_encoding], axis=-1)
+    def _features(
+        self,
+        vectors: mx.array,
+        token_encoding: mx.array,
+        binding_reads: mx.array | None = None,
+    ) -> mx.array:
+        parts = [vectors, token_encoding]
+        if binding_reads is not None:
+            parts.append(binding_reads)
+        x = mx.concatenate(parts, axis=-1)
         return nn.relu(self.input_norm(self.input(x)))
+
+    def _empty_carry_parts(
+        self, vectors: mx.array
+    ) -> tuple[mx.array, mx.array, mx.array]:
+        batch = vectors.shape[0]
+        core = mx.zeros((batch, self.hidden_size), dtype=vectors.dtype)
+        memory = mx.zeros(
+            (batch, self.surface_count, self.episodic_binding_size),
+            dtype=vectors.dtype,
+        )
+        valid = mx.zeros((batch, self.surface_count), dtype=vectors.dtype)
+        return core, memory, valid
+
+    def split_carry(
+        self, hidden: mx.array | None, vectors: mx.array
+    ) -> tuple[mx.array | None, mx.array, mx.array]:
+        """Return recurrent, lexical-value, and validity parts of a carry."""
+
+        if not self.has_episodic_bindings:
+            empty = mx.zeros((vectors.shape[0], 0), dtype=vectors.dtype)
+            return hidden, empty.reshape(vectors.shape[0], 0, 0), empty
+        if hidden is None:
+            return self._empty_carry_parts(vectors)
+        core = hidden[:, : self.hidden_size]
+        memory_start = self.hidden_size
+        memory_stop = memory_start + self.binding_bank_size
+        memory = hidden[:, memory_start:memory_stop].reshape(
+            hidden.shape[0], self.surface_count, self.episodic_binding_size
+        )
+        valid = hidden[:, memory_stop : memory_stop + self.binding_valid_size]
+        return core, memory, valid
+
+    def _visible_object_features(self, vectors: mx.array) -> mx.array:
+        start = self.object_feature_offset
+        stop = start + self.visible_slots * self.object_feature_size
+        return vectors[..., start:stop].reshape(
+            *vectors.shape[:-1], self.visible_slots, self.object_feature_size
+        )
+
+    def _attended_surface(self, vectors: mx.array) -> mx.array:
+        """One-hot surface exactly one learner-visible cell ahead, if any."""
+
+        slots = self._visible_object_features(vectors)
+        presence = slots[..., 0]
+        offsets = slots[..., 1:3]
+        surfaces = slots[..., 3:]
+        direction = vectors[..., 4:8]
+        relative_by_direction = mx.array(
+            [
+                [0.0, -1.0 / self.visible_radius],
+                [1.0 / self.visible_radius, 0.0],
+                [0.0, 1.0 / self.visible_radius],
+                [-1.0 / self.visible_radius, 0.0],
+            ],
+            dtype=vectors.dtype,
+        )
+        ahead = direction @ relative_by_direction
+        matches = (
+            (mx.max(mx.abs(offsets - ahead[..., None, :]), axis=-1) < 1e-5)
+            * (presence > 0.5)
+        ).astype(vectors.dtype)
+        return mx.sum(matches[..., None] * surfaces, axis=-2)
+
+    def _update_bindings(
+        self,
+        vectors: mx.array,
+        tokens: mx.array,
+        token_encoding: mx.array,
+        memory: mx.array,
+        valid: mx.array,
+    ) -> tuple[mx.array, mx.array]:
+        surface = self._attended_surface(vectors)
+        heard = mx.any(tokens != self.pad_token_id, axis=-1).astype(vectors.dtype)
+        action_start = self.object_feature_offset - self.primitive_action_size
+        last_action = vectors[
+            ..., action_start : action_start + self.primitive_action_size
+        ]
+        referential = mx.sum(
+            last_action[..., list(self.referential_action_indices)], axis=-1
+        )
+        write = surface * heard[..., None] * (referential > 0.5)[..., None]
+        if not self.episodic_binding_writes:
+            write = mx.zeros_like(write)
+        value = mx.tanh(self.binding_value(token_encoding))
+        memory = (
+            memory * (1.0 - write[..., None])
+            + value[..., None, :] * write[..., None]
+        )
+        valid = mx.maximum(valid, write)
+        return memory, valid
+
+    def _binding_reads(
+        self, vectors: mx.array, memory: mx.array, valid: mx.array
+    ) -> mx.array:
+        slots = self._visible_object_features(vectors)
+        presence = slots[..., 0]
+        surfaces = slots[..., 3:]
+        values = mx.einsum("...vs,...sd->...vd", surfaces, memory)
+        values = mx.tanh(self.binding_read(values))
+        slot_valid = mx.einsum("...vs,...s->...v", surfaces, valid) * presence
+        values = values * slot_valid[..., None]
+        return mx.concatenate([values, slot_valid[..., None]], axis=-1).reshape(
+            *vectors.shape[:-1], -1
+        )
+
+    def _state_memory_parts(
+        self, states: mx.array
+    ) -> tuple[mx.array, mx.array, mx.array]:
+        core = states[..., : self.hidden_size]
+        if not self.has_episodic_bindings:
+            empty = states[..., :0]
+            return core, empty.reshape(*states.shape[:-1], 0, 0), empty
+        memory_start = self.hidden_size
+        memory_stop = memory_start + self.binding_bank_size
+        memory = states[..., memory_start:memory_stop].reshape(
+            *states.shape[:-1], self.surface_count, self.episodic_binding_size
+        )
+        valid = states[..., memory_stop : memory_stop + self.binding_valid_size]
+        return core, memory, valid
 
     def core_states(
         self,
@@ -123,17 +305,61 @@ class OrganismModel(nn.Module):
         Args:
             vectors: (B, T, vector_size) float observations.
             tokens: (B, T, tokens_per_utterance) int heard-token ids.
-            hidden: (B, hidden_size) carry state or None.
+            hidden: (B, carry_size) recurrent plus optional binding carry.
 
         Returns:
-            refined states (B, T, hidden_size) for the heads, and the raw
-            final GRU state (B, hidden_size) to carry forward.
+            states (B, T, state_size) for the heads, and the recurrent plus
+            optional external-memory carry (B, carry_size).
         """
 
-        features = self._features(vectors, tokens)
-        states = self.core(features, hidden)
-        refined = states + nn.relu(self.post_norm(self.post(states)))
-        return refined, states[:, -1, :]
+        token_encoding = self._encode_tokens(tokens)
+        if not self.has_episodic_bindings:
+            features = self._features(vectors, token_encoding)
+            states = self.core(features, hidden)
+            refined = states + nn.relu(self.post_norm(self.post(states)))
+            return refined, states[:, -1, :]
+
+        core_hidden, memory, valid = self.split_carry(hidden, vectors)
+        raw_states: list[mx.array] = []
+        state_memories: list[mx.array] = []
+        state_validities: list[mx.array] = []
+        for step in range(vectors.shape[1]):
+            step_vector = vectors[:, step, :]
+            step_tokens = tokens[:, step, :]
+            step_token_encoding = token_encoding[:, step, :]
+            # Read-before-write gives the external bank a clean causal clock.
+            # The current utterance still enters the GRU through its ordinary
+            # token encoding, while a newly acquired binding first influences
+            # recurrent processing on the next observation. This lets a
+            # post-label bank intervention remove the entire delayed-memory
+            # pathway without erasing the transient raw-label core.
+            reads = self._binding_reads(step_vector, memory, valid)
+            features = self._features(
+                step_vector,
+                step_token_encoding,
+                reads,
+            )[:, None, :]
+            step_states = self.core(features, core_hidden)
+            core_hidden = step_states[:, -1, :]
+            memory, valid = self._update_bindings(
+                step_vector,
+                step_tokens,
+                step_token_encoding,
+                memory,
+                valid,
+            )
+            raw_states.append(core_hidden)
+            state_memories.append(memory.reshape(memory.shape[0], -1))
+            state_validities.append(valid)
+        raw = mx.stack(raw_states, axis=1)
+        refined = raw + nn.relu(self.post_norm(self.post(raw)))
+        memory_states = mx.stack(state_memories, axis=1)
+        validity_states = mx.stack(state_validities, axis=1)
+        states = mx.concatenate([refined, memory_states, validity_states], axis=-1)
+        carry = mx.concatenate(
+            [core_hidden, memory_states[:, -1], validity_states[:, -1]], axis=-1
+        )
+        return states, carry
 
     def policy_value(
         self,
@@ -142,13 +368,55 @@ class OrganismModel(nn.Module):
         hidden: mx.array | None = None,
     ) -> tuple[mx.array, mx.array, mx.array]:
         states, carry = self.core_states(vectors, tokens, hidden)
-        logits = self.policy(states)
+        logits = self.policy_logits(states, vectors)
         values = self.value(states).squeeze(-1)
         return logits, values, carry
 
+    def policy_logits(self, states: mx.array, vectors: mx.array) -> mx.array:
+        """Policy logits with object-local episodic reads when configured."""
+
+        base = self.policy(states)
+        if not self.has_episodic_bindings or not self.has_object_options:
+            return base
+        core, memory, valid = self._state_memory_parts(states)
+        slots = self._visible_object_features(vectors)
+        surfaces = slots[..., 3:]
+        selected_values = mx.einsum("...vs,...sd->...vd", surfaces, memory)
+        selected_valid = mx.einsum("...vs,...s->...v", surfaces, valid)
+        option_scores: list[mx.array] = []
+        for option_type in range(self.object_option_types):
+            option_onehot = mx.broadcast_to(
+                mx.eye(self.object_option_types, dtype=states.dtype)[option_type],
+                (*states.shape[:-1], self.visible_slots, self.object_option_types),
+            )
+            expanded_core = mx.broadcast_to(
+                core[..., None, :],
+                (*core.shape[:-1], self.visible_slots, self.hidden_size),
+            )
+            features = mx.concatenate(
+                [
+                    expanded_core,
+                    slots,
+                    selected_values,
+                    selected_valid[..., None],
+                    option_onehot,
+                ],
+                axis=-1,
+            )
+            score = self.binding_option_policy_out(
+                nn.relu(self.binding_option_policy(features))
+            )[..., 0]
+            option_scores.append(score)
+        return mx.concatenate(
+            [base[..., : self.primitive_action_size], *option_scores], axis=-1
+        )
+
     def _transition_features(
-        self, actions: mx.array, vectors: mx.array | None
-    ) -> tuple[mx.array, mx.array]:
+        self,
+        states: mx.array,
+        actions: mx.array,
+        vectors: mx.array | None,
+    ) -> tuple[mx.array, mx.array, mx.array]:
         transition_action_size = (
             self.primitive_action_size + self.object_option_types
         )
@@ -165,7 +433,8 @@ class OrganismModel(nn.Module):
         )
         action_features = mx.eye(transition_action_size)[transition_actions]
         if not self.has_object_options:
-            return action_features, mx.zeros((*actions.shape, 0))
+            empty = mx.zeros((*actions.shape, 0))
+            return action_features, empty, empty
         if vectors is None:
             raise ValueError("Object-option consequences require observation vectors.")
         start = self.object_feature_offset
@@ -184,7 +453,17 @@ class OrganismModel(nn.Module):
         )
         selected = mx.take_along_axis(slots, indices, axis=-2).squeeze(-2)
         is_option = (actions >= self.primitive_action_size)[..., None]
-        return action_features, mx.where(is_option, selected, mx.zeros_like(selected))
+        selected = mx.where(is_option, selected, mx.zeros_like(selected))
+        if not self.has_episodic_bindings:
+            return action_features, selected, mx.zeros((*actions.shape, 0))
+        _, memory, valid = self._state_memory_parts(states)
+        surfaces = selected[..., 3:]
+        binding = mx.einsum("...s,...sd->...d", surfaces, memory)
+        binding_valid = mx.einsum("...s,...s->...", surfaces, valid)[..., None]
+        binding_features = mx.concatenate(
+            [binding * binding_valid, binding_valid], axis=-1
+        )
+        return action_features, selected, binding_features
 
     def predict_consequences(
         self,
@@ -195,7 +474,7 @@ class OrganismModel(nn.Module):
         """Action-conditioned predictions from core states.
 
         Args:
-            states: (B, T, hidden_size) refined core states.
+            states: (B, T, state_size) refined core and optional bindings.
             actions: (B, T) int action indices taken at those states.
             vectors: (B, T, vector_size) observations used to bind an object
                 option to its selected learner-visible slot.
@@ -218,16 +497,25 @@ class OrganismModel(nn.Module):
     ) -> mx.array:
         """Advance the learned latent dynamics by one agent decision."""
 
-        action_features, object_features = self._transition_features(actions, vectors)
-        x = mx.concatenate([states, action_features, object_features], axis=-1)
-        return nn.relu(self.transition_norm(self.transition(x)))
+        action_features, object_features, binding_features = self._transition_features(
+            states, actions, vectors
+        )
+        core_states = states[..., : self.hidden_size]
+        x = mx.concatenate(
+            [core_states, action_features, object_features, binding_features],
+            axis=-1,
+        )
+        core = nn.relu(self.transition_norm(self.transition(x)))
+        if not self.has_episodic_bindings:
+            return core
+        return mx.concatenate([core, states[..., self.hidden_size :]], axis=-1)
 
     def decode_transition(
         self, transition_states: mx.array
     ) -> tuple[mx.array, mx.array, mx.array, mx.array]:
         """Decode observable and bodily consequences from imagined states."""
 
-        h = transition_states
+        h = transition_states[..., : self.hidden_size]
         next_vectors = self.next_vector(h)
         # Most actions only incur metabolism, while the rare consequential
         # actions change one need sharply. Predicting a bounded residual keeps
