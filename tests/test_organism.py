@@ -15,9 +15,11 @@ if mx is not None:
         ACTIONS,
         OrganismConfig,
         OrganismTrainer,
+        audit_label_to_self_model,
         audit_self_model_actions,
         available_action_mask,
         compute_gae,
+        decode_object_option,
         evaluate_organism,
         execute_agent_action,
         planned_policy_logits,
@@ -203,6 +205,34 @@ class ModelTest(unittest.TestCase):
         for left, right in zip(select_first, select_second):
             self.assertLess(float(mx.abs(left - right).max()), 1e-7)
 
+    def test_consume_and_inspect_have_distinct_transition_action_identity(self):
+        model = OrganismModel(
+            vector_size=6,
+            vocab_size=12,
+            tokens_per_utterance=4,
+            action_size=9,
+            hidden_size=8,
+            token_embed_size=4,
+            primitive_action_size=5,
+            visible_slots=2,
+            object_feature_offset=0,
+            object_feature_size=3,
+            object_option_types=2,
+        )
+        vectors = mx.array([[[1.0, 0.25, -0.5, 1.0, -0.75, 0.5]]])
+        action_features, object_features = model._transition_features(
+            mx.array([[5, 7]]),
+            mx.broadcast_to(vectors, (1, 2, 6)),
+        )
+        mx.eval(action_features, object_features)
+        self.assertEqual(action_features.shape, (1, 2, 7))
+        self.assertEqual(int(mx.argmax(action_features[0, 0]).item()), 5)
+        self.assertEqual(int(mx.argmax(action_features[0, 1]).item()), 6)
+        self.assertLess(
+            float(mx.abs(object_features[0, 0] - object_features[0, 1]).max()),
+            1e-7,
+        )
+
 
 @unittest.skipIf(mx is None, "MLX is unavailable")
 class TrainingSmokeTest(unittest.TestCase):
@@ -253,6 +283,28 @@ class TrainingSmokeTest(unittest.TestCase):
         )
         self.assertEqual(stats["audited_decisions"], 2.0)
         self.assertGreater(stats["candidate_outcomes"], 0.0)
+        for value in stats.values():
+            self.assertTrue(math.isfinite(value))
+
+    def test_label_to_self_model_audit_runs_without_training_leakage(self):
+        from dataclasses import replace as dc_replace
+
+        trainer = OrganismTrainer(
+            dc_replace(
+                self._config(),
+                consume_options=True,
+                inspect_options=True,
+            )
+        )
+        stats = audit_label_to_self_model(
+            trainer.model,
+            episodes=4,
+            base_seed=1_991,
+            max_inspections=2,
+            max_steps=120,
+        )
+        self.assertGreater(stats["audited_inspections"], 0.0)
+        self.assertLessEqual(stats["audited_inspections"], 2.0)
         for value in stats.values():
             self.assertTrue(math.isfinite(value))
 
@@ -407,6 +459,71 @@ class TrainingSmokeTest(unittest.TestCase):
         self.assertEqual(
             int(mask[len(ACTIONS) :].sum()), len(trainer.packet.visible)
         )
+
+    def test_consume_and_inspect_have_separate_visible_slot_blocks(self):
+        from dataclasses import replace as dc_replace
+
+        trainer = OrganismTrainer(
+            dc_replace(
+                self._config(),
+                consume_options=True,
+                inspect_options=True,
+            )
+        )
+        slots = trainer.world.config.max_visible_slots
+        self.assertEqual(trainer.model.action_size, len(ACTIONS) + 2 * slots)
+        mask = available_action_mask(
+            trainer.packet,
+            trainer.model.action_size,
+            visible_slots=slots,
+        )
+        visible = len(trainer.packet.visible)
+        self.assertEqual(int(mask[len(ACTIONS) : len(ACTIONS) + slots].sum()), visible)
+        self.assertEqual(int(mask[len(ACTIONS) + slots :].sum()), visible)
+        self.assertEqual(
+            decode_object_option(
+                len(ACTIONS) + slots,
+                consume_options=True,
+                inspect_options=True,
+                visible_slots=slots,
+            )[0],
+            "inspect",
+        )
+
+    def test_inspect_option_approaches_labels_and_does_not_consume(self):
+        from dataclasses import replace as dc_replace
+
+        from homesocial.env import Direction
+        from homesocial.island.world import IslandWorld
+
+        world = IslandWorld(seed=73)
+        world.reset(73)
+        target = next(obj for obj in world.grid.objects if obj.consumable)
+        world.grid.agent_pos = (3, 3)
+        world.grid.direction = Direction.NORTH
+        world.grid.objects = [dc_replace(target, pos=(3, 1))]
+        packet = world._packet(world.grid._observe(None, None), None)
+        slot = next(
+            index
+            for index, (dx, dy, _) in enumerate(packet.visible)
+            if (dx, dy) == (0, -2)
+        )
+        slots = world.config.max_visible_slots
+        next_packet, _, terminated, truncated, info = execute_agent_action(
+            world,
+            packet,
+            len(ACTIONS) + slots + slot,
+            consume_options=True,
+            inspect_options=True,
+        )
+        self.assertFalse(terminated)
+        self.assertFalse(truncated)
+        self.assertEqual(info["option_kind"], "inspect")
+        self.assertGreaterEqual(int(info["duration"]), 2)
+        self.assertTrue(str(info["situation"]).startswith("label|"))
+        self.assertFalse(any(str(event).startswith("consumed_") for event in info["events"]))
+        self.assertEqual(len(world.grid.objects), 1)
+        self.assertNotEqual(packet.tokens, next_packet.tokens)
 
     def test_planned_option_training_smoke(self):
         from dataclasses import replace as dc_replace

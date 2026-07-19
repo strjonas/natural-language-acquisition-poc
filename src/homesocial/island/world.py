@@ -76,21 +76,20 @@ ISLAND_POPULATION = (
     ("rock", 1),
 )
 
-# Surfaces whose kind varies per world, and their candidate kinds.
+# Consumable surface identities are deliberately exchangeable across lives.
+# Each reset assigns the quota below by a seeded uniform shuffle, so no surface
+# has a privileged out-of-language prior over bodily kind.
+CONSUMABLE_SURFACES = ("water", "spring", "berry", "roots", "mushroom")
+CONSUMABLE_KIND_QUOTA = ("food", "food", "water", "water", "poison")
 VARIABLE_SURFACE_KINDS = {
-    "spring": ("water", "poison"),
-    "berry": ("food", "poison"),
-    "roots": ("food", "poison"),
-    "mushroom": ("food", "poison"),
+    surface: ("food", "water", "poison") for surface in CONSUMABLE_SURFACES
 }
 STABLE_SURFACE_KINDS = {
-    "water": "water",
     "hut": "shelter",
     "thorn": "danger",
     "tree": "tree",
     "rock": "rock",
 }
-FOOD_CANDIDATE_SURFACES = ("berry", "roots", "mushroom")
 
 LANGUAGE_MODES = ("grounded", "silent", "shuffled")
 
@@ -145,12 +144,9 @@ class IslandGrid(HomeostaticSocialGrid):
 
     def _assign_kinds(self) -> dict[str, str]:
         kinds = dict(STABLE_SURFACE_KINDS)
-        # At most one of the food-candidate surfaces is poisonous, so the
-        # island always offers at least two genuine food sources.
-        poison_pick = self.rng.choice((None,) + FOOD_CANDIDATE_SURFACES)
-        for surface in FOOD_CANDIDATE_SURFACES:
-            kinds[surface] = "poison" if surface == poison_pick else "food"
-        kinds["spring"] = "water" if self.rng.random() < 0.5 else "poison"
+        assigned = list(CONSUMABLE_KIND_QUOTA)
+        self.rng.shuffle(assigned)
+        kinds.update(zip(CONSUMABLE_SURFACES, assigned))
         return kinds
 
     def _object_for(self, surface: str, kind: str, pos: tuple[int, int]) -> WorldObject:
@@ -308,7 +304,7 @@ class Caregiver:
         if language_mode not in LANGUAGE_MODES:
             raise ValueError(f"Unknown language mode: {language_mode}.")
         self.language_mode = language_mode
-        self.bank = bank.shuffled(seed) if language_mode == "shuffled" else bank
+        self.bank = bank
         self.ask_state_period = ask_state_period
         self.low_need_praise_threshold = low_need_praise_threshold
         self.low_need_ask_threshold = low_need_ask_threshold
@@ -411,6 +407,13 @@ class Caregiver:
     ) -> tuple[str, ...] | None:
         if situation is None or self.language_mode == "silent":
             return None
+        if self.language_mode == "shuffled":
+            # Draw anew for every event.  In particular, a label's surface form
+            # is independent of its true surface/kind rather than a stable
+            # substitution cipher learned during a run.  Keeping the draw
+            # within the same act preserves label traffic and other pragmatic
+            # speech-act identities without leaking their grounded slots.
+            return self.bank.sample_from_act(situation.act, self._rng)
         return self.bank.sample(situation, self._rng)
 
 

@@ -21,11 +21,11 @@ from homesocial.creole.vocab import UtteranceError, validate_utterance
 # perception alone can never resolve them; the caregiver's label is the only
 # source. Revealing kind is the caregiver's main epistemic contribution.
 SURFACE_KINDS: dict[str, tuple[str, ...]] = {
-    "water": ("water",),
-    "spring": ("water", "danger"),
-    "berry": ("food", "danger"),
-    "roots": ("food", "danger"),
-    "mushroom": ("food", "danger"),
+    "water": ("food", "water", "danger"),
+    "spring": ("food", "water", "danger"),
+    "berry": ("food", "water", "danger"),
+    "roots": ("food", "water", "danger"),
+    "mushroom": ("food", "water", "danger"),
     "hut": ("shelter",),
     "thorn": ("danger",),
     "tree": ("tree",),

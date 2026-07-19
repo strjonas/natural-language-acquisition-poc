@@ -3,9 +3,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from homesocial.creole.bank import UtteranceBank
+from homesocial.creole.bank import UtteranceBank, load_default_bank
 from homesocial.creole.generate_bank import build_prompt, filter_valid, parse_variant_texts
 from homesocial.creole.situations import (
+    SURFACE_KINDS,
     Situation,
     enumerate_situations,
     required_tokens,
@@ -77,6 +78,12 @@ class SituationTest(unittest.TestCase):
         required_all, _ = required_tokens(food_berry)
         self.assertIn("food", required_all)
 
+    def test_each_consumable_surface_supports_every_bodily_label(self):
+        for surface in ("water", "spring", "berry", "roots", "mushroom"):
+            self.assertEqual(
+                set(SURFACE_KINDS[surface]), {"food", "water", "danger"}
+            )
+
 
 class GeneratorPiecesTest(unittest.TestCase):
     def test_parse_variant_texts_json_and_lines(self):
@@ -130,16 +137,37 @@ class BankTest(unittest.TestCase):
         second = [bank.sample(situation, random.Random(7)) for _ in range(5)]
         self.assertEqual(first, second)
 
-    def test_shuffled_bank_is_grounding_destroying_permutation(self):
+    def test_default_bank_covers_all_consumable_surface_labels(self):
+        bank = load_default_bank()
+        for surface in ("water", "spring", "berry", "roots", "mushroom"):
+            for kind in ("food", "water", "danger"):
+                situation = Situation(
+                    "label", (("surface", surface), ("kind", kind))
+                )
+                variants = bank.variants(situation)
+                self.assertGreaterEqual(len(variants), 3)
+                self.assertTrue(all(kind in words for words in variants))
+
+    def test_same_act_sampling_is_seeded_and_ignores_grounded_slots(self):
         bank = self._template_bank()
-        shuffled = bank.shuffled(seed=3)
-        self.assertEqual(set(shuffled.keys), set(bank.keys))
-        moved = sum(
-            1
-            for situation in enumerate_situations()
-            if shuffled.variants(situation) != bank.variants(situation)
+        food = Situation("label", (("surface", "berry"), ("kind", "food")))
+        danger = Situation(
+            "label", (("surface", "mushroom"), ("kind", "danger"))
         )
-        self.assertGreater(moved, len(bank.keys) // 2)
+        first_rng = random.Random(37)
+        second_rng = random.Random(37)
+        first = [bank.sample_from_act(food.act, first_rng) for _ in range(50)]
+        second = [bank.sample_from_act(danger.act, second_rng) for _ in range(50)]
+        self.assertEqual(first, second)
+        self.assertGreater(len(set(first)), 8)
+
+        label_variants = {
+            words
+            for situation in enumerate_situations()
+            if situation.act == "label"
+            for words in bank.variants(situation)
+        }
+        self.assertTrue(all(words in label_variants for words in first))
 
 
 if __name__ == "__main__":

@@ -1,10 +1,10 @@
 """Utterance bank: cached surface variants for every situation key.
 
 The bank is generated offline (see ``generate_bank.py``) and loaded read-only
-at environment construction. Sampling is seed-deterministic. The shuffled
-control permutes which variant set each situation key maps to, preserving the
-marginal distribution of surface forms while destroying their grounding —
-the token-level analogue of the probe-era shuffled-teacher control.
+at environment construction. Sampling is seed-deterministic. Besides grounded
+sampling by exact situation, the bank supports per-event sampling from a whole
+speech-act family for controls that preserve the act while destroying its
+grounded slot information.
 """
 
 from __future__ import annotations
@@ -26,6 +26,13 @@ MIN_VARIANTS_PER_KEY = 3
 class UtteranceBank:
     def __init__(self, variants_by_key: dict[str, tuple[tuple[str, ...], ...]]):
         self._variants_by_key = dict(variants_by_key)
+        variants_by_act: dict[str, list[tuple[str, ...]]] = {}
+        for key, variants in self._variants_by_key.items():
+            act = Situation.from_key(key).act
+            variants_by_act.setdefault(act, []).extend(variants)
+        self._variants_by_act = {
+            act: tuple(variants) for act, variants in variants_by_act.items()
+        }
 
     @property
     def keys(self) -> tuple[str, ...]:
@@ -41,15 +48,13 @@ class UtteranceBank:
         variants = self.variants(situation)
         return variants[rng.randrange(len(variants))]
 
-    def shuffled(self, seed: int) -> "UtteranceBank":
-        """Permute variant sets across situation keys (grounding-destroying)."""
+    def sample_from_act(self, act: str, rng: random.Random) -> tuple[str, ...]:
+        """Sample a variant from ``act`` independently of grounded slots."""
 
-        keys = sorted(self._variants_by_key)
-        permuted = list(keys)
-        random.Random(seed).shuffle(permuted)
-        return UtteranceBank(
-            {key: self._variants_by_key[source] for key, source in zip(keys, permuted)}
-        )
+        if act not in self._variants_by_act:
+            raise KeyError(f"No variants for speech act {act!r}.")
+        variants = self._variants_by_act[act]
+        return variants[rng.randrange(len(variants))]
 
     def validate(self, *, check_required: bool = True) -> None:
         expected = {situation.key(): situation for situation in enumerate_situations()}

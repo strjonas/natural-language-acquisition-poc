@@ -28,6 +28,7 @@ class OrganismModel(nn.Module):
         visible_slots: int = 0,
         object_feature_offset: int = 0,
         object_feature_size: int = 0,
+        object_option_types: int | None = None,
     ) -> None:
         super().__init__()
         self.vector_size = vector_size
@@ -40,7 +41,28 @@ class OrganismModel(nn.Module):
         )
         self.visible_slots = visible_slots
         self.object_feature_offset = object_feature_offset
-        self.has_object_options = action_size > self.primitive_action_size
+        extra_actions = action_size - self.primitive_action_size
+        if extra_actions < 0:
+            raise ValueError("action_size cannot be smaller than primitive_action_size.")
+        if extra_actions == 0:
+            inferred_option_types = 0
+        elif object_option_types is None:
+            if visible_slots <= 0 or extra_actions % visible_slots:
+                raise ValueError(
+                    "Object-option actions must form complete visible-slot blocks."
+                )
+            inferred_option_types = extra_actions // visible_slots
+        else:
+            inferred_option_types = object_option_types
+            if inferred_option_types <= 0 or extra_actions != (
+                inferred_option_types * visible_slots
+            ):
+                raise ValueError(
+                    "action_size must equal primitive actions plus one visible-slot "
+                    "block per object option type."
+                )
+        self.object_option_types = inferred_option_types
+        self.has_object_options = self.object_option_types > 0
         self.object_feature_size = object_feature_size if self.has_object_options else 0
         if self.has_object_options and (
             visible_slots <= 0 or object_feature_size <= 0
@@ -64,8 +86,8 @@ class OrganismModel(nn.Module):
         # different perceived object. Sharing its action identity makes the
         # consequence model generalize across slots; selected raw object
         # features provide the binding target without revealing hidden kind.
-        transition_action_size = self.primitive_action_size + int(
-            self.has_object_options
+        transition_action_size = (
+            self.primitive_action_size + self.object_option_types
         )
         self.transition = nn.Linear(
             hidden_size + transition_action_size + self.object_feature_size,
@@ -127,13 +149,19 @@ class OrganismModel(nn.Module):
     def _transition_features(
         self, actions: mx.array, vectors: mx.array | None
     ) -> tuple[mx.array, mx.array]:
-        transition_action_size = self.primitive_action_size + int(
-            self.has_object_options
+        transition_action_size = (
+            self.primitive_action_size + self.object_option_types
+        )
+        option_offsets = actions - self.primitive_action_size
+        option_types = mx.clip(
+            option_offsets // max(1, self.visible_slots),
+            0,
+            max(0, self.object_option_types - 1),
         )
         transition_actions = mx.where(
             actions < self.primitive_action_size,
             actions,
-            self.primitive_action_size,
+            self.primitive_action_size + option_types,
         )
         action_features = mx.eye(transition_action_size)[transition_actions]
         if not self.has_object_options:
@@ -146,7 +174,7 @@ class OrganismModel(nn.Module):
             *vectors.shape[:-1], self.visible_slots, self.object_feature_size
         )
         slot_indices = mx.clip(
-            actions - self.primitive_action_size,
+            option_offsets % self.visible_slots,
             0,
             self.visible_slots - 1,
         )

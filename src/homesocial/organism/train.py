@@ -26,23 +26,103 @@ import numpy as np
 from homesocial.creole.vocab import PAD_TOKEN, TOKEN_TO_ID, VOCAB
 from homesocial.env import Action, DELTAS, DIRECTION_ORDER, Direction
 from homesocial.island.oracle import OraclePolicy
-from homesocial.island.world import SURFACES, IslandConfig, IslandWorld, ObsPacket
+from homesocial.island.world import (
+    CONSUMABLE_SURFACES,
+    SURFACES,
+    IslandConfig,
+    IslandWorld,
+    ObsPacket,
+)
 from homesocial.organism.model import OrganismModel
 
 ACTIONS = list(Action)
+OBJECT_OPTION_ORDER = ("consume", "inspect")
 
 
-def agent_action_size(*, consume_options: bool, visible_slots: int) -> int:
-    return len(ACTIONS) + (visible_slots if consume_options else 0)
+def enabled_object_options(
+    *, consume_options: bool, inspect_options: bool
+) -> tuple[str, ...]:
+    return tuple(
+        option
+        for option, enabled in (
+            ("consume", consume_options),
+            ("inspect", inspect_options),
+        )
+        if enabled
+    )
 
 
-def available_action_mask(packet: ObsPacket, action_size: int) -> np.ndarray:
-    """Primitive actions plus only the object slots actually perceived."""
+def agent_action_size(
+    *, consume_options: bool, inspect_options: bool = False, visible_slots: int
+) -> int:
+    option_types = enabled_object_options(
+        consume_options=consume_options,
+        inspect_options=inspect_options,
+    )
+    return len(ACTIONS) + visible_slots * len(option_types)
+
+
+def decode_object_option(
+    action_index: int,
+    *,
+    consume_options: bool,
+    inspect_options: bool,
+    visible_slots: int,
+) -> tuple[str, int] | None:
+    """Return the learner-visible option kind and slot for an action index."""
+
+    offset = action_index - len(ACTIONS)
+    if offset < 0 or visible_slots <= 0:
+        return None
+    option_types = enabled_object_options(
+        consume_options=consume_options,
+        inspect_options=inspect_options,
+    )
+    option_type_index, slot = divmod(offset, visible_slots)
+    if option_type_index >= len(option_types):
+        return None
+    return option_types[option_type_index], slot
+
+
+def object_option_action_index(
+    option_kind: str,
+    slot: int,
+    *,
+    consume_options: bool,
+    inspect_options: bool,
+    visible_slots: int,
+) -> int:
+    """Encode an object-option kind and learner-visible slot as an action."""
+
+    option_types = enabled_object_options(
+        consume_options=consume_options,
+        inspect_options=inspect_options,
+    )
+    if option_kind not in option_types:
+        raise ValueError(f"Object option {option_kind!r} is not enabled.")
+    if not 0 <= slot < visible_slots:
+        raise ValueError(f"Object slot {slot} is outside [0, {visible_slots}).")
+    return len(ACTIONS) + option_types.index(option_kind) * visible_slots + slot
+
+
+def available_action_mask(
+    packet: ObsPacket,
+    action_size: int,
+    *,
+    visible_slots: int | None = None,
+) -> np.ndarray:
+    """Primitive actions plus perceived slots in every object-option block."""
 
     mask = np.ones(action_size, dtype=np.bool_)
-    if action_size > len(ACTIONS):
+    extra_actions = action_size - len(ACTIONS)
+    if extra_actions > 0:
+        slots = extra_actions if visible_slots is None else visible_slots
+        if slots <= 0 or extra_actions % slots:
+            raise ValueError("Object-option actions must form visible-slot blocks.")
         mask[len(ACTIONS) :] = False
-        mask[len(ACTIONS) : len(ACTIONS) + len(packet.visible)] = True
+        for block in range(extra_actions // slots):
+            start = len(ACTIONS) + block * slots
+            mask[start : start + len(packet.visible)] = True
     return mask
 
 
@@ -64,20 +144,22 @@ def _desired_direction(
 
 
 def _motor_action_toward(
-    world: IslandWorld, target: tuple[int, int]
+    world: IslandWorld,
+    target: tuple[int, int],
+    terminal_action: Action,
 ) -> Action:
-    """Kind-blind low-level action toward a perceived object location."""
+    """Kind-blind low-level action toward and then upon a perceived object."""
 
     grid = world.grid
     distance = abs(target[0] - grid.agent_pos[0]) + abs(
         target[1] - grid.agent_pos[1]
     )
     if distance == 0:
-        return Action.CONSUME
+        return terminal_action
     desired = _desired_direction(grid.agent_pos, target)
     if distance == 1:
         if grid.direction == desired:
-            return Action.CONSUME
+            return terminal_action
         return _turn_toward(grid.direction, desired)
     if grid.direction != desired:
         return _turn_toward(grid.direction, desired)
@@ -90,8 +172,9 @@ def execute_agent_action(
     action_index: int,
     *,
     consume_options: bool,
+    inspect_options: bool = False,
 ) -> tuple[ObsPacket, float, bool, bool, dict[str, object]]:
-    """Execute one primitive decision or a visible-slot consume option.
+    """Execute one primitive decision or a visible-slot object option.
 
     The option can access only the learner-perceived relative target location
     and proprioceptive pose. It never reads the target's hidden bodily kind.
@@ -108,16 +191,34 @@ def execute_agent_action(
         aggregate["events"] = (info.get("event"),)
         return next_packet, reward, terminated, truncated, aggregate
 
-    slot = action_index - len(ACTIONS)
-    if not consume_options or slot >= len(packet.visible):
+    decoded = decode_object_option(
+        action_index,
+        consume_options=consume_options,
+        inspect_options=inspect_options,
+        visible_slots=world.config.max_visible_slots,
+    )
+    if decoded is None:
         return execute_agent_action(
             world,
             packet,
             ACTIONS.index(Action.WAIT),
             consume_options=False,
+            inspect_options=False,
+        )
+    option_kind, slot = decoded
+    if slot >= len(packet.visible):
+        return execute_agent_action(
+            world,
+            packet,
+            ACTIONS.index(Action.WAIT),
+            consume_options=False,
+            inspect_options=False,
         )
     dx, dy, _ = packet.visible[slot]
     target = (packet.position[0] + dx, packet.position[1] + dy)
+    terminal_action = (
+        Action.CONSUME if option_kind == "consume" else Action.ASK
+    )
     reward_sum = 0.0
     viability_sum = 0.0
     min_viability = 1.0
@@ -129,19 +230,21 @@ def execute_agent_action(
     # Radius-two targets require at most two moves, two turns, and consume.
     # The small margin lets the servo recover from one blocked direct route.
     for _ in range(7):
-        primitive = _motor_action_toward(world, target)
+        primitive = _motor_action_toward(world, target, terminal_action)
         current_packet, reward, terminated, truncated, info = world.step(primitive)
         reward_sum += float(reward)
         viability_sum += float(info["mean_viability"])
         min_viability = min(min_viability, float(info["viability"]))
         events.append(info.get("event"))
         final_info = dict(info)
-        if primitive == Action.CONSUME or terminated or truncated:
+        if primitive == terminal_action or terminated or truncated:
             break
     final_info["duration"] = len(events)
     final_info["mean_viability_sum"] = viability_sum
     final_info["min_viability"] = min_viability
     final_info["events"] = tuple(events)
+    final_info["option_kind"] = option_kind
+    final_info["option_slot"] = slot
     return current_packet, reward_sum, terminated, truncated, final_info
 
 
@@ -299,7 +402,10 @@ def two_step_action_scores(
                     (batch, steps, action_size, model.primitive_action_size),
                     dtype=mx.bool_,
                 ),
-                slot_presence > 0.5,
+                *[
+                    slot_presence > 0.5
+                    for _ in range(model.object_option_types)
+                ],
             ],
             axis=-1,
         )
@@ -363,6 +469,7 @@ class OrganismConfig:
     caregiver_offer_curriculum_steps: int = 0
     caregiver_offer_distance_end: int = 0
     consume_options: bool = False
+    inspect_options: bool = False
     self_model_planning_scale: float = 0.0
     self_model_planning_start_steps: int = 0
     self_model_planning_reward_weight: float = 0.5
@@ -415,6 +522,8 @@ class LifeStats:
     water_consumes: int
     offered_consumes: int
     option_decisions: int
+    inspect_option_decisions: int
+    labels_received: int
     harm_events: int
 
 
@@ -454,6 +563,7 @@ def build_model(config: OrganismConfig, world: IslandWorld) -> OrganismModel:
         tokens_per_utterance=world.tokens_per_utterance,
         action_size=agent_action_size(
             consume_options=config.consume_options,
+            inspect_options=config.inspect_options,
             visible_slots=world.config.max_visible_slots,
         ),
         hidden_size=config.hidden_size,
@@ -462,6 +572,12 @@ def build_model(config: OrganismConfig, world: IslandWorld) -> OrganismModel:
         visible_slots=world.config.max_visible_slots,
         object_feature_offset=object_feature_offset,
         object_feature_size=3 + len(SURFACES),
+        object_option_types=len(
+            enabled_object_options(
+                consume_options=config.consume_options,
+                inspect_options=config.inspect_options,
+            )
+        ),
     )
 
 
@@ -552,6 +668,8 @@ class OrganismTrainer:
         self._life_water_consumes = 0
         self._life_offered_consumes = 0
         self._life_option_decisions = 0
+        self._life_inspect_option_decisions = 0
+        self._life_labels_received = 0
         self._life_harm_events = 0
 
     # --------------------------------------------------- childhood bootstrap
@@ -839,7 +957,11 @@ class OrganismTrainer:
                 reward_weight=self.config.self_model_planning_reward_weight,
                 horizon=self.config.self_model_planning_horizon,
             )
-        action_mask = available_action_mask(self.packet, self.model.action_size)
+        action_mask = available_action_mask(
+            self.packet,
+            self.model.action_size,
+            visible_slots=self.model.visible_slots or None,
+        )
         logits = mx.where(
             mx.array(action_mask)[None, None, :], logits, -1e9
         )
@@ -865,11 +987,20 @@ class OrganismTrainer:
             action_index, value, planning_scale, action_mask = self._act()
             if action_index >= len(ACTIONS):
                 self._life_option_decisions += 1
+                decoded = decode_object_option(
+                    action_index,
+                    consume_options=self.config.consume_options,
+                    inspect_options=self.config.inspect_options,
+                    visible_slots=self.world.config.max_visible_slots,
+                )
+                if decoded is not None and decoded[0] == "inspect":
+                    self._life_inspect_option_decisions += 1
             next_packet, env_reward, terminated, truncated, info = execute_agent_action(
                 self.world,
                 self.packet,
                 action_index,
                 consume_options=self.config.consume_options,
+                inspect_options=self.config.inspect_options,
             )
             duration = int(info["duration"])
             mean_viability_sum = float(info["mean_viability_sum"])
@@ -912,6 +1043,8 @@ class OrganismTrainer:
             self._life_water_consumes += events.count("consumed_water")
             if bool(info.get("offered_consumed")):
                 self._life_offered_consumes += 1
+            if str(info.get("situation", "")).startswith("label|"):
+                self._life_labels_received += 1
             self._life_harm_events += sum(
                 event in {"hit_danger", "consumed_poison"} for event in events
             )
@@ -949,6 +1082,8 @@ class OrganismTrainer:
                 water_consumes=self._life_water_consumes,
                 offered_consumes=self._life_offered_consumes,
                 option_decisions=self._life_option_decisions,
+                inspect_option_decisions=self._life_inspect_option_decisions,
+                labels_received=self._life_labels_received,
                 harm_events=self._life_harm_events,
             )
         )
@@ -967,6 +1102,8 @@ class OrganismTrainer:
         self._life_water_consumes = 0
         self._life_offered_consumes = 0
         self._life_option_decisions = 0
+        self._life_inspect_option_decisions = 0
+        self._life_labels_received = 0
         self._life_harm_events = 0
 
     # ------------------------------------------------------------ learning
@@ -1313,6 +1450,7 @@ def evaluate_organism(
     sample_seed: int = 0,
     greedy: bool = False,
     consume_options: bool = False,
+    inspect_options: bool = False,
     self_model_planning_scale: float = 0.0,
     self_model_planning_reward_weight: float = 0.5,
     self_model_planning_score_sign: float = 1.0,
@@ -1329,6 +1467,8 @@ def evaluate_organism(
     food_consume_sum = 0
     water_consume_sum = 0
     option_decision_sum = 0
+    inspect_option_decision_sum = 0
+    labels_received_sum = 0
     terminal_needs_sum = np.zeros(4, dtype=np.float64)
     death_causes = np.zeros(4, dtype=np.float64)
     for episode in range(episodes):
@@ -1357,7 +1497,11 @@ def evaluate_organism(
                     score_sign=self_model_planning_score_sign,
                     horizon=self_model_planning_horizon,
                 )
-            action_mask = available_action_mask(packet, model.action_size)
+            action_mask = available_action_mask(
+                packet,
+                model.action_size,
+                visible_slots=model.visible_slots or None,
+            )
             logits = mx.where(
                 mx.array(action_mask)[None, None, :], logits, -1e9
             )
@@ -1377,8 +1521,21 @@ def evaluate_organism(
                 packet,
                 action_index,
                 consume_options=consume_options,
+                inspect_options=inspect_options,
             )
             option_decision_sum += int(action_index >= len(ACTIONS))
+            decoded = decode_object_option(
+                action_index,
+                consume_options=consume_options,
+                inspect_options=inspect_options,
+                visible_slots=world.config.max_visible_slots,
+            )
+            inspect_option_decision_sum += int(
+                decoded is not None and decoded[0] == "inspect"
+            )
+            labels_received_sum += int(
+                str(info.get("situation", "")).startswith("label|")
+            )
             duration = int(info["duration"])
             steps += duration
             viability_running += float(info["mean_viability_sum"])
@@ -1416,6 +1573,10 @@ def evaluate_organism(
         "food_consumes_per_episode": food_consume_sum / episodes,
         "water_consumes_per_episode": water_consume_sum / episodes,
         "option_decisions_per_episode": option_decision_sum / episodes,
+        "inspect_option_decisions_per_episode": (
+            inspect_option_decision_sum / episodes
+        ),
+        "labels_received_per_episode": labels_received_sum / episodes,
         "terminal_food": terminal_needs_sum[0] / episodes,
         "terminal_water": terminal_needs_sum[1] / episodes,
         "terminal_energy": terminal_needs_sum[2] / episodes,
@@ -1437,6 +1598,7 @@ def audit_self_model_actions(
     max_steps: int = 1000,
     sample_seed: int = 0,
     consume_options: bool = False,
+    inspect_options: bool = False,
     self_model_planning_scale: float = 0.0,
     reward_weight: float = 0.5,
     self_model_planning_horizon: int = 1,
@@ -1500,7 +1662,11 @@ def audit_self_model_actions(
                     reward_weight=reward_weight,
                     horizon=self_model_planning_horizon,
                 )
-            action_mask = available_action_mask(packet, model.action_size)
+            action_mask = available_action_mask(
+                packet,
+                model.action_size,
+                visible_slots=model.visible_slots or None,
+            )
             logits = mx.where(
                 mx.array(action_mask)[None, None, :], logits, -1e9
             )
@@ -1524,6 +1690,7 @@ def audit_self_model_actions(
                     packet,
                     int(candidate_action_index),
                     consume_options=consume_options,
+                    inspect_options=inspect_options,
                 )
                 actual_needs.append(
                     np.asarray(next_packet.needs, dtype=np.float64)
@@ -1593,6 +1760,7 @@ def audit_self_model_actions(
                 packet,
                 action_index,
                 consume_options=consume_options,
+                inspect_options=inspect_options,
             )
             if terminated or truncated:
                 break
@@ -1621,6 +1789,335 @@ def audit_self_model_actions(
     }
 
 
+def audit_label_to_self_model(
+    model: OrganismModel,
+    *,
+    episodes: int,
+    base_seed: int,
+    max_inspections: int,
+    max_steps: int = 400,
+    sample_seed: int = 0,
+    self_model_planning_scale: float = 0.0,
+    self_model_planning_horizon: int = 2,
+) -> dict[str, float]:
+    """Causally test whether an inspected label changes bodily prediction.
+
+    Each audit branch executes the same kind-blind inspect option.  From the
+    exact same pre-token recurrent state and resulting visual/body observation,
+    the core then receives either the true grounded label, padding, or a label
+    whose functional-kind words are replaced counterfactually.  Simulator
+    copies supply audit targets only and never enter learning or acting.
+    """
+
+    if episodes <= 0:
+        raise ValueError("episodes must be positive.")
+    if max_inspections <= 0:
+        raise ValueError("max_inspections must be positive.")
+    if not model.has_object_options or model.object_option_types < 2:
+        raise ValueError("Label audit requires consume and inspect object options.")
+
+    kind_words = ("food", "water", "danger")
+    kind_ids = {TOKEN_TO_ID[word] for word in kind_words}
+    pad_tokens = (TOKEN_TO_ID[PAD_TOKEN],) * model.tokens_per_utterance
+    rng = Random(sample_seed)
+
+    audited = 0
+    true_correct = 0
+    silent_correct = 0
+    counterfactual_correct = 0
+    true_mae = 0.0
+    silent_mae = 0.0
+    counterfactual_mae = 0.0
+    true_margin_over_silent = 0.0
+    substituted_kind_shift = 0.0
+    true_kind_suppression = 0.0
+    prediction_l1_shift = 0.0
+    consume_probability_direction = 0.0
+    consume_probability_direction_hits = 0
+    action_flip_count = 0
+    resource_cases = 0
+    danger_cases = 0
+
+    def semantic_scores(delta: np.ndarray) -> np.ndarray:
+        return np.asarray([delta[0], delta[1], -delta[3]], dtype=np.float64)
+
+    def counter_kind_for(true_kind: str, needs: tuple[float, ...]) -> str:
+        if true_kind == "danger":
+            return "food" if needs[0] <= needs[1] else "water"
+        return "danger"
+
+    def counterfactual_tokens(
+        tokens: tuple[int, ...], counter_kind: str
+    ) -> tuple[int, ...]:
+        counter_id = TOKEN_TO_ID[counter_kind]
+        return tuple(counter_id if token in kind_ids else token for token in tokens)
+
+    def measure_variant(
+        packet: ObsPacket,
+        hidden: mx.array,
+        tokens: tuple[int, ...],
+        consume_action: int,
+    ) -> tuple[np.ndarray, float, int]:
+        vector = mx.array(packet.vector()[None, None, :])
+        token_array = mx.array(np.asarray(tokens, dtype=np.int32)[None, None, :])
+        states, _ = model.core_states(vector, token_array, hidden)
+        _, predicted_delta, _, _ = model.predict_consequences(
+            states,
+            mx.array(np.asarray([[consume_action]], dtype=np.int32)),
+            vector,
+        )
+        logits = model.policy(states)
+        if self_model_planning_scale > 0.0:
+            logits = planned_policy_logits(
+                model,
+                states,
+                vector,
+                logits,
+                mx.array([[self_model_planning_scale]]),
+                reward_weight=0.0,
+                horizon=self_model_planning_horizon,
+            )
+        action_mask = available_action_mask(
+            packet,
+            model.action_size,
+            visible_slots=model.visible_slots,
+        )
+        logits = mx.where(mx.array(action_mask)[None, None, :], logits, -1e9)
+        probabilities = mx.softmax(logits[0, 0], axis=-1)
+        mx.eval(predicted_delta, probabilities)
+        return (
+            np.asarray(predicted_delta[0, 0], dtype=np.float64),
+            float(probabilities[consume_action].item()),
+            int(mx.argmax(probabilities).item()),
+        )
+
+    for episode in range(episodes):
+        if audited >= max_inspections:
+            break
+        seed = base_seed + episode
+        world = IslandWorld(
+            IslandConfig(language_mode="grounded", max_steps=max_steps),
+            seed=seed,
+        )
+        packet = world.reset(seed)
+        hidden: mx.array | None = None
+        while audited < max_inspections:
+            vector = mx.array(packet.vector()[None, None, :])
+            token_array = mx.array(
+                np.asarray(packet.tokens, dtype=np.int32)[None, None, :]
+            )
+            states, hidden = model.core_states(vector, token_array, hidden)
+            mx.eval(states, hidden)
+
+            target_slot = next(
+                (
+                    slot
+                    for slot, (_, _, surface_index) in enumerate(packet.visible)
+                    if SURFACES[surface_index] in CONSUMABLE_SURFACES
+                ),
+                None,
+            )
+            if target_slot is not None:
+                dx, dy, surface_index = packet.visible[target_slot]
+                target_pos = (packet.position[0] + dx, packet.position[1] + dy)
+                inspect_action = object_option_action_index(
+                    "inspect",
+                    target_slot,
+                    consume_options=True,
+                    inspect_options=True,
+                    visible_slots=model.visible_slots,
+                )
+                inspected_world = deepcopy(world)
+                inspected_packet, _, terminated, truncated, inspect_info = (
+                    execute_agent_action(
+                        inspected_world,
+                        packet,
+                        inspect_action,
+                        consume_options=True,
+                        inspect_options=True,
+                    )
+                )
+                post_slot = next(
+                    (
+                        slot
+                        for slot, (post_dx, post_dy, post_surface) in enumerate(
+                            inspected_packet.visible
+                        )
+                        if (
+                            inspected_packet.position[0] + post_dx,
+                            inspected_packet.position[1] + post_dy,
+                        )
+                        == target_pos
+                        and post_surface == surface_index
+                    ),
+                    None,
+                )
+                situation = str(inspect_info.get("situation", ""))
+                if (
+                    not terminated
+                    and not truncated
+                    and post_slot is not None
+                    and situation.startswith("label|")
+                ):
+                    target = inspected_world.grid.object_at(target_pos)
+                    if target is not None:
+                        true_kind = "danger" if target.kind == "poison" else target.kind
+                        if true_kind in kind_words:
+                            consume_action = object_option_action_index(
+                                "consume",
+                                post_slot,
+                                consume_options=True,
+                                inspect_options=True,
+                                visible_slots=model.visible_slots,
+                            )
+                            counter_kind = counter_kind_for(
+                                true_kind, inspected_packet.needs
+                            )
+                            counter_tokens = counterfactual_tokens(
+                                inspected_packet.tokens, counter_kind
+                            )
+                            true_delta, true_probability, true_action = measure_variant(
+                                inspected_packet,
+                                hidden,
+                                inspected_packet.tokens,
+                                consume_action,
+                            )
+                            silent_delta, silent_probability, silent_action = (
+                                measure_variant(
+                                    inspected_packet,
+                                    hidden,
+                                    pad_tokens,
+                                    consume_action,
+                                )
+                            )
+                            counter_delta, counter_probability, counter_action = (
+                                measure_variant(
+                                    inspected_packet,
+                                    hidden,
+                                    counter_tokens,
+                                    consume_action,
+                                )
+                            )
+
+                            outcome_world = deepcopy(inspected_world)
+                            actual_packet, _, _, _, _ = execute_agent_action(
+                                outcome_world,
+                                inspected_packet,
+                                consume_action,
+                                consume_options=True,
+                                inspect_options=True,
+                            )
+                            actual_delta = np.asarray(
+                                actual_packet.needs, dtype=np.float64
+                            ) - np.asarray(inspected_packet.needs, dtype=np.float64)
+                            true_scores = semantic_scores(true_delta)
+                            silent_scores = semantic_scores(silent_delta)
+                            counter_scores = semantic_scores(counter_delta)
+                            true_index = kind_words.index(true_kind)
+                            counter_index = kind_words.index(counter_kind)
+
+                            audited += 1
+                            resource_cases += int(true_kind != "danger")
+                            danger_cases += int(true_kind == "danger")
+                            true_correct += int(int(np.argmax(true_scores)) == true_index)
+                            silent_correct += int(
+                                int(np.argmax(silent_scores)) == true_index
+                            )
+                            counterfactual_correct += int(
+                                int(np.argmax(counter_scores)) == counter_index
+                            )
+                            true_mae += float(np.abs(true_delta - actual_delta).mean())
+                            silent_mae += float(
+                                np.abs(silent_delta - actual_delta).mean()
+                            )
+                            counterfactual_mae += float(
+                                np.abs(counter_delta - actual_delta).mean()
+                            )
+                            true_margin_over_silent += float(
+                                true_scores[true_index] - silent_scores[true_index]
+                            )
+                            substituted_kind_shift += float(
+                                counter_scores[counter_index]
+                                - true_scores[counter_index]
+                            )
+                            true_kind_suppression += float(
+                                true_scores[true_index] - counter_scores[true_index]
+                            )
+                            prediction_l1_shift += float(
+                                np.abs(counter_delta - true_delta).mean()
+                            )
+                            direction = 1.0 if counter_kind != "danger" else -1.0
+                            directed_probability_shift = direction * (
+                                counter_probability - true_probability
+                            )
+                            consume_probability_direction += directed_probability_shift
+                            consume_probability_direction_hits += int(
+                                directed_probability_shift > 0.0
+                            )
+                            action_flip_count += int(counter_action != true_action)
+
+            logits = model.policy(states)
+            if self_model_planning_scale > 0.0:
+                logits = planned_policy_logits(
+                    model,
+                    states,
+                    vector,
+                    logits,
+                    mx.array([[self_model_planning_scale]]),
+                    reward_weight=0.0,
+                    horizon=self_model_planning_horizon,
+                )
+            action_mask = available_action_mask(
+                packet,
+                model.action_size,
+                visible_slots=model.visible_slots,
+            )
+            logits = mx.where(mx.array(action_mask)[None, None, :], logits, -1e9)
+            mx.eval(logits, hidden)
+            probabilities = np.asarray(
+                mx.softmax(logits[0, 0], axis=-1), dtype=np.float64
+            )
+            probabilities /= probabilities.sum()
+            action_index = int(
+                rng.choices(range(model.action_size), weights=probabilities)[0]
+            )
+            packet, _, terminated, truncated, _ = execute_agent_action(
+                world,
+                packet,
+                action_index,
+                consume_options=True,
+                inspect_options=True,
+            )
+            if terminated or truncated:
+                break
+
+    denominator = max(1, audited)
+    return {
+        "audited_inspections": float(audited),
+        "resource_cases": float(resource_cases),
+        "danger_cases": float(danger_cases),
+        "true_label_kind_accuracy": true_correct / denominator,
+        "silent_kind_accuracy": silent_correct / denominator,
+        "counterfactual_label_kind_accuracy": counterfactual_correct / denominator,
+        "true_label_consequence_mae": true_mae / denominator,
+        "silent_consequence_mae": silent_mae / denominator,
+        "counterfactual_consequence_mae": counterfactual_mae / denominator,
+        "true_kind_score_gain_over_silence": true_margin_over_silent / denominator,
+        "substituted_kind_score_shift": substituted_kind_shift / denominator,
+        "true_kind_score_suppression": true_kind_suppression / denominator,
+        "prediction_l1_shift_under_kind_substitution": (
+            prediction_l1_shift / denominator
+        ),
+        "directed_consume_probability_shift": (
+            consume_probability_direction / denominator
+        ),
+        "directed_consume_probability_hit_rate": (
+            consume_probability_direction_hits / denominator
+        ),
+        "argmax_action_flip_rate": action_flip_count / denominator,
+    }
+
+
 def save_checkpoint(model: OrganismModel, config: OrganismConfig, path: str) -> None:
     weights_path = Path(path)
     weights_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1638,7 +2135,7 @@ def write_life_stats(stats: list[LifeStats], path: str) -> None:
         "life_index,seed,steps,survived,mean_viability,min_viability,"
         "utterances_heard,consume_attempts,resource_consumes,"
         "food_consumes,water_consumes,offered_consumes,"
-        "option_decisions,harm_events\n"
+        "option_decisions,inspect_option_decisions,labels_received,harm_events\n"
     )
     with target.open("w", encoding="utf-8") as handle:
         handle.write(header)
@@ -1649,5 +2146,6 @@ def write_life_stats(stats: list[LifeStats], path: str) -> None:
                 f"{life.utterances_heard},{life.consume_attempts},"
                 f"{life.resource_consumes},{life.food_consumes},"
                 f"{life.water_consumes},{life.offered_consumes},"
-                f"{life.option_decisions},{life.harm_events}\n"
+                f"{life.option_decisions},{life.inspect_option_decisions},"
+                f"{life.labels_received},{life.harm_events}\n"
             )

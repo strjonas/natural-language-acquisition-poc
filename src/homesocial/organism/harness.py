@@ -17,6 +17,7 @@ from homesocial.island.calibrate import run_policy
 from homesocial.island.world import IslandConfig
 from homesocial.organism.train import (
     OrganismConfig,
+    audit_label_to_self_model,
     audit_self_model_actions,
     evaluate_organism,
     train_organism,
@@ -49,6 +50,8 @@ def main() -> None:
             )
         if args.consume_options:
             run_label += "_options"
+        if args.inspect_options:
+            run_label += "_inspect"
         if args.self_model_planning:
             run_label += (
                 f"_plan{args.planning_scale:g}h{args.planning_horizon}"
@@ -74,6 +77,7 @@ def main() -> None:
                 args.offer_distance_end if args.offer_childhood else 0
             ),
             consume_options=args.consume_options,
+            inspect_options=args.inspect_options,
             self_model_planning_scale=(
                 args.planning_scale if args.self_model_planning else 0.0
             ),
@@ -103,6 +107,7 @@ def main() -> None:
             max_steps=args.eval_max_steps,
             greedy=args.eval_greedy,
             consume_options=args.consume_options,
+            inspect_options=args.inspect_options,
             self_model_planning_scale=(
                 args.planning_scale if args.self_model_planning else 0.0
             ),
@@ -118,6 +123,7 @@ def main() -> None:
                 max_decisions=args.self_model_audit_decisions,
                 max_steps=args.eval_max_steps,
                 consume_options=args.consume_options,
+                inspect_options=args.inspect_options,
                 self_model_planning_scale=(
                     args.planning_scale if args.self_model_planning else 0.0
                 ),
@@ -125,6 +131,21 @@ def main() -> None:
                 self_model_planning_horizon=args.planning_horizon,
             )
             stats.update({f"self_model_{key}": value for key, value in audit.items()})
+        if args.label_self_model_audit_inspections > 0:
+            label_audit = audit_label_to_self_model(
+                model,
+                episodes=args.eval_episodes,
+                base_seed=EVAL_SEED_BASE,
+                max_inspections=args.label_self_model_audit_inspections,
+                max_steps=args.eval_max_steps,
+                self_model_planning_scale=(
+                    args.planning_scale if args.self_model_planning else 0.0
+                ),
+                self_model_planning_horizon=args.planning_horizon,
+            )
+            stats.update(
+                {f"label_audit_{key}": value for key, value in label_audit.items()}
+            )
         rows.append({"condition": f"organism_{run_label}", **stats})
         if args.self_model_interventions and args.self_model_planning:
             for intervention, scale, score_sign in (
@@ -139,6 +160,7 @@ def main() -> None:
                     max_steps=args.eval_max_steps,
                     greedy=args.eval_greedy,
                     consume_options=args.consume_options,
+                    inspect_options=args.inspect_options,
                     self_model_planning_scale=scale,
                     self_model_planning_reward_weight=args.planning_reward_weight,
                     self_model_planning_score_sign=score_sign,
@@ -148,6 +170,64 @@ def main() -> None:
                     {
                         "condition": f"organism_{run_label}_{intervention}",
                         **intervention_stats,
+                    }
+                )
+        if args.body_only_self_model_audit and args.self_model_planning:
+            body_stats = evaluate_organism(
+                model,
+                language_mode=language_mode,
+                episodes=args.eval_episodes,
+                base_seed=EVAL_SEED_BASE,
+                max_steps=args.eval_max_steps,
+                greedy=args.eval_greedy,
+                consume_options=args.consume_options,
+                inspect_options=args.inspect_options,
+                self_model_planning_scale=args.planning_scale,
+                self_model_planning_reward_weight=0.0,
+                self_model_planning_horizon=args.planning_horizon,
+            )
+            if args.self_model_audit_decisions > 0:
+                body_audit = audit_self_model_actions(
+                    model,
+                    language_mode=language_mode,
+                    episodes=args.eval_episodes,
+                    base_seed=EVAL_SEED_BASE,
+                    max_decisions=args.self_model_audit_decisions,
+                    max_steps=args.eval_max_steps,
+                    consume_options=args.consume_options,
+                    inspect_options=args.inspect_options,
+                    self_model_planning_scale=args.planning_scale,
+                    reward_weight=0.0,
+                    self_model_planning_horizon=args.planning_horizon,
+                )
+                body_stats.update(
+                    {f"self_model_{key}": value for key, value in body_audit.items()}
+                )
+            rows.append(
+                {
+                    "condition": f"organism_{run_label}_body_only",
+                    **body_stats,
+                }
+            )
+            if args.self_model_interventions:
+                body_reversed = evaluate_organism(
+                    model,
+                    language_mode=language_mode,
+                    episodes=args.eval_episodes,
+                    base_seed=EVAL_SEED_BASE,
+                    max_steps=args.eval_max_steps,
+                    greedy=args.eval_greedy,
+                    consume_options=args.consume_options,
+                    inspect_options=args.inspect_options,
+                    self_model_planning_scale=args.planning_scale,
+                    self_model_planning_reward_weight=0.0,
+                    self_model_planning_score_sign=-1.0,
+                    self_model_planning_horizon=args.planning_horizon,
+                )
+                rows.append(
+                    {
+                        "condition": f"organism_{run_label}_body_only_reversed",
+                        **body_reversed,
                     }
                 )
 
@@ -163,6 +243,8 @@ def _write_and_print(rows: list[dict[str, object]], args: argparse.Namespace) ->
         suffix += f"_offer{args.offer_fade_steps}d{args.offer_distance_end}"
     if args.consume_options:
         suffix += "_options"
+    if args.inspect_options:
+        suffix += "_inspect"
     if args.self_model_planning:
         suffix += f"_plan{args.planning_scale:g}h{args.planning_horizon}"
     if args.replay_updates > 0:
@@ -170,7 +252,11 @@ def _write_and_print(rows: list[dict[str, object]], args: argparse.Namespace) ->
     model_horizon = args.model_horizon or args.planning_horizon
     if model_horizon != args.planning_horizon:
         suffix += f"_modelh{model_horizon}"
-    out_path = Path(args.run_dir) / f"harness_seed{args.seed}{suffix}.csv"
+    languages = "-".join(args.language_modes)
+    out_path = (
+        Path(args.run_dir)
+        / f"harness_seed{args.seed}_{languages}{suffix}.csv"
+    )
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with out_path.open("w", encoding="utf-8") as handle:
         handle.write(",".join(keys) + "\n")
@@ -219,6 +305,11 @@ def _parse_args() -> argparse.Namespace:
         help="Add kind-blind visible-slot navigate-and-consume actions.",
     )
     parser.add_argument(
+        "--inspect-options",
+        action="store_true",
+        help="Add kind-blind visible-slot navigate-face-and-ask actions.",
+    )
+    parser.add_argument(
         "--self-model-planning",
         action="store_true",
         help="Bias action logits with detached predicted future-body value.",
@@ -241,9 +332,26 @@ def _parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--label-self-model-audit-inspections",
+        type=int,
+        default=0,
+        help=(
+            "Audit this many held-out inspect events under true, silent, and "
+            "counterfactual kind labels. Requires consume and inspect options."
+        ),
+    )
+    parser.add_argument(
         "--self-model-interventions",
         action="store_true",
         help="Also evaluate the trained checkpoint with planning removed/reversed.",
+    )
+    parser.add_argument(
+        "--body-only-self-model-audit",
+        action="store_true",
+        help=(
+            "Also evaluate/audit planning with predicted external reward weight "
+            "zero, isolating the bodily consequence channel."
+        ),
     )
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--train-max-steps", type=int, default=1000)
