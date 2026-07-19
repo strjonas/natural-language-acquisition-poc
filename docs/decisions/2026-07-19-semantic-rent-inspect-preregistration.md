@@ -144,3 +144,53 @@ matched silent and shuffled controls. A G2 claim then requires:
 This probe cannot establish generated language, self-report, reflection,
 authentic desire, autobiographical identity, consciousness, or a human-like
 `me`.
+
+## Result
+
+The structural hypothesis passed, but the full G2 claim did not.
+
+The ecology/mechanics gates passed before learning: oracle/random survival was
+99%/0% over 100 x 1,000 ticks; all 188 tests passed; and a 1,024-tick mechanics
+run used inspect, received labels, and retained finite losses and audits.
+
+Two independent grounded 40k runs passed every structural promotion rule:
+
+| seed | survival | lifespan | inspect/life | labels/life | body-only normal/reversed life | body score corr. | best/worst advantage |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 6% | 97.19 | 14.72 | 14.19 | 86.46 / 59.51 | 0.200 | 0.029 |
+| 2 | 5% | 98.15 | 2.67 | 3.68 | 103.25 / 66.13 | 0.211 | 0.039 |
+
+The matched training controls show a real but noisy grounded advantage:
+
+| seed | grounded survival/life | silent survival/life | shuffled survival/life |
+|---|---:|---:|---:|
+| 1 | 6% / 97.19 | 3% / 81.70 | 1% / 87.19 |
+| 2 | 5% / 98.15 | 5% / 81.29 | 3% / 89.38 |
+
+Grounded therefore exceeds both controls on seed 1. On seed 2 it lives 20.7%
+longer than silent and survives more often than shuffled, but it neither
+strictly exceeds silent survival nor beats shuffled lifespan by the locked 15%
+margin. The aggregate replication gate is not met. Acute inference is also
+mixed: seed 1 grounded/silent/shuffled survival is 6%/6%/3% with lifespans
+97.19/98.72/94.16; seed 2 is 5%/4%/7% and 98.15/85.17/94.79. Meaningful tokens
+are not consistently load-bearing at inference.
+
+The matched label intervention found a narrower positive mechanism. On the two
+grounded models, changing only functional-kind tokens moved subsequent consume
+probability in the substituted semantic direction by +0.0116 and +0.0136,
+with directional hit rates 87.0% and 77.5%. Seed-1 silent/shuffled controls had
+near-zero directed shifts and 36%/35% hit rates. However, the seed-2 shuffled
+model also produced a +0.0114 shift and 83% hit rate despite never receiving
+grounded meanings. Arbitrary token embeddings can therefore satisfy this shift
+metric. The stricter correctness measures do not replicate: true labels improve
+kind classification over padding only slightly (17.0% vs 13.5%; 31.0% vs
+27.0%), stay at or below chance, and improve actual-consequence MAE on seed 1
+but worsen it on seed 2.
+
+Verdict: per-life information rent and inspect actions improve the developmental
+substrate, and the organism is token-sensitive in its own bodily model, but it
+does not yet reliably bind the *correct* heard meaning to the contemplated
+bodily outcome. Do not call this comprehension. Labels are voluntarily sampled
+but their consequence association is too sparse/noisy in the open island. The
+next probe is the preregistered paired inspect--remember--choose childhood,
+not token-loss tuning or larger models.
