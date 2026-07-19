@@ -39,6 +39,7 @@ def main() -> None:
         rows.append({"condition": f"baseline_{baseline}", **stats})
 
     for language_mode in args.language_modes:
+        model_horizon = args.model_horizon or args.planning_horizon
         run_label = language_mode
         if args.bc_warmstart:
             run_label += f"_bc{args.bc_lives}"
@@ -49,7 +50,13 @@ def main() -> None:
         if args.consume_options:
             run_label += "_options"
         if args.self_model_planning:
-            run_label += f"_plan{args.planning_scale:g}"
+            run_label += (
+                f"_plan{args.planning_scale:g}h{args.planning_horizon}"
+            )
+        if args.replay_updates > 0:
+            run_label += f"_replay{args.replay_capacity}x{args.replay_updates}"
+        if model_horizon != args.planning_horizon:
+            run_label += f"_modelh{model_horizon}"
         config = OrganismConfig(
             language_mode=language_mode,
             total_steps=args.train_steps,
@@ -72,6 +79,11 @@ def main() -> None:
             ),
             self_model_planning_start_steps=args.planning_start_steps,
             self_model_planning_reward_weight=args.planning_reward_weight,
+            self_model_planning_horizon=args.planning_horizon,
+            multi_step_model_horizon=model_horizon,
+            multi_step_model_weight=args.multi_step_model_weight,
+            world_model_replay_capacity=args.replay_capacity,
+            world_model_replay_updates=args.replay_updates,
             seed=args.seed,
             max_steps=args.train_max_steps,
             checkpoint=str(
@@ -95,6 +107,7 @@ def main() -> None:
                 args.planning_scale if args.self_model_planning else 0.0
             ),
             self_model_planning_reward_weight=args.planning_reward_weight,
+            self_model_planning_horizon=args.planning_horizon,
         )
         if args.self_model_audit_decisions > 0:
             audit = audit_self_model_actions(
@@ -109,6 +122,7 @@ def main() -> None:
                     args.planning_scale if args.self_model_planning else 0.0
                 ),
                 reward_weight=args.planning_reward_weight,
+                self_model_planning_horizon=args.planning_horizon,
             )
             stats.update({f"self_model_{key}": value for key, value in audit.items()})
         rows.append({"condition": f"organism_{run_label}", **stats})
@@ -128,6 +142,7 @@ def main() -> None:
                     self_model_planning_scale=scale,
                     self_model_planning_reward_weight=args.planning_reward_weight,
                     self_model_planning_score_sign=score_sign,
+                    self_model_planning_horizon=args.planning_horizon,
                 )
                 rows.append(
                     {
@@ -149,7 +164,12 @@ def _write_and_print(rows: list[dict[str, object]], args: argparse.Namespace) ->
     if args.consume_options:
         suffix += "_options"
     if args.self_model_planning:
-        suffix += f"_plan{args.planning_scale:g}"
+        suffix += f"_plan{args.planning_scale:g}h{args.planning_horizon}"
+    if args.replay_updates > 0:
+        suffix += f"_replay{args.replay_capacity}x{args.replay_updates}"
+    model_horizon = args.model_horizon or args.planning_horizon
+    if model_horizon != args.planning_horizon:
+        suffix += f"_modelh{model_horizon}"
     out_path = Path(args.run_dir) / f"harness_seed{args.seed}{suffix}.csv"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with out_path.open("w", encoding="utf-8") as handle:
@@ -206,6 +226,11 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--planning-start-steps", type=int, default=100_000)
     parser.add_argument("--planning-scale", type=float, default=6.0)
     parser.add_argument("--planning-reward-weight", type=float, default=0.5)
+    parser.add_argument("--planning-horizon", type=int, choices=[1, 2], default=1)
+    parser.add_argument("--model-horizon", type=int, choices=[1, 2], default=None)
+    parser.add_argument("--multi-step-model-weight", type=float, default=0.0)
+    parser.add_argument("--replay-capacity", type=int, default=0)
+    parser.add_argument("--replay-updates", type=int, default=0)
     parser.add_argument(
         "--self-model-audit-decisions",
         type=int,

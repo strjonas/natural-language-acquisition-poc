@@ -179,11 +179,27 @@ class OrganismModel(nn.Module):
             caregiver-token logits (B, T, tokens_per_utterance, vocab_size).
         """
 
-        action_features, object_features = self._transition_features(
-            actions, vectors
-        )
+        h = self.transition_state(states, actions, vectors)
+        return self.decode_transition(h)
+
+    def transition_state(
+        self,
+        states: mx.array,
+        actions: mx.array,
+        vectors: mx.array | None = None,
+    ) -> mx.array:
+        """Advance the learned latent dynamics by one agent decision."""
+
+        action_features, object_features = self._transition_features(actions, vectors)
         x = mx.concatenate([states, action_features, object_features], axis=-1)
-        h = nn.relu(self.transition_norm(self.transition(x)))
+        return nn.relu(self.transition_norm(self.transition(x)))
+
+    def decode_transition(
+        self, transition_states: mx.array
+    ) -> tuple[mx.array, mx.array, mx.array, mx.array]:
+        """Decode observable and bodily consequences from imagined states."""
+
+        h = transition_states
         next_vectors = self.next_vector(h)
         # Most actions only incur metabolism, while the rare consequential
         # actions change one need sharply. Predicting a bounded residual keeps
@@ -192,6 +208,8 @@ class OrganismModel(nn.Module):
         need_deltas = 0.5 * mx.tanh(self.next_needs(h))
         rewards = self.reward_head(h).squeeze(-1)
         token_logits = self.next_tokens(h).reshape(
-            *states.shape[:-1], self.tokens_per_utterance, self.vocab_size
+            *transition_states.shape[:-1],
+            self.tokens_per_utterance,
+            self.vocab_size,
         )
         return next_vectors, need_deltas, rewards, token_logits

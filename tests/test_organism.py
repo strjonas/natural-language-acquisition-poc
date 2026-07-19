@@ -155,6 +155,26 @@ class ModelTest(unittest.TestCase):
             1e-6,
         )
 
+    def test_two_step_planner_preserves_shape_and_zero_scale(self):
+        model = self._model()
+        vectors = mx.full((1, 3, 10), 0.5)
+        states, _ = model.core_states(
+            vectors, mx.random.randint(0, 12, (1, 3, 4))
+        )
+        logits = model.policy(states)
+        planned = planned_policy_logits(
+            model,
+            states,
+            vectors,
+            logits,
+            mx.zeros((1, 3)),
+            reward_weight=0.5,
+            horizon=2,
+        )
+        mx.eval(logits, planned)
+        self.assertEqual(planned.shape, logits.shape)
+        self.assertLess(float(mx.abs(logits - planned).max()), 1e-7)
+
     def test_object_option_consequences_bind_to_selected_slot(self):
         model = OrganismModel(
             vector_size=6,
@@ -403,6 +423,29 @@ class TrainingSmokeTest(unittest.TestCase):
         trainer.train()
         self.assertGreater(len(trainer.loss_log), 0)
         self.assertTrue(math.isfinite(trainer.loss_log[-1]["loss"]))
+
+    def test_replay_multistep_training_smoke(self):
+        from dataclasses import replace as dc_replace
+
+        trainer = OrganismTrainer(
+            dc_replace(
+                self._config(),
+                total_steps=96,
+                consume_options=True,
+                self_model_planning_scale=2.0,
+                self_model_planning_start_steps=0,
+                self_model_planning_horizon=2,
+                multi_step_model_horizon=2,
+                multi_step_model_weight=1.0,
+                world_model_replay_capacity=2,
+                world_model_replay_updates=1,
+            )
+        )
+        trainer.train()
+        self.assertGreater(len(trainer.world_model_replay), 0)
+        self.assertLessEqual(len(trainer.world_model_replay), 2)
+        self.assertTrue(math.isfinite(trainer.loss_log[-1]["loss"]))
+        self.assertTrue(math.isfinite(trainer.loss_log[-1]["replay_loss"]))
 
 
 if __name__ == "__main__":

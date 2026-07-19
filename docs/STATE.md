@@ -4,89 +4,77 @@ Last rewritten: 2026-07-19. Rewrite this file, never append.
 
 ## Where the frontier is
 
-The active direction remains `DIRECTION_2026-07-12.md`: build one online
-organism whose persistent state supports control, self-prediction, and later
-language. The historical probe era stays frozen.
+The project now has a replicated, unified organism with a causally used bodily
+self-model. It does **not** yet have demonstrated language comprehension or
+self-report. The active direction remains `DIRECTION_2026-07-12.md`; historical
+probe logs stay frozen.
 
-The unified MLX organism now has:
+The MLX organism contains one recurrent perception/token core with policy,
+value, world, bodily, reward, and caregiver-token heads. It learns online in the
+island, retains a reservoir of real episodic segments, trains two-step latent
+dynamics from replay, and uses a two-decision receding planner. Kind-blind
+visible-object options bind contemplated actions to perceived object features,
+never hidden kind. Counterfactual simulator branches are audit-only. Planning
+removal and score reversal are standard harness conditions.
 
-- one recurrent perception/language core with policy, value, world, bodily,
-  reward, and caregiver-token heads;
-- an adult island where hidden kinds are never observed, oracle survival is
-  98% on the current 50-life gate, and random survival is 0%;
-- in-loop caregiver resource offers that fade to zero, including a
-  proximal-to-distal childhood;
-- kind-blind visible-object consume options with semi-Markov duration-aware
-  GAE and strict invalid-slot masking;
-- a residual bodily model that predicts need changes from sensed current needs;
-- object-bound option prediction: every slot shares one abstract consume act
-  applied to the selected learner-visible object feature, never hidden kind;
-- counterfactual simulator-copy audits used only for evaluation; and
-- matched self-model removal/reversal interventions in the one canonical
-  harness.
+## Strongest result
 
-All 178 tests pass. Headline runs are under `runs/organism/probe4` through
-`probe11`; concise preregistrations/results are in `docs/decisions/`.
+Two full 200k-tick grounded runs (hidden 256, no adult offers) independently
+retain accurate and causally useful bodily prediction:
 
-## What the experiments established
+- Seed 1 normal/removed/reversed adult survival: 3%/2%/0%; lifespan
+  133.75/118.25/62.65; resources 29.54/25.78/11.44; within-state predicted vs
+  actual action-score correlation 0.426; predicted-best advantage 0.039.
+- Seed 2: 1%/0%/0%; lifespan 104.89/84.42/55.60; resources
+  34.18/28.03/13.73; correlation 0.825; predicted-best advantage 0.103.
+- Oracle survives 99%; random survives 0% and dies around tick 54.
 
-Childhood bootstrap alone is insufficient:
+This is the first organism result where a learned model of future bodily state
+remains accurate after long training and behavior degrades in the predicted
+direction when that self-model is removed or reversed. Replay and two-step
+ablations show complementary effects: replay improves resource competence;
+multi-step modeling improves counterfactual ranking.
 
-- token-masked oracle behavior cloning reached high imitation/consume recall
-  but zero unsupported survival;
-- in-hand offers produced long supported lives but collapsed after fade;
-- moving offers from distance 0 to 2 also collapsed after fade.
+The result is still far from G1: survival is sparse and mean viability
+(0.696/0.683) is below the 0.74 target. It establishes an early causal
+self-model, not a human-like self, authentic desire, reflection, self-report,
+or consciousness.
 
-Motor abstraction was necessary and useful. Kind-blind visible-slot options
-raised successful adult resource interactions by more than an order of
-magnitude. They do not expose bodily kind, so language necessity remains
-testable.
+## Negative results retained
 
-The self-model result is promising at smoke scale but not robust:
-
-- the original absolute one-step head had counterfactual score correlation
-  -0.055; reversing its advice did not hurt;
-- residual prediction improved next-needs MAE from 0.137 to about 0.040 but did
-  not fix action ranking;
-- object binding passed the 40k smoke gate on seeds 1 and 2 (correlations 0.373
-  and 0.228) and all three seeds behaved worse when self-model advice was
-  reversed;
-- the 200k/256-hidden full probe failed: 0/50 unsupported 1,000-tick survivals.
-  It achieved 111.8 mean ticks and 30.4 resources versus random's 54.5 and
-  0.42. Normal/removed/reversed planning produced 111.8/100.5/75.9 ticks, but
-  the 500-state audit collapsed to -0.050 correlation and -0.0095 actual
-  predicted-best advantage.
-
-Verdict: the organism learned substantial resource-seeking behavior and its
-prediction signal causally gates option use, but the long-run one-step head is
-not an accurate counterfactual self-model. G1 is not passed. There is no basis
-yet for a language, self-report, authentic-desire, or consciousness claim.
+- Token-masked behavior cloning, in-hand offers, and proximal-to-distal offers
+  do not yield unsupported survival without sensorimotor options.
+- The earlier on-policy one-step self-model collapsed under long training:
+  0/50 survival and negative counterfactual ranking despite low MSE. This line
+  is closed; no scale/loss tuning.
+- Current language is not load-bearing. Acute grounded/silent/shuffled
+  inference gives 3%/3%/4% survival and essentially matched lifespans.
+  Separately trained grounded/silent/shuffled controls give 3%/0%/2% survival
+  and 133.75/102.10/130.44 ticks. Grounded does not meaningfully beat shuffled.
 
 ## What is next
 
-The one-step on-policy auxiliary planner line has reached its three-probe
-timebox. The negative result propagates upward to the training architecture.
+The next goal-level bottleneck is information rent, not model size:
 
-Next build a real model-based learner rather than another policy-logit bias:
-
-1. Add persistent, diverse episodic replay for bodily/world transitions so
-   rare consequences are retained rather than learned once and forgotten.
-2. Learn multi-step latent dynamics and use short-horizon receding planning;
-   action selection must depend directly on predicted future bodily state.
-3. Represent epistemic uncertainty (ensemble or equivalent) so planning is
-   pessimistic about unsupported counterfactuals instead of exploiting model
-   errors; information gain about body dynamics may drive exploration, never
-   language reward.
-4. Keep the same held-out survival, counterfactual ranking, removal/reversal,
-   and grounded/silent/shuffled gates in `organism.harness`.
-
-Only after grounded adult survival and causal self-model use are robust should
-we spend runs on language comprehension (G2), then generated self-report (G3).
+1. Remove stable surface-kind shortcuts. Randomly assign consumable surface
+   meanings per life while guaranteeing viable food/water ecology.
+2. Add a kind-blind visible-object inspect/ask option alongside consume. It
+   performs embodied joint attention and returns the caregiver's label; no
+   language or question reward is added.
+3. Preserve per-life recurrent memory so a label can change the predicted
+   bodily consequence of consuming that surface later.
+4. Recalibrate oracle/random and preregister grounded/silent/shuffled plus
+   acute token interventions. Language evidence requires semantic tokens to
+   improve survival and to causally alter self-model predictions/actions.
+5. Only after comprehension (G2) add generated utterance actions and truthful
+   self-report rent (G3), followed by autobiographical continuity.
 
 ## Currently forbidden / deferred
 
-- No more BC epoch, offer-distance, planner-scale, or one-step-score tuning.
-- No counterfactual simulator outcomes in training; branches are audit-only.
+- No more BC, offer-distance, planner-scale, token-loss, or one-step-score
+  tuning.
+- No counterfactual simulator outcomes in training; audit only.
+- No live LLM mind/training calls and no direct language reward.
 - No appending to frozen mega-logs or new top-level one-off probe scripts.
-- No live LLM mind/training calls and no direct reward for language.
-- No GPU request yet: G1 and G2 have not passed locally.
+- No GPU request yet: G1/G2 have not passed locally, and the next bottleneck is
+  structural rather than compute-limited.

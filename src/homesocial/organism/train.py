@@ -154,6 +154,7 @@ def planned_policy_logits(
     *,
     reward_weight: float,
     score_sign: float = 1.0,
+    horizon: int = 1,
 ) -> mx.array:
     """Bias policy logits with detached predicted future-body values.
 
@@ -162,10 +163,23 @@ def planned_policy_logits(
     the policy, recurrent state, consequence predictions, and action mask.
     """
 
-    predicted_needs, predicted_rewards = predict_all_action_consequences(
-        model, states, current_vectors
-    )
-    scores = mx.min(predicted_needs, axis=-1) + reward_weight * predicted_rewards
+    if horizon == 1:
+        predicted_needs, predicted_rewards = predict_all_action_consequences(
+            model, states, current_vectors
+        )
+        scores = (
+            mx.min(predicted_needs, axis=-1)
+            + reward_weight * predicted_rewards
+        )
+    elif horizon == 2:
+        scores = two_step_action_scores(
+            model,
+            states,
+            current_vectors,
+            reward_weight=reward_weight,
+        )
+    else:
+        raise ValueError("Self-model planning horizon must be 1 or 2.")
     scores = mx.stop_gradient(scores - scores.mean(axis=-1, keepdims=True))
     return base_logits + score_sign * planning_scales[:, :, None] * scores
 
@@ -206,6 +220,93 @@ def predict_all_action_consequences(
     )
 
 
+def two_step_action_scores(
+    model: OrganismModel,
+    states: mx.array,
+    current_vectors: mx.array,
+    *,
+    reward_weight: float,
+) -> mx.array:
+    """Best predicted two-decision bodily outcome for each first action."""
+
+    batch, steps, hidden = states.shape
+    action_size = model.action_size
+    vector_size = current_vectors.shape[-1]
+    first_states = mx.broadcast_to(
+        states[:, :, None, :], (batch, steps, action_size, hidden)
+    )
+    first_vectors = mx.broadcast_to(
+        current_vectors[:, :, None, :],
+        (batch, steps, action_size, vector_size),
+    )
+    first_actions = mx.broadcast_to(
+        mx.arange(action_size)[None, None, :],
+        (batch, steps, action_size),
+    )
+    imagined_state = model.transition_state(
+        first_states, first_actions, first_vectors
+    )
+    predicted_vector, need_delta, first_reward, _ = model.decode_transition(
+        imagined_state
+    )
+    first_needs = mx.clip(
+        current_vectors[:, :, None, :4] + need_delta, 0.0, 1.0
+    )
+    predicted_vector = mx.concatenate(
+        [first_needs, predicted_vector[..., 4:]], axis=-1
+    )
+
+    second_states = mx.broadcast_to(
+        imagined_state[:, :, :, None, :],
+        (batch, steps, action_size, action_size, hidden),
+    )
+    second_vectors = mx.broadcast_to(
+        predicted_vector[:, :, :, None, :],
+        (batch, steps, action_size, action_size, vector_size),
+    )
+    second_actions = mx.broadcast_to(
+        mx.arange(action_size)[None, None, None, :],
+        (batch, steps, action_size, action_size),
+    )
+    second_imagined_state = model.transition_state(
+        second_states, second_actions, second_vectors
+    )
+    _, second_need_delta, second_reward, _ = model.decode_transition(
+        second_imagined_state
+    )
+    second_needs = mx.clip(
+        first_needs[:, :, :, None, :] + second_need_delta,
+        0.0,
+        1.0,
+    )
+    second_scores = (
+        mx.min(second_needs, axis=-1)
+        + reward_weight * (first_reward[:, :, :, None] + second_reward)
+    )
+    if model.has_object_options:
+        start = model.object_feature_offset
+        stop = start + model.visible_slots * model.object_feature_size
+        slot_presence = predicted_vector[..., start:stop].reshape(
+            batch,
+            steps,
+            action_size,
+            model.visible_slots,
+            model.object_feature_size,
+        )[..., 0]
+        second_mask = mx.concatenate(
+            [
+                mx.ones(
+                    (batch, steps, action_size, model.primitive_action_size),
+                    dtype=mx.bool_,
+                ),
+                slot_presence > 0.5,
+            ],
+            axis=-1,
+        )
+        second_scores = mx.where(second_mask, second_scores, -1e9)
+    return mx.max(second_scores, axis=-1)
+
+
 def bodily_delta_prediction_loss(
     predicted_deltas: mx.array,
     target_deltas: mx.array,
@@ -237,6 +338,10 @@ class OrganismConfig:
     reward_prediction_weight: float = 0.2
     token_prediction_weight: float = 0.5
     nonpad_token_weight: float = 5.0
+    multi_step_model_horizon: int = 1
+    multi_step_model_weight: float = 0.0
+    world_model_replay_capacity: int = 0
+    world_model_replay_updates: int = 0
     live_reward_weight: float = 0.02
     death_penalty: float = 1.0
     max_grad_norm: float = 1.0
@@ -261,12 +366,23 @@ class OrganismConfig:
     self_model_planning_scale: float = 0.0
     self_model_planning_start_steps: int = 0
     self_model_planning_reward_weight: float = 0.5
+    self_model_planning_horizon: int = 1
     seed: int = 1
     max_steps: int = 1000
     log_every_lives: int = 10
     checkpoint: str | None = None
     stats_csv: str | None = None
     island: IslandConfig = field(default_factory=IslandConfig)
+
+    def __post_init__(self) -> None:
+        if self.self_model_planning_horizon not in {1, 2}:
+            raise ValueError("self_model_planning_horizon must be 1 or 2.")
+        if self.multi_step_model_horizon not in {1, 2}:
+            raise ValueError("multi_step_model_horizon must be 1 or 2.")
+        if self.world_model_replay_capacity < 0:
+            raise ValueError("world_model_replay_capacity must be nonnegative.")
+        if self.world_model_replay_updates < 0:
+            raise ValueError("world_model_replay_updates must be nonnegative.")
 
     def island_config(self) -> IslandConfig:
         return IslandConfig(
@@ -406,11 +522,19 @@ class OrganismTrainer:
         self.model = build_model(config, self.world)
         self.optimizer = optim.Adam(learning_rate=config.learning_rate)
         self.rng = Random(config.seed)
+        self.replay_rng = Random(config.seed + 1_000_003)
+        self.world_model_replay: list[
+            tuple[_Segment, np.ndarray | None]
+        ] = []
+        self._replay_segments_seen = 0
         self.life_stats: list[LifeStats] = []
         self.loss_log: list[dict[str, float]] = []
         self.bc_stats: BehaviorCloningStats | None = None
         self._loss_and_grad = nn.value_and_grad(self.model, self._loss)
         self._bc_loss_and_grad = nn.value_and_grad(self.model, self._bc_loss)
+        self._world_model_loss_and_grad = nn.value_and_grad(
+            self.model, self._world_model_loss
+        )
 
         self.life_index = 0
         self.life_seed = config.seed
@@ -713,6 +837,7 @@ class OrganismTrainer:
                 logits,
                 mx.array([[[planning_scale]]]).reshape(1, 1),
                 reward_weight=self.config.self_model_planning_reward_weight,
+                horizon=self.config.self_model_planning_horizon,
             )
         action_mask = available_action_mask(self.packet, self.model.action_size)
         logits = mx.where(
@@ -846,6 +971,117 @@ class OrganismTrainer:
 
     # ------------------------------------------------------------ learning
 
+    def _multi_step_prediction_loss(
+        self,
+        states: mx.array,
+        vectors: mx.array,
+        actions: mx.array,
+        next_vectors: mx.array,
+        next_needs: mx.array,
+        env_rewards: mx.array,
+    ) -> mx.array:
+        """Open-loop latent rollout loss over consecutive lived actions."""
+
+        config = self.config
+        horizon = config.multi_step_model_horizon
+        decision_count = actions.shape[0]
+        if horizon <= 1 or decision_count < horizon:
+            return mx.array(0.0)
+        usable = decision_count - horizon + 1
+        imagined_state = states[:, :usable, :]
+        imagined_vector = vectors[:, :usable, :]
+        start_needs = imagined_vector[0, :, :4]
+        predicted_needs = start_needs
+        cumulative_reward = mx.zeros((1, usable))
+        for offset in range(horizon):
+            step_actions = actions[offset : offset + usable][None, :]
+            imagined_state = self.model.transition_state(
+                imagined_state, step_actions, imagined_vector
+            )
+            raw_vector, need_delta, reward, _ = self.model.decode_transition(
+                imagined_state
+            )
+            predicted_needs = mx.clip(
+                imagined_vector[:, :, :4] + need_delta, 0.0, 1.0
+            )[0]
+            imagined_vector = mx.concatenate(
+                [predicted_needs[None, :, :], raw_vector[:, :, 4:]],
+                axis=-1,
+            )
+            cumulative_reward = cumulative_reward + reward
+
+        final_offset = horizon - 1
+        target_vectors = next_vectors[final_offset : final_offset + usable]
+        target_needs = next_needs[final_offset : final_offset + usable]
+        target_reward = mx.zeros((usable,))
+        for offset in range(horizon):
+            target_reward = target_reward + env_rewards[offset : offset + usable]
+        vector_loss = ((imagined_vector[0] - target_vectors) ** 2).mean()
+        needs_loss = bodily_delta_prediction_loss(
+            predicted_needs - start_needs,
+            target_needs - start_needs,
+            change_boost=config.bodily_change_loss_boost,
+        )
+        reward_loss = ((cumulative_reward[0] - target_reward) ** 2).mean()
+        return (
+            config.next_vector_weight * vector_loss
+            + config.next_needs_weight * needs_loss
+            + config.reward_prediction_weight * reward_loss
+        )
+
+    def _world_model_loss(
+        self,
+        vectors: mx.array,
+        tokens: mx.array,
+        hidden: mx.array | None,
+        actions: mx.array,
+        next_vectors: mx.array,
+        next_needs: mx.array,
+        env_rewards: mx.array,
+        next_tokens: mx.array,
+    ) -> mx.array:
+        """Auxiliary-only loss, safe for off-policy episodic replay."""
+
+        config = self.config
+        states, _ = self.model.core_states(vectors, tokens, hidden)
+        predicted_vectors, predicted_need_deltas, predicted_rewards, token_logits = (
+            self.model.predict_consequences(states, actions[None, :], vectors)
+        )
+        vector_loss = ((predicted_vectors[0] - next_vectors) ** 2).mean()
+        target_need_deltas = next_needs - vectors[0, :, :4]
+        needs_loss = bodily_delta_prediction_loss(
+            predicted_need_deltas[0],
+            target_need_deltas,
+            change_boost=config.bodily_change_loss_boost,
+        )
+        reward_loss = ((predicted_rewards[0] - env_rewards) ** 2).mean()
+        token_log_probabilities = token_logits[0] - mx.logsumexp(
+            token_logits[0], axis=-1, keepdims=True
+        )
+        token_nll = -mx.take_along_axis(
+            token_log_probabilities, next_tokens[..., None], axis=-1
+        ).squeeze(-1)
+        pad_id = TOKEN_TO_ID[PAD_TOKEN]
+        token_weights = mx.where(
+            next_tokens == pad_id, 1.0, config.nonpad_token_weight
+        )
+        token_loss = (token_nll * token_weights).sum() / token_weights.sum()
+        multi_step_loss = self._multi_step_prediction_loss(
+            states,
+            vectors,
+            actions,
+            next_vectors,
+            next_needs,
+            env_rewards,
+        )
+        return (
+            config.next_vector_weight * vector_loss
+            + config.next_needs_weight * needs_loss
+            + config.reward_prediction_weight * reward_loss
+            + config.token_prediction_weight * token_loss
+            + config.multi_step_model_weight * multi_step_loss
+        )
+
     def _loss(
         self,
         vectors: mx.array,
@@ -872,6 +1108,7 @@ class OrganismTrainer:
                 logits,
                 planning_scales[None, :],
                 reward_weight=config.self_model_planning_reward_weight,
+                horizon=config.self_model_planning_horizon,
             )
         logits = mx.where(action_masks[None, :, :], logits, -1e9)
         logits = logits[0]
@@ -906,6 +1143,14 @@ class OrganismTrainer:
             next_tokens == pad_id, 1.0, config.nonpad_token_weight
         )
         token_loss = (token_nll * token_weights).sum() / token_weights.sum()
+        multi_step_loss = self._multi_step_prediction_loss(
+            states,
+            vectors,
+            actions,
+            next_vectors,
+            next_needs,
+            env_rewards,
+        )
 
         return (
             policy_loss
@@ -915,6 +1160,7 @@ class OrganismTrainer:
             + config.next_needs_weight * needs_loss
             + config.reward_prediction_weight * reward_loss
             + config.token_prediction_weight * token_loss
+            + config.multi_step_model_weight * multi_step_loss
         )
 
     def update(
@@ -956,6 +1202,54 @@ class OrganismTrainer:
         mx.eval(self.model.parameters(), self.optimizer.state, loss)
         return float(loss)
 
+    def _remember_for_world_model_replay(
+        self, segment: _Segment, hidden: mx.array | None
+    ) -> None:
+        capacity = self.config.world_model_replay_capacity
+        if capacity <= 0:
+            return
+        hidden_copy: np.ndarray | None = None
+        if hidden is not None:
+            mx.eval(hidden)
+            hidden_copy = np.asarray(hidden, dtype=np.float32).copy()
+        item = (segment, hidden_copy)
+        self._replay_segments_seen += 1
+        if len(self.world_model_replay) < capacity:
+            self.world_model_replay.append(item)
+            return
+        replacement = self.replay_rng.randrange(self._replay_segments_seen)
+        if replacement < capacity:
+            self.world_model_replay[replacement] = item
+
+    def _world_model_replay_update(
+        self, segment: _Segment, hidden: np.ndarray | None
+    ) -> float:
+        loss, grads = self._world_model_loss_and_grad(
+            mx.array(np.stack(segment.vectors)[None, ...]),
+            mx.array(np.asarray(segment.tokens, dtype=np.int32)[None, ...]),
+            None if hidden is None else mx.array(hidden),
+            mx.array(np.asarray(segment.actions, dtype=np.int32)),
+            mx.array(np.stack(segment.next_vectors)),
+            mx.array(np.asarray(segment.next_needs, dtype=np.float32)),
+            mx.array(np.asarray(segment.env_rewards, dtype=np.float32)),
+            mx.array(np.asarray(segment.next_tokens, dtype=np.int32)),
+        )
+        grads, _ = optim.clip_grad_norm(grads, self.config.max_grad_norm)
+        self.optimizer.update(self.model, grads)
+        mx.eval(self.model.parameters(), self.optimizer.state, loss)
+        return float(loss)
+
+    def replay_world_model(self) -> list[float]:
+        """Update prediction/dynamics only from reservoir-sampled experience."""
+
+        losses: list[float] = []
+        for _ in range(self.config.world_model_replay_updates):
+            if not self.world_model_replay:
+                break
+            segment, hidden = self.replay_rng.choice(self.world_model_replay)
+            losses.append(self._world_model_replay_update(segment, hidden))
+        return losses
+
     # -------------------------------------------------------------- driver
 
     def train(self) -> list[LifeStats]:
@@ -968,8 +1262,18 @@ class OrganismTrainer:
             if len(segment) == 0:
                 continue
             loss = self.update(segment, hidden, bootstrap)
+            self._remember_for_world_model_replay(segment, hidden)
+            replay_losses = self.replay_world_model()
             steps_done += sum(segment.durations)
-            self.loss_log.append({"steps": float(steps_done), "loss": loss})
+            self.loss_log.append(
+                {
+                    "steps": float(steps_done),
+                    "loss": loss,
+                    "replay_loss": (
+                        float(np.mean(replay_losses)) if replay_losses else 0.0
+                    ),
+                }
+            )
             if (
                 len(self.life_stats) >= lives_logged + config.log_every_lives
             ):
@@ -1012,6 +1316,7 @@ def evaluate_organism(
     self_model_planning_scale: float = 0.0,
     self_model_planning_reward_weight: float = 0.5,
     self_model_planning_score_sign: float = 1.0,
+    self_model_planning_horizon: int = 1,
 ) -> dict[str, float]:
     rng = Random(sample_seed)
     survived = 0
@@ -1050,6 +1355,7 @@ def evaluate_organism(
                     mx.array([[self_model_planning_scale]]),
                     reward_weight=self_model_planning_reward_weight,
                     score_sign=self_model_planning_score_sign,
+                    horizon=self_model_planning_horizon,
                 )
             action_mask = available_action_mask(packet, model.action_size)
             logits = mx.where(
@@ -1133,6 +1439,7 @@ def audit_self_model_actions(
     consume_options: bool = False,
     self_model_planning_scale: float = 0.0,
     reward_weight: float = 0.5,
+    self_model_planning_horizon: int = 1,
 ) -> dict[str, float]:
     """Compare predicted and simulator-realized outcomes for every action.
 
@@ -1191,6 +1498,7 @@ def audit_self_model_actions(
                     base_logits,
                     mx.array([[self_model_planning_scale]]),
                     reward_weight=reward_weight,
+                    horizon=self_model_planning_horizon,
                 )
             action_mask = available_action_mask(packet, model.action_size)
             logits = mx.where(
