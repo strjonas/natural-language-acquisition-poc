@@ -368,6 +368,8 @@ def main() -> None:
                 run_label += "urgent"
         if args.replay_updates > 0:
             run_label += f"_replay{args.replay_capacity}x{args.replay_updates}"
+            if args.need_balanced_replay:
+                run_label += "balanced"
         if args.bodily_drift_loss_weight > 0.0:
             run_label += f"_drift{args.bodily_drift_loss_weight:g}"
         if args.bodily_event_loss_weight > 0.0:
@@ -436,6 +438,7 @@ def main() -> None:
             max_grad_norm=args.max_grad_norm,
             world_model_replay_capacity=args.replay_capacity,
             world_model_replay_updates=args.replay_updates,
+            need_balanced_replay=args.need_balanced_replay,
             seed=args.seed,
             max_steps=args.train_max_steps,
             island=IslandConfig(
@@ -889,6 +892,8 @@ def _write_and_print(rows: list[dict[str, object]], args: argparse.Namespace) ->
         suffix += f"_plan{args.planning_scale:g}h{args.planning_horizon}"
     if args.replay_updates > 0:
         suffix += f"_replay{args.replay_capacity}x{args.replay_updates}"
+        if args.need_balanced_replay:
+            suffix += "balanced"
     if args.bodily_drift_loss_weight > 0.0:
         suffix += f"_drift{args.bodily_drift_loss_weight:g}"
     if args.bodily_event_loss_weight > 0.0:
@@ -1309,6 +1314,14 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--replay-capacity", type=int, default=0)
     parser.add_argument("--replay-updates", type=int, default=0)
+    parser.add_argument(
+        "--need-balanced-replay",
+        action="store_true",
+        help=(
+            "Alternate food/water replay requests and sample a segment with "
+            "a learner-visible valid-bound restoration for that need."
+        ),
+    )
     parser.add_argument(
         "--self-model-audit-decisions",
         type=int,

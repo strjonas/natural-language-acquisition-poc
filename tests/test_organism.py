@@ -1155,6 +1155,136 @@ class TrainingSmokeTest(unittest.TestCase):
         self.assertIn("online", report)
         self.assertIn("final_replay", report)
         self.assertIn("gradient_samples", report)
+        self.assertFalse(report["need_balanced_replay"]["enabled"])
+
+    def test_need_balanced_replay_requires_an_active_reservoir(self):
+        from dataclasses import replace as dc_replace
+
+        with self.assertRaisesRegex(ValueError, "positive replay capacity"):
+            OrganismTrainer(
+                dc_replace(self._config(), need_balanced_replay=True)
+            )
+
+    def test_need_balanced_replay_alternates_and_selects_requested_need(self):
+        from dataclasses import replace as dc_replace
+        from homesocial.organism.train import _ReplayItem, _Segment
+
+        trainer = OrganismTrainer(
+            dc_replace(
+                self._config(),
+                world_model_replay_capacity=4,
+                world_model_replay_updates=1,
+                need_balanced_replay=True,
+            )
+        )
+        food = _ReplayItem(_Segment(), None, frozenset({0}))
+        water = _ReplayItem(_Segment(), None, frozenset({1}))
+        trainer.world_model_replay = [food, water]
+
+        selected = [trainer._sample_world_model_replay() for _ in range(6)]
+        self.assertEqual(selected, [food, water, food, water, food, water])
+        accounting = trainer._need_balanced_replay_accounting()
+        self.assertEqual(
+            accounting["requested_need_counts"], {"food": 3, "water": 3}
+        )
+        self.assertEqual(accounting["uniform_fallback_count"], 0)
+        self.assertEqual(
+            accounting["post_both_pool_eligible_selection_rate"], 1.0
+        )
+
+    def test_replay_need_classifier_uses_visible_binding_and_lived_delta(self):
+        from dataclasses import replace as dc_replace
+        from unittest.mock import patch
+        from homesocial.organism.train import _Segment
+
+        trainer = OrganismTrainer(
+            dc_replace(
+                self._config(),
+                consume_options=True,
+                inspect_options=True,
+                episodic_binding_size=4,
+                world_model_replay_capacity=2,
+                world_model_replay_updates=1,
+                need_balanced_replay=True,
+            )
+        )
+        segment = _Segment()
+        segment.vectors = [
+            np.zeros(trainer.model.vector_size, dtype=np.float32)
+            for _ in range(3)
+        ]
+        padding = tuple(
+            [TOKEN_TO_ID[PAD_TOKEN]] * trainer.model.tokens_per_utterance
+        )
+        segment.tokens = [padding, padding, padding]
+        segment.actions = [0, 0, 0]
+        segment.next_needs = [
+            (0.30, 0.00, 0.00, 0.00),
+            (0.00, 0.25, 0.00, 0.00),
+            (0.40, 0.00, 0.00, 0.00),
+        ]
+        # Intentionally contradictory simulator-only fields: selection must
+        # not consult them.
+        segment.events = ["consumed_poison"] * 3
+        segment.chosen_kinds = ["poison"] * 3
+        segment.chosen_surfaces = ["unknown"] * 3
+        states = mx.zeros((1, 3, trainer.model.state_size))
+        with patch.object(
+            trainer.model, "core_states", return_value=(states, states[:, -1])
+        ), patch(
+            "homesocial.organism.train.bound_consumption_action_mask",
+            return_value=mx.array([[True, True, False]]),
+        ):
+            eligible = trainer._learner_visible_replay_needs(segment, None)
+
+        self.assertEqual(eligible, frozenset({0, 1}))
+
+    def test_need_balanced_replay_falls_back_only_for_an_empty_need_pool(self):
+        from dataclasses import replace as dc_replace
+        from homesocial.organism.train import _ReplayItem, _Segment
+
+        trainer = OrganismTrainer(
+            dc_replace(
+                self._config(),
+                world_model_replay_capacity=2,
+                world_model_replay_updates=1,
+                need_balanced_replay=True,
+            )
+        )
+        food = _ReplayItem(_Segment(), None, frozenset({0}))
+        trainer.world_model_replay = [food]
+
+        self.assertIs(trainer._sample_world_model_replay(), food)
+        self.assertIs(trainer._sample_world_model_replay(), food)
+        accounting = trainer._need_balanced_replay_accounting()
+        self.assertEqual(accounting["uniform_fallback_count"], 1)
+        self.assertEqual(
+            accounting["requested_eligible_selection_counts"],
+            {"food": 1, "water": 0},
+        )
+
+    def test_uniform_replay_keeps_the_seeded_choice_path(self):
+        from random import Random
+        from dataclasses import replace as dc_replace
+        from homesocial.organism.train import _ReplayItem, _Segment
+
+        trainer = OrganismTrainer(
+            dc_replace(
+                self._config(),
+                world_model_replay_capacity=3,
+                world_model_replay_updates=1,
+            )
+        )
+        items = [
+            _ReplayItem(_Segment(), None, frozenset({need}))
+            for need in (0, 1, 0)
+        ]
+        trainer.world_model_replay = items
+        reference = Random(trainer.config.seed + 1_000_003)
+
+        selected = [trainer._sample_world_model_replay() for _ in range(8)]
+        expected = [reference.choice(items) for _ in range(8)]
+        self.assertEqual(selected, expected)
 
     def test_binding_consequence_geometry_is_finite_and_slot_matched(self):
         from dataclasses import replace as dc_replace

@@ -1436,6 +1436,10 @@ class OrganismConfig:
     multi_step_model_weight: float = 0.0
     world_model_replay_capacity: int = 0
     world_model_replay_updates: int = 0
+    # Alternate food/water replay requests and sample uniformly from segments
+    # containing a learner-visible valid-bound restoration for that need.
+    # False preserves the sealed uniform reservoir sampler and RNG path.
+    need_balanced_replay: bool = False
     live_reward_weight: float = 0.02
     death_penalty: float = 1.0
     max_grad_norm: float = 1.0
@@ -1508,6 +1512,14 @@ class OrganismConfig:
             raise ValueError("world_model_replay_capacity must be nonnegative.")
         if self.world_model_replay_updates < 0:
             raise ValueError("world_model_replay_updates must be nonnegative.")
+        if self.need_balanced_replay and (
+            self.world_model_replay_capacity <= 0
+            or self.world_model_replay_updates <= 0
+        ):
+            raise ValueError(
+                "need_balanced_replay requires positive replay capacity and "
+                "updates."
+            )
         if self.bodily_drift_loss_weight < 0.0:
             raise ValueError("bodily_drift_loss_weight must be nonnegative.")
         if self.bodily_event_loss_weight < 0.0:
@@ -1717,6 +1729,13 @@ class _Segment:
         return len(self.actions)
 
 
+@dataclass(frozen=True)
+class _ReplayItem:
+    segment: _Segment
+    hidden: np.ndarray | None
+    eligible_needs: frozenset[int] = frozenset()
+
+
 class OrganismTrainer:
     def __init__(self, config: OrganismConfig) -> None:
         self.config = config
@@ -1733,10 +1752,17 @@ class OrganismTrainer:
         self.optimizer = optim.Adam(learning_rate=config.learning_rate)
         self.rng = Random(config.seed)
         self.replay_rng = Random(config.seed + 1_000_003)
-        self.world_model_replay: list[
-            tuple[_Segment, np.ndarray | None]
-        ] = []
+        self.world_model_replay: list[_ReplayItem] = []
         self._replay_segments_seen = 0
+        self._need_balanced_replay_next_need = 0
+        self._need_balanced_replay_requests = [0, 0]
+        self._need_balanced_replay_hits = [0, 0]
+        self._need_balanced_replay_selected = [0, 0]
+        self._need_balanced_replay_fallbacks = 0
+        self._need_balanced_replay_both_pools_seen = False
+        self._need_balanced_replay_post_both_requests = [0, 0]
+        self._need_balanced_replay_post_both_hits = 0
+        self._world_model_replay_update_count = 0
         self.life_stats: list[LifeStats] = []
         self.loss_log: list[dict[str, float]] = []
         self._bodily_event_online_rows: list[dict[str, object]] = []
@@ -3107,11 +3133,11 @@ class OrganismTrainer:
         if path is None:
             return
         replay_rows: list[dict[str, object]] = []
-        for segment, hidden in self.world_model_replay:
+        for item in self.world_model_replay:
             replay_rows.extend(
                 self._bodily_event_rows(
-                    segment,
-                    hidden,
+                    item.segment,
+                    item.hidden,
                     distribution="final_replay",
                     tick_stop=None,
                 )
@@ -3172,6 +3198,7 @@ class OrganismTrainer:
             ),
             "gradient_summary": gradient_summary,
             "gradient_samples": self._bodily_event_gradient_samples,
+            "need_balanced_replay": self._need_balanced_replay_accounting(),
         }
         target = Path(path)
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -3214,7 +3241,12 @@ class OrganismTrainer:
         if hidden is not None:
             mx.eval(hidden)
             hidden_copy = np.asarray(hidden, dtype=np.float32).copy()
-        item = (segment, hidden_copy)
+        eligible_needs = (
+            self._learner_visible_replay_needs(segment, hidden_copy)
+            if self.config.need_balanced_replay
+            else frozenset()
+        )
+        item = _ReplayItem(segment, hidden_copy, eligible_needs)
         self._replay_segments_seen += 1
         if len(self.world_model_replay) < capacity:
             self.world_model_replay.append(item)
@@ -3222,6 +3254,109 @@ class OrganismTrainer:
         replacement = self.replay_rng.randrange(self._replay_segments_seen)
         if replacement < capacity:
             self.world_model_replay[replacement] = item
+
+    def _learner_visible_replay_needs(
+        self,
+        segment: _Segment,
+        hidden: np.ndarray | None,
+    ) -> frozenset[int]:
+        """Classify replay eligibility without simulator event metadata."""
+
+        vectors = mx.array(np.stack(segment.vectors)[None, ...])
+        tokens = mx.array(
+            np.asarray(segment.tokens, dtype=np.int32)[None, ...]
+        )
+        actions = mx.array(
+            np.asarray(segment.actions, dtype=np.int32)[None, ...]
+        )
+        initial = None if hidden is None else mx.array(hidden)
+        states, _ = self.model.core_states(vectors, tokens, initial)
+        bound = bound_consumption_action_mask(
+            self.model,
+            states,
+            actions,
+            vectors,
+            consume_options=self.config.consume_options,
+            inspect_options=self.config.inspect_options,
+        )[0]
+        mx.eval(bound)
+        bound_np = np.asarray(bound, dtype=np.bool_)
+        target = (
+            np.asarray(segment.next_needs, dtype=np.float32)
+            - np.asarray(segment.vectors, dtype=np.float32)[:, :4]
+        )
+        return frozenset(
+            need
+            for need in (0, 1)
+            if np.any(bound_np & (target[:, need] > DRIFT_REGIME_THRESHOLD))
+        )
+
+    def _sample_world_model_replay(self) -> _ReplayItem:
+        """Select one replay item, preserving uniform sampling by default."""
+
+        if not self.config.need_balanced_replay:
+            return self.replay_rng.choice(self.world_model_replay)
+
+        eligible = [
+            [item for item in self.world_model_replay if need in item.eligible_needs]
+            for need in (0, 1)
+        ]
+        if eligible[0] and eligible[1]:
+            self._need_balanced_replay_both_pools_seen = True
+
+        requested_need = self._need_balanced_replay_next_need
+        self._need_balanced_replay_next_need = 1 - requested_need
+        self._need_balanced_replay_requests[requested_need] += 1
+        if self._need_balanced_replay_both_pools_seen:
+            self._need_balanced_replay_post_both_requests[requested_need] += 1
+
+        candidates = eligible[requested_need]
+        if candidates:
+            item = self.replay_rng.choice(candidates)
+            self._need_balanced_replay_hits[requested_need] += 1
+            if self._need_balanced_replay_both_pools_seen:
+                self._need_balanced_replay_post_both_hits += 1
+        else:
+            item = self.replay_rng.choice(self.world_model_replay)
+            self._need_balanced_replay_fallbacks += 1
+        for need in item.eligible_needs:
+            if need in (0, 1):
+                self._need_balanced_replay_selected[need] += 1
+        return item
+
+    def _need_balanced_replay_accounting(self) -> dict[str, object]:
+        post_both_total = sum(self._need_balanced_replay_post_both_requests)
+        return {
+            "enabled": self.config.need_balanced_replay,
+            "replay_update_count": self._world_model_replay_update_count,
+            "requested_need_counts": {
+                "food": self._need_balanced_replay_requests[0],
+                "water": self._need_balanced_replay_requests[1],
+            },
+            "requested_eligible_selection_counts": {
+                "food": self._need_balanced_replay_hits[0],
+                "water": self._need_balanced_replay_hits[1],
+            },
+            "actual_selected_need_counts": {
+                "food": self._need_balanced_replay_selected[0],
+                "water": self._need_balanced_replay_selected[1],
+            },
+            "uniform_fallback_count": self._need_balanced_replay_fallbacks,
+            "both_need_pools_ever_available": (
+                self._need_balanced_replay_both_pools_seen
+            ),
+            "post_both_pool_requested_need_counts": {
+                "food": self._need_balanced_replay_post_both_requests[0],
+                "water": self._need_balanced_replay_post_both_requests[1],
+            },
+            "post_both_pool_eligible_selection_count": (
+                self._need_balanced_replay_post_both_hits
+            ),
+            "post_both_pool_eligible_selection_rate": (
+                self._need_balanced_replay_post_both_hits
+                / max(1, post_both_total)
+            ),
+        }
 
     def _world_model_replay_update(
         self, segment: _Segment, hidden: np.ndarray | None
@@ -3248,8 +3383,11 @@ class OrganismTrainer:
         for _ in range(self.config.world_model_replay_updates):
             if not self.world_model_replay:
                 break
-            segment, hidden = self.replay_rng.choice(self.world_model_replay)
-            losses.append(self._world_model_replay_update(segment, hidden))
+            item = self._sample_world_model_replay()
+            losses.append(
+                self._world_model_replay_update(item.segment, item.hidden)
+            )
+            self._world_model_replay_update_count += 1
         return losses
 
     # -------------------------------------------------------------- driver
