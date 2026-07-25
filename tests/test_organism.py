@@ -46,6 +46,7 @@ if mx is not None:
         execute_agent_action,
         _is_voluntary_inspection_event,
         _paired_gradient_geometry,
+        _population_gradient_geometry,
         object_option_action_index,
         observation_branching_action_scores,
         observation_branching_inspect_values,
@@ -86,6 +87,23 @@ class GaeTest(unittest.TestCase):
         self.assertAlmostEqual(left_norm, 1.0)
         self.assertAlmostEqual(right_norm, 2.0)
         self.assertAlmostEqual(ratio, 2.0)
+
+    def test_population_gradient_geometry_reports_stable_conflict(self):
+        food = np.asarray([[1.0, 0.0], [2.0, 0.0]], dtype=np.float32)
+        water = np.asarray([[-1.0, 0.0], [-2.0, 0.0]], dtype=np.float32)
+        result = _population_gradient_geometry(
+            food,
+            water,
+            np.ones(2, dtype=np.float32),
+            np.ones(2, dtype=np.float32),
+            bootstrap_samples=16,
+            seed=7,
+        )
+        self.assertAlmostEqual(result["aggregate_cosine"], -1.0)
+        self.assertEqual(result["bootstrap_negative_fraction"], 1.0)
+        self.assertAlmostEqual(
+            result["aggregate_water_to_food_sensitivity"], 1.0
+        )
 
     def test_resource_swap_direction_tracks_current_body_need(self):
         self.assertAlmostEqual(

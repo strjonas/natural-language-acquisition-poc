@@ -50,6 +50,24 @@ from homesocial.organism.model import (
 
 ACTIONS = list(Action)
 OBJECT_OPTION_ORDER = ("consume", "inspect")
+LEXICAL_GRADIENT_PREFIXES = (
+    "token_embedding.",
+    "binding_value.",
+    "binding_read.",
+)
+SHARED_DYNAMICS_GRADIENT_PREFIXES = (
+    "token_embedding.",
+    "token_rnn.",
+    "binding_value.",
+    "binding_read.",
+    "input.",
+    "input_norm.",
+    "core.",
+    "post.",
+    "post_norm.",
+    "transition.",
+    "transition_norm.",
+)
 
 
 def enabled_object_options(
@@ -7512,9 +7530,7 @@ def _paired_gradient_geometry(
         names = [
             name
             for name in names
-            if name.startswith(
-                ("token_embedding.", "binding_value.", "binding_read.")
-            )
+            if name.startswith(LEXICAL_GRADIENT_PREFIXES)
         ]
     elif parameter_prefixes is not None:
         names = [name for name in names if name.startswith(parameter_prefixes)]
@@ -7559,19 +7575,6 @@ def audit_cross_need_gradient_geometry(
     trainer = OrganismTrainer(audit_config)
     trainer.model = model
     samples: list[dict[str, float]] = []
-    shared_prefixes = (
-        "token_embedding.",
-        "token_rnn.",
-        "binding_value.",
-        "binding_read.",
-        "input.",
-        "input_norm.",
-        "core.",
-        "post.",
-        "post_norm.",
-        "transition.",
-        "transition_norm.",
-    )
     while trainer.global_steps < max_ticks and len(samples) < segments:
         segment, hidden, _ = trainer.collect_segment()
         if not segment:
@@ -7610,7 +7613,7 @@ def audit_cross_need_gradient_geometry(
         for scope, lexical, prefixes in (
             ("global", False, None),
             ("lexical", True, None),
-            ("shared", False, shared_prefixes),
+            ("shared", False, SHARED_DYNAMICS_GRADIENT_PREFIXES),
         ):
             cosine, food_norm, water_norm, ratio = _paired_gradient_geometry(
                 food_grads,
@@ -7665,6 +7668,251 @@ def audit_cross_need_gradient_geometry(
         )
         result[f"{scope}_median_water_to_food_sensitivity"] = float(
             np.median(sensitivities)
+        )
+    return result
+
+
+def _gradient_scope_vector(
+    grads: object,
+    *,
+    parameter_prefixes: tuple[str, ...] | None,
+) -> np.ndarray:
+    """Flatten a deterministic parameter scope into one CPU vector."""
+
+    from mlx.utils import tree_flatten
+
+    flattened = dict(tree_flatten(grads))
+    names = sorted(flattened)
+    if parameter_prefixes is not None:
+        names = [name for name in names if name.startswith(parameter_prefixes)]
+    if not names:
+        raise ValueError("Gradient scope selected no parameters.")
+    return np.concatenate(
+        [
+            np.asarray(flattened[name], dtype=np.float32).reshape(-1)
+            for name in names
+        ]
+    )
+
+
+def _population_gradient_geometry(
+    food_vectors: np.ndarray,
+    water_vectors: np.ndarray,
+    food_objectives: np.ndarray,
+    water_objectives: np.ndarray,
+    *,
+    bootstrap_samples: int = 256,
+    seed: int = 1,
+) -> dict[str, float]:
+    """Geometry of two mean task gradients with deterministic bootstrap."""
+
+    food = np.asarray(food_vectors, dtype=np.float64)
+    water = np.asarray(water_vectors, dtype=np.float64)
+    food_values = np.asarray(food_objectives, dtype=np.float64)
+    water_values = np.asarray(water_objectives, dtype=np.float64)
+    if (
+        food.ndim != 2
+        or water.ndim != 2
+        or food.shape[1] != water.shape[1]
+        or food.shape[0] != food_values.shape[0]
+        or water.shape[0] != water_values.shape[0]
+        or min(food.shape[0], water.shape[0], bootstrap_samples) <= 0
+    ):
+        raise ValueError("Population geometry needs matched nonempty matrices.")
+    if np.any(food_values <= 0.0) or np.any(water_values <= 0.0):
+        raise ValueError("Population objectives must be positive.")
+
+    def geometry(
+        food_mean: np.ndarray,
+        water_mean: np.ndarray,
+        food_value: np.ndarray | float,
+        water_value: np.ndarray | float,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        # Use an explicit CPU reduction so BLAS scheduling does not add a
+        # second nondeterministic reduction on top of Metal gradient kernels.
+        food_norm = np.sqrt(np.sum(food_mean * food_mean, axis=-1))
+        water_norm = np.sqrt(np.sum(water_mean * water_mean, axis=-1))
+        dot = np.sum(food_mean * water_mean, axis=-1)
+        cosine = dot / np.maximum(food_norm * water_norm, 1e-12)
+        food_sensitivity = food_norm / np.maximum(np.sqrt(food_value), 1e-12)
+        water_sensitivity = water_norm / np.maximum(
+            np.sqrt(water_value), 1e-12
+        )
+        sensitivity_ratio = water_sensitivity / np.maximum(
+            food_sensitivity, 1e-12
+        )
+        return cosine, food_norm, water_norm, sensitivity_ratio
+
+    food_mean = food.mean(axis=0)
+    water_mean = water.mean(axis=0)
+    aggregate = geometry(
+        food_mean,
+        water_mean,
+        float(food_values.mean()),
+        float(water_values.mean()),
+    )
+
+    rng = np.random.default_rng(seed)
+    food_weights = rng.multinomial(
+        food.shape[0],
+        np.full(food.shape[0], 1.0 / food.shape[0]),
+        size=bootstrap_samples,
+    ).astype(np.float64) / food.shape[0]
+    water_weights = rng.multinomial(
+        water.shape[0],
+        np.full(water.shape[0], 1.0 / water.shape[0]),
+        size=bootstrap_samples,
+    ).astype(np.float64) / water.shape[0]
+    bootstrap_cosines: list[np.ndarray] = []
+    bootstrap_sensitivities: list[np.ndarray] = []
+    for start in range(0, bootstrap_samples, 32):
+        stop = min(start + 32, bootstrap_samples)
+        food_chunk = food_weights[start:stop]
+        water_chunk = water_weights[start:stop]
+        chunk_geometry = geometry(
+            food_chunk @ food,
+            water_chunk @ water,
+            food_chunk @ food_values,
+            water_chunk @ water_values,
+        )
+        bootstrap_cosines.append(np.asarray(chunk_geometry[0]))
+        bootstrap_sensitivities.append(np.asarray(chunk_geometry[3]))
+    cosines = np.concatenate(bootstrap_cosines)
+    sensitivities = np.concatenate(bootstrap_sensitivities)
+    result = {
+        "aggregate_cosine": float(aggregate[0]),
+        "aggregate_food_norm": float(aggregate[1]),
+        "aggregate_water_norm": float(aggregate[2]),
+        "aggregate_water_to_food_norm": float(
+            aggregate[2] / max(float(aggregate[1]), 1e-12)
+        ),
+        "aggregate_water_to_food_sensitivity": float(aggregate[3]),
+        "bootstrap_median_cosine": float(np.median(cosines)),
+        "bootstrap_cosine_p05": float(np.quantile(cosines, 0.05)),
+        "bootstrap_cosine_p95": float(np.quantile(cosines, 0.95)),
+        "bootstrap_negative_fraction": float(np.mean(cosines < 0.0)),
+        "bootstrap_median_water_to_food_sensitivity": float(
+            np.median(sensitivities)
+        ),
+    }
+    if not all(np.isfinite(value) for value in result.values()):
+        raise RuntimeError("Non-finite population gradient geometry.")
+    return result
+
+
+def audit_population_cross_need_gradient_geometry(
+    model: OrganismModel,
+    config: OrganismConfig,
+    *,
+    segments_per_need: int = 96,
+    max_ticks: int = 20_000,
+    bootstrap_samples: int = 256,
+) -> dict[str, object]:
+    """Compare mean food/water gradients from independent lived populations."""
+
+    if min(segments_per_need, max_ticks, bootstrap_samples) <= 0:
+        raise ValueError("Population audit arguments must be positive.")
+    if config.bodily_bound_consumption_event_loss_weight <= 0.0:
+        raise ValueError("Population audit requires the bound-event loss.")
+    audit_config = replace(
+        config,
+        total_steps=max_ticks,
+        checkpoint=None,
+        stats_csv=None,
+        bodily_event_audit_json=None,
+    )
+    trainer = OrganismTrainer(audit_config)
+    trainer.model = model
+    scopes: dict[str, tuple[str, ...] | None] = {
+        "global": None,
+        "lexical": LEXICAL_GRADIENT_PREFIXES,
+        "shared": SHARED_DYNAMICS_GRADIENT_PREFIXES,
+    }
+    vectors: dict[str, dict[str, list[np.ndarray]]] = {
+        resource: {scope: [] for scope in scopes}
+        for resource in ("food", "water")
+    }
+    objectives: dict[str, list[float]] = {"food": [], "water": []}
+    records: list[dict[str, object]] = []
+
+    while trainer.global_steps < max_ticks and any(
+        len(objectives[resource]) < segments_per_need
+        for resource in ("food", "water")
+    ):
+        segment, hidden, _ = trainer.collect_segment()
+        if not segment:
+            continue
+        hidden_copy: np.ndarray | None = None
+        if hidden is not None:
+            mx.eval(hidden)
+            hidden_copy = np.asarray(hidden, dtype=np.float32).copy()
+        eligible = trainer._learner_visible_replay_needs(segment, hidden_copy)
+        for need_index, resource in enumerate(("food", "water")):
+            if (
+                need_index not in eligible
+                or len(objectives[resource]) >= segments_per_need
+            ):
+                continue
+
+            def objective(active_model: OrganismModel) -> mx.array:
+                return trainer._bound_event_need_objective_for_gradient(
+                    active_model,
+                    segment,
+                    hidden_copy,
+                    need_index,
+                )
+
+            value, grads = nn.value_and_grad(model, objective)(model)
+            mx.eval(value, grads)
+            objective_value = float(value)
+            if objective_value <= 0.0 or not np.isfinite(objective_value):
+                raise RuntimeError("Population segment has invalid objective.")
+            record: dict[str, object] = {
+                "resource": resource,
+                "sample": len(objectives[resource]),
+                "tick": float(trainer.global_steps),
+                "objective": objective_value,
+                "both_eligible": eligible == frozenset({0, 1}),
+            }
+            for scope, prefixes in scopes.items():
+                vector = _gradient_scope_vector(
+                    grads, parameter_prefixes=prefixes
+                )
+                if not np.all(np.isfinite(vector)):
+                    raise RuntimeError("Population gradient contains nonfinite values.")
+                vector64 = vector.astype(np.float64)
+                norm = float(np.sqrt(np.sum(vector64 * vector64)))
+                sensitivity = norm / max(np.sqrt(objective_value), 1e-12)
+                vectors[resource][scope].append(vector)
+                record[f"{scope}_gradient_norm"] = norm
+                record[f"{scope}_normalized_sensitivity"] = sensitivity
+            objectives[resource].append(objective_value)
+            records.append(record)
+
+    result: dict[str, object] = {
+        "requested_segments_per_need": float(segments_per_need),
+        "food_segments": float(len(objectives["food"])),
+        "water_segments": float(len(objectives["water"])),
+        "elapsed_ticks": float(trainer.global_steps),
+        "bootstrap_samples": float(bootstrap_samples),
+        "raw_samples": records,
+    }
+    if any(
+        len(objectives[resource]) != segments_per_need
+        for resource in ("food", "water")
+    ):
+        return result
+    for scope in scopes:
+        geometry = _population_gradient_geometry(
+            np.stack(vectors["food"][scope]),
+            np.stack(vectors["water"][scope]),
+            np.asarray(objectives["food"]),
+            np.asarray(objectives["water"]),
+            bootstrap_samples=bootstrap_samples,
+            seed=config.seed + 4_600_021,
+        )
+        result.update(
+            {f"{scope}_{key}": value for key, value in geometry.items()}
         )
     return result
 
