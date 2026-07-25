@@ -3,6 +3,18 @@
 Date: 2026-07-25
 Status: locked before lived transition inputs are collected.
 
+## Pre-data amendment
+
+Locked before implementation and before any lived transition input was
+collected: the originally written lexical-identification gate also required
+full-probe accuracy to exceed the no-direct-binding probe by 10 points. That is
+not a valid lexical ablation in this architecture. The recurrent core has
+already read the external binding before the transition input is formed, so
+removing only the direct binding columns leaves a second lexical path intact.
+The no-direct-binding probe remains reported descriptively, but only
+lexical-only accuracy decides lexical identifiability. A future causal ablation
+would have to remove both the bank and all of its prior recurrent reads.
+
 ## Question
 
 The scoped checkpoint has healthy controlled lexical/consequence geometry
@@ -49,8 +61,9 @@ These probes are analysis only and are not installed in the organism.
 
 - **Input collision:** full held-out accuracy < 90% or nearest-neighbor
   agreement < 80%.
-- **Lexical value not causally identifying:** lexical-only accuracy < 90% or
-  full accuracy exceeds no-lexical accuracy by < 10 percentage points.
+- **Lexical value not identifying:** lexical-only accuracy < 90%. The
+  full-minus-no-direct-binding difference is descriptive only for the
+  read-before-write recurrent architecture explained above.
 - **Identifiable but attenuated:** both identification gates pass, while the
   checkpoint's mean named-need prediction is < 75% of the target for either
   resource.
