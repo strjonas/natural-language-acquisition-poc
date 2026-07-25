@@ -1177,17 +1177,61 @@ def observation_branching_action_scores(
     )
 
 
+# Metabolic drift over the longest option in the implemented task tops out
+# near 0.14, while consumption events begin near 0.225; the delta histogram is
+# empty in between. The cut is a gap in the data, not a tuned threshold.
+DRIFT_REGIME_THRESHOLD = 0.175
+# The per-tick metabolic scale of the world: food 0.010, water 0.014, energy
+# 0.015 while walking. Dividing by its square measures the drift regime as a
+# relative error instead of an absolute one.
+DRIFT_ERROR_SCALE = 0.02
+
+
 def bodily_delta_prediction_loss(
     predicted_deltas: mx.array,
     target_deltas: mx.array,
     *,
     change_boost: float,
+    drift_weight: float = 0.0,
+    valid: mx.array | None = None,
 ) -> mx.array:
-    """MSE that preserves rare, action-specific bodily consequences."""
+    """MSE that preserves rare, action-specific bodily consequences.
 
-    per_transition = ((predicted_deltas - target_deltas) ** 2).mean(axis=-1)
+    The change-boosted term is the original one and is unchanged. Alone it
+    gives the slow-metabolism regime about one percent of the head's gradient,
+    because drift entries are both smaller and less heavily weighted than
+    consumption events; what the head fits instead is the need-anticorrelated
+    line through the events, which extrapolates to a large spurious decay
+    whenever a need is high and nothing is consumed.
+
+    ``drift_weight`` adds a second term over the entries that carry no event,
+    stratified per need rather than per transition so that the water drift on a
+    food-consumption transition still counts as drift, and normalized by the
+    metabolic scale so a residual of 0.01 is not invisible beside one of 0.5.
+    The term is self-limiting: it falls below the event term once the drift
+    residual approaches that scale, so it cannot trade away the consumption
+    fit. Zero reproduces the original loss exactly.
+    """
+
+    per_entry = (predicted_deltas - target_deltas) ** 2
+    per_transition = per_entry.mean(axis=-1)
     weights = 1.0 + change_boost * mx.max(mx.abs(target_deltas), axis=-1)
-    return (per_transition * weights).sum() / weights.sum()
+    if valid is not None:
+        weights = weights * valid
+    event_term = (per_transition * weights).sum() / mx.maximum(
+        weights.sum(), mx.array(1e-8)
+    )
+    if drift_weight <= 0.0:
+        return event_term
+    drift_mask = (
+        mx.abs(target_deltas) <= DRIFT_REGIME_THRESHOLD
+    ).astype(per_entry.dtype)
+    if valid is not None:
+        drift_mask = drift_mask * valid[..., None]
+    drift_term = (per_entry * drift_mask).sum() / mx.maximum(
+        drift_mask.sum(), mx.array(1e-8)
+    )
+    return event_term + drift_weight * drift_term / (DRIFT_ERROR_SCALE**2)
 
 
 @dataclass(frozen=True)
@@ -1205,6 +1249,9 @@ class OrganismConfig:
     next_vector_weight: float = 0.1
     next_needs_weight: float = 1.0
     bodily_change_loss_boost: float = 20.0
+    # Supervises the slow-metabolism regime the change boost starves. Zero is
+    # the sealed default and reproduces every prior artifact exactly.
+    bodily_drift_loss_weight: float = 0.0
     reward_prediction_weight: float = 0.2
     token_prediction_weight: float = 0.5
     nonpad_token_weight: float = 5.0
@@ -1647,6 +1694,7 @@ class OrganismTrainer:
             predicted_need_deltas[0],
             target_need_deltas,
             change_boost=config.bodily_change_loss_boost,
+            drift_weight=config.bodily_drift_loss_weight,
         )
         reward_loss = ((predicted_rewards[0] - env_rewards) ** 2).mean()
         return (
@@ -2136,18 +2184,12 @@ class OrganismTrainer:
             axis=-1
         )
         vector_loss = (vector_error * valid_float).sum() / valid_count
-        need_error = (
-            (
-                (predicted_needs - start_needs)
-                - (target_needs - start_needs)
-            )
-            ** 2
-        ).mean(axis=-1)
-        need_weights = 1.0 + config.bodily_change_loss_boost * mx.max(
-            mx.abs(target_needs - start_needs), axis=-1
-        )
-        needs_loss = (need_error * need_weights * valid_float).sum() / mx.maximum(
-            (need_weights * valid_float).sum(), mx.array(1.0)
+        needs_loss = bodily_delta_prediction_loss(
+            predicted_needs - start_needs,
+            target_needs - start_needs,
+            change_boost=config.bodily_change_loss_boost,
+            drift_weight=config.bodily_drift_loss_weight,
+            valid=valid_float,
         )
         reward_error = (cumulative_reward[0] - target_reward) ** 2
         reward_loss = (reward_error * valid_float).sum() / valid_count
@@ -2181,6 +2223,7 @@ class OrganismTrainer:
             predicted_need_deltas[0],
             target_need_deltas,
             change_boost=config.bodily_change_loss_boost,
+            drift_weight=config.bodily_drift_loss_weight,
         )
         reward_loss = ((predicted_rewards[0] - env_rewards) ** 2).mean()
         token_log_probabilities = token_logits[0] - mx.logsumexp(
@@ -2279,6 +2322,7 @@ class OrganismTrainer:
             predicted_need_deltas[0],
             target_need_deltas,
             change_boost=config.bodily_change_loss_boost,
+            drift_weight=config.bodily_drift_loss_weight,
         )
         reward_loss = ((predicted_rewards[0] - env_rewards) ** 2).mean()
         token_log_probabilities = token_logits[0] - mx.logsumexp(

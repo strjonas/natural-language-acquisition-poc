@@ -252,6 +252,8 @@ def main() -> None:
                 run_label += "urgent"
         if args.replay_updates > 0:
             run_label += f"_replay{args.replay_capacity}x{args.replay_updates}"
+        if args.bodily_drift_loss_weight > 0.0:
+            run_label += f"_drift{args.bodily_drift_loss_weight:g}"
         if model_horizon != args.planning_horizon:
             run_label += f"_modelh{model_horizon}"
         config = OrganismConfig(
@@ -291,6 +293,7 @@ def main() -> None:
             protocol_branch_planning=args.protocol_branch_planning,
             multi_step_model_horizon=model_horizon,
             multi_step_model_weight=args.multi_step_model_weight,
+            bodily_drift_loss_weight=args.bodily_drift_loss_weight,
             world_model_replay_capacity=args.replay_capacity,
             world_model_replay_updates=args.replay_updates,
             seed=args.seed,
@@ -738,6 +741,8 @@ def _write_and_print(rows: list[dict[str, object]], args: argparse.Namespace) ->
         suffix += f"_plan{args.planning_scale:g}h{args.planning_horizon}"
     if args.replay_updates > 0:
         suffix += f"_replay{args.replay_capacity}x{args.replay_updates}"
+    if args.bodily_drift_loss_weight > 0.0:
+        suffix += f"_drift{args.bodily_drift_loss_weight:g}"
     model_horizon = args.model_horizon or args.planning_horizon
     if model_horizon != args.planning_horizon:
         suffix += f"_modelh{model_horizon}"
@@ -1011,6 +1016,15 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--model-horizon", type=int, choices=[1, 2], default=None)
     parser.add_argument("--multi-step-model-weight", type=float, default=0.0)
+    parser.add_argument(
+        "--bodily-drift-loss-weight",
+        type=float,
+        default=0.0,
+        help=(
+            "Supervise the slow-metabolism regime the change boost starves. "
+            "Zero is the sealed default and reproduces prior artifacts."
+        ),
+    )
     parser.add_argument("--replay-capacity", type=int, default=0)
     parser.add_argument("--replay-updates", type=int, default=0)
     parser.add_argument(

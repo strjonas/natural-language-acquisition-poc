@@ -25,6 +25,10 @@ if mx is not None:
         audit_persistent_mapping_information_rent,
         audit_semantic_choice_information_upper_bound,
         audit_self_model_actions,
+        DRIFT_ERROR_SCALE,
+        DRIFT_REGIME_THRESHOLD,
+        audit_metabolic_drift_forecast,
+        bodily_delta_prediction_loss,
         _bodily_terminal_score,
         _directed_resource_swap_probability_shift,
         _terminal_consume_scores,
@@ -2098,6 +2102,128 @@ class TrainingSmokeTest(unittest.TestCase):
 
 
 @unittest.skipIf(mx is None, "MLX is unavailable")
+@unittest.skipIf(mx is None, "mlx is required")
+class BodilyDriftLossTest(unittest.TestCase):
+    """The drift term is off by default and stratifies per need, not per row."""
+
+    def _batch(self):
+        # One consumption transition (food jumps) and one drift-only
+        # transition. The water entry of the consumption row is itself drift.
+        target = mx.array(
+            [
+                [0.50, -0.014, -0.015, -0.002],
+                [-0.010, -0.014, -0.015, -0.002],
+            ]
+        )
+        predicted = mx.array(
+            [
+                [0.50, -0.114, -0.015, -0.002],
+                [-0.110, -0.014, -0.015, -0.002],
+            ]
+        )
+        return predicted, target
+
+    def test_zero_weight_reproduces_the_sealed_loss(self):
+        predicted, target = self._batch()
+        legacy = (
+            ((predicted - target) ** 2).mean(axis=-1)
+            * (1.0 + 20.0 * mx.max(mx.abs(target), axis=-1))
+        ).sum() / (1.0 + 20.0 * mx.max(mx.abs(target), axis=-1)).sum()
+        current = bodily_delta_prediction_loss(
+            predicted, target, change_boost=20.0
+        )
+        mx.eval(legacy, current)
+        self.assertAlmostEqual(float(legacy), float(current), places=9)
+
+    def test_drift_term_is_stratified_per_need_not_per_transition(self):
+        """The water residual on a consumption row must count as drift."""
+
+        predicted, target = self._batch()
+        # Only the water entry of the consumption row carries a residual.
+        only_event_row = mx.array([[0.50, -0.114, -0.015, -0.002]])
+        with_weight = bodily_delta_prediction_loss(
+            only_event_row,
+            mx.array([[0.50, -0.014, -0.015, -0.002]]),
+            change_boost=20.0,
+            drift_weight=0.1,
+        )
+        without_weight = bodily_delta_prediction_loss(
+            only_event_row,
+            mx.array([[0.50, -0.014, -0.015, -0.002]]),
+            change_boost=20.0,
+        )
+        mx.eval(with_weight, without_weight)
+        self.assertGreater(float(with_weight), float(without_weight))
+
+    def test_event_entries_are_excluded_from_the_drift_term(self):
+        """A residual on a jump entry alone must leave the drift term at zero."""
+
+        target = mx.array([[0.50, -0.014, -0.015, -0.002]])
+        predicted = mx.array([[0.20, -0.014, -0.015, -0.002]])
+        plain = bodily_delta_prediction_loss(
+            predicted, target, change_boost=20.0
+        )
+        weighted = bodily_delta_prediction_loss(
+            predicted, target, change_boost=20.0, drift_weight=0.3
+        )
+        mx.eval(plain, weighted)
+        self.assertAlmostEqual(float(plain), float(weighted), places=9)
+
+    def test_drift_term_is_scaled_relative_to_the_metabolic_scale(self):
+        target = mx.zeros((1, 4))
+        predicted = mx.full((1, 4), DRIFT_ERROR_SCALE)
+        weighted = bodily_delta_prediction_loss(
+            predicted, target, change_boost=20.0, drift_weight=1.0
+        )
+        plain = bodily_delta_prediction_loss(
+            predicted, target, change_boost=20.0
+        )
+        mx.eval(weighted, plain)
+        # A residual of exactly one metabolic scale contributes exactly one.
+        self.assertAlmostEqual(float(weighted) - float(plain), 1.0, places=6)
+
+    def test_threshold_separates_the_two_regimes_of_the_task(self):
+        self.assertGreater(DRIFT_REGIME_THRESHOLD, 0.14)
+        self.assertLess(DRIFT_REGIME_THRESHOLD, 0.225)
+
+
+@unittest.skipIf(mx is None, "mlx is required")
+class MetabolicDriftAuditTest(unittest.TestCase):
+    def test_audit_reports_both_steps_and_the_oracle_bound(self):
+        from dataclasses import replace as dc_replace
+
+        trainer = OrganismTrainer(
+            dc_replace(
+                TrainingSmokeTest._config(TrainingSmokeTest),
+                semantic_choice_childhood_steps=1,
+                consume_options=True,
+                inspect_options=True,
+                episodic_binding_size=4,
+                island=IslandConfig(
+                    semantic_choice_horizon=40,
+                    semantic_choice_objects=3,
+                    semantic_choice_low_need=0.55,
+                    semantic_choice_rounds=8,
+                    semantic_choice_return_duration=6,
+                ),
+            )
+        )
+        result = audit_metabolic_drift_forecast(trainer.model, contexts=4)
+        self.assertEqual(result["audited_contexts"], 4.0)
+        for step in ("inspect", "return"):
+            for need in ("food", "water", "energy", "health"):
+                self.assertIn(f"{step}_{need}_bias", result)
+                self.assertIn(f"{step}_{need}_absolute_error", result)
+                self.assertGreaterEqual(
+                    result[f"{step}_{need}_absolute_error"], 0.0
+                )
+        # The real observation and the oracle chain are properties of the
+        # world, not of the model, so they hold for an untrained model too.
+        self.assertEqual(result["urgent_index_survives_real_observation"], 1.0)
+        self.assertEqual(result["urgent_index_survives_oracle_post_return"], 1.0)
+        self.assertAlmostEqual(result["min_urgency_margin"], 0.2, places=6)
+
+
 class HarnessArgumentTest(unittest.TestCase):
     @staticmethod
     def _parse(argv: list[str]):
