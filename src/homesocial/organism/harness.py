@@ -22,6 +22,7 @@ from homesocial.organism.train import (
     audit_label_to_self_model,
     audit_metabolic_drift_forecast,
     audit_observation_branching_planner,
+    audit_protocol_return_origin,
     audit_cross_round_label_reuse,
     audit_persistent_choice_environment,
     audit_persistent_mapping_information_rent,
@@ -138,6 +139,22 @@ def main() -> None:
             )
             _write_and_print(rows, args)
             return
+        if args.protocol_return_origin_audit_contexts > 0:
+            audit = audit_protocol_return_origin(
+                model,
+                contexts=args.protocol_return_origin_audit_contexts,
+                semantic_choice_horizon=args.semantic_choice_horizon,
+                semantic_choice_low_need=args.semantic_choice_low_need,
+                semantic_choice_return_duration=(
+                    args.semantic_choice_return_duration
+                ),
+                semantic_choice_rounds=args.semantic_choice_rounds,
+            )
+            rows.append(
+                {"condition": "protocol_return_origin", **audit}
+            )
+            _write_and_print(rows, args)
+            return
         if args.cross_round_reuse_lives > 0:
             for label, mode, writes in (
                 ("grounded", "grounded", True),
@@ -178,6 +195,9 @@ def main() -> None:
             ),
             urgent_deficit_utility=args.urgent_deficit_utility,
             protocol_branch=args.protocol_branch_planning,
+            protocol_return_from_inspect_state=(
+                args.protocol_return_from_inspect_state
+            ),
         )
         rows.append(
             {
@@ -998,12 +1018,30 @@ def _parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--protocol-return-origin-audit-contexts",
+        type=int,
+        default=0,
+        help=(
+            "Read-only paired audit: compare the sealed pre-inspection return "
+            "query with a return query chained from the learned inspect latent."
+        ),
+    )
+    parser.add_argument(
         "--protocol-branch-planning",
         action="store_true",
         help=(
             "Value inspection by writing each candidate word to the lexical "
             "bank and travelling the public padding-only protocol, instead of "
             "reconstructing a post-inspect observation with the decoder."
+        ),
+    )
+    parser.add_argument(
+        "--protocol-return-from-inspect-state",
+        action="store_true",
+        help=(
+            "Repair the protocol branch's return query by composing the "
+            "learned inspect latent into WAIT. The recurrent memory-settling "
+            "path remains observation-driven and unchanged."
         ),
     )
     parser.add_argument(
@@ -1133,6 +1171,14 @@ def _parse_args() -> argparse.Namespace:
             "--protocol-branch-planning requires "
             "--observation-branching-planning."
         )
+    if (
+        args.protocol_return_from_inspect_state
+        and not args.protocol_branch_planning
+    ):
+        parser.error(
+            "--protocol-return-from-inspect-state requires "
+            "--protocol-branch-planning."
+        )
     if args.observation_branching_planning:
         if args.planning_horizon != 2:
             parser.error(
@@ -1173,13 +1219,15 @@ def _parse_args() -> argparse.Namespace:
             args.observation_branching_audit_contexts <= 0
             and args.cross_round_reuse_lives <= 0
             and args.drift_forecast_audit_contexts <= 0
+            and args.protocol_return_origin_audit_contexts <= 0
             and not args.evaluate_loaded_checkpoint
         ):
             parser.error(
                 "--load-checkpoint requires --evaluate-loaded-checkpoint, a "
                 "positive --observation-branching-audit-contexts, a positive "
                 "--cross-round-reuse-lives, or a positive "
-                "--drift-forecast-audit-contexts."
+                "--drift-forecast-audit-contexts or "
+                "--protocol-return-origin-audit-contexts."
             )
         if (
             args.evaluate_loaded_checkpoint
@@ -1194,6 +1242,11 @@ def _parse_args() -> argparse.Namespace:
     elif args.drift_forecast_audit_contexts > 0:
         parser.error(
             "--drift-forecast-audit-contexts requires --load-checkpoint."
+        )
+    elif args.protocol_return_origin_audit_contexts > 0:
+        parser.error(
+            "--protocol-return-origin-audit-contexts requires "
+            "--load-checkpoint."
         )
     elif args.observation_branching_audit_contexts > 0:
         parser.error(

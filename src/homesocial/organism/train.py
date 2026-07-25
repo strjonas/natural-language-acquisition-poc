@@ -444,6 +444,7 @@ def planned_policy_logits(
     persistent_low_need: float = 0.55,
     urgent_deficit_utility: bool = False,
     protocol_branch: bool = False,
+    protocol_return_from_inspect_state: bool = False,
 ) -> mx.array:
     """Bias policy logits with detached predicted future-body values.
 
@@ -476,6 +477,9 @@ def planned_policy_logits(
                 persistent_low_need=persistent_low_need,
                 urgent_deficit_utility=urgent_deficit_utility,
                 protocol_branch=protocol_branch,
+                protocol_return_from_inspect_state=(
+                    protocol_return_from_inspect_state
+                ),
             )
         else:
             scores = two_step_action_scores(
@@ -907,6 +911,7 @@ def observation_branching_inspect_values(
     persistent_low_need: float = 0.55,
     urgent_deficit_utility: bool = False,
     protocol_branch: bool = False,
+    protocol_return_from_inspect_state: bool = False,
 ) -> tuple[mx.array, mx.array, mx.array, mx.array]:
     """Expected bodily value after inspect -> observation -> return -> consume.
 
@@ -923,6 +928,10 @@ def observation_branching_inspect_values(
         )
     if persistent_information_reuses < 0:
         raise ValueError("Persistent information reuses must be nonnegative.")
+    if protocol_return_from_inspect_state and not protocol_branch:
+        raise ValueError(
+            "The inspect-state return origin requires the protocol branch."
+        )
 
     batch, steps, state_size = states.shape
     vector_size = current_vectors.shape[-1]
@@ -1005,6 +1014,21 @@ def observation_branching_inspect_values(
                     target_surface,
                     branch_tokens,
                 )
+                # The sealed control asks WAIT from `post_label_state`, whose
+                # recurrent core is still the pre-inspection choice state.
+                # The treatment preserves that observation-driven state for
+                # memory settling, but composes the world model's already
+                # computed inspect latent into the return prediction. The
+                # model's two-step open-loop loss trains exactly this edge.
+                return_prediction_state = (
+                    model.write_binding_into_state(
+                        inspect_state,
+                        target_surface,
+                        branch_tokens,
+                    )
+                    if protocol_return_from_inspect_state
+                    else post_label_state
+                )
                 return_carrier = _semantic_choice_return_vector(
                     current_vectors,
                     inspect_needs,
@@ -1016,9 +1040,10 @@ def observation_branching_inspect_values(
                     branch_tokens,
                     binding_surfaces=target_surface,
                 )
+                return_prediction_state = post_label_state
                 return_carrier = label_vector
             return_state = model.transition_state(
-                post_label_state,
+                return_prediction_state,
                 wait_actions,
                 return_carrier,
             )
@@ -1099,6 +1124,7 @@ def observation_branching_action_scores(
     persistent_low_need: float = 0.55,
     urgent_deficit_utility: bool = False,
     protocol_branch: bool = False,
+    protocol_return_from_inspect_state: bool = False,
 ) -> mx.array:
     """Delayed-choice scores with exact observation branches for inspection."""
 
@@ -1125,6 +1151,9 @@ def observation_branching_action_scores(
         persistent_low_need=persistent_low_need,
         urgent_deficit_utility=urgent_deficit_utility,
         protocol_branch=protocol_branch,
+        protocol_return_from_inspect_state=(
+            protocol_return_from_inspect_state
+        ),
     )
     if persistent_information_reuses > 0:
         continuation = _persistent_self_context_value(
@@ -4347,6 +4376,7 @@ def audit_observation_branching_planner(
     persistent_information_reuses: int = 0,
     urgent_deficit_utility: bool = False,
     protocol_branch: bool = False,
+    protocol_return_from_inspect_state: bool = False,
 ) -> dict[str, float]:
     """Read-only feasibility audit for the delayed observation backup."""
 
@@ -4369,6 +4399,20 @@ def audit_observation_branching_planner(
         }
         for name in ("intact", "no_write", "collapsed")
     }
+    condition_need_totals = {
+        condition: {
+            need: {
+                "contexts": 0.0,
+                "advantage_sum": 0.0,
+                "positive_contexts": 0.0,
+            }
+            for need in ("food", "water")
+        }
+        for condition in condition_totals
+    }
+    paired_advantage_gains: list[float] = []
+    paired_sign_agreements = 0
+    write_turns_positive = 0
     entropy_sum = 0.0
     true_probability_sum = 0.0
     true_branch_correct = 0.0
@@ -4396,6 +4440,9 @@ def audit_observation_branching_planner(
                 persistent_low_need=semantic_choice_low_need,
                 urgent_deficit_utility=urgent_deficit_utility,
                 protocol_branch=protocol_branch,
+                protocol_return_from_inspect_state=(
+                    protocol_return_from_inspect_state
+                ),
             )
         )
         mx.eval(values, probabilities, choices)
@@ -4516,6 +4563,28 @@ def audit_observation_branching_planner(
                 advantage = float(np.max(values) - best_immediate)
                 totals["advantage_sum"] += advantage
                 totals["positive_contexts"] += int(advantage > 0.0)
+                need_totals = condition_need_totals[condition][choice_need]
+                need_totals["contexts"] += 1.0
+                need_totals["advantage_sum"] += advantage
+                need_totals["positive_contexts"] += int(advantage > 0.0)
+
+            intact_advantage = float(
+                np.max(outputs["intact"][0][:visible_count])
+                - best_immediate
+            )
+            no_write_advantage = float(
+                np.max(outputs["no_write"][0][:visible_count])
+                - best_immediate
+            )
+            paired_advantage_gains.append(
+                intact_advantage - no_write_advantage
+            )
+            paired_sign_agreements += int(
+                (intact_advantage > 0.0) == (no_write_advantage > 0.0)
+            )
+            write_turns_positive += int(
+                intact_advantage > 0.0 and no_write_advantage <= 0.0
+            )
 
             intact_probabilities = outputs["intact"][1][:visible_count]
             entropy_sum += float(
@@ -4545,6 +4614,9 @@ def audit_observation_branching_planner(
         "audited_contexts": float(audited_contexts),
         "urgent_deficit_utility": float(urgent_deficit_utility),
         "protocol_branch": float(protocol_branch),
+        "protocol_return_from_inspect_state": float(
+            protocol_return_from_inspect_state
+        ),
         "persistent_information_reuses": float(
             persistent_information_reuses
         ),
@@ -4580,6 +4652,22 @@ def audit_observation_branching_planner(
                 ),
             }
         )
+        for need, need_totals in condition_need_totals[condition].items():
+            need_contexts = max(1.0, need_totals["contexts"])
+            result.update(
+                {
+                    f"{condition}_{need}_contexts": (
+                        need_totals["contexts"]
+                    ),
+                    f"{condition}_{need}_mean_best_inspect_advantage": (
+                        need_totals["advantage_sum"] / need_contexts
+                    ),
+                    f"{condition}_{need}_positive_advantage_context_rate": (
+                        need_totals["positive_contexts"] / need_contexts
+                    ),
+                }
+            )
+    paired_gains = np.asarray(paired_advantage_gains, dtype=np.float64)
     result.update(
         {
             "write_causal_advantage_drop": (
@@ -4597,6 +4685,16 @@ def audit_observation_branching_planner(
             "collapsed_label_contingency_drop": (
                 result["intact_branch_contingency_rate"]
                 - result["collapsed_branch_contingency_rate"]
+            ),
+            "paired_write_advantage_gain_mean": float(paired_gains.mean()),
+            "paired_write_advantage_gain_std": float(paired_gains.std()),
+            "paired_write_advantage_gain_min": float(paired_gains.min()),
+            "paired_write_advantage_gain_max": float(paired_gains.max()),
+            "paired_advantage_sign_agreement_rate": (
+                paired_sign_agreements / max(1, audited_contexts)
+            ),
+            "write_turns_positive_context_rate": (
+                write_turns_positive / max(1, audited_contexts)
             ),
         }
     )
@@ -5406,6 +5504,209 @@ def audit_metabolic_drift_forecast(
         result[f"urgent_index_survives_{name}"] = hits / audited
     result["mean_urgency_margin"] = float(np.mean(margins))
     result["min_urgency_margin"] = float(np.min(margins))
+    return result
+
+
+def audit_protocol_return_origin(
+    model: OrganismModel,
+    *,
+    contexts: int = 300,
+    base_seed: int = 1_700_000,
+    semantic_choice_horizon: int = 40,
+    semantic_choice_low_need: float = 0.55,
+    semantic_choice_return_duration: int = 6,
+    semantic_choice_rounds: int = 8,
+) -> dict[str, float]:
+    """Compare the aliased and causally chained return-model queries.
+
+    Both conditions use the same current observation, inspect action, predicted
+    post-inspect body, candidate word, external-memory write, return carrier,
+    and learned heads. They differ only in the latent supplied to the return
+    transition: the sealed branch's pre-inspection choice state, or the
+    action-conditioned state produced by the inspect transition. Simulator
+    execution is used only to score prediction error.
+    """
+
+    if contexts <= 0:
+        raise ValueError("contexts must be positive.")
+    if not model.has_episodic_bindings or model.object_option_types != 2:
+        raise ValueError(
+            "The return-origin audit requires episodic consume/inspect options."
+        )
+
+    config = IslandConfig(
+        semantic_choice_trial=True,
+        semantic_choice_horizon=semantic_choice_horizon,
+        semantic_choice_objects=3,
+        semantic_choice_low_need=semantic_choice_low_need,
+        semantic_choice_rounds=semantic_choice_rounds,
+        semantic_choice_return_duration=semantic_choice_return_duration,
+        language_mode="grounded",
+        max_visible_slots=model.visible_slots or 8,
+    )
+    wait_index = ACTIONS.index(Action.WAIT)
+    candidates = semantic_choice_label_candidates()
+    predictions: dict[str, list[np.ndarray]] = {
+        "aliased": [],
+        "chained": [],
+    }
+    realized: list[np.ndarray] = []
+    urgent_survival = {"aliased": 0, "chained": 0}
+    paired_chained_improvements = 0
+    paired_ties = 0
+    audited = 0
+
+    for context in range(contexts):
+        seed = base_seed + context
+        world = IslandWorld(config, seed=seed)
+        packet = world.reset(seed)
+        if len(packet.visible) != 3:
+            continue
+        demanded = str(world.grid.choice_need)
+        vector = mx.array(packet.vector()[None, None, :])
+        tokens = mx.array(
+            np.asarray(packet.tokens, dtype=np.int32)[None, None, :]
+        )
+        states, _ = model.core_states(vector, tokens)
+        current = np.asarray(vector[0, 0, :4], dtype=np.float64)
+        inspect_action = object_option_action_index(
+            "inspect",
+            0,
+            consume_options=True,
+            inspect_options=True,
+            visible_slots=config.max_visible_slots,
+        )
+        inspect_actions = mx.array([[inspect_action]], dtype=mx.int32)
+        inspect_state = model.transition_state(
+            states,
+            inspect_actions,
+            vector,
+        )
+        _, inspect_delta, _, _ = model.decode_transition(inspect_state)
+        inspect_needs = mx.clip(vector[..., :4] + inspect_delta, 0.0, 1.0)
+        return_carrier = _semantic_choice_return_vector(
+            vector,
+            inspect_needs,
+        )
+        slots = model._visible_object_features(vector)
+        target_surface = slots[..., 0, 3:]
+        branch_tokens = mx.broadcast_to(
+            candidates[0][None, None, :],
+            (1, 1, model.tokens_per_utterance),
+        )
+        aliased_state = model.write_binding_into_state(
+            states,
+            target_surface,
+            branch_tokens,
+        )
+        chained_state = model.write_binding_into_state(
+            inspect_state,
+            target_surface,
+            branch_tokens,
+        )
+
+        condition_deltas: dict[str, np.ndarray] = {}
+        for condition, origin in (
+            ("aliased", aliased_state),
+            ("chained", chained_state),
+        ):
+            return_state = model.transition_state(
+                origin,
+                mx.array([[wait_index]], dtype=mx.int32),
+                return_carrier,
+            )
+            _, return_delta, _, _ = model.decode_transition(return_state)
+            mx.eval(return_delta)
+            condition_deltas[condition] = np.asarray(
+                return_delta[0, 0],
+                dtype=np.float64,
+            )
+            predictions[condition].append(condition_deltas[condition])
+
+        probe = IslandWorld(config, seed=seed)
+        probe_packet = probe.reset(seed)
+        probe_packet, _, _, _, _ = execute_agent_action(
+            probe,
+            probe_packet,
+            inspect_action,
+            consume_options=True,
+            inspect_options=True,
+        )
+        post_inspect = np.asarray(probe_packet.vector()[:4], dtype=np.float64)
+        probe_packet, _, _, _, _ = execute_agent_action(
+            probe,
+            probe_packet,
+            wait_index,
+            consume_options=True,
+            inspect_options=True,
+        )
+        true_return = (
+            np.asarray(probe_packet.vector()[:4], dtype=np.float64)
+            - post_inspect
+        )
+        realized.append(true_return)
+
+        model_inspect = np.asarray(inspect_delta[0, 0], dtype=np.float64)
+        for condition, return_delta in condition_deltas.items():
+            post_return = np.clip(
+                current + model_inspect + return_delta,
+                0.0,
+                1.0,
+            )
+            urgent_survival[condition] += int(
+                NEED_NAMES[int(np.argmin(post_return))] == demanded
+            )
+        aliased_error = float(
+            np.abs(condition_deltas["aliased"] - true_return).mean()
+        )
+        chained_error = float(
+            np.abs(condition_deltas["chained"] - true_return).mean()
+        )
+        paired_chained_improvements += int(chained_error < aliased_error)
+        paired_ties += int(chained_error == aliased_error)
+        audited += 1
+
+    if audited == 0:
+        raise RuntimeError("The return-origin audit found no usable context.")
+
+    true = np.stack(realized)
+    result: dict[str, float] = {"audited_contexts": float(audited)}
+    for condition in ("aliased", "chained"):
+        predicted = np.stack(predictions[condition])
+        worst_absolute_error = 0.0
+        for index, need in enumerate(NEED_NAMES):
+            bias = float((predicted[:, index] - true[:, index]).mean())
+            absolute_error = float(
+                np.abs(predicted[:, index] - true[:, index]).mean()
+            )
+            result[f"{condition}_return_{need}_predicted"] = float(
+                predicted[:, index].mean()
+            )
+            result[f"{condition}_return_{need}_realized"] = float(
+                true[:, index].mean()
+            )
+            result[f"{condition}_return_{need}_bias"] = bias
+            result[f"{condition}_return_{need}_absolute_error"] = (
+                absolute_error
+            )
+            worst_absolute_error = max(
+                worst_absolute_error,
+                absolute_error,
+            )
+        result[f"{condition}_worst_return_absolute_error"] = (
+            worst_absolute_error
+        )
+        result[f"{condition}_urgent_index_survival"] = (
+            urgent_survival[condition] / audited
+        )
+    result["chained_lower_error_context_rate"] = (
+        paired_chained_improvements / audited
+    )
+    result["paired_equal_error_context_rate"] = paired_ties / audited
+    result["worst_return_absolute_error_drop"] = (
+        result["aliased_worst_return_absolute_error"]
+        - result["chained_worst_return_absolute_error"]
+    )
     return result
 
 

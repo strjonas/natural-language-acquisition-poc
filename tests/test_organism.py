@@ -20,6 +20,7 @@ if mx is not None:
         audit_label_referent_binding,
         audit_label_to_self_model,
         audit_observation_branching_planner,
+        audit_protocol_return_origin,
         audit_cross_round_label_reuse,
         audit_persistent_choice_environment,
         audit_persistent_mapping_information_rent,
@@ -552,14 +553,44 @@ class EpisodicBindingMemoryTest(unittest.TestCase):
                 protocol_branch=True,
             )
         )
-        mx.eval(reconstructive, protocol, probabilities, choices)
+        chained, _, _, _ = observation_branching_inspect_values(
+            model,
+            states,
+            vector,
+            persistent_information_reuses=2,
+            protocol_branch=True,
+            protocol_return_from_inspect_state=True,
+        )
+        mx.eval(reconstructive, protocol, chained, probabilities, choices)
         self.assertEqual(protocol.shape, reconstructive.shape)
+        self.assertEqual(chained.shape, protocol.shape)
         self.assertTrue(np.all(np.isfinite(np.asarray(protocol))))
         self.assertFalse(
             np.allclose(
                 np.asarray(protocol), np.asarray(reconstructive), atol=1e-6
             )
         )
+        self.assertFalse(
+            np.allclose(
+                np.asarray(chained), np.asarray(protocol), atol=1e-6
+            )
+        )
+
+    def test_inspect_state_return_origin_requires_protocol_branch(self):
+        trainer = self._trainer()
+        model = trainer.model
+        vector = mx.array(trainer.packet.vector()[None, None, :])
+        tokens = mx.array(
+            np.asarray(trainer.packet.tokens, dtype=np.int32)[None, None, :]
+        )
+        states, _ = model.core_states(vector, tokens)
+        with self.assertRaises(ValueError):
+            observation_branching_inspect_values(
+                model,
+                states,
+                vector,
+                protocol_return_from_inspect_state=True,
+            )
 
     def test_urgent_deficit_utility_reads_the_lowest_observed_need(self):
         needs = mx.array([[[[0.9, 0.4, 0.7, 0.8], [0.9, 0.4, 0.7, 0.8]]]])
@@ -1365,6 +1396,36 @@ class TrainingSmokeTest(unittest.TestCase):
         self.assertIn("intact_mean_best_inspect_advantage", stats)
         self.assertIn("write_causal_advantage_drop", stats)
         self.assertIn("collapsed_label_contingency_drop", stats)
+        for value in stats.values():
+            self.assertTrue(math.isfinite(value))
+
+    def test_protocol_return_origin_audit_is_paired_and_finite(self):
+        from dataclasses import replace as dc_replace
+
+        trainer = OrganismTrainer(
+            dc_replace(
+                self._config(),
+                semantic_choice_childhood_steps=1,
+                consume_options=True,
+                inspect_options=True,
+                episodic_binding_size=4,
+                island=IslandConfig(
+                    semantic_choice_horizon=40,
+                    semantic_choice_objects=3,
+                    semantic_choice_low_need=0.55,
+                    semantic_choice_return_duration=6,
+                ),
+            )
+        )
+        stats = audit_protocol_return_origin(
+            trainer.model,
+            contexts=2,
+            base_seed=1_991_000,
+        )
+        self.assertEqual(stats["audited_contexts"], 2.0)
+        self.assertIn("aliased_worst_return_absolute_error", stats)
+        self.assertIn("chained_worst_return_absolute_error", stats)
+        self.assertIn("chained_lower_error_context_rate", stats)
         for value in stats.values():
             self.assertTrue(math.isfinite(value))
 
