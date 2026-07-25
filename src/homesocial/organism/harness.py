@@ -254,6 +254,8 @@ def main() -> None:
             run_label += f"_replay{args.replay_capacity}x{args.replay_updates}"
         if args.bodily_drift_loss_weight > 0.0:
             run_label += f"_drift{args.bodily_drift_loss_weight:g}"
+        if args.split_drift_head:
+            run_label += "split"
         if model_horizon != args.planning_horizon:
             run_label += f"_modelh{model_horizon}"
         config = OrganismConfig(
@@ -294,6 +296,7 @@ def main() -> None:
             multi_step_model_horizon=model_horizon,
             multi_step_model_weight=args.multi_step_model_weight,
             bodily_drift_loss_weight=args.bodily_drift_loss_weight,
+            split_drift_head=args.split_drift_head,
             world_model_replay_capacity=args.replay_capacity,
             world_model_replay_updates=args.replay_updates,
             seed=args.seed,
@@ -743,6 +746,8 @@ def _write_and_print(rows: list[dict[str, object]], args: argparse.Namespace) ->
         suffix += f"_replay{args.replay_capacity}x{args.replay_updates}"
     if args.bodily_drift_loss_weight > 0.0:
         suffix += f"_drift{args.bodily_drift_loss_weight:g}"
+    if args.split_drift_head:
+        suffix += "split"
     model_horizon = args.model_horizon or args.planning_horizon
     if model_horizon != args.planning_horizon:
         suffix += f"_modelh{model_horizon}"
@@ -1016,6 +1021,14 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--model-horizon", type=int, choices=[1, 2], default=None)
     parser.add_argument("--multi-step-model-weight", type=float, default=0.0)
+    parser.add_argument(
+        "--split-drift-head",
+        action="store_true",
+        help=(
+            "Give slow metabolism its own range-limited output path so it "
+            "cannot overwrite the binding-conditioned consumption jump."
+        ),
+    )
     parser.add_argument(
         "--bodily-drift-loss-weight",
         type=float,

@@ -13,6 +13,16 @@ from __future__ import annotations
 import mlx.core as mx
 import mlx.nn as nn
 
+# Metabolic drift over the longest option in the implemented task tops out
+# near 0.14, while consumption events begin near 0.225; the delta histogram is
+# empty in between. The cut is a gap in the data, not a tuned threshold. It
+# separates the two regimes in the loss and bounds the split drift path here.
+DRIFT_REGIME_THRESHOLD = 0.175
+# The per-tick metabolic scale of the world: food 0.010, water 0.014, energy
+# 0.015 while walking. Dividing by its square measures the drift regime as a
+# relative error instead of an absolute one.
+DRIFT_ERROR_SCALE = 0.02
+
 
 class OrganismModel(nn.Module):
     def __init__(
@@ -31,6 +41,7 @@ class OrganismModel(nn.Module):
         object_option_types: int | None = None,
         episodic_binding_size: int = 0,
         episodic_binding_writes: bool = True,
+        split_drift_head: bool = False,
         visible_radius: int = 2,
         pad_token_id: int = 0,
         referential_action_indices: tuple[int, ...] = (3, 4),
@@ -83,6 +94,7 @@ class OrganismModel(nn.Module):
             raise ValueError("visible_radius must be positive.")
         self.episodic_binding_size = episodic_binding_size
         self.episodic_binding_writes = episodic_binding_writes
+        self.has_split_drift_head = split_drift_head
         self.surface_count = max(0, self.object_feature_size - 3)
         self.visible_radius = visible_radius
         self.pad_token_id = pad_token_id
@@ -152,6 +164,13 @@ class OrganismModel(nn.Module):
         self.transition_norm = nn.LayerNorm(hidden_size)
         self.next_vector = nn.Linear(hidden_size, vector_size)
         self.next_needs = nn.Linear(hidden_size, 4)
+        if self.has_split_drift_head:
+            # A second, deliberately range-limited path for slow metabolism.
+            # It can express any drift the world produces and cannot express a
+            # consumption jump, so the dense metabolic objective has somewhere
+            # to live that is structurally incapable of overwriting the sparse
+            # binding-conditioned one.
+            self.drift_needs = nn.Linear(hidden_size, 4)
         self.reward_head = nn.Linear(hidden_size, 1)
         self.next_tokens = nn.Linear(hidden_size, tokens_per_utterance * vocab_size)
 
@@ -643,6 +662,13 @@ class OrganismModel(nn.Module):
         # the current sensed body on an exact identity path instead of asking
         # the model to reconstruct its absolute state from a latent vector.
         need_deltas = 0.5 * mx.tanh(self.next_needs(h))
+        if self.has_split_drift_head:
+            # The drift path is bounded by the measured gap between metabolism
+            # and consumption, so the two regimes cannot contend for the same
+            # saturating output range.
+            need_deltas = need_deltas + DRIFT_REGIME_THRESHOLD * mx.tanh(
+                self.drift_needs(h)
+            )
         rewards = self.reward_head(h).squeeze(-1)
         token_logits = self.next_tokens(h).reshape(
             *transition_states.shape[:-1],

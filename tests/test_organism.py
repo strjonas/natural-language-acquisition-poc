@@ -2188,6 +2188,53 @@ class BodilyDriftLossTest(unittest.TestCase):
 
 
 @unittest.skipIf(mx is None, "mlx is required")
+class SplitDriftHeadTest(unittest.TestCase):
+    """The drift path is range-limited and absent unless asked for."""
+
+    def _model(self, *, split):
+        return OrganismModel(
+            vector_size=10,
+            vocab_size=len(TOKEN_TO_ID),
+            tokens_per_utterance=4,
+            action_size=len(ACTIONS),
+            hidden_size=16,
+            split_drift_head=split,
+        )
+
+    def test_default_builds_no_extra_layer(self):
+        model = self._model(split=False)
+        self.assertFalse(model.has_split_drift_head)
+        self.assertNotIn("drift_needs", model.parameters())
+
+    def test_split_builds_the_extra_layer(self):
+        model = self._model(split=True)
+        self.assertTrue(model.has_split_drift_head)
+        self.assertIn("drift_needs", model.parameters())
+
+    def test_drift_path_cannot_express_a_consumption_jump(self):
+        """Saturating both paths must stay inside 0.5 + the drift bound."""
+
+        model = self._model(split=True)
+        states = mx.random.normal((1, 3, 16)) * 50.0
+        _, need_deltas, _, _ = model.decode_transition(states)
+        mx.eval(need_deltas)
+        bound = 0.5 + DRIFT_REGIME_THRESHOLD
+        self.assertLessEqual(float(mx.max(mx.abs(need_deltas))), bound + 1e-6)
+
+    def test_drift_path_alone_is_bounded_by_the_regime_threshold(self):
+        model = self._model(split=True)
+        # Zero the event path so only the drift path can contribute.
+        model.next_needs.weight = mx.zeros_like(model.next_needs.weight)
+        model.next_needs.bias = mx.zeros_like(model.next_needs.bias)
+        states = mx.random.normal((1, 8, 16)) * 50.0
+        _, need_deltas, _, _ = model.decode_transition(states)
+        mx.eval(need_deltas)
+        self.assertLessEqual(
+            float(mx.max(mx.abs(need_deltas))), DRIFT_REGIME_THRESHOLD + 1e-6
+        )
+
+
+@unittest.skipIf(mx is None, "mlx is required")
 class MetabolicDriftAuditTest(unittest.TestCase):
     def test_audit_reports_both_steps_and_the_oracle_bound(self):
         from dataclasses import replace as dc_replace

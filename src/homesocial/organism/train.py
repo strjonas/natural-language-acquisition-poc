@@ -41,7 +41,11 @@ from homesocial.island.world import (
     IslandWorld,
     ObsPacket,
 )
-from homesocial.organism.model import OrganismModel
+from homesocial.organism.model import (
+    DRIFT_ERROR_SCALE,
+    DRIFT_REGIME_THRESHOLD,
+    OrganismModel,
+)
 
 ACTIONS = list(Action)
 OBJECT_OPTION_ORDER = ("consume", "inspect")
@@ -1177,16 +1181,6 @@ def observation_branching_action_scores(
     )
 
 
-# Metabolic drift over the longest option in the implemented task tops out
-# near 0.14, while consumption events begin near 0.225; the delta histogram is
-# empty in between. The cut is a gap in the data, not a tuned threshold.
-DRIFT_REGIME_THRESHOLD = 0.175
-# The per-tick metabolic scale of the world: food 0.010, water 0.014, energy
-# 0.015 while walking. Dividing by its square measures the drift regime as a
-# relative error instead of an absolute one.
-DRIFT_ERROR_SCALE = 0.02
-
-
 def bodily_delta_prediction_loss(
     predicted_deltas: mx.array,
     target_deltas: mx.array,
@@ -1252,6 +1246,10 @@ class OrganismConfig:
     # Supervises the slow-metabolism regime the change boost starves. Zero is
     # the sealed default and reproduces every prior artifact exactly.
     bodily_drift_loss_weight: float = 0.0
+    # Gives that regime its own range-limited output path, so the dense
+    # metabolic objective cannot overwrite the sparse binding-conditioned one
+    # through a shared saturating head. False is the sealed default.
+    split_drift_head: bool = False
     reward_prediction_weight: float = 0.2
     token_prediction_weight: float = 0.5
     nonpad_token_weight: float = 5.0
@@ -1458,6 +1456,7 @@ def build_model(config: OrganismConfig, world: IslandWorld) -> OrganismModel:
         ),
         episodic_binding_size=config.episodic_binding_size,
         episodic_binding_writes=config.episodic_binding_writes,
+        split_drift_head=config.split_drift_head,
         visible_radius=world.config.visible_radius,
         pad_token_id=TOKEN_TO_ID[PAD_TOKEN],
         referential_action_indices=(
