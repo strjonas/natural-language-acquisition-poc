@@ -6877,6 +6877,208 @@ def audit_real_vs_explicit_event_transfer(
     return result
 
 
+def audit_binding_consequence_geometry(
+    model: OrganismModel,
+    *,
+    contexts: int = 300,
+    base_seed: int = 2_041_000,
+    semantic_choice_horizon: int = 40,
+    semantic_choice_low_need: float = 0.55,
+    semantic_choice_return_duration: int = 6,
+    semantic_choice_rounds: int = 8,
+) -> dict[str, float]:
+    """Isolate lexical-value geometry from its learned consequence map.
+
+    Every downstream comparison fixes the public observation, recurrent core,
+    selected surface, and consume action. Only the external memory value is
+    replaced by one of the three controlled childhood label packets. No
+    simulator outcome or hidden object kind is read.
+    """
+
+    if contexts <= 0:
+        raise ValueError("Binding geometry requires at least one context.")
+    if not model.has_episodic_bindings:
+        raise ValueError("Binding geometry requires episodic bindings.")
+    candidates = semantic_choice_label_candidates()
+    encoded = model._encode_tokens(candidates[:, None, :])[:, 0, :]
+    lexical_values = mx.tanh(model.binding_value(encoded))
+    mx.eval(lexical_values)
+    lexical = np.asarray(lexical_values, dtype=np.float64)
+    kinds = SEMANTIC_CHOICE_LABEL_KINDS
+
+    result: dict[str, float] = {"contexts": float(contexts)}
+    for index, kind in enumerate(kinds):
+        result[f"lexical_{kind}_norm"] = float(np.linalg.norm(lexical[index]))
+    distances: dict[tuple[str, str], float] = {}
+    cosines: list[float] = []
+    for left in range(len(kinds)):
+        for right in range(left + 1, len(kinds)):
+            left_kind, right_kind = kinds[left], kinds[right]
+            distance = float(np.linalg.norm(lexical[left] - lexical[right]))
+            denominator = max(
+                float(np.linalg.norm(lexical[left]) * np.linalg.norm(lexical[right])),
+                1e-12,
+            )
+            cosine = float(lexical[left] @ lexical[right] / denominator)
+            distances[(left_kind, right_kind)] = distance
+            cosines.append(cosine)
+            result[f"lexical_distance_{left_kind}_{right_kind}"] = distance
+            result[f"lexical_cosine_{left_kind}_{right_kind}"] = cosine
+    distance_values = list(distances.values())
+    result["lexical_min_to_max_distance_ratio"] = min(distance_values) / max(
+        max(distance_values), 1e-12
+    )
+    result["lexical_max_cross_kind_cosine"] = max(cosines)
+    lexical_singular = np.linalg.svd(
+        lexical - lexical.mean(axis=0, keepdims=True),
+        compute_uv=False,
+    )
+    for index, value in enumerate(lexical_singular):
+        result[f"lexical_centered_singular_{index + 1}"] = float(value)
+
+    transition_binding_columns = np.asarray(
+        model.transition.weight[:, -(model.episodic_binding_size + 1) :],
+        dtype=np.float64,
+    )
+    result["transition_binding_column_frobenius_norm"] = float(
+        np.linalg.norm(transition_binding_columns)
+    )
+    transition_singular = np.linalg.svd(
+        transition_binding_columns, compute_uv=False
+    )
+    for index, value in enumerate(transition_singular):
+        result[f"transition_binding_singular_{index + 1}"] = float(value)
+
+    config = IslandConfig(
+        language_mode="grounded",
+        semantic_choice_trial=True,
+        semantic_choice_horizon=semantic_choice_horizon,
+        semantic_choice_objects=3,
+        semantic_choice_low_need=semantic_choice_low_need,
+        semantic_choice_rounds=semantic_choice_rounds,
+        semantic_choice_return_duration=semantic_choice_return_duration,
+        max_visible_slots=model.visible_slots,
+    )
+    matrices: dict[str, list[np.ndarray]] = {
+        "immediate": [],
+        "settled": [],
+    }
+    for context in range(contexts):
+        seed = base_seed + context
+        world = IslandWorld(config, seed=seed)
+        packet = world.reset(seed)
+        if len(packet.visible) != 3:
+            raise RuntimeError("Geometry audit requires three visible objects.")
+        vector = mx.array(packet.vector()[None, None, :])
+        tokens = mx.array(
+            np.asarray(packet.tokens, dtype=np.int32)[None, None, :]
+        )
+        states, _ = model.core_states(vector, tokens)
+        slots = model._visible_object_features(vector)
+        for slot in range(3):
+            surface = mx.broadcast_to(
+                slots[..., slot, 3:],
+                (len(kinds), 1, model.surface_count),
+            )
+            expanded_states = mx.broadcast_to(
+                states,
+                (len(kinds), 1, model.state_size),
+            )
+            label_tokens = candidates[:, None, :]
+            expanded_vector = mx.broadcast_to(
+                vector,
+                (len(kinds), 1, model.vector_size),
+            )
+            consume_action = object_option_action_index(
+                "consume",
+                slot,
+                consume_options=True,
+                inspect_options=True,
+                visible_slots=model.visible_slots,
+            )
+            actions = mx.full(
+                (len(kinds), 1), consume_action, dtype=mx.int32
+            )
+            written = model.write_binding_into_state(
+                expanded_states,
+                surface,
+                label_tokens,
+            )
+            _, immediate_delta, _, _ = model.predict_consequences(
+                written,
+                actions,
+                expanded_vector,
+            )
+            settled = _settled_context_state(
+                model,
+                written,
+                expanded_vector,
+                steps=PROTOCOL_SETTLING_OBSERVATIONS,
+            )
+            _, settled_delta, _, _ = model.predict_consequences(
+                settled,
+                actions,
+                expanded_vector,
+            )
+            mx.eval(immediate_delta, settled_delta)
+            matrices["immediate"].append(
+                np.asarray(immediate_delta[:, 0, :], dtype=np.float64)
+            )
+            matrices["settled"].append(
+                np.asarray(settled_delta[:, 0, :], dtype=np.float64)
+            )
+
+    need_names = ("food", "water", "energy", "safety")
+    for stage, stage_matrices in matrices.items():
+        stacked = np.stack(stage_matrices)
+        mean_matrix = stacked.mean(axis=0)
+        centered = mean_matrix - mean_matrix.mean(axis=0, keepdims=True)
+        singular = np.linalg.svd(centered, compute_uv=False)
+        result[f"{stage}_centered_consequence_singular_1"] = float(singular[0])
+        result[f"{stage}_centered_consequence_singular_2"] = float(singular[1])
+        result[f"{stage}_consequence_second_to_first_ratio"] = float(
+            singular[1] / max(singular[0], 1e-12)
+        )
+        for label_index, label in enumerate(kinds):
+            for need_index, need in enumerate(need_names):
+                result[f"{stage}_{label}_label_{need}_delta"] = float(
+                    mean_matrix[label_index, need_index]
+                )
+        for named_index, named_kind in enumerate(("food", "water")):
+            need_index = named_index
+            other_labels = [
+                index for index in range(len(kinds)) if index != named_index
+            ]
+            per_context_contrast = (
+                stacked[:, named_index, need_index]
+                - stacked[:, other_labels, need_index].mean(axis=1)
+            )
+            mean_distance = float(
+                np.mean(
+                    [
+                        np.linalg.norm(
+                            lexical[named_index] - lexical[other]
+                        )
+                        for other in other_labels
+                    ]
+                )
+            )
+            result[f"{stage}_{named_kind}_named_need_contrast"] = float(
+                per_context_contrast.mean()
+            )
+            result[
+                f"{stage}_{named_kind}_contrast_per_lexical_distance"
+            ] = float(per_context_contrast.mean() / max(mean_distance, 1e-12))
+            result[f"{stage}_{named_kind}_intended_label_rate"] = float(
+                np.mean(
+                    np.argmax(stacked[:, :, need_index], axis=1)
+                    == named_index
+                )
+            )
+    result["audited_slot_contexts"] = float(len(matrices["settled"]))
+    return result
+
+
 def audit_persistent_choice_environment(
     *,
     lives: int = 2_500,

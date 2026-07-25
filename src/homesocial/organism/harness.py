@@ -18,6 +18,7 @@ from homesocial.island.world import IslandConfig
 from homesocial.organism.model import OrganismModel
 from homesocial.organism.train import (
     OrganismConfig,
+    audit_binding_consequence_geometry,
     audit_label_referent_binding,
     audit_label_to_self_model,
     audit_metabolic_drift_forecast,
@@ -186,6 +187,22 @@ def main() -> None:
             )
             rows.append(
                 {"condition": "real_vs_explicit_event_transfer", **audit}
+            )
+            _write_and_print(rows, args)
+            return
+        if args.binding_consequence_geometry_contexts > 0:
+            audit = audit_binding_consequence_geometry(
+                model,
+                contexts=args.binding_consequence_geometry_contexts,
+                semantic_choice_horizon=args.semantic_choice_horizon,
+                semantic_choice_low_need=args.semantic_choice_low_need,
+                semantic_choice_return_duration=(
+                    args.semantic_choice_return_duration
+                ),
+                semantic_choice_rounds=args.semantic_choice_rounds,
+            )
+            rows.append(
+                {"condition": "binding_consequence_geometry", **audit}
             )
             _write_and_print(rows, args)
             return
@@ -1100,6 +1117,15 @@ def _parse_args() -> argparse.Namespace:
         help=(
             "Read-only paired audit: compare terminal value after real label "
             "acquisition and an explicit matched lexical write."
+        ),
+    )
+    parser.add_argument(
+        "--binding-consequence-geometry-contexts",
+        type=int,
+        default=0,
+        help=(
+            "Read-only audit: separate controlled lexical-value geometry from "
+            "its fixed-core, fixed-action bodily consequence map."
         ),
     )
     parser.add_argument(

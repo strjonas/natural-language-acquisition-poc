@@ -17,6 +17,7 @@ if mx is not None:
         ACTIONS,
         OrganismConfig,
         OrganismTrainer,
+        audit_binding_consequence_geometry,
         audit_label_referent_binding,
         audit_label_to_self_model,
         audit_observation_branching_planner,
@@ -1142,6 +1143,34 @@ class TrainingSmokeTest(unittest.TestCase):
         self.assertIn("online", report)
         self.assertIn("final_replay", report)
         self.assertIn("gradient_samples", report)
+
+    def test_binding_consequence_geometry_is_finite_and_slot_matched(self):
+        from dataclasses import replace as dc_replace
+
+        trainer = OrganismTrainer(
+            dc_replace(
+                self._config(),
+                consume_options=True,
+                inspect_options=True,
+                episodic_binding_size=8,
+                island=IslandConfig(
+                    semantic_choice_horizon=40,
+                    semantic_choice_objects=3,
+                    semantic_choice_return_duration=6,
+                    semantic_choice_rounds=2,
+                ),
+            )
+        )
+        audit = audit_binding_consequence_geometry(
+            trainer.model,
+            contexts=2,
+            semantic_choice_rounds=2,
+        )
+        self.assertEqual(audit["audited_slot_contexts"], 6.0)
+        self.assertIn("lexical_min_to_max_distance_ratio", audit)
+        self.assertIn("settled_water_intended_label_rate", audit)
+        for value in audit.values():
+            self.assertTrue(math.isfinite(value))
 
     def test_evaluation_reports_stats(self):
         trainer = OrganismTrainer(self._config())
