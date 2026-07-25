@@ -2974,6 +2974,127 @@ class OrganismTrainer:
             event = event + config.multi_step_model_weight * multi_event
         return base, event
 
+    def _bound_event_need_objective_for_gradient(
+        self,
+        active_model: OrganismModel,
+        segment: _Segment,
+        hidden: mx.array | np.ndarray | None,
+        need_index: int,
+    ) -> mx.array:
+        """One constituent of the exact bound-event training objective."""
+
+        if need_index not in (0, 1):
+            raise ValueError("Cross-need audit supports food or water only.")
+        config = self.config
+        vectors = mx.array(np.stack(segment.vectors)[None, ...])
+        tokens = mx.array(
+            np.asarray(segment.tokens, dtype=np.int32)[None, ...]
+        )
+        actions = mx.array(np.asarray(segment.actions, dtype=np.int32))
+        next_needs = mx.array(
+            np.asarray(segment.next_needs, dtype=np.float32)
+        )
+        next_tokens = mx.array(
+            np.asarray(segment.next_tokens, dtype=np.int32)
+        )
+        initial = mx.array(hidden) if isinstance(hidden, np.ndarray) else hidden
+        states, _ = active_model.core_states(vectors, tokens, initial)
+        _, one_step_delta, _, _ = active_model.predict_consequences(
+            states, actions[None, :], vectors
+        )
+        target_delta = next_needs - vectors[0, :, :4]
+
+        def need_term(
+            predicted: mx.array,
+            target: mx.array,
+            bound: mx.array,
+            valid: mx.array | None = None,
+        ) -> mx.array:
+            mask = (
+                mx.abs(target[:, need_index]) > DRIFT_REGIME_THRESHOLD
+            ).astype(predicted.dtype)
+            mask = mask * bound.astype(predicted.dtype)
+            if valid is not None:
+                mask = mask * valid.astype(predicted.dtype)
+            squared_error = (
+                predicted[:, need_index] - target[:, need_index]
+            ) ** 2
+            return (
+                config.bodily_bound_consumption_event_loss_weight
+                * (squared_error * mask).sum()
+                / mx.maximum(mask.sum(), mx.array(1e-8))
+                / (EVENT_ERROR_SCALE**2)
+            )
+
+        objective = need_term(
+            one_step_delta[0],
+            target_delta,
+            bound_consumption_action_mask(
+                active_model,
+                states,
+                actions[None, :],
+                vectors,
+                consume_options=config.consume_options,
+                inspect_options=config.inspect_options,
+            )[0],
+        )
+        horizon = config.multi_step_model_horizon
+        if (
+            horizon <= 1
+            or config.multi_step_model_weight <= 0.0
+            or actions.shape[0] < horizon
+        ):
+            return objective
+
+        usable = actions.shape[0] - horizon + 1
+        imagined_state = states[:, :usable, :]
+        imagined_vector = vectors[:, :usable, :]
+        start_needs = imagined_vector[0, :, :4]
+        predicted_needs = start_needs
+        for offset in range(horizon):
+            imagined_state = active_model.transition_state(
+                imagined_state,
+                actions[offset : offset + usable][None, :],
+                imagined_vector,
+            )
+            raw_vector, need_delta, _, _ = active_model.decode_transition(
+                imagined_state
+            )
+            predicted_needs = mx.clip(
+                imagined_vector[:, :, :4] + need_delta,
+                0.0,
+                1.0,
+            )[0]
+            imagined_vector = mx.concatenate(
+                [predicted_needs[None, :, :], raw_vector[:, :, 4:]],
+                axis=-1,
+            )
+        target_horizon = (
+            next_needs[horizon - 1 : horizon - 1 + usable] - start_needs
+        )
+        predicted_horizon = predicted_needs - start_needs
+        valid = mx.ones((usable,), dtype=mx.bool_)
+        pad_id = TOKEN_TO_ID[PAD_TOKEN]
+        for offset in range(horizon - 1):
+            valid = valid & mx.all(
+                next_tokens[offset : offset + usable] == pad_id,
+                axis=-1,
+            )
+        multi_step = need_term(
+            predicted_horizon,
+            target_horizon,
+            bound_consumption_action_mask(
+                active_model,
+                states[:, horizon - 1 : horizon - 1 + usable, :],
+                actions[horizon - 1 : horizon - 1 + usable][None, :],
+                vectors[:, horizon - 1 : horizon - 1 + usable, :],
+                consume_options=config.consume_options,
+                inspect_options=config.inspect_options,
+            )[0],
+            valid,
+        )
+        return objective + config.multi_step_model_weight * multi_step
+
     @staticmethod
     def _gradient_norms(grads: object) -> tuple[float, float]:
         from mlx.utils import tree_flatten
@@ -7376,6 +7497,7 @@ def _paired_gradient_geometry(
     right_grads: object,
     *,
     lexical_only: bool,
+    parameter_prefixes: tuple[str, ...] | None = None,
 ) -> tuple[float, float, float, float]:
     """Return cosine, left norm, right norm, and right/left ratio."""
 
@@ -7384,6 +7506,8 @@ def _paired_gradient_geometry(
     left = dict(tree_flatten(left_grads))
     right = dict(tree_flatten(right_grads))
     names = sorted(set(left) & set(right))
+    if lexical_only and parameter_prefixes is not None:
+        raise ValueError("Choose lexical_only or explicit parameter prefixes.")
     if lexical_only:
         names = [
             name
@@ -7392,6 +7516,8 @@ def _paired_gradient_geometry(
                 ("token_embedding.", "binding_value.", "binding_read.")
             )
         ]
+    elif parameter_prefixes is not None:
+        names = [name for name in names if name.startswith(parameter_prefixes)]
     dot_terms = [mx.sum(left[name] * right[name]) for name in names]
     left_terms = [mx.sum(left[name] * left[name]) for name in names]
     right_terms = [mx.sum(right[name] * right[name]) for name in names]
@@ -7408,6 +7534,139 @@ def _paired_gradient_geometry(
         right_value,
         right_value / max(left_value, 1e-12),
     )
+
+
+def audit_cross_need_gradient_geometry(
+    model: OrganismModel,
+    config: OrganismConfig,
+    *,
+    segments: int = 128,
+    max_ticks: int = 20_000,
+) -> dict[str, object]:
+    """Compare food/water bound gradients on the same embodied segments."""
+
+    if segments <= 0 or max_ticks <= 0:
+        raise ValueError("Cross-need geometry needs positive segments and ticks.")
+    if config.bodily_bound_consumption_event_loss_weight <= 0.0:
+        raise ValueError("Cross-need geometry requires the bound-event loss.")
+    audit_config = replace(
+        config,
+        total_steps=max_ticks,
+        checkpoint=None,
+        stats_csv=None,
+        bodily_event_audit_json=None,
+    )
+    trainer = OrganismTrainer(audit_config)
+    trainer.model = model
+    samples: list[dict[str, float]] = []
+    shared_prefixes = (
+        "token_embedding.",
+        "token_rnn.",
+        "binding_value.",
+        "binding_read.",
+        "input.",
+        "input_norm.",
+        "core.",
+        "post.",
+        "post_norm.",
+        "transition.",
+        "transition_norm.",
+    )
+    while trainer.global_steps < max_ticks and len(samples) < segments:
+        segment, hidden, _ = trainer.collect_segment()
+        if not segment:
+            continue
+        hidden_copy: np.ndarray | None = None
+        if hidden is not None:
+            mx.eval(hidden)
+            hidden_copy = np.asarray(hidden, dtype=np.float32).copy()
+        eligible = trainer._learner_visible_replay_needs(segment, hidden_copy)
+        if eligible != frozenset({0, 1}):
+            continue
+
+        def food_objective(active_model: OrganismModel) -> mx.array:
+            return trainer._bound_event_need_objective_for_gradient(
+                active_model, segment, hidden_copy, 0
+            )
+
+        def water_objective(active_model: OrganismModel) -> mx.array:
+            return trainer._bound_event_need_objective_for_gradient(
+                active_model, segment, hidden_copy, 1
+            )
+
+        food_value, food_grads = nn.value_and_grad(
+            model, food_objective
+        )(model)
+        water_value, water_grads = nn.value_and_grad(
+            model, water_objective
+        )(model)
+        mx.eval(food_value, water_value)
+        values = (float(food_value), float(water_value))
+        sample: dict[str, float] = {
+            "tick": float(trainer.global_steps),
+            "food_objective": values[0],
+            "water_objective": values[1],
+        }
+        for scope, lexical, prefixes in (
+            ("global", False, None),
+            ("lexical", True, None),
+            ("shared", False, shared_prefixes),
+        ):
+            cosine, food_norm, water_norm, ratio = _paired_gradient_geometry(
+                food_grads,
+                water_grads,
+                lexical_only=lexical,
+                parameter_prefixes=prefixes,
+            )
+            food_sensitivity = food_norm / max(np.sqrt(values[0]), 1e-12)
+            water_sensitivity = water_norm / max(np.sqrt(values[1]), 1e-12)
+            sample.update(
+                {
+                    f"{scope}_cosine": cosine,
+                    f"{scope}_food_norm": food_norm,
+                    f"{scope}_water_norm": water_norm,
+                    f"{scope}_water_to_food_norm": ratio,
+                    f"{scope}_food_sensitivity": food_sensitivity,
+                    f"{scope}_water_sensitivity": water_sensitivity,
+                    f"{scope}_water_to_food_sensitivity": (
+                        water_sensitivity / max(food_sensitivity, 1e-12)
+                    ),
+                }
+            )
+        if not all(np.isfinite(value) for value in sample.values()):
+            raise RuntimeError("Non-finite cross-need gradient geometry.")
+        if values[0] <= 0.0 or values[1] <= 0.0:
+            raise RuntimeError("Paired segment has an empty need objective.")
+        samples.append(sample)
+
+    result: dict[str, object] = {
+        "requested_segments": float(segments),
+        "measured_segments": float(len(samples)),
+        "elapsed_ticks": float(trainer.global_steps),
+        "raw_samples": samples,
+    }
+    for scope in ("global", "lexical", "shared"):
+        cosines = np.asarray(
+            [sample[f"{scope}_cosine"] for sample in samples]
+        )
+        sensitivities = np.asarray(
+            [
+                sample[f"{scope}_water_to_food_sensitivity"]
+                for sample in samples
+            ]
+        )
+        norm_ratios = np.asarray(
+            [sample[f"{scope}_water_to_food_norm"] for sample in samples]
+        )
+        result[f"{scope}_median_cosine"] = float(np.median(cosines))
+        result[f"{scope}_negative_fraction"] = float(np.mean(cosines < 0.0))
+        result[f"{scope}_median_water_to_food_norm"] = float(
+            np.median(norm_ratios)
+        )
+        result[f"{scope}_median_water_to_food_sensitivity"] = float(
+            np.median(sensitivities)
+        )
+    return result
 
 
 def audit_bound_event_gradient_alignment(

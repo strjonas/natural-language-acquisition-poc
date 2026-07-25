@@ -22,6 +22,7 @@ from homesocial.organism.train import (
     audit_binding_consequence_geometry,
     audit_bound_event_gradient_alignment,
     audit_bound_event_input_identifiability,
+    audit_cross_need_gradient_geometry,
     audit_label_referent_binding,
     audit_label_to_self_model,
     audit_metabolic_drift_forecast,
@@ -227,6 +228,27 @@ def main() -> None:
             )
             rows.append(
                 {"condition": "bound_event_gradient_alignment", **audit}
+            )
+            _write_and_print(rows, args)
+            return
+        if args.cross_need_gradient_geometry_segments > 0:
+            audit = audit_cross_need_gradient_geometry(
+                model,
+                loaded_config,
+                segments=args.cross_need_gradient_geometry_segments,
+            )
+            raw_samples = audit.pop("raw_samples")
+            raw_path = (
+                Path(args.run_dir)
+                / "cross_need_gradient_geometry_samples.json"
+            )
+            raw_path.parent.mkdir(parents=True, exist_ok=True)
+            raw_path.write_text(
+                json.dumps(raw_samples, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            rows.append(
+                {"condition": "cross_need_gradient_geometry", **audit}
             )
             _write_and_print(rows, args)
             return
@@ -1210,6 +1232,15 @@ def _parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--cross-need-gradient-geometry-segments",
+        type=int,
+        default=0,
+        help=(
+            "Read-only audit: compare food versus water bound-event "
+            "gradients on fresh segments containing both restorations."
+        ),
+    )
+    parser.add_argument(
         "--protocol-branch-planning",
         action="store_true",
         help=(
@@ -1465,6 +1496,7 @@ def _parse_args() -> argparse.Namespace:
             and args.real_explicit_event_transfer_contexts <= 0
             and args.binding_consequence_geometry_contexts <= 0
             and args.bound_event_gradient_alignment_segments <= 0
+            and args.cross_need_gradient_geometry_segments <= 0
             and args.bound_event_input_identifiability_events <= 0
             and not args.evaluate_loaded_checkpoint
         ):
@@ -1478,6 +1510,7 @@ def _parse_args() -> argparse.Namespace:
                 "--real-explicit-event-transfer-contexts or "
                 "--binding-consequence-geometry-contexts or "
                 "--bound-event-gradient-alignment-segments or "
+                "--cross-need-gradient-geometry-segments or "
                 "--bound-event-input-identifiability-events."
             )
         if (

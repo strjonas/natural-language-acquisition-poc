@@ -69,6 +69,24 @@ class GaeTest(unittest.TestCase):
         self.assertAlmostEqual(right_norm, 2.0)
         self.assertAlmostEqual(ratio, 2.0)
 
+    def test_paired_gradient_geometry_can_select_shared_prefixes(self):
+        cosine, left_norm, right_norm, ratio = _paired_gradient_geometry(
+            {
+                "shared.weight": mx.array([1.0, 0.0]),
+                "private.weight": mx.array([100.0]),
+            },
+            {
+                "shared.weight": mx.array([0.0, 2.0]),
+                "private.weight": mx.array([100.0]),
+            },
+            lexical_only=False,
+            parameter_prefixes=("shared.",),
+        )
+        self.assertAlmostEqual(cosine, 0.0)
+        self.assertAlmostEqual(left_norm, 1.0)
+        self.assertAlmostEqual(right_norm, 2.0)
+        self.assertAlmostEqual(ratio, 2.0)
+
     def test_resource_swap_direction_tracks_current_body_need(self):
         self.assertAlmostEqual(
             _directed_resource_swap_probability_shift(
