@@ -1360,6 +1360,7 @@ def _parse_args() -> argparse.Namespace:
             and args.protocol_return_origin_audit_contexts <= 0
             and args.terminal_consume_calibration_contexts <= 0
             and args.real_explicit_event_transfer_contexts <= 0
+            and args.binding_consequence_geometry_contexts <= 0
             and not args.evaluate_loaded_checkpoint
         ):
             parser.error(
@@ -1369,7 +1370,8 @@ def _parse_args() -> argparse.Namespace:
                 "--drift-forecast-audit-contexts or "
                 "--protocol-return-origin-audit-contexts or "
                 "--terminal-consume-calibration-contexts or "
-                "--real-explicit-event-transfer-contexts."
+                "--real-explicit-event-transfer-contexts or "
+                "--binding-consequence-geometry-contexts."
             )
         if (
             args.evaluate_loaded_checkpoint
