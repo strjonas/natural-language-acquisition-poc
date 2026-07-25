@@ -122,6 +122,9 @@ class IslandConfig:
     semantic_choice_horizon: int = 20
     semantic_choice_objects: int = 2
     semantic_choice_low_need: float = 0.35
+    # A multi-round childhood keeps one surface-kind mapping alive across
+    # recurring bodily demands so a label can pay rent more than once.
+    semantic_choice_rounds: int = 1
     # Zero preserves the original free-action choice task. Positive values
     # enable the delayed-choice protocol: after every object label, control is
     # returned to the agent only after a fixed-duration, padding-only return
@@ -143,6 +146,8 @@ class IslandConfig:
             raise ValueError("semantic_choice_horizon must be positive.")
         if self.semantic_choice_objects not in {2, 3}:
             raise ValueError("semantic_choice_objects must be 2 or 3.")
+        if self.semantic_choice_rounds <= 0:
+            raise ValueError("semantic_choice_rounds must be positive.")
         if not 0.0 < self.semantic_choice_low_need < 0.75:
             raise ValueError("semantic_choice_low_need must be in (0, 0.75).")
         if self.semantic_choice_return_duration < 0:
@@ -177,6 +182,7 @@ class IslandGrid(HomeostaticSocialGrid):
         semantic_choice_trial: bool = False,
         semantic_choice_objects: int = 2,
         semantic_choice_low_need: float = 0.35,
+        semantic_choice_rounds: int = 1,
         seed: int | None = None,
     ) -> None:
         super().__init__(
@@ -192,8 +198,12 @@ class IslandGrid(HomeostaticSocialGrid):
         self.semantic_choice_trial = semantic_choice_trial
         self.semantic_choice_objects = semantic_choice_objects
         self.semantic_choice_low_need = semantic_choice_low_need
+        self.semantic_choice_rounds = semantic_choice_rounds
         self.choice_need: str | None = None
         self.choice_surfaces: tuple[str, ...] = ()
+        self.choice_round_index = 0
+        self.choice_round_start_step = 0
+        self.choice_object_template: tuple[WorldObject, ...] = ()
         self.offered_kind: str | None = None
         self.offered_surface: str | None = None
         self.offered_pos: tuple[int, int] | None = None
@@ -228,6 +238,9 @@ class IslandGrid(HomeostaticSocialGrid):
         self.kind_by_surface = self._assign_kinds()
         self.choice_need = None
         self.choice_surfaces = ()
+        self.choice_round_index = 0
+        self.choice_round_start_step = 0
+        self.choice_object_template = ()
         if self.semantic_choice_trial:
             return self._make_semantic_choice_world()
         surfaces = [
@@ -244,6 +257,47 @@ class IslandGrid(HomeostaticSocialGrid):
             self._object_for(surface, self.kind_by_surface[surface], pos)
             for surface, pos in zip(surfaces, positions)
         ]
+
+    def start_next_semantic_choice_round(self) -> Observation:
+        """Advance one persistent-mapping round after consequence observation."""
+
+        if not self.semantic_choice_trial:
+            raise ValueError("No semantic-choice round is active.")
+        if self.choice_round_index + 1 >= self.semantic_choice_rounds:
+            raise ValueError("The final semantic-choice round has completed.")
+        if not self.choice_object_template or self.choice_need is None:
+            raise RuntimeError("Semantic-choice round template is unavailable.")
+
+        # The forced transition is one learner decision for replay/credit
+        # accounting but represents a new exogenous bodily demand, not another
+        # metabolism tick. Consumption consequences were exposed in the packet
+        # immediately before this transition.
+        self.step_count += 1
+        self.choice_round_index += 1
+        self.choice_round_start_step = self.step_count
+        self.choice_need = "water" if self.choice_need == "food" else "food"
+        self.needs = replace(
+            self.needs,
+            food=(
+                self.semantic_choice_low_need
+                if self.choice_need == "food"
+                else 0.75
+            ),
+            water=(
+                self.semantic_choice_low_need
+                if self.choice_need == "water"
+                else 0.75
+            ),
+            energy=0.75,
+            safety=0.75,
+        )
+        self.agent_pos = (self.width // 2, self.height // 2)
+        self.direction = Direction.NORTH
+        self.objects = list(self.choice_object_template)
+        self.offered_kind = None
+        self.offered_surface = None
+        self.offered_pos = None
+        return self._observe(None, None)
 
     def _make_semantic_choice_world(self) -> list[WorldObject]:
         """Make a remapped two- or three-way semantic choice.
@@ -312,10 +366,12 @@ class IslandGrid(HomeostaticSocialGrid):
             ]
             positions = self.rng.sample(cardinal_positions, 3)
             self.direction = self.rng.choice(tuple(DIRECTION_ORDER))
-        return [
+        objects = [
             self._object_for(surface, self.kind_by_surface[surface], pos)
             for surface, pos in zip(surfaces, positions)
         ]
+        self.choice_object_template = tuple(objects)
+        return objects
 
     def offer(self, kind: str, *, distance: int = 0) -> None:
         """Put a renewable resource in hand or at a visible nearby cell."""
@@ -590,7 +646,12 @@ class IslandWorld:
     ) -> None:
         self.config = config or IslandConfig()
         grid_max_steps = (
-            self.config.semantic_choice_horizon
+            (
+                self.config.semantic_choice_horizon
+                * self.config.semantic_choice_rounds
+                + self.config.semantic_choice_rounds
+                - 1
+            )
             if self.config.semantic_choice_trial
             else self.config.max_steps
         )
@@ -601,6 +662,7 @@ class IslandWorld:
             semantic_choice_trial=self.config.semantic_choice_trial,
             semantic_choice_objects=self.config.semantic_choice_objects,
             semantic_choice_low_need=self.config.semantic_choice_low_need,
+            semantic_choice_rounds=self.config.semantic_choice_rounds,
             seed=seed,
         )
         self.caregiver = Caregiver(
@@ -616,6 +678,7 @@ class IslandWorld:
         self._last_action_index = -1
         self._inspected_surfaces: set[str] = set()
         self._semantic_choice_return_pending = False
+        self._semantic_choice_round_pending = False
 
     @property
     def tokens_per_utterance(self) -> int:
@@ -628,6 +691,7 @@ class IslandWorld:
         self._last_action_index = -1
         self._inspected_surfaces.clear()
         self._semantic_choice_return_pending = False
+        self._semantic_choice_round_pending = False
         return self._packet(observation, None)
 
     @property
@@ -637,17 +701,53 @@ class IslandWorld:
         return self._semantic_choice_return_pending
 
     @property
+    def semantic_choice_round_pending(self) -> bool:
+        """Whether a consequence packet awaits the next bodily demand."""
+
+        return self._semantic_choice_round_pending
+
+    @property
     def semantic_choice_center(self) -> tuple[int, int]:
         return (self.config.width // 2, self.config.height // 2)
 
     def complete_semantic_choice_return(self) -> None:
         self._semantic_choice_return_pending = False
 
+    def start_next_semantic_choice_round(
+        self,
+    ) -> tuple[ObsPacket, float, bool, bool, dict[str, object]]:
+        """Emit the forced non-agent transition into the next choice round."""
+
+        if not self._semantic_choice_round_pending:
+            raise ValueError("No semantic-choice round transition is pending.")
+        observation = self.grid.start_next_semantic_choice_round()
+        self._semantic_choice_round_pending = False
+        self._last_action_index = list(Action).index(Action.WAIT)
+        packet = self._packet(observation, None)
+        viability = min(packet.needs)
+        return (
+            packet,
+            0.0,
+            False,
+            False,
+            {
+                "event": "semantic_choice_round_transition",
+                "viability": viability,
+                "mean_viability": sum(packet.needs) / len(packet.needs),
+                "semantic_choice_trial": True,
+                "semantic_choice_round_transition": True,
+                "semantic_choice_round_index": self.grid.choice_round_index,
+                "choice_need": self.grid.choice_need,
+            },
+        )
+
     def step(
         self, action: Action | str
     ) -> tuple[ObsPacket, float, bool, bool, dict[str, object]]:
         action = Action(action)
         needs_before = self.grid.needs
+        choice_need_before = self.grid.choice_need
+        choice_round_index_before = self.grid.choice_round_index
         object_ahead_before = self.grid.object_ahead()
         inspected_before = set(self._inspected_surfaces)
         offered_before = self.grid.offered_kind
@@ -714,17 +814,36 @@ class IslandWorld:
         ):
             consumed_kind = object_ahead_before.kind
             consumed_surface = object_ahead_before.name
-            truncated = True
+            final_round = (
+                choice_round_index_before + 1
+                >= self.config.semantic_choice_rounds
+            )
+            if not terminated and not final_round:
+                truncated = False
+                self._semantic_choice_round_pending = True
+            else:
+                truncated = True
 
         timeout = (
             self.config.semantic_choice_trial
             and consumed_surface is None
-            and self.grid.step_count >= self.config.semantic_choice_horizon
+            and (
+                self.grid.step_count - self.grid.choice_round_start_step
+                >= self.config.semantic_choice_horizon
+            )
         )
+        if timeout:
+            truncated = True
         info.update(
             {
                 "semantic_choice_trial": self.config.semantic_choice_trial,
-                "choice_need": self.grid.choice_need,
+                "choice_need": choice_need_before,
+                "semantic_choice_round_index": choice_round_index_before,
+                "semantic_choice_rounds": self.config.semantic_choice_rounds,
+                "semantic_choice_round_complete": consumed_surface is not None,
+                "semantic_choice_round_pending": (
+                    self._semantic_choice_round_pending
+                ),
                 "chosen_kind": consumed_kind,
                 "chosen_surface": consumed_surface,
                 "chosen_surface_inspected": (
@@ -734,12 +853,12 @@ class IslandWorld:
                 ),
                 "correct": (
                     consumed_kind is not None
-                    and consumed_kind == self.grid.choice_need
+                    and consumed_kind == choice_need_before
                 ),
                 "poison": consumed_kind == "poison",
                 "wrong_resource": (
                     consumed_kind in {"food", "water"}
-                    and consumed_kind != self.grid.choice_need
+                    and consumed_kind != choice_need_before
                 ),
                 "timeout": timeout,
             }

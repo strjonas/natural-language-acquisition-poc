@@ -246,7 +246,6 @@ class OrganismModel(nn.Module):
         valid: mx.array,
     ) -> tuple[mx.array, mx.array]:
         surface = self._attended_surface(vectors)
-        heard = mx.any(tokens != self.pad_token_id, axis=-1).astype(vectors.dtype)
         action_start = self.object_feature_offset - self.primitive_action_size
         last_action = vectors[
             ..., action_start : action_start + self.primitive_action_size
@@ -254,7 +253,27 @@ class OrganismModel(nn.Module):
         referential = mx.sum(
             last_action[..., list(self.referential_action_indices)], axis=-1
         )
-        write = surface * heard[..., None] * (referential > 0.5)[..., None]
+        surface = surface * (referential > 0.5)[..., None]
+        return self._write_binding_at_surface(
+            surface,
+            tokens,
+            token_encoding,
+            memory,
+            valid,
+        )
+
+    def _write_binding_at_surface(
+        self,
+        surface: mx.array,
+        tokens: mx.array,
+        token_encoding: mx.array,
+        memory: mx.array,
+        valid: mx.array,
+    ) -> tuple[mx.array, mx.array]:
+        """Write heard language to an explicit learner-visible surface key."""
+
+        heard = mx.any(tokens != self.pad_token_id, axis=-1).astype(memory.dtype)
+        write = surface * heard[..., None]
         if not self.episodic_binding_writes:
             write = mx.zeros_like(write)
         value = mx.tanh(self.binding_value(token_encoding))
@@ -360,6 +379,108 @@ class OrganismModel(nn.Module):
             [core_hidden, memory_states[:, -1], validity_states[:, -1]], axis=-1
         )
         return states, carry
+
+    def write_binding_into_state(
+        self,
+        states: mx.array,
+        surfaces: mx.array,
+        tokens: mx.array,
+    ) -> mx.array:
+        """Apply a surface-keyed lexical write with no observation step.
+
+        This is the counterfactual "suppose my memory held this word for this
+        surface". It touches only the external bank, never the recurrent core,
+        so a planner can consider a hypothetical word without fabricating a
+        sensory scene for its own decoder to misreconstruct. The surface
+        one-hot comes from the learner's own observation and never contains or
+        addresses hidden object kind.
+        """
+
+        if not self.has_episodic_bindings:
+            raise ValueError("Binding writes require episodic bindings.")
+        leading_shape = states.shape[:-1]
+        flat_states = states.reshape(-1, self.state_size)
+        flat_surfaces = surfaces.reshape(-1, self.surface_count)
+        flat_tokens = tokens.reshape(-1, self.tokens_per_utterance)
+        token_encoding = self._encode_tokens(flat_tokens[:, None, :])[:, 0, :]
+        core, memory, valid = self._state_memory_parts(flat_states)
+        memory, valid = self._write_binding_at_surface(
+            flat_surfaces,
+            flat_tokens,
+            token_encoding,
+            memory,
+            valid,
+        )
+        written = mx.concatenate(
+            [core, memory.reshape(memory.shape[0], -1), valid],
+            axis=-1,
+        )
+        return written.reshape(*leading_shape, self.state_size)
+
+    def observe_from_state(
+        self,
+        states: mx.array,
+        vectors: mx.array,
+        tokens: mx.array,
+        *,
+        binding_surfaces: mx.array | None = None,
+    ) -> mx.array:
+        """Apply one hypothetical observation update from planning states.
+
+        ``binding_surfaces`` is an optional learner-visible surface one-hot
+        selected by an inspect option. It lets a belief-space planner apply the
+        same learned token-to-binding write as embodied observation processing
+        without reconstructing an exact motor-level label pose. It never
+        contains or addresses hidden object kind.
+        """
+
+        leading_shape = states.shape[:-1]
+        flat_states = states.reshape(-1, self.state_size)
+        flat_vectors = vectors.reshape(-1, self.vector_size)
+        flat_tokens = tokens.reshape(-1, self.tokens_per_utterance)
+        token_encoding = self._encode_tokens(flat_tokens[:, None, :])[:, 0, :]
+
+        if not self.has_episodic_bindings:
+            if binding_surfaces is not None:
+                raise ValueError(
+                    "Explicit binding surfaces require episodic bindings."
+                )
+            features = self._features(flat_vectors, token_encoding)
+            raw = self.core(
+                features[:, None, :],
+                flat_states[:, : self.hidden_size],
+            )[:, -1, :]
+            refined = raw + nn.relu(self.post_norm(self.post(raw)))
+            return refined.reshape(*leading_shape, self.state_size)
+
+        core, memory, valid = self._state_memory_parts(flat_states)
+        reads = self._binding_reads(flat_vectors, memory, valid)
+        features = self._features(flat_vectors, token_encoding, reads)
+        raw = self.core(features[:, None, :], core)[:, -1, :]
+        refined = raw + nn.relu(self.post_norm(self.post(raw)))
+
+        if binding_surfaces is None:
+            memory, valid = self._update_bindings(
+                flat_vectors,
+                flat_tokens,
+                token_encoding,
+                memory,
+                valid,
+            )
+        else:
+            flat_surfaces = binding_surfaces.reshape(-1, self.surface_count)
+            memory, valid = self._write_binding_at_surface(
+                flat_surfaces,
+                flat_tokens,
+                token_encoding,
+                memory,
+                valid,
+            )
+        observed = mx.concatenate(
+            [refined, memory.reshape(memory.shape[0], -1), valid],
+            axis=-1,
+        )
+        return observed.reshape(*leading_shape, self.state_size)
 
     def policy_value(
         self,

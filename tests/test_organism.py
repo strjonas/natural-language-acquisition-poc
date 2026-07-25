@@ -19,8 +19,15 @@ if mx is not None:
         OrganismTrainer,
         audit_label_referent_binding,
         audit_label_to_self_model,
+        audit_observation_branching_planner,
+        audit_cross_round_label_reuse,
+        audit_persistent_choice_environment,
+        audit_persistent_mapping_information_rent,
+        audit_semantic_choice_information_upper_bound,
         audit_self_model_actions,
+        _bodily_terminal_score,
         _directed_resource_swap_probability_shift,
+        _terminal_consume_scores,
         available_action_mask,
         compute_gae,
         decode_object_option,
@@ -29,8 +36,11 @@ if mx is not None:
         execute_agent_action,
         _is_voluntary_inspection_event,
         object_option_action_index,
+        observation_branching_action_scores,
+        observation_branching_inspect_values,
         planned_policy_logits,
         predict_all_action_consequences,
+        semantic_choice_label_candidates,
         two_step_action_scores,
     )
 
@@ -431,6 +441,323 @@ class EpisodicBindingMemoryTest(unittest.TestCase):
         mx.eval(no_write_valid)
         self.assertEqual(float(no_write_valid.sum().item()), 0.0)
 
+    def test_hypothetical_observation_writes_only_selected_visible_surface(self):
+        trainer = self._trainer()
+        model = trainer.model
+        vector = mx.array(trainer.packet.vector()[None, None, :])
+        tokens = mx.array(
+            np.asarray(trainer.packet.tokens, dtype=np.int32)[None, None, :]
+        )
+        states, _ = model.core_states(vector, tokens)
+        slots = model._visible_object_features(vector)
+        selected_surface = slots[..., 1, 3:]
+        label_tokens = mx.broadcast_to(
+            semantic_choice_label_candidates()[0][None, None, :],
+            (1, 1, model.tokens_per_utterance),
+        )
+
+        observed = model.observe_from_state(
+            states,
+            vector,
+            label_tokens,
+            binding_surfaces=selected_surface,
+        )
+        _, memory, valid = model._state_memory_parts(observed)
+        selected_index = int(mx.argmax(selected_surface[0, 0]).item())
+        mx.eval(memory, valid)
+        self.assertEqual(float(valid.sum().item()), 1.0)
+        self.assertEqual(float(valid[0, 0, selected_index].item()), 1.0)
+        self.assertGreater(
+            float(mx.abs(memory[0, 0, selected_index]).max().item()),
+            0.0,
+        )
+
+        model.episodic_binding_writes = False
+        suppressed = model.observe_from_state(
+            states,
+            vector,
+            label_tokens,
+            binding_surfaces=selected_surface,
+        )
+        _, _, suppressed_valid = model._state_memory_parts(suppressed)
+        mx.eval(suppressed_valid)
+        self.assertEqual(float(suppressed_valid.sum().item()), 0.0)
+
+    def test_protocol_branch_writes_memory_without_touching_the_core(self):
+        trainer = self._trainer()
+        model = trainer.model
+        packet = trainer.packet
+        vector = mx.array(packet.vector()[None, None, :])
+        tokens = mx.array(
+            np.asarray(packet.tokens, dtype=np.int32)[None, None, :]
+        )
+        states, _ = model.core_states(vector, tokens)
+        surface = mx.array(
+            np.eye(len(SURFACE_INDEX), dtype=np.float32)[
+                packet.visible[0][2]
+            ][None, None, :]
+        )
+        label_tokens = mx.broadcast_to(
+            semantic_choice_label_candidates()[0][None, None, :],
+            (1, 1, model.tokens_per_utterance),
+        )
+        written = model.write_binding_into_state(states, surface, label_tokens)
+        core_before, memory_before, valid_before = model._state_memory_parts(
+            states
+        )
+        core_after, memory_after, valid_after = model._state_memory_parts(
+            written
+        )
+        mx.eval(core_before, core_after, memory_after, valid_after)
+        # The recurrent core is untouched: no sensory scene was fabricated.
+        np.testing.assert_allclose(
+            np.asarray(core_before), np.asarray(core_after), atol=0.0
+        )
+        # The addressed surface row is now valid and nonzero.
+        target = packet.visible[0][2]
+        self.assertGreater(float(np.asarray(valid_after[0, 0])[target]), 0.5)
+        self.assertEqual(float(np.asarray(valid_before[0, 0])[target]), 0.0)
+        self.assertGreater(
+            float(np.abs(np.asarray(memory_after[0, 0, target])).max()), 0.0
+        )
+        # Every other surface row is untouched.
+        others = [s for s in range(model.surface_count) if s != target]
+        np.testing.assert_allclose(
+            np.asarray(memory_after[0, 0])[others],
+            np.asarray(memory_before[0, 0])[others],
+            atol=0.0,
+        )
+
+    def test_protocol_branch_changes_inspect_values(self):
+        trainer = self._trainer()
+        model = trainer.model
+        vector = mx.array(trainer.packet.vector()[None, None, :])
+        tokens = mx.array(
+            np.asarray(trainer.packet.tokens, dtype=np.int32)[None, None, :]
+        )
+        states, _ = model.core_states(vector, tokens)
+        reconstructive, _, _, _ = observation_branching_inspect_values(
+            model, states, vector, persistent_information_reuses=2
+        )
+        protocol, _, probabilities, choices = (
+            observation_branching_inspect_values(
+                model,
+                states,
+                vector,
+                persistent_information_reuses=2,
+                protocol_branch=True,
+            )
+        )
+        mx.eval(reconstructive, protocol, probabilities, choices)
+        self.assertEqual(protocol.shape, reconstructive.shape)
+        self.assertTrue(np.all(np.isfinite(np.asarray(protocol))))
+        self.assertFalse(
+            np.allclose(
+                np.asarray(protocol), np.asarray(reconstructive), atol=1e-6
+            )
+        )
+
+    def test_urgent_deficit_utility_reads_the_lowest_observed_need(self):
+        needs = mx.array([[[[0.9, 0.4, 0.7, 0.8], [0.9, 0.4, 0.7, 0.8]]]])
+        # The second candidate is better on its worst dimension but worse on
+        # the dimension the body currently needs most.
+        terminal = mx.array([[[[0.9, 0.95, 0.2, 0.8], [0.9, 0.45, 0.6, 0.8]]]])
+        legacy = _bodily_terminal_score(
+            terminal, needs, urgent_deficit_utility=False
+        )
+        urgent = _bodily_terminal_score(
+            terminal, needs, urgent_deficit_utility=True
+        )
+        mx.eval(legacy, urgent)
+        np.testing.assert_allclose(
+            np.asarray(legacy[0, 0]), [0.2, 0.45], atol=1e-6
+        )
+        np.testing.assert_allclose(
+            np.asarray(urgent[0, 0]), [0.95, 0.45], atol=1e-6
+        )
+
+    def test_urgent_deficit_utility_changes_terminal_consume_ranking(self):
+        trainer = self._trainer()
+        model = trainer.model
+        vector = mx.array(trainer.packet.vector()[None, None, :])
+        tokens = mx.array(
+            np.asarray(trainer.packet.tokens, dtype=np.int32)[None, None, :]
+        )
+        states, _ = model.core_states(vector, tokens)
+        legacy = _terminal_consume_scores(model, states, vector)
+        urgent = _terminal_consume_scores(
+            model, states, vector, urgent_deficit_utility=True
+        )
+        mx.eval(legacy, urgent)
+        legacy = np.asarray(legacy[0, 0], dtype=np.float64)
+        urgent = np.asarray(urgent[0, 0], dtype=np.float64)
+        # Absent slots stay masked out under both rules.
+        np.testing.assert_array_equal(legacy <= -1e8, urgent <= -1e8)
+        # The urgent rule can only equal or exceed the minimum rule, since the
+        # minimum is a lower bound on any single need.
+        visible = legacy > -1e8
+        self.assertTrue(np.all(urgent[visible] >= legacy[visible] - 1e-6))
+
+    def test_persistent_self_query_backs_up_future_bodily_contexts(self):
+        trainer = self._trainer()
+        model = trainer.model
+        vector = mx.array(trainer.packet.vector()[None, None, :])
+        tokens = mx.array(
+            np.asarray(trainer.packet.tokens, dtype=np.int32)[None, None, :]
+        )
+        states, _ = model.core_states(vector, tokens)
+
+        one_shot, _, _, _ = observation_branching_inspect_values(
+            model, states, vector
+        )
+        reuse_one, _, _, _ = observation_branching_inspect_values(
+            model,
+            states,
+            vector,
+            persistent_information_reuses=1,
+        )
+        reuse_two, _, _, _ = observation_branching_inspect_values(
+            model,
+            states,
+            vector,
+            persistent_information_reuses=2,
+        )
+        mx.eval(one_shot, reuse_one, reuse_two)
+        one_shot = np.asarray(one_shot[0, 0], dtype=np.float64)
+        reuse_one = np.asarray(reuse_one[0, 0], dtype=np.float64)
+        reuse_two = np.asarray(reuse_two[0, 0], dtype=np.float64)
+
+        # Reuse adds one identical future-context term per count, so the
+        # increments are linear in the reuse count.
+        np.testing.assert_allclose(
+            reuse_two - reuse_one,
+            reuse_one - one_shot,
+            atol=1e-5,
+        )
+        self.assertTrue(np.all(np.isfinite(reuse_two)))
+
+    def test_persistent_self_query_reverts_known_surfaces_to_costly_rollout(self):
+        trainer = self._trainer()
+        model = trainer.model
+        packet = trainer.packet
+        vector = mx.array(packet.vector()[None, None, :])
+        tokens = mx.array(
+            np.asarray(packet.tokens, dtype=np.int32)[None, None, :]
+        )
+        states, _ = model.core_states(vector, tokens)
+
+        # Write a label for the first visible surface, so its lexical row is
+        # already valid and re-inspection cannot add a new fact.
+        label_tokens = semantic_choice_label_candidates()[0]
+        label_tokens = mx.broadcast_to(
+            label_tokens[None, None, :],
+            (1, 1, model.tokens_per_utterance),
+        )
+        surface = mx.array(
+            np.eye(len(SURFACE_INDEX), dtype=np.float32)[
+                packet.visible[0][2]
+            ][None, None, :]
+        )
+        known_states = model.observe_from_state(
+            states,
+            vector,
+            label_tokens,
+            binding_surfaces=surface,
+        )
+        _, _, valid = model._state_memory_parts(known_states)
+        mx.eval(valid)
+        self.assertGreater(
+            float(np.asarray(valid[0, 0])[packet.visible[0][2]]),
+            0.5,
+        )
+
+        scores = observation_branching_action_scores(
+            model,
+            known_states,
+            vector,
+            persistent_information_reuses=7,
+        )
+        ordinary = two_step_action_scores(
+            model,
+            known_states,
+            vector,
+            reward_weight=0.0,
+            force_return_after_inspect=True,
+        )
+        mx.eval(scores, ordinary)
+        inspect_start = model.primitive_action_size + model.visible_slots
+        known_slot = 0
+        self.assertAlmostEqual(
+            float(np.asarray(scores[0, 0, inspect_start + known_slot])),
+            float(np.asarray(ordinary[0, 0, inspect_start + known_slot])),
+            places=5,
+        )
+
+    def test_observation_branching_has_normalized_three_way_traces(self):
+        trainer = self._trainer()
+        model = trainer.model
+        vector = mx.array(trainer.packet.vector()[None, None, :])
+        tokens = mx.array(
+            np.asarray(trainer.packet.tokens, dtype=np.int32)[None, None, :]
+        )
+        states, _ = model.core_states(vector, tokens)
+        values, probabilities, branch_values, choices = (
+            observation_branching_inspect_values(
+                model,
+                states,
+                vector,
+            )
+        )
+        scores = observation_branching_action_scores(
+            model,
+            states,
+            vector,
+        )
+        collapsed = observation_branching_inspect_values(
+            model,
+            states,
+            vector,
+            collapsed_labels=True,
+        )
+        mx.eval(
+            values,
+            probabilities,
+            branch_values,
+            choices,
+            scores,
+            *collapsed,
+        )
+        self.assertEqual(values.shape, (1, 1, model.visible_slots))
+        self.assertEqual(
+            probabilities.shape,
+            (1, 1, model.visible_slots, 3),
+        )
+        self.assertEqual(branch_values.shape, probabilities.shape)
+        self.assertEqual(choices.shape, probabilities.shape)
+        self.assertEqual(scores.shape, (1, 1, model.action_size))
+        np.testing.assert_allclose(
+            np.asarray(probabilities.sum(axis=-1)),
+            1.0,
+            atol=1e-6,
+        )
+        collapsed_probabilities = np.asarray(collapsed[1])
+        collapsed_values = np.asarray(collapsed[2])
+        collapsed_choices = np.asarray(collapsed[3])
+        np.testing.assert_allclose(
+            collapsed_probabilities,
+            1.0 / 3.0,
+            atol=1e-6,
+        )
+        np.testing.assert_allclose(
+            collapsed_values[..., 0],
+            collapsed_values[..., 1],
+            atol=1e-6,
+        )
+        np.testing.assert_array_equal(
+            collapsed_choices[..., 0],
+            collapsed_choices[..., 2],
+        )
+
     def test_binding_value_is_token_only_and_transition_read_is_object_local(self):
         from dataclasses import replace as dc_replace
 
@@ -790,6 +1117,45 @@ class TrainingSmokeTest(unittest.TestCase):
         for value in stats.values():
             self.assertTrue(math.isfinite(value))
 
+    def test_semantic_choice_evaluation_reports_persistent_rounds(self):
+        from dataclasses import replace as dc_replace
+
+        trainer = OrganismTrainer(
+            dc_replace(
+                self._config(),
+                semantic_choice_childhood_steps=1,
+                consume_options=True,
+                inspect_options=True,
+                episodic_binding_size=4,
+                island=IslandConfig(
+                    semantic_choice_horizon=40,
+                    semantic_choice_objects=3,
+                    semantic_choice_low_need=0.55,
+                    semantic_choice_rounds=2,
+                    semantic_choice_return_duration=6,
+                ),
+            )
+        )
+        stats = evaluate_semantic_choice(
+            trainer.model,
+            language_mode="grounded",
+            episodes=2,
+            base_seed=1_095,
+            semantic_choice_horizon=40,
+            semantic_choice_objects=3,
+            semantic_choice_low_need=0.55,
+            semantic_choice_rounds=2,
+            semantic_choice_return_duration=6,
+            consume_options=True,
+            inspect_options=True,
+        )
+        self.assertEqual(stats["trials"], 4.0)
+        self.assertEqual(stats["lives"], 2.0)
+        self.assertIn("round_1_correct_rate", stats)
+        self.assertIn("round_2_inspection_rate", stats)
+        for value in stats.values():
+            self.assertTrue(math.isfinite(value))
+
     def test_semantic_choice_childhood_switches_without_resetting_model(self):
         from dataclasses import replace as dc_replace
 
@@ -929,6 +1295,140 @@ class TrainingSmokeTest(unittest.TestCase):
             "final_state_controlled_direct_key_reassignment_hit_rate",
             stats,
         )
+        for value in stats.values():
+            self.assertTrue(math.isfinite(value))
+
+    def test_cross_round_reuse_audit_measures_every_later_round(self):
+        from dataclasses import replace as dc_replace
+
+        trainer = OrganismTrainer(
+            dc_replace(
+                self._config(),
+                semantic_choice_childhood_steps=1,
+                consume_options=True,
+                inspect_options=True,
+                episodic_binding_size=4,
+                island=IslandConfig(
+                    semantic_choice_horizon=40,
+                    semantic_choice_objects=3,
+                    semantic_choice_low_need=0.55,
+                    semantic_choice_rounds=4,
+                    semantic_choice_return_duration=6,
+                ),
+            )
+        )
+        stats = audit_cross_round_label_reuse(
+            trainer.model,
+            lives=3,
+            base_seed=1_994_000,
+            rounds=4,
+        )
+        self.assertEqual(stats["audited_lives"], 3.0)
+        self.assertEqual(stats["completed_lives"], 3.0)
+        # Two acquisition rounds, so rounds 3 and 4 are measured per life.
+        self.assertEqual(stats["measured_rounds"], 6.0)
+        self.assertIn("round_3_reuse_accuracy", stats)
+        self.assertIn("round_4_reuse_accuracy", stats)
+        self.assertNotIn("round_2_reuse_accuracy", stats)
+        self.assertEqual(stats["mean_valid_memory_rows"], 2.0)
+        for value in stats.values():
+            self.assertTrue(math.isfinite(value))
+
+    def test_observation_branching_feasibility_audit_is_finite(self):
+        from dataclasses import replace as dc_replace
+
+        trainer = OrganismTrainer(
+            dc_replace(
+                self._config(),
+                semantic_choice_childhood_steps=1,
+                consume_options=True,
+                inspect_options=True,
+                episodic_binding_size=4,
+                island=IslandConfig(
+                    semantic_choice_horizon=40,
+                    semantic_choice_objects=3,
+                    semantic_choice_low_need=0.55,
+                    semantic_choice_return_duration=6,
+                ),
+            )
+        )
+        stats = audit_observation_branching_planner(
+            trainer.model,
+            episodes=2,
+            base_seed=1_991_000,
+        )
+        self.assertEqual(stats["audited_contexts"], 2.0)
+        self.assertIn("intact_mean_best_inspect_advantage", stats)
+        self.assertIn("write_causal_advantage_drop", stats)
+        self.assertIn("collapsed_label_contingency_drop", stats)
+        for value in stats.values():
+            self.assertTrue(math.isfinite(value))
+
+    def test_semantic_choice_information_upper_bound_uses_exact_protocol(self):
+        stats = audit_semantic_choice_information_upper_bound(
+            episodes=6,
+            base_seed=1_992_000,
+        )
+        self.assertEqual(stats["audited_contexts"], 6.0)
+        self.assertEqual(stats["blind_immediate_mean_ticks"], 4.0)
+        self.assertEqual(stats["one_inspection_mean_ticks"], 14.0)
+        self.assertEqual(stats["clairvoyant_immediate_correct_rate"], 1.0)
+        self.assertEqual(stats["clairvoyant_immediate_poison_rate"], 0.0)
+        self.assertGreaterEqual(
+            stats["two_inspections_mean_ticks"],
+            stats["one_inspection_mean_ticks"],
+        )
+        for value in stats.values():
+            self.assertTrue(math.isfinite(value))
+
+    def test_persistent_mapping_rent_audit_reuses_at_most_two_labels(self):
+        stats = audit_persistent_mapping_information_rent(
+            lives=4,
+            base_seed=1_993_000,
+            round_counts=(1, 2),
+        )
+        self.assertEqual(stats["audited_lives"], 4.0)
+        for rounds in (1, 2):
+            prefix = f"rounds_{rounds}"
+            self.assertEqual(
+                stats[f"{prefix}_persistent_correct_rate"],
+                1.0,
+            )
+            self.assertLessEqual(
+                stats[
+                    f"{prefix}_persistent_mean_inspections_per_life"
+                ],
+                2.0,
+            )
+            self.assertEqual(
+                stats[f"{prefix}_clairvoyant_correct_rate"],
+                1.0,
+            )
+            self.assertEqual(
+                stats[f"{prefix}_blind_mean_ticks_per_round"],
+                4.0,
+            )
+        for value in stats.values():
+            self.assertTrue(math.isfinite(value))
+
+    def test_implemented_persistent_environment_completes_all_rounds(self):
+        stats = audit_persistent_choice_environment(
+            lives=3,
+            base_seed=1_994_000,
+            rounds=2,
+        )
+        self.assertEqual(stats["audited_lives"], 3.0)
+        for policy in ("blind", "persistent", "clairvoyant"):
+            self.assertEqual(
+                stats[f"{policy}_completed_rounds_per_life"],
+                2.0,
+            )
+        self.assertEqual(stats["persistent_correct_rate"], 1.0)
+        self.assertLessEqual(
+            stats["persistent_mean_inspections_per_life"],
+            2.0,
+        )
+        self.assertEqual(stats["clairvoyant_correct_rate"], 1.0)
         for value in stats.values():
             self.assertTrue(math.isfinite(value))
 
@@ -1293,6 +1793,105 @@ class TrainingSmokeTest(unittest.TestCase):
             rtol=0.0,
         )
 
+    def test_persistent_choice_round_exposes_consequence_before_demand_reset(self):
+        from dataclasses import replace as dc_replace
+
+        trainer = OrganismTrainer(
+            dc_replace(
+                self._config(),
+                semantic_choice_childhood_steps=1,
+                consume_options=True,
+                inspect_options=True,
+                episodic_binding_size=4,
+                island=IslandConfig(
+                    semantic_choice_horizon=40,
+                    semantic_choice_objects=3,
+                    semantic_choice_low_need=0.55,
+                    semantic_choice_rounds=2,
+                    semantic_choice_return_duration=6,
+                ),
+            )
+        )
+        world = trainer.world
+        packet = trainer.packet
+        first_need = world.grid.choice_need
+        fixed_mapping = dict(world.grid.kind_by_surface)
+        fixed_surfaces = {
+            surface for _, _, surface in packet.visible
+        }
+        consumed_packet, _, terminated, truncated, info = execute_agent_action(
+            world,
+            packet,
+            object_option_action_index(
+                "consume",
+                0,
+                consume_options=True,
+                inspect_options=True,
+                visible_slots=trainer.model.visible_slots,
+            ),
+            consume_options=True,
+            inspect_options=True,
+        )
+        self.assertFalse(terminated)
+        self.assertFalse(truncated)
+        self.assertTrue(info["semantic_choice_round_complete"])
+        self.assertTrue(world.semantic_choice_round_pending)
+        self.assertNotEqual(consumed_packet.position, world.semantic_choice_center)
+
+        next_packet, _, terminated, truncated, transition_info = (
+            execute_agent_action(
+                world,
+                consumed_packet,
+                ACTIONS.index(Action.WAIT),
+                consume_options=True,
+                inspect_options=True,
+            )
+        )
+        self.assertFalse(terminated)
+        self.assertFalse(truncated)
+        self.assertTrue(transition_info["forced_round_transition"])
+        self.assertEqual(transition_info["duration"], 1)
+        self.assertFalse(world.semantic_choice_round_pending)
+        self.assertEqual(world.grid.choice_round_index, 1)
+        self.assertNotEqual(world.grid.choice_need, first_need)
+        self.assertEqual(world.grid.kind_by_surface, fixed_mapping)
+        self.assertEqual(
+            {surface for _, _, surface in next_packet.visible},
+            fixed_surfaces,
+        )
+        self.assertEqual(next_packet.position, world.semantic_choice_center)
+        self.assertEqual(next_packet.direction_index, 0)
+        low_index = 0 if world.grid.choice_need == "food" else 1
+        self.assertAlmostEqual(next_packet.needs[low_index], 0.55)
+
+        correct_slot = next(
+            slot
+            for slot, (_, _, surface) in enumerate(next_packet.visible)
+            if world.grid.kind_by_surface[
+                next(
+                    name
+                    for name, index in SURFACE_INDEX.items()
+                    if index == surface
+                )
+            ]
+            == world.grid.choice_need
+        )
+        _, _, _, final_truncated, final_info = execute_agent_action(
+            world,
+            next_packet,
+            object_option_action_index(
+                "consume",
+                correct_slot,
+                consume_options=True,
+                inspect_options=True,
+                visible_slots=trainer.model.visible_slots,
+            ),
+            consume_options=True,
+            inspect_options=True,
+        )
+        self.assertTrue(final_truncated)
+        self.assertTrue(final_info["correct"])
+
     def test_primitive_inspection_label_uses_same_evaluation_criterion(self):
         from dataclasses import replace as dc_replace
 
@@ -1496,6 +2095,58 @@ class TrainingSmokeTest(unittest.TestCase):
         self.assertEqual(trainer.global_steps, 83)
         self.assertTrue(math.isfinite(trainer.loss_log[-1]["loss"]))
         self.assertTrue(math.isfinite(trainer.loss_log[-1]["replay_loss"]))
+
+
+@unittest.skipIf(mx is None, "MLX is unavailable")
+class HarnessArgumentTest(unittest.TestCase):
+    @staticmethod
+    def _parse(argv: list[str]):
+        import sys
+        from unittest import mock
+
+        from homesocial.organism.harness import _parse_args
+
+        with mock.patch.object(sys, "argv", ["harness", *argv]):
+            return _parse_args()
+
+    def test_branching_planner_flags_reach_the_namespace(self):
+        args = self._parse(
+            [
+                "--self-model-planning",
+                "--planning-horizon",
+                "2",
+                "--observation-branching-planning",
+                "--persistent-information-reuses",
+                "7",
+                "--semantic-choice-return-duration",
+                "6",
+                "--episodic-binding-size",
+                "16",
+            ]
+        )
+        self.assertTrue(args.observation_branching_planning)
+        self.assertEqual(args.persistent_information_reuses, 7)
+
+    def test_branching_planner_requires_two_step_delayed_mechanics(self):
+        for argv in (
+            ["--observation-branching-planning", "--planning-horizon", "1"],
+            [
+                "--observation-branching-planning",
+                "--planning-horizon",
+                "2",
+                "--episodic-binding-size",
+                "16",
+            ],
+            [
+                "--observation-branching-planning",
+                "--planning-horizon",
+                "2",
+                "--semantic-choice-return-duration",
+                "6",
+            ],
+        ):
+            with self.subTest(argv=argv), self.assertRaises(SystemExit):
+                self._parse(argv)
 
 
 if __name__ == "__main__":

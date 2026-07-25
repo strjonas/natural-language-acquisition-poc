@@ -120,6 +120,7 @@ def available_action_mask(
     visible_slots: int | None = None,
     semantic_choice_delayed: bool = False,
     return_pending: bool = False,
+    round_pending: bool = False,
 ) -> np.ndarray:
     """Primitive actions plus perceived slots in every object-option block."""
 
@@ -141,7 +142,7 @@ def available_action_mask(
         wait_index = ACTIONS.index(Action.WAIT)
         mask[: len(ACTIONS)] = False
         mask[wait_index] = True
-        if return_pending:
+        if return_pending or round_pending:
             mask[len(ACTIONS) :] = False
     return mask
 
@@ -291,6 +292,24 @@ def _execute_semantic_choice_return(
     return current_packet, reward_sum, terminated, truncated, final_info
 
 
+def _execute_semantic_choice_round_transition(
+    world: IslandWorld,
+) -> tuple[ObsPacket, float, bool, bool, dict[str, object]]:
+    """Expose consumption, then force the next recurring bodily demand."""
+
+    packet, reward, terminated, truncated, info = (
+        world.start_next_semantic_choice_round()
+    )
+    aggregate = dict(info)
+    aggregate["duration"] = 1
+    aggregate["mean_viability_sum"] = float(info["mean_viability"])
+    aggregate["min_viability"] = float(info["viability"])
+    aggregate["events"] = (info.get("event"),)
+    aggregate["option_kind"] = "round_transition"
+    aggregate["forced_round_transition"] = True
+    return packet, reward, terminated, truncated, aggregate
+
+
 def execute_agent_action(
     world: IslandWorld,
     packet: ObsPacket,
@@ -305,6 +324,8 @@ def execute_agent_action(
     and proprioceptive pose. It never reads the target's hidden bodily kind.
     """
 
+    if world.semantic_choice_round_pending:
+        return _execute_semantic_choice_round_transition(world)
     if world.semantic_choice_return_pending:
         return _execute_semantic_choice_return(world)
 
@@ -414,6 +435,11 @@ def planned_policy_logits(
     score_sign: float = 1.0,
     horizon: int = 1,
     force_return_after_inspect: bool = False,
+    observation_branching: bool = False,
+    persistent_information_reuses: int = 0,
+    persistent_low_need: float = 0.55,
+    urgent_deficit_utility: bool = False,
+    protocol_branch: bool = False,
 ) -> mx.array:
     """Bias policy logits with detached predicted future-body values.
 
@@ -427,17 +453,35 @@ def planned_policy_logits(
             model, states, current_vectors
         )
         scores = (
-            mx.min(predicted_needs, axis=-1)
+            _bodily_terminal_score(
+                predicted_needs,
+                current_vectors[:, :, None, :4],
+                urgent_deficit_utility=urgent_deficit_utility,
+            )
             + reward_weight * predicted_rewards
         )
     elif horizon == 2:
-        scores = two_step_action_scores(
-            model,
-            states,
-            current_vectors,
-            reward_weight=reward_weight,
-            force_return_after_inspect=force_return_after_inspect,
-        )
+        if observation_branching and force_return_after_inspect:
+            scores = observation_branching_action_scores(
+                model,
+                states,
+                current_vectors,
+                persistent_information_reuses=(
+                    persistent_information_reuses
+                ),
+                persistent_low_need=persistent_low_need,
+                urgent_deficit_utility=urgent_deficit_utility,
+                protocol_branch=protocol_branch,
+            )
+        else:
+            scores = two_step_action_scores(
+                model,
+                states,
+                current_vectors,
+                reward_weight=reward_weight,
+                force_return_after_inspect=force_return_after_inspect,
+                urgent_deficit_utility=urgent_deficit_utility,
+            )
     else:
         raise ValueError("Self-model planning horizon must be 1 or 2.")
     scores = mx.stop_gradient(scores - scores.mean(axis=-1, keepdims=True))
@@ -487,6 +531,7 @@ def two_step_action_scores(
     *,
     reward_weight: float,
     force_return_after_inspect: bool = False,
+    urgent_deficit_utility: bool = False,
 ) -> mx.array:
     """Best predicted two-decision bodily outcome for each first action."""
 
@@ -541,7 +586,11 @@ def two_step_action_scores(
         1.0,
     )
     second_scores = (
-        mx.min(second_needs, axis=-1)
+        _bodily_terminal_score(
+            second_needs,
+            first_needs[:, :, :, None, :],
+            urgent_deficit_utility=urgent_deficit_utility,
+        )
         + reward_weight * (first_reward[:, :, :, None] + second_reward)
     )
     if model.has_object_options:
@@ -595,10 +644,537 @@ def two_step_action_scores(
             (first_ids >= consume_start) & (first_ids < consume_stop)
         )[None, None, :]
         first_scores = (
-            mx.min(first_needs, axis=-1) + reward_weight * first_reward
+            _bodily_terminal_score(
+                first_needs,
+                current_vectors[:, :, None, :4],
+                urgent_deficit_utility=urgent_deficit_utility,
+            )
+            + reward_weight * first_reward
         )
         best_scores = mx.where(first_is_consume, first_scores, best_scores)
     return best_scores
+
+
+SEMANTIC_CHOICE_LABEL_KINDS = ("food", "water", "danger")
+
+
+def semantic_choice_label_candidates(*, collapsed: bool = False) -> mx.array:
+    """Candidate label packets for the controlled three-way belief backup."""
+
+    pad_id = TOKEN_TO_ID[PAD_TOKEN]
+    if collapsed:
+        packets = [
+            (pad_id,) * len(encode_utterance(("this", kind)))
+            for kind in SEMANTIC_CHOICE_LABEL_KINDS
+        ]
+    else:
+        packets = [
+            encode_utterance(("this", kind))
+            for kind in SEMANTIC_CHOICE_LABEL_KINDS
+        ]
+    return mx.array(np.asarray(packets, dtype=np.int32))
+
+
+def _sequence_branch_probabilities(
+    token_logits: mx.array,
+    candidate_tokens: mx.array,
+) -> mx.array:
+    """Normalize complete candidate-sequence likelihoods into branches."""
+
+    batch, steps, length, vocab_size = token_logits.shape
+    candidates = candidate_tokens.shape[0]
+    log_probabilities = token_logits - mx.logsumexp(
+        token_logits, axis=-1, keepdims=True
+    )
+    expanded_log_probabilities = mx.broadcast_to(
+        log_probabilities[:, :, None, :, :],
+        (batch, steps, candidates, length, vocab_size),
+    )
+    expanded_tokens = mx.broadcast_to(
+        candidate_tokens[None, None, :, :, None],
+        (batch, steps, candidates, length, 1),
+    )
+    sequence_log_probabilities = mx.take_along_axis(
+        expanded_log_probabilities,
+        expanded_tokens,
+        axis=-1,
+    )[..., 0].sum(axis=-1)
+    return mx.softmax(sequence_log_probabilities, axis=-1)
+
+
+def _semantic_choice_return_vector(
+    current_vectors: mx.array,
+    predicted_needs: mx.array,
+) -> mx.array:
+    """Exact public center/NORTH/WAIT observation after the fixed return."""
+
+    leading = current_vectors.shape[:-1]
+    north = mx.broadcast_to(
+        mx.eye(len(DIRECTION_ORDER), dtype=current_vectors.dtype)[
+            DIRECTION_ORDER.index(Direction.NORTH)
+        ],
+        (*leading, len(DIRECTION_ORDER)),
+    )
+    wait = mx.broadcast_to(
+        mx.eye(len(ACTIONS), dtype=current_vectors.dtype)[
+            ACTIONS.index(Action.WAIT)
+        ],
+        (*leading, len(ACTIONS)),
+    )
+    position_start = 4 + len(DIRECTION_ORDER)
+    action_start = position_start + 2
+    tail_start = action_start + len(ACTIONS)
+    return mx.concatenate(
+        [
+            predicted_needs,
+            north,
+            current_vectors[..., position_start:action_start],
+            wait,
+            current_vectors[..., tail_start:],
+        ],
+        axis=-1,
+    )
+
+
+def _bodily_terminal_score(
+    terminal_needs: mx.array,
+    reference_needs: mx.array,
+    *,
+    urgent_deficit_utility: bool,
+) -> mx.array:
+    """Reduce predicted post-action needs to one bodily value.
+
+    The legacy rule is the predicted minimum need, the ``n -> infinity`` limit
+    of a homeostatic drive. After a multi-tick detour that minimum is fixed by
+    a need no consumption choice affects, and it rewards an uncertain smeared
+    prediction over a correct concentrated one. The corrected rule scores the
+    predicted level of whichever need the organism *currently* observes as its
+    lowest, which is ordinary drive reduction on the most urgent deficit and
+    reads only the organism's own interoception.
+    """
+
+    if not urgent_deficit_utility:
+        return mx.min(terminal_needs, axis=-1)
+    reference_needs = mx.broadcast_to(reference_needs, terminal_needs.shape)
+    urgent = mx.argmin(reference_needs, axis=-1, keepdims=True)
+    return mx.take_along_axis(terminal_needs, urgent, axis=-1).squeeze(-1)
+
+
+def _terminal_consume_scores(
+    model: OrganismModel,
+    states: mx.array,
+    vectors: mx.array,
+    *,
+    urgent_deficit_utility: bool = False,
+) -> mx.array:
+    """Pure bodily value for each visible-slot terminal consume option."""
+
+    batch, steps, state_size = states.shape
+    vector_size = vectors.shape[-1]
+    consume_actions = mx.broadcast_to(
+        (
+            model.primitive_action_size
+            + mx.arange(model.visible_slots)
+        )[None, None, :],
+        (batch, steps, model.visible_slots),
+    )
+    expanded_states = mx.broadcast_to(
+        states[:, :, None, :],
+        (batch, steps, model.visible_slots, state_size),
+    )
+    expanded_vectors = mx.broadcast_to(
+        vectors[:, :, None, :],
+        (batch, steps, model.visible_slots, vector_size),
+    )
+    consume_states = model.transition_state(
+        expanded_states,
+        consume_actions,
+        expanded_vectors,
+    )
+    _, need_deltas, _, _ = model.decode_transition(consume_states)
+    terminal_needs = mx.clip(
+        vectors[:, :, None, :4] + need_deltas,
+        0.0,
+        1.0,
+    )
+    scores = _bodily_terminal_score(
+        terminal_needs,
+        vectors[:, :, None, :4],
+        urgent_deficit_utility=urgent_deficit_utility,
+    )
+    slot_start = model.object_feature_offset
+    slot_stop = (
+        slot_start + model.visible_slots * model.object_feature_size
+    )
+    presence = vectors[..., slot_start:slot_stop].reshape(
+        batch,
+        steps,
+        model.visible_slots,
+        model.object_feature_size,
+    )[..., 0]
+    return mx.where(presence > 0.5, scores, -1e9)
+
+
+# The public post-label protocol places exactly three padding-only
+# observations between hearing a word and being able to act on it in the next
+# recurring demand: the fixed return, the forced round transition, and the next
+# choice pose. A counterfactual write has to travel the same distance, because
+# an external bank row reaches the recurrent core only through observation
+# steps.
+PROTOCOL_SETTLING_OBSERVATIONS = 3
+
+
+def _settled_context_state(
+    model: OrganismModel,
+    states: mx.array,
+    context_vector: mx.array,
+    *,
+    steps: int,
+) -> mx.array:
+    """Apply the public padding-only protocol observations to a state."""
+
+    padding_tokens = mx.broadcast_to(
+        mx.array(
+            [TOKEN_TO_ID[PAD_TOKEN]] * model.tokens_per_utterance,
+            dtype=mx.int32,
+        )[None, None, :],
+        (*context_vector.shape[:2], model.tokens_per_utterance),
+    )
+    state = states
+    for _ in range(steps):
+        state = model.observe_from_state(state, context_vector, padding_tokens)
+    return state
+
+
+def _persistent_self_context_value(
+    model: OrganismModel,
+    states: mx.array,
+    current_vectors: mx.array,
+    *,
+    low_need: float,
+    urgent_deficit_utility: bool = False,
+    settling_steps: int = 1,
+) -> mx.array:
+    """Expected best bodily outcome across recurring hungry/thirsty selves.
+
+    These are counterfactual queries to the learned consequence model, not
+    simulator branches. Object surfaces and geometry remain exactly those in
+    the learner's current observation; only its public bodily context changes.
+    """
+
+    if not 0.0 < low_need < 0.75:
+        raise ValueError("Persistent self-query low need must be in (0, 0.75).")
+    batch, steps = current_vectors.shape[:2]
+    context_values: list[mx.array] = []
+    for need_index in (0, 1):
+        needs = [0.75, 0.75, 0.75, 0.75]
+        needs[need_index] = low_need
+        context_needs = mx.broadcast_to(
+            mx.array(needs, dtype=current_vectors.dtype)[None, None, :],
+            (batch, steps, 4),
+        )
+        context_vector = _semantic_choice_return_vector(
+            current_vectors,
+            context_needs,
+        )
+        context_state = _settled_context_state(
+            model,
+            states,
+            context_vector,
+            steps=settling_steps,
+        )
+        scores = _terminal_consume_scores(
+            model,
+            context_state,
+            context_vector,
+            urgent_deficit_utility=urgent_deficit_utility,
+        )
+        context_values.append(mx.max(scores, axis=-1))
+    return mx.stack(context_values, axis=-1).mean(axis=-1)
+
+
+def observation_branching_inspect_values(
+    model: OrganismModel,
+    states: mx.array,
+    current_vectors: mx.array,
+    *,
+    collapsed_labels: bool = False,
+    persistent_information_reuses: int = 0,
+    persistent_low_need: float = 0.55,
+    urgent_deficit_utility: bool = False,
+    protocol_branch: bool = False,
+) -> tuple[mx.array, mx.array, mx.array, mx.array]:
+    """Expected bodily value after inspect -> observation -> return -> consume.
+
+    Returns inspect values, observation probabilities, best branch values, and
+    best terminal consume-slot indices. The last three tensors have shape
+    ``(batch, steps, visible_slots, three_label_branches)``.
+    """
+
+    if not model.has_episodic_bindings:
+        raise ValueError("Observation branching requires episodic bindings.")
+    if model.object_option_types != 2:
+        raise ValueError(
+            "Observation branching requires consume and inspect option blocks."
+        )
+    if persistent_information_reuses < 0:
+        raise ValueError("Persistent information reuses must be nonnegative.")
+
+    batch, steps, state_size = states.shape
+    vector_size = current_vectors.shape[-1]
+    candidate_tokens = semantic_choice_label_candidates(
+        collapsed=collapsed_labels
+    )
+    padding_tokens = mx.broadcast_to(
+        mx.array(
+            [TOKEN_TO_ID[PAD_TOKEN]] * model.tokens_per_utterance,
+            dtype=mx.int32,
+        )[None, None, :],
+        (batch, steps, model.tokens_per_utterance),
+    )
+    wait_actions = mx.broadcast_to(
+        mx.array(ACTIONS.index(Action.WAIT), dtype=mx.int32),
+        (batch, steps),
+    )
+    slots = current_vectors[
+        ...,
+        model.object_feature_offset : (
+            model.object_feature_offset
+            + model.visible_slots * model.object_feature_size
+        ),
+    ].reshape(
+        batch,
+        steps,
+        model.visible_slots,
+        model.object_feature_size,
+    )
+
+    inspect_values: list[mx.array] = []
+    all_probabilities: list[mx.array] = []
+    all_branch_values: list[mx.array] = []
+    all_branch_choices: list[mx.array] = []
+    for slot in range(model.visible_slots):
+        inspect_action = (
+            model.primitive_action_size + model.visible_slots + slot
+        )
+        inspect_actions = mx.broadcast_to(
+            mx.array(inspect_action, dtype=mx.int32),
+            (batch, steps),
+        )
+        inspect_state = model.transition_state(
+            states,
+            inspect_actions,
+            current_vectors,
+        )
+        predicted_vector, inspect_delta, _, token_logits = (
+            model.decode_transition(inspect_state)
+        )
+        inspect_needs = mx.clip(
+            current_vectors[..., :4] + inspect_delta,
+            0.0,
+            1.0,
+        )
+        label_vector = mx.concatenate(
+            [inspect_needs, predicted_vector[..., 4:]],
+            axis=-1,
+        )
+        probabilities = _sequence_branch_probabilities(
+            token_logits,
+            candidate_tokens,
+        )
+        target_surface = slots[..., slot, 3:]
+
+        branch_values: list[mx.array] = []
+        branch_choices: list[mx.array] = []
+        for branch in range(candidate_tokens.shape[0]):
+            branch_tokens = mx.broadcast_to(
+                candidate_tokens[branch][None, None, :],
+                (batch, steps, model.tokens_per_utterance),
+            )
+            if protocol_branch:
+                # No sensory scene is fabricated. The hypothetical word is
+                # written to the external bank, and the state then travels the
+                # public padding-only protocol, which is also what lets the
+                # written row reach the recurrent core.
+                post_label_state = model.write_binding_into_state(
+                    states,
+                    target_surface,
+                    branch_tokens,
+                )
+                return_carrier = _semantic_choice_return_vector(
+                    current_vectors,
+                    inspect_needs,
+                )
+            else:
+                post_label_state = model.observe_from_state(
+                    states,
+                    label_vector,
+                    branch_tokens,
+                    binding_surfaces=target_surface,
+                )
+                return_carrier = label_vector
+            return_state = model.transition_state(
+                post_label_state,
+                wait_actions,
+                return_carrier,
+            )
+            _, return_delta, _, _ = model.decode_transition(return_state)
+            return_needs = mx.clip(
+                inspect_needs + return_delta,
+                0.0,
+                1.0,
+            )
+            return_vector = _semantic_choice_return_vector(
+                current_vectors,
+                return_needs,
+            )
+            if protocol_branch:
+                post_return_state = _settled_context_state(
+                    model,
+                    post_label_state,
+                    return_vector,
+                    steps=PROTOCOL_SETTLING_OBSERVATIONS,
+                )
+            else:
+                post_return_state = model.observe_from_state(
+                    post_label_state,
+                    return_vector,
+                    padding_tokens,
+                )
+            consume_scores = _terminal_consume_scores(
+                model,
+                post_return_state,
+                return_vector,
+                urgent_deficit_utility=urgent_deficit_utility,
+            )
+            branch_value = mx.max(consume_scores, axis=-1)
+            if persistent_information_reuses > 0:
+                branch_value = branch_value + (
+                    persistent_information_reuses
+                    * _persistent_self_context_value(
+                        model,
+                        post_label_state if protocol_branch
+                        else post_return_state,
+                        return_vector,
+                        low_need=persistent_low_need,
+                        urgent_deficit_utility=urgent_deficit_utility,
+                        settling_steps=(
+                            PROTOCOL_SETTLING_OBSERVATIONS
+                            if protocol_branch
+                            else 1
+                        ),
+                    )
+                )
+            branch_values.append(branch_value)
+            branch_choices.append(mx.argmax(consume_scores, axis=-1))
+
+        stacked_values = mx.stack(branch_values, axis=-1)
+        stacked_choices = mx.stack(branch_choices, axis=-1)
+        inspect_values.append(
+            mx.sum(probabilities * stacked_values, axis=-1)
+        )
+        all_probabilities.append(probabilities)
+        all_branch_values.append(stacked_values)
+        all_branch_choices.append(stacked_choices)
+
+    return (
+        mx.stack(inspect_values, axis=-1),
+        mx.stack(all_probabilities, axis=-2),
+        mx.stack(all_branch_values, axis=-2),
+        mx.stack(all_branch_choices, axis=-2),
+    )
+
+
+def observation_branching_action_scores(
+    model: OrganismModel,
+    states: mx.array,
+    current_vectors: mx.array,
+    *,
+    collapsed_labels: bool = False,
+    persistent_information_reuses: int = 0,
+    persistent_low_need: float = 0.55,
+    urgent_deficit_utility: bool = False,
+    protocol_branch: bool = False,
+) -> mx.array:
+    """Delayed-choice scores with exact observation branches for inspection."""
+
+    base_scores = two_step_action_scores(
+        model,
+        states,
+        current_vectors,
+        reward_weight=0.0,
+        force_return_after_inspect=True,
+        urgent_deficit_utility=urgent_deficit_utility,
+    )
+    consume_scores = _terminal_consume_scores(
+        model,
+        states,
+        current_vectors,
+        urgent_deficit_utility=urgent_deficit_utility,
+    )
+    inspect_values, _, _, _ = observation_branching_inspect_values(
+        model,
+        states,
+        current_vectors,
+        collapsed_labels=collapsed_labels,
+        persistent_information_reuses=persistent_information_reuses,
+        persistent_low_need=persistent_low_need,
+        urgent_deficit_utility=urgent_deficit_utility,
+        protocol_branch=protocol_branch,
+    )
+    if persistent_information_reuses > 0:
+        continuation = _persistent_self_context_value(
+            model,
+            states,
+            current_vectors,
+            low_need=persistent_low_need,
+            urgent_deficit_utility=urgent_deficit_utility,
+            settling_steps=(
+                PROTOCOL_SETTLING_OBSERVATIONS if protocol_branch else 1
+            ),
+        )
+        consume_scores = consume_scores + (
+            persistent_information_reuses * continuation[..., None]
+        )
+
+        # Under the stationary caregiver used by this experiment, a valid
+        # surface-keyed row means that reinspection cannot add a new lexical
+        # fact. Its score therefore reverts to the ordinary costly rollout.
+        # This gate reads only the organism's own memory-valid state.
+        _, _, valid = model._state_memory_parts(states)
+        slots = current_vectors[
+            ...,
+            model.object_feature_offset : (
+                model.object_feature_offset
+                + model.visible_slots * model.object_feature_size
+            ),
+        ].reshape(
+            *current_vectors.shape[:-1],
+            model.visible_slots,
+            model.object_feature_size,
+        )
+        selected_valid = mx.einsum(
+            "...vs,...s->...v",
+            slots[..., 3:],
+            valid,
+        )
+        inspect_start = model.primitive_action_size + model.visible_slots
+        ordinary_inspect = base_scores[
+            ..., inspect_start : inspect_start + model.visible_slots
+        ]
+        inspect_values = mx.where(
+            selected_valid > 0.5,
+            ordinary_inspect,
+            inspect_values,
+        )
+    return mx.concatenate(
+        [
+            base_scores[..., : model.primitive_action_size],
+            consume_scores,
+            inspect_values,
+        ],
+        axis=-1,
+    )
 
 
 def bodily_delta_prediction_loss(
@@ -673,6 +1249,10 @@ class OrganismConfig:
     self_model_planning_start_steps: int = 0
     self_model_planning_reward_weight: float = 0.5
     self_model_planning_horizon: int = 1
+    observation_branching_planning: bool = False
+    persistent_information_reuses: int = 0
+    urgent_deficit_utility: bool = False
+    protocol_branch_planning: bool = False
     seed: int = 1
     max_steps: int = 1000
     log_every_lives: int = 10
@@ -685,6 +1265,18 @@ class OrganismConfig:
             raise ValueError("self_model_planning_horizon must be 1 or 2.")
         if self.multi_step_model_horizon not in {1, 2}:
             raise ValueError("multi_step_model_horizon must be 1 or 2.")
+        if self.persistent_information_reuses < 0:
+            raise ValueError(
+                "persistent_information_reuses must be nonnegative."
+            )
+        if self.observation_branching_planning and (
+            self.self_model_planning_horizon != 2
+            or self.episodic_binding_size <= 0
+        ):
+            raise ValueError(
+                "Observation-branching planning requires horizon two and "
+                "episodic bindings."
+            )
         if self.world_model_replay_capacity < 0:
             raise ValueError("world_model_replay_capacity must be nonnegative.")
         if self.world_model_replay_updates < 0:
@@ -716,6 +1308,9 @@ class OrganismConfig:
             semantic_choice_horizon=self.island.semantic_choice_horizon,
             semantic_choice_objects=self.island.semantic_choice_objects,
             semantic_choice_low_need=self.island.semantic_choice_low_need,
+            semantic_choice_rounds=(
+                self.island.semantic_choice_rounds if choice_trial else 1
+            ),
             semantic_choice_return_duration=(
                 self.island.semantic_choice_return_duration if choice_trial else 0
             ),
@@ -757,6 +1352,10 @@ class LifeStats:
     choice_poison: bool
     choice_wrong_resource: bool
     choice_timeout: bool
+    choice_rounds_completed: int
+    choice_correct_rounds: int
+    choice_poison_rounds: int
+    choice_wrong_resource_rounds: int
 
 
 @dataclass(frozen=True)
@@ -933,6 +1532,10 @@ class OrganismTrainer:
         self._life_choice_poison = False
         self._life_choice_wrong_resource = False
         self._life_choice_timeout = False
+        self._life_choice_rounds_completed = 0
+        self._life_choice_correct_rounds = 0
+        self._life_choice_poison_rounds = 0
+        self._life_choice_wrong_resource_rounds = 0
 
     def _semantic_choice_active(self) -> bool:
         if self.config.semantic_choice_childhood_steps > 0:
@@ -1227,11 +1830,12 @@ class OrganismTrainer:
             else 0.0
         )
         return_pending = self.world.semantic_choice_return_pending
+        round_pending = self.world.semantic_choice_round_pending
         delayed_choice = (
             self.world.config.semantic_choice_trial
             and self.world.config.semantic_choice_return_duration > 0
         )
-        if return_pending:
+        if return_pending or round_pending:
             planning_scale = 0.0
         if planning_scale > 0.0:
             logits = planned_policy_logits(
@@ -1243,6 +1847,19 @@ class OrganismTrainer:
                 reward_weight=self.config.self_model_planning_reward_weight,
                 horizon=self.config.self_model_planning_horizon,
                 force_return_after_inspect=delayed_choice,
+                observation_branching=(
+                    self.config.observation_branching_planning
+                ),
+                persistent_information_reuses=(
+                    self.config.persistent_information_reuses
+                ),
+                urgent_deficit_utility=(
+                    self.config.urgent_deficit_utility
+                ),
+                protocol_branch=self.config.protocol_branch_planning,
+                persistent_low_need=(
+                    self.config.island.semantic_choice_low_need
+                ),
             )
         action_mask = available_action_mask(
             self.packet,
@@ -1250,12 +1867,13 @@ class OrganismTrainer:
             visible_slots=self.model.visible_slots or None,
             semantic_choice_delayed=delayed_choice,
             return_pending=return_pending,
+            round_pending=round_pending,
         )
         logits = mx.where(
             mx.array(action_mask)[None, None, :], logits, -1e9
         )
         mx.eval(logits, values, self.hidden)
-        if return_pending:
+        if return_pending or round_pending:
             action_index = ACTIONS.index(Action.WAIT)
             decision_weight = 0.0
         else:
@@ -1387,6 +2005,17 @@ class OrganismTrainer:
                     self._life_choice_wrong_resource = bool(
                         info.get("wrong_resource")
                     )
+                if bool(info.get("semantic_choice_round_complete")):
+                    self._life_choice_rounds_completed += 1
+                    self._life_choice_correct_rounds += int(
+                        bool(info.get("correct"))
+                    )
+                    self._life_choice_poison_rounds += int(
+                        bool(info.get("poison"))
+                    )
+                    self._life_choice_wrong_resource_rounds += int(
+                        bool(info.get("wrong_resource"))
+                    )
                 self._life_choice_timeout = bool(info.get("timeout"))
 
             if terminated or truncated:
@@ -1434,6 +2063,12 @@ class OrganismTrainer:
                 choice_poison=self._life_choice_poison,
                 choice_wrong_resource=self._life_choice_wrong_resource,
                 choice_timeout=self._life_choice_timeout,
+                choice_rounds_completed=self._life_choice_rounds_completed,
+                choice_correct_rounds=self._life_choice_correct_rounds,
+                choice_poison_rounds=self._life_choice_poison_rounds,
+                choice_wrong_resource_rounds=(
+                    self._life_choice_wrong_resource_rounds
+                ),
             )
         )
         self.life_index += 1
@@ -1606,6 +2241,13 @@ class OrganismTrainer:
                 reward_weight=config.self_model_planning_reward_weight,
                 horizon=config.self_model_planning_horizon,
                 force_return_after_inspect=semantic_choice_delayed,
+                observation_branching=config.observation_branching_planning,
+                persistent_information_reuses=(
+                    config.persistent_information_reuses
+                ),
+                urgent_deficit_utility=config.urgent_deficit_utility,
+                protocol_branch=config.protocol_branch_planning,
+                persistent_low_need=config.island.semantic_choice_low_need,
             )
         logits = mx.where(action_masks[None, :, :], logits, -1e9)
         logits = logits[0]
@@ -2009,6 +2651,7 @@ def evaluate_semantic_choice(
     semantic_choice_horizon: int = 20,
     semantic_choice_objects: int = 2,
     semantic_choice_low_need: float = 0.35,
+    semantic_choice_rounds: int = 1,
     semantic_choice_return_duration: int = 0,
     sample_seed: int = 0,
     greedy: bool = False,
@@ -2018,6 +2661,10 @@ def evaluate_semantic_choice(
     self_model_planning_reward_weight: float = 0.5,
     self_model_planning_score_sign: float = 1.0,
     self_model_planning_horizon: int = 1,
+    observation_branching_planning: bool = False,
+    persistent_information_reuses: int = 0,
+    urgent_deficit_utility: bool = False,
+    protocol_branch_planning: bool = False,
 ) -> dict[str, float]:
     """Evaluate the held-out inspect--remember--choose developmental task.
 
@@ -2043,6 +2690,10 @@ def evaluate_semantic_choice(
     label_opportunities = 0
     utterances = 0
     steps_sum = 0
+    round_choices = [0] * semantic_choice_rounds
+    round_correct = [0] * semantic_choice_rounds
+    round_inspected = [0] * semantic_choice_rounds
+    round_inspect_decisions = [0] * semantic_choice_rounds
 
     for episode in range(episodes):
         seed = base_seed + episode
@@ -2053,6 +2704,7 @@ def evaluate_semantic_choice(
                 semantic_choice_horizon=semantic_choice_horizon,
                 semantic_choice_objects=semantic_choice_objects,
                 semantic_choice_low_need=semantic_choice_low_need,
+                semantic_choice_rounds=semantic_choice_rounds,
                 semantic_choice_return_duration=(
                     semantic_choice_return_duration
                 ),
@@ -2072,8 +2724,13 @@ def evaluate_semantic_choice(
             states, hidden = model.core_states(vector, tokens, hidden)
             logits = model.policy_logits(states, vector)
             return_pending = world.semantic_choice_return_pending
+            round_pending = world.semantic_choice_round_pending
             delayed_choice = semantic_choice_return_duration > 0
-            if self_model_planning_scale > 0.0 and not return_pending:
+            if (
+                self_model_planning_scale > 0.0
+                and not return_pending
+                and not round_pending
+            ):
                 logits = planned_policy_logits(
                     model,
                     states,
@@ -2084,6 +2741,13 @@ def evaluate_semantic_choice(
                     score_sign=self_model_planning_score_sign,
                     horizon=self_model_planning_horizon,
                     force_return_after_inspect=delayed_choice,
+                    observation_branching=observation_branching_planning,
+                    persistent_information_reuses=(
+                        persistent_information_reuses
+                    ),
+                    urgent_deficit_utility=urgent_deficit_utility,
+                    protocol_branch=protocol_branch_planning,
+                    persistent_low_need=semantic_choice_low_need,
                 )
             action_mask = available_action_mask(
                 packet,
@@ -2091,12 +2755,13 @@ def evaluate_semantic_choice(
                 visible_slots=model.visible_slots or None,
                 semantic_choice_delayed=delayed_choice,
                 return_pending=return_pending,
+                round_pending=round_pending,
             )
             logits = mx.where(
                 mx.array(action_mask)[None, None, :], logits, -1e9
             )
             mx.eval(logits, hidden)
-            if return_pending:
+            if return_pending or round_pending:
                 action_index = ACTIONS.index(Action.WAIT)
             elif greedy:
                 action_index = int(mx.argmax(logits[0, 0]).item())
@@ -2118,6 +2783,12 @@ def evaluate_semantic_choice(
             )
             if decoded is not None and decoded[0] == "inspect":
                 inspect_decisions += 1
+                round_inspect_decisions[
+                    min(
+                        world.grid.choice_round_index,
+                        semantic_choice_rounds - 1,
+                    )
+                ] += 1
             packet, _, terminated, truncated, info = execute_agent_action(
                 world,
                 packet,
@@ -2130,44 +2801,70 @@ def evaluate_semantic_choice(
             trial_inspected = trial_inspected or inspection_event
             label_opportunities += int(inspection_event)
             utterances += int(any(token != pad_id for token in packet.tokens))
-            if terminated or truncated:
+            if bool(info.get("semantic_choice_round_complete")):
+                round_index = int(info.get("semantic_choice_round_index", 0))
                 inspected_trials += int(trial_inspected)
                 chosen = info.get("chosen_kind") is not None
                 choices += int(chosen)
                 correct += int(bool(info.get("correct")))
                 poison += int(bool(info.get("poison")))
                 wrong_resource += int(bool(info.get("wrong_resource")))
-                timeouts += int(bool(info.get("timeout")))
+                round_choices[round_index] += int(chosen)
+                round_correct[round_index] += int(bool(info.get("correct")))
+                round_inspected[round_index] += int(trial_inspected)
                 if chosen and bool(info.get("chosen_surface_inspected")):
                     inspected_choices += 1
                     inspected_correct += int(bool(info.get("correct")))
+                trial_inspected = False
+            if terminated or truncated:
+                if not bool(info.get("semantic_choice_round_complete")):
+                    inspected_trials += int(trial_inspected)
+                    timeouts += int(bool(info.get("timeout")))
                 break
         steps_sum += steps
 
-    return {
-        "trials": float(episodes),
+    trials = episodes * semantic_choice_rounds
+    result = {
+        "trials": float(trials),
+        "lives": float(episodes),
         "choices_made": float(choices),
-        "choice_rate": choices / episodes,
+        "choice_rate": choices / trials,
         "correct_choices": float(correct),
-        "correct_rate_all_trials": correct / episodes,
+        "correct_rate_all_trials": correct / trials,
         "choice_accuracy": correct / max(1, choices),
         "poison_choices": float(poison),
-        "poison_rate_all_trials": poison / episodes,
+        "poison_rate_all_trials": poison / trials,
         "wrong_resource_choices": float(wrong_resource),
-        "wrong_resource_rate_all_trials": wrong_resource / episodes,
-        "timeout_rate": timeouts / episodes,
+        "wrong_resource_rate_all_trials": wrong_resource / trials,
+        "timeout_rate": timeouts / trials,
         "trials_with_inspection": float(inspected_trials),
-        "inspection_trial_rate": inspected_trials / episodes,
+        "inspection_trial_rate": inspected_trials / trials,
         "inspected_choices": float(inspected_choices),
-        "inspected_choice_rate": inspected_choices / episodes,
+        "inspected_choice_rate": inspected_choices / trials,
         "inspected_choice_accuracy": inspected_correct
         / max(1, inspected_choices),
-        "inspect_decisions_per_trial": inspect_decisions / episodes,
-        "inspect_option_decisions_per_trial": inspect_decisions / episodes,
-        "label_opportunities_per_trial": label_opportunities / episodes,
-        "utterances_heard_per_trial": utterances / episodes,
+        "inspect_decisions_per_trial": inspect_decisions / trials,
+        "inspect_option_decisions_per_trial": inspect_decisions / trials,
+        "label_opportunities_per_trial": label_opportunities / trials,
+        "utterances_heard_per_trial": utterances / trials,
         "mean_steps": steps_sum / episodes,
     }
+    for round_index in range(semantic_choice_rounds):
+        prefix = f"round_{round_index + 1}"
+        result.update(
+            {
+                f"{prefix}_choice_rate": round_choices[round_index]
+                / episodes,
+                f"{prefix}_correct_rate": round_correct[round_index]
+                / episodes,
+                f"{prefix}_inspection_rate": round_inspected[round_index]
+                / episodes,
+                f"{prefix}_inspect_decisions_per_life": (
+                    round_inspect_decisions[round_index] / episodes
+                ),
+            }
+        )
+    return result
 
 
 def audit_self_model_actions(
@@ -3596,6 +4293,1169 @@ def audit_label_referent_binding(
     }
 
 
+def audit_observation_branching_planner(
+    model: OrganismModel,
+    *,
+    episodes: int = 300,
+    base_seed: int = 1_700_000,
+    semantic_choice_horizon: int = 40,
+    semantic_choice_low_need: float = 0.55,
+    semantic_choice_return_duration: int = 6,
+    persistent_information_reuses: int = 0,
+    urgent_deficit_utility: bool = False,
+    protocol_branch: bool = False,
+) -> dict[str, float]:
+    """Read-only feasibility audit for the delayed observation backup."""
+
+    if episodes <= 0:
+        raise ValueError("episodes must be positive.")
+    if not model.has_episodic_bindings or model.object_option_types != 2:
+        raise ValueError(
+            "The observation-branching audit requires episodic consume/inspect "
+            "options."
+        )
+
+    condition_totals = {
+        name: {
+            "inspect_options": 0.0,
+            "contingent": 0.0,
+            "matching_selected": 0.0,
+            "danger_avoided": 0.0,
+            "advantage_sum": 0.0,
+            "positive_contexts": 0.0,
+        }
+        for name in ("intact", "no_write", "collapsed")
+    }
+    entropy_sum = 0.0
+    true_probability_sum = 0.0
+    true_branch_correct = 0.0
+    true_branch_cases = 0.0
+    audited_contexts = 0
+    writes_before = model.episodic_binding_writes
+
+    def planner_outputs(
+        states: mx.array,
+        vector: mx.array,
+        *,
+        writes_enabled: bool,
+        collapsed_labels: bool,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        model.episodic_binding_writes = writes_enabled
+        values, probabilities, _, choices = (
+            observation_branching_inspect_values(
+                model,
+                states,
+                vector,
+                collapsed_labels=collapsed_labels,
+                persistent_information_reuses=(
+                    persistent_information_reuses
+                ),
+                persistent_low_need=semantic_choice_low_need,
+                urgent_deficit_utility=urgent_deficit_utility,
+                protocol_branch=protocol_branch,
+            )
+        )
+        mx.eval(values, probabilities, choices)
+        return (
+            np.asarray(values[0, 0], dtype=np.float64),
+            np.asarray(probabilities[0, 0], dtype=np.float64),
+            np.asarray(choices[0, 0], dtype=np.int64),
+        )
+
+    try:
+        for episode in range(episodes):
+            seed = base_seed + episode
+            world = IslandWorld(
+                IslandConfig(
+                    semantic_choice_trial=True,
+                    semantic_choice_horizon=semantic_choice_horizon,
+                    semantic_choice_objects=3,
+                    semantic_choice_low_need=semantic_choice_low_need,
+                    semantic_choice_return_duration=(
+                        semantic_choice_return_duration
+                    ),
+                    language_mode="grounded",
+                ),
+                seed=seed,
+            )
+            packet = world.reset(seed)
+            if len(packet.visible) != 3:
+                raise RuntimeError(
+                    "Three-way feasibility audit did not expose three objects."
+                )
+            vector = mx.array(packet.vector()[None, None, :])
+            tokens = mx.array(
+                np.asarray(packet.tokens, dtype=np.int32)[None, None, :]
+            )
+            states, _ = model.core_states(vector, tokens)
+            immediate_scores = _terminal_consume_scores(
+                model,
+                states,
+                vector,
+                urgent_deficit_utility=urgent_deficit_utility,
+            )
+            if persistent_information_reuses > 0:
+                continuation = _persistent_self_context_value(
+                    model,
+                    states,
+                    vector,
+                    low_need=semantic_choice_low_need,
+                    urgent_deficit_utility=urgent_deficit_utility,
+                    settling_steps=(
+                        PROTOCOL_SETTLING_OBSERVATIONS
+                        if protocol_branch
+                        else 1
+                    ),
+                )
+                immediate_scores = immediate_scores + (
+                    persistent_information_reuses
+                    * continuation[..., None]
+                )
+            mx.eval(immediate_scores)
+            visible_count = len(packet.visible)
+            best_immediate = float(
+                np.max(
+                    np.asarray(
+                        immediate_scores[0, 0, :visible_count],
+                        dtype=np.float64,
+                    )
+                )
+            )
+
+            outputs = {
+                "intact": planner_outputs(
+                    states,
+                    vector,
+                    writes_enabled=True,
+                    collapsed_labels=False,
+                ),
+                "no_write": planner_outputs(
+                    states,
+                    vector,
+                    writes_enabled=False,
+                    collapsed_labels=False,
+                ),
+                "collapsed": planner_outputs(
+                    states,
+                    vector,
+                    writes_enabled=True,
+                    collapsed_labels=True,
+                ),
+            }
+
+            choice_need = str(world.grid.choice_need)
+            matching_branch = SEMANTIC_CHOICE_LABEL_KINDS.index(choice_need)
+            danger_branch = SEMANTIC_CHOICE_LABEL_KINDS.index("danger")
+            correct_slot = next(
+                slot
+                for slot, (_, _, surface_index) in enumerate(packet.visible)
+                if world.grid.kind_by_surface[SURFACES[surface_index]]
+                == choice_need
+            )
+
+            for condition, (values, probabilities, choices) in outputs.items():
+                values = values[:visible_count]
+                probabilities = probabilities[:visible_count]
+                choices = choices[:visible_count]
+                totals = condition_totals[condition]
+                totals["inspect_options"] += visible_count
+                totals["contingent"] += sum(
+                    len(set(row.tolist())) >= 2 for row in choices
+                )
+                totals["matching_selected"] += sum(
+                    int(choices[slot, matching_branch] == slot)
+                    for slot in range(visible_count)
+                )
+                totals["danger_avoided"] += sum(
+                    int(choices[slot, danger_branch] != slot)
+                    for slot in range(visible_count)
+                )
+                advantage = float(np.max(values) - best_immediate)
+                totals["advantage_sum"] += advantage
+                totals["positive_contexts"] += int(advantage > 0.0)
+
+            intact_probabilities = outputs["intact"][1][:visible_count]
+            entropy_sum += float(
+                (
+                    -intact_probabilities
+                    * np.log(np.clip(intact_probabilities, 1e-12, 1.0))
+                ).sum()
+                / np.log(len(SEMANTIC_CHOICE_LABEL_KINDS))
+            )
+            intact_choices = outputs["intact"][2][:visible_count]
+            for slot, (_, _, surface_index) in enumerate(packet.visible):
+                true_kind = world.grid.kind_by_surface[
+                    SURFACES[surface_index]
+                ]
+                true_word = "danger" if true_kind == "poison" else true_kind
+                true_branch = SEMANTIC_CHOICE_LABEL_KINDS.index(true_word)
+                true_probability_sum += intact_probabilities[slot, true_branch]
+                true_branch_correct += int(
+                    intact_choices[slot, true_branch] == correct_slot
+                )
+                true_branch_cases += 1.0
+            audited_contexts += 1
+    finally:
+        model.episodic_binding_writes = writes_before
+
+    result: dict[str, float] = {
+        "audited_contexts": float(audited_contexts),
+        "urgent_deficit_utility": float(urgent_deficit_utility),
+        "protocol_branch": float(protocol_branch),
+        "persistent_information_reuses": float(
+            persistent_information_reuses
+        ),
+        "candidate_prior_normalized_entropy": (
+            entropy_sum / max(1.0, true_branch_cases)
+        ),
+        "mean_true_label_probability": (
+            true_probability_sum / max(1.0, true_branch_cases)
+        ),
+        "true_label_branch_correct_consume_rate": (
+            true_branch_correct / max(1.0, true_branch_cases)
+        ),
+    }
+    for condition, totals in condition_totals.items():
+        inspect_denominator = max(1.0, totals["inspect_options"])
+        context_denominator = max(1.0, float(audited_contexts))
+        result.update(
+            {
+                f"{condition}_branch_contingency_rate": (
+                    totals["contingent"] / inspect_denominator
+                ),
+                f"{condition}_matching_label_selects_target_rate": (
+                    totals["matching_selected"] / inspect_denominator
+                ),
+                f"{condition}_danger_label_avoids_target_rate": (
+                    totals["danger_avoided"] / inspect_denominator
+                ),
+                f"{condition}_mean_best_inspect_advantage": (
+                    totals["advantage_sum"] / context_denominator
+                ),
+                f"{condition}_positive_advantage_context_rate": (
+                    totals["positive_contexts"] / context_denominator
+                ),
+            }
+        )
+    result.update(
+        {
+            "write_causal_advantage_drop": (
+                result["intact_mean_best_inspect_advantage"]
+                - result["no_write_mean_best_inspect_advantage"]
+            ),
+            "write_causal_contingency_drop": (
+                result["intact_branch_contingency_rate"]
+                - result["no_write_branch_contingency_rate"]
+            ),
+            "collapsed_label_advantage_drop": (
+                result["intact_mean_best_inspect_advantage"]
+                - result["collapsed_mean_best_inspect_advantage"]
+            ),
+            "collapsed_label_contingency_drop": (
+                result["intact_branch_contingency_rate"]
+                - result["collapsed_branch_contingency_rate"]
+            ),
+        }
+    )
+    return result
+
+
+def audit_semantic_choice_information_upper_bound(
+    *,
+    episodes: int = 10_000,
+    base_seed: int = 1_800_000,
+    semantic_choice_horizon: int = 40,
+    semantic_choice_low_need: float = 0.55,
+    semantic_choice_return_duration: int = 6,
+) -> dict[str, float]:
+    """Exact-environment information-rent ceiling for the delayed task."""
+
+    if episodes <= 0:
+        raise ValueError("episodes must be positive.")
+
+    def action_for_surface(
+        packet: ObsPacket,
+        surface_index: int,
+        option_kind: str,
+    ) -> int:
+        slot = next(
+            slot
+            for slot, (_, _, visible_surface) in enumerate(packet.visible)
+            if visible_surface == surface_index
+        )
+        return object_option_action_index(
+            option_kind,
+            slot,
+            consume_options=True,
+            inspect_options=True,
+            visible_slots=packet.max_visible_slots,
+        )
+
+    def inspect_and_return(
+        world: IslandWorld,
+        packet: ObsPacket,
+        surface_index: int,
+    ) -> tuple[ObsPacket, str]:
+        packet, _, terminated, truncated, _ = execute_agent_action(
+            world,
+            packet,
+            action_for_surface(packet, surface_index, "inspect"),
+            consume_options=True,
+            inspect_options=True,
+        )
+        if terminated or truncated:
+            raise RuntimeError("Information upper-bound inspection ended early.")
+        observed_kind = VOCAB[packet.tokens[1]]
+        if observed_kind not in SEMANTIC_CHOICE_LABEL_KINDS:
+            raise RuntimeError(
+                f"Unexpected semantic-choice label: {observed_kind!r}."
+            )
+        packet, _, terminated, truncated, _ = execute_agent_action(
+            world,
+            packet,
+            ACTIONS.index(Action.WAIT),
+            consume_options=True,
+            inspect_options=True,
+        )
+        if terminated or truncated:
+            raise RuntimeError("Information upper-bound return ended early.")
+        return packet, observed_kind
+
+    def consume_surface(
+        world: IslandWorld,
+        packet: ObsPacket,
+        surface_index: int,
+    ) -> tuple[ObsPacket, dict[str, object]]:
+        packet, _, terminated, truncated, info = execute_agent_action(
+            world,
+            packet,
+            action_for_surface(packet, surface_index, "consume"),
+            consume_options=True,
+            inspect_options=True,
+        )
+        if not (terminated or truncated):
+            raise RuntimeError(
+                "Delayed semantic-choice consumption was not terminal."
+            )
+        return packet, info
+
+    policy_names = (
+        "blind_immediate",
+        "one_inspection",
+        "two_inspections",
+        "clairvoyant_immediate",
+    )
+    utilities = {name: [] for name in policy_names}
+    ticks = {name: [] for name in policy_names}
+    outcomes = {
+        name: {"correct": 0, "wrong_resource": 0, "poison": 0}
+        for name in policy_names
+    }
+
+    for episode in range(episodes):
+        seed = base_seed + episode
+        for policy_name in policy_names:
+            world = IslandWorld(
+                IslandConfig(
+                    semantic_choice_trial=True,
+                    semantic_choice_horizon=semantic_choice_horizon,
+                    semantic_choice_objects=3,
+                    semantic_choice_low_need=semantic_choice_low_need,
+                    semantic_choice_return_duration=(
+                        semantic_choice_return_duration
+                    ),
+                    language_mode="grounded",
+                ),
+                seed=seed,
+            )
+            packet = world.reset(seed)
+            surfaces = [surface for _, _, surface in packet.visible]
+            if len(surfaces) != 3:
+                raise RuntimeError(
+                    "Information upper bound requires three visible surfaces."
+                )
+            low_need = "food" if packet.needs[0] < packet.needs[1] else "water"
+
+            if policy_name == "blind_immediate":
+                chosen_surface = surfaces[0]
+            elif policy_name == "one_inspection":
+                packet, first_label = inspect_and_return(
+                    world,
+                    packet,
+                    surfaces[0],
+                )
+                chosen_surface = (
+                    surfaces[0] if first_label == low_need else surfaces[1]
+                )
+            elif policy_name == "two_inspections":
+                packet, first_label = inspect_and_return(
+                    world,
+                    packet,
+                    surfaces[0],
+                )
+                if first_label == low_need:
+                    chosen_surface = surfaces[0]
+                else:
+                    packet, second_label = inspect_and_return(
+                        world,
+                        packet,
+                        surfaces[1],
+                    )
+                    chosen_surface = (
+                        surfaces[1]
+                        if second_label == low_need
+                        else surfaces[2]
+                    )
+            else:
+                chosen_surface = next(
+                    surface
+                    for surface in surfaces
+                    if world.grid.kind_by_surface[SURFACES[surface]]
+                    == low_need
+                )
+
+            packet, info = consume_surface(
+                world,
+                packet,
+                chosen_surface,
+            )
+            utilities[policy_name].append(min(packet.needs))
+            ticks[policy_name].append(world.grid.step_count)
+            outcomes[policy_name]["correct"] += int(bool(info["correct"]))
+            outcomes[policy_name]["wrong_resource"] += int(
+                bool(info["wrong_resource"])
+            )
+            outcomes[policy_name]["poison"] += int(bool(info["poison"]))
+
+    result: dict[str, float] = {"audited_contexts": float(episodes)}
+    blind = np.asarray(utilities["blind_immediate"], dtype=np.float64)
+    for policy_name in policy_names:
+        policy_utilities = np.asarray(
+            utilities[policy_name],
+            dtype=np.float64,
+        )
+        result.update(
+            {
+                f"{policy_name}_mean_final_min_need": float(
+                    policy_utilities.mean()
+                ),
+                f"{policy_name}_mean_ticks": float(
+                    np.mean(ticks[policy_name])
+                ),
+                f"{policy_name}_correct_rate": (
+                    outcomes[policy_name]["correct"] / episodes
+                ),
+                f"{policy_name}_wrong_resource_rate": (
+                    outcomes[policy_name]["wrong_resource"] / episodes
+                ),
+                f"{policy_name}_poison_rate": (
+                    outcomes[policy_name]["poison"] / episodes
+                ),
+                f"{policy_name}_paired_utility_gain_over_blind": float(
+                    (policy_utilities - blind).mean()
+                ),
+            }
+        )
+    return result
+
+
+def audit_persistent_mapping_information_rent(
+    *,
+    lives: int = 2_500,
+    base_seed: int = 1_900_000,
+    round_counts: tuple[int, ...] = (1, 2, 4, 8),
+    semantic_choice_horizon: int = 40,
+    semantic_choice_low_need: float = 0.55,
+    semantic_choice_return_duration: int = 6,
+) -> dict[str, float]:
+    """Exact-dynamics rent audit with one mapping reused across rounds."""
+
+    if lives <= 0:
+        raise ValueError("lives must be positive.")
+    if not round_counts or any(rounds <= 0 for rounds in round_counts):
+        raise ValueError("round_counts must contain positive values.")
+
+    def action_for_surface(
+        packet: ObsPacket,
+        surface_index: int,
+        option_kind: str,
+    ) -> int:
+        slot = next(
+            slot
+            for slot, (_, _, visible_surface) in enumerate(packet.visible)
+            if visible_surface == surface_index
+        )
+        return object_option_action_index(
+            option_kind,
+            slot,
+            consume_options=True,
+            inspect_options=True,
+            visible_slots=packet.max_visible_slots,
+        )
+
+    def inspect_and_return(
+        world: IslandWorld,
+        packet: ObsPacket,
+        surface_index: int,
+    ) -> tuple[ObsPacket, str]:
+        packet, _, terminated, truncated, _ = execute_agent_action(
+            world,
+            packet,
+            action_for_surface(packet, surface_index, "inspect"),
+            consume_options=True,
+            inspect_options=True,
+        )
+        if terminated or truncated:
+            raise RuntimeError("Persistent-rent inspection ended early.")
+        observed_kind = VOCAB[packet.tokens[1]]
+        packet, _, terminated, truncated, _ = execute_agent_action(
+            world,
+            packet,
+            ACTIONS.index(Action.WAIT),
+            consume_options=True,
+            inspect_options=True,
+        )
+        if terminated or truncated:
+            raise RuntimeError("Persistent-rent return ended early.")
+        return packet, observed_kind
+
+    def prepare_round(
+        world: IslandWorld,
+        fixed_objects: list[object],
+        fixed_surfaces: list[int],
+        low_need: str,
+    ) -> ObsPacket:
+        world.grid.objects = deepcopy(fixed_objects)
+        world.grid.agent_pos = world.semantic_choice_center
+        world.grid.direction = Direction.NORTH
+        world.grid.step_count = 0
+        world.grid.needs = replace(
+            world.grid.needs,
+            food=(
+                semantic_choice_low_need if low_need == "food" else 0.75
+            ),
+            water=(
+                semantic_choice_low_need if low_need == "water" else 0.75
+            ),
+            energy=0.75,
+            safety=0.75,
+        )
+        world.grid.choice_need = low_need
+        world.grid.choice_surfaces = tuple(
+            SURFACES[surface] for surface in fixed_surfaces
+        )
+        world.grid.offered_kind = None
+        world.grid.offered_surface = None
+        world.grid.offered_pos = None
+        world._last_action_index = -1
+        world._semantic_choice_return_pending = False
+        world._inspected_surfaces.clear()
+        return world._packet(world.grid._observe(None, None), None)
+
+    policy_names = ("blind", "persistent", "clairvoyant")
+    result: dict[str, float] = {"audited_lives": float(lives)}
+    for rounds in round_counts:
+        life_utilities = {name: [] for name in policy_names}
+        total_ticks = {name: 0.0 for name in policy_names}
+        total_inspections = {name: 0.0 for name in policy_names}
+        outcomes = {
+            name: {"correct": 0, "wrong_resource": 0, "poison": 0}
+            for name in policy_names
+        }
+
+        for life in range(lives):
+            seed = base_seed + life
+            starting_need = Random(seed ^ 0x5E1F).choice(("food", "water"))
+            need_sequence = [
+                (
+                    starting_need
+                    if round_index % 2 == 0
+                    else ("water" if starting_need == "food" else "food")
+                )
+                for round_index in range(rounds)
+            ]
+            for policy_name in policy_names:
+                world = IslandWorld(
+                    IslandConfig(
+                        semantic_choice_trial=True,
+                        semantic_choice_horizon=semantic_choice_horizon,
+                        semantic_choice_objects=3,
+                        semantic_choice_low_need=semantic_choice_low_need,
+                        semantic_choice_return_duration=(
+                            semantic_choice_return_duration
+                        ),
+                        language_mode="grounded",
+                    ),
+                    seed=seed,
+                )
+                initial_packet = world.reset(seed)
+                fixed_surfaces = [
+                    surface for _, _, surface in initial_packet.visible
+                ]
+                fixed_objects = deepcopy(world.grid.objects)
+                known_labels: dict[int, str] = {}
+                life_utility = 0.0
+
+                for low_need in need_sequence:
+                    packet = prepare_round(
+                        world,
+                        fixed_objects,
+                        fixed_surfaces,
+                        low_need,
+                    )
+                    if policy_name == "blind":
+                        chosen_surface = fixed_surfaces[0]
+                    elif policy_name == "clairvoyant":
+                        chosen_surface = next(
+                            surface
+                            for surface in fixed_surfaces
+                            if world.grid.kind_by_surface[SURFACES[surface]]
+                            == low_need
+                        )
+                    else:
+                        while not any(
+                            label == low_need
+                            for label in known_labels.values()
+                        ):
+                            unknown = next(
+                                surface
+                                for surface in fixed_surfaces
+                                if surface not in known_labels
+                            )
+                            packet, label = inspect_and_return(
+                                world,
+                                packet,
+                                unknown,
+                            )
+                            known_labels[unknown] = label
+                            total_inspections[policy_name] += 1.0
+                            if len(known_labels) == 2:
+                                remaining_surface = next(
+                                    surface
+                                    for surface in fixed_surfaces
+                                    if surface not in known_labels
+                                )
+                                remaining_label = next(
+                                    label_name
+                                    for label_name in (
+                                        SEMANTIC_CHOICE_LABEL_KINDS
+                                    )
+                                    if label_name
+                                    not in set(known_labels.values())
+                                )
+                                known_labels[remaining_surface] = (
+                                    remaining_label
+                                )
+                        chosen_surface = next(
+                            surface
+                            for surface, label in known_labels.items()
+                            if label == low_need
+                        )
+
+                    packet, _, terminated, truncated, info = execute_agent_action(
+                        world,
+                        packet,
+                        action_for_surface(
+                            packet,
+                            chosen_surface,
+                            "consume",
+                        ),
+                        consume_options=True,
+                        inspect_options=True,
+                    )
+                    if not (terminated or truncated):
+                        raise RuntimeError(
+                            "Persistent-rent consumption was not terminal."
+                        )
+                    round_utility = min(packet.needs)
+                    life_utility += round_utility
+                    total_ticks[policy_name] += world.grid.step_count
+                    outcomes[policy_name]["correct"] += int(
+                        bool(info["correct"])
+                    )
+                    outcomes[policy_name]["wrong_resource"] += int(
+                        bool(info["wrong_resource"])
+                    )
+                    outcomes[policy_name]["poison"] += int(
+                        bool(info["poison"])
+                    )
+                life_utilities[policy_name].append(life_utility)
+
+        blind = np.asarray(life_utilities["blind"], dtype=np.float64)
+        total_rounds = lives * rounds
+        prefix = f"rounds_{rounds}"
+        for policy_name in policy_names:
+            policy_life_utilities = np.asarray(
+                life_utilities[policy_name],
+                dtype=np.float64,
+            )
+            paired_gain = policy_life_utilities - blind
+            result.update(
+                {
+                    f"{prefix}_{policy_name}_mean_final_min_need_per_round": (
+                        float(policy_life_utilities.mean() / rounds)
+                    ),
+                    f"{prefix}_{policy_name}_paired_cumulative_gain": (
+                        float(paired_gain.mean())
+                    ),
+                    f"{prefix}_{policy_name}_paired_gain_per_round": (
+                        float(paired_gain.mean() / rounds)
+                    ),
+                    f"{prefix}_{policy_name}_correct_rate": (
+                        outcomes[policy_name]["correct"] / total_rounds
+                    ),
+                    f"{prefix}_{policy_name}_wrong_resource_rate": (
+                        outcomes[policy_name]["wrong_resource"] / total_rounds
+                    ),
+                    f"{prefix}_{policy_name}_poison_rate": (
+                        outcomes[policy_name]["poison"] / total_rounds
+                    ),
+                    f"{prefix}_{policy_name}_mean_ticks_per_round": (
+                        total_ticks[policy_name] / total_rounds
+                    ),
+                    f"{prefix}_{policy_name}_mean_inspections_per_life": (
+                        total_inspections[policy_name] / lives
+                    ),
+                }
+            )
+    return result
+
+
+def audit_cross_round_label_reuse(
+    model: OrganismModel,
+    *,
+    lives: int = 300,
+    base_seed: int = 1_700_000,
+    rounds: int = 8,
+    acquisition_rounds: int = 2,
+    semantic_choice_horizon: int = 40,
+    semantic_choice_low_need: float = 0.55,
+    semantic_choice_return_duration: int = 6,
+    language_mode: str = "grounded",
+    urgent_deficit_utility: bool = True,
+) -> dict[str, float]:
+    """Does a word acquired early still steer choice in later rounds?
+
+    A scripted read-only driver acquires one food label and one water label in
+    the first rounds and never inspects again. In every later round the
+    organism's own terminal consume score is read at the choice pose and
+    compared with the object its body actually needs. The simulator's kinds
+    route the driver and score the table; they never enter a model input, and
+    no parameter is updated.
+    """
+
+    if lives <= 0:
+        raise ValueError("lives must be positive.")
+    if rounds <= acquisition_rounds:
+        raise ValueError("rounds must exceed acquisition_rounds.")
+    if not model.has_episodic_bindings:
+        raise ValueError("Cross-round reuse requires episodic bindings.")
+
+    config = IslandConfig(
+        semantic_choice_trial=True,
+        semantic_choice_horizon=semantic_choice_horizon,
+        semantic_choice_objects=3,
+        semantic_choice_low_need=semantic_choice_low_need,
+        semantic_choice_rounds=rounds,
+        semantic_choice_return_duration=semantic_choice_return_duration,
+        language_mode=language_mode,
+        max_visible_slots=model.visible_slots or 8,
+    )
+    wait_index = ACTIONS.index(Action.WAIT)
+    round_hits = [0 for _ in range(rounds)]
+    round_cases = [0 for _ in range(rounds)]
+    valid_rows = 0.0
+    valid_cases = 0
+    completed = 0
+
+    def observe(packet, carry):
+        vector = mx.array(packet.vector()[None, None, :])
+        tokens = mx.array(
+            np.asarray(packet.tokens, dtype=np.int32)[None, None, :]
+        )
+        states, carry = model.core_states(vector, tokens, carry)
+        return states, carry, vector
+
+    for life in range(lives):
+        seed = base_seed + life
+        world = IslandWorld(config, seed=seed)
+        packet = world.reset(seed)
+        carry = None
+        for round_index in range(rounds):
+            kinds = [
+                world.grid.kind_by_surface[SURFACES[surface_index]]
+                for _, _, surface_index in packet.visible
+            ]
+            if len(kinds) != 3:
+                break
+            choice_need = str(world.grid.choice_need)
+            correct_slot = kinds.index(choice_need)
+            states, carry, vector = observe(packet, carry)
+
+            if round_index >= acquisition_rounds:
+                scores = _terminal_consume_scores(
+                    model,
+                    states,
+                    vector,
+                    urgent_deficit_utility=urgent_deficit_utility,
+                )
+                _, _, valid = model._state_memory_parts(states)
+                mx.eval(scores, valid)
+                visible = np.asarray(scores[0, 0, :3], dtype=np.float64)
+                round_hits[round_index] += int(
+                    int(np.argmax(visible)) == correct_slot
+                )
+                round_cases[round_index] += 1
+                valid_rows += float(np.asarray(valid[0, 0]).sum())
+                valid_cases += 1
+
+            if round_index < acquisition_rounds:
+                target = "food" if round_index % 2 == 0 else "water"
+                action = object_option_action_index(
+                    "inspect",
+                    kinds.index(target),
+                    consume_options=True,
+                    inspect_options=True,
+                    visible_slots=world.config.max_visible_slots,
+                )
+                packet, _, terminated, truncated, _ = execute_agent_action(
+                    world,
+                    packet,
+                    action,
+                    consume_options=True,
+                    inspect_options=True,
+                )
+                if terminated or truncated:
+                    break
+                _, carry, _ = observe(packet, carry)
+                packet, _, terminated, truncated, _ = execute_agent_action(
+                    world,
+                    packet,
+                    wait_index,
+                    consume_options=True,
+                    inspect_options=True,
+                )
+                if terminated or truncated:
+                    break
+                _, carry, _ = observe(packet, carry)
+                kinds = [
+                    world.grid.kind_by_surface[SURFACES[surface_index]]
+                    for _, _, surface_index in packet.visible
+                ]
+                correct_slot = kinds.index(choice_need)
+
+            packet, _, terminated, truncated, _ = execute_agent_action(
+                world,
+                packet,
+                object_option_action_index(
+                    "consume",
+                    correct_slot,
+                    consume_options=True,
+                    inspect_options=True,
+                    visible_slots=world.config.max_visible_slots,
+                ),
+                consume_options=True,
+                inspect_options=True,
+            )
+            if round_index == rounds - 1:
+                # The final consumption ends the life, so completion is
+                # recorded here rather than after a next-round transition.
+                completed += 1
+                break
+            if terminated or truncated:
+                break
+            _, carry, _ = observe(packet, carry)
+            if world.semantic_choice_round_pending:
+                packet, _, terminated, truncated, _ = execute_agent_action(
+                    world,
+                    packet,
+                    wait_index,
+                    consume_options=True,
+                    inspect_options=True,
+                )
+                if terminated or truncated:
+                    break
+                _, carry, _ = observe(packet, carry)
+
+    measured = sum(round_cases)
+    result: dict[str, float] = {
+        "audited_lives": float(lives),
+        "completed_lives": float(completed),
+        "acquisition_rounds": float(acquisition_rounds),
+        "measured_rounds": float(measured),
+        "aggregate_reuse_accuracy": (
+            sum(round_hits) / max(1, measured)
+        ),
+        "mean_valid_memory_rows": valid_rows / max(1, valid_cases),
+    }
+    for round_index in range(acquisition_rounds, rounds):
+        result[f"round_{round_index + 1}_reuse_accuracy"] = (
+            round_hits[round_index] / max(1, round_cases[round_index])
+        )
+    return result
+
+
+def audit_persistent_choice_environment(
+    *,
+    lives: int = 2_500,
+    base_seed: int = 2_000_000,
+    rounds: int = 8,
+    semantic_choice_horizon: int = 40,
+    semantic_choice_low_need: float = 0.55,
+    semantic_choice_return_duration: int = 6,
+) -> dict[str, float]:
+    """Verify persistent semantic rent through the implemented environment."""
+
+    if lives <= 0 or rounds <= 0:
+        raise ValueError("lives and rounds must be positive.")
+
+    def action_for_surface(
+        packet: ObsPacket,
+        surface_index: int,
+        option_kind: str,
+    ) -> int:
+        slot = next(
+            slot
+            for slot, (_, _, visible_surface) in enumerate(packet.visible)
+            if visible_surface == surface_index
+        )
+        return object_option_action_index(
+            option_kind,
+            slot,
+            consume_options=True,
+            inspect_options=True,
+            visible_slots=packet.max_visible_slots,
+        )
+
+    policy_names = ("blind", "persistent", "clairvoyant")
+    life_utilities = {name: [] for name in policy_names}
+    total_ticks = {name: 0.0 for name in policy_names}
+    total_inspections = {name: 0.0 for name in policy_names}
+    total_rounds = {name: 0 for name in policy_names}
+    outcomes = {
+        name: {"correct": 0, "wrong_resource": 0, "poison": 0}
+        for name in policy_names
+    }
+
+    for life in range(lives):
+        seed = base_seed + life
+        for policy_name in policy_names:
+            world = IslandWorld(
+                IslandConfig(
+                    semantic_choice_trial=True,
+                    semantic_choice_horizon=semantic_choice_horizon,
+                    semantic_choice_objects=3,
+                    semantic_choice_low_need=semantic_choice_low_need,
+                    semantic_choice_rounds=rounds,
+                    semantic_choice_return_duration=(
+                        semantic_choice_return_duration
+                    ),
+                    language_mode="grounded",
+                ),
+                seed=seed,
+            )
+            packet = world.reset(seed)
+            surfaces = [surface for _, _, surface in packet.visible]
+            known_labels: dict[int, str] = {}
+            life_utility = 0.0
+            life_ticks = 0
+            completed = 0
+
+            while completed < rounds:
+                low_need = (
+                    "food" if packet.needs[0] < packet.needs[1] else "water"
+                )
+                if policy_name == "blind":
+                    chosen_surface = surfaces[0]
+                elif policy_name == "clairvoyant":
+                    chosen_surface = next(
+                        surface
+                        for surface in surfaces
+                        if world.grid.kind_by_surface[SURFACES[surface]]
+                        == low_need
+                    )
+                else:
+                    while not any(
+                        label == low_need for label in known_labels.values()
+                    ):
+                        unknown = next(
+                            surface
+                            for surface in surfaces
+                            if surface not in known_labels
+                        )
+                        packet, _, terminated, truncated, inspect_info = (
+                            execute_agent_action(
+                                world,
+                                packet,
+                                action_for_surface(
+                                    packet,
+                                    unknown,
+                                    "inspect",
+                                ),
+                                consume_options=True,
+                                inspect_options=True,
+                            )
+                        )
+                        if terminated or truncated:
+                            raise RuntimeError(
+                                "Persistent environment inspection ended early."
+                            )
+                        life_ticks += int(inspect_info["duration"])
+                        label = VOCAB[packet.tokens[1]]
+                        known_labels[unknown] = label
+                        total_inspections[policy_name] += 1.0
+                        packet, _, terminated, truncated, return_info = (
+                            execute_agent_action(
+                                world,
+                                packet,
+                                ACTIONS.index(Action.WAIT),
+                                consume_options=True,
+                                inspect_options=True,
+                            )
+                        )
+                        if terminated or truncated:
+                            raise RuntimeError(
+                                "Persistent environment return ended early."
+                            )
+                        life_ticks += int(return_info["duration"])
+                        if len(known_labels) == 2:
+                            remaining_surface = next(
+                                surface
+                                for surface in surfaces
+                                if surface not in known_labels
+                            )
+                            remaining_label = next(
+                                label_name
+                                for label_name in (
+                                    SEMANTIC_CHOICE_LABEL_KINDS
+                                )
+                                if label_name
+                                not in set(known_labels.values())
+                            )
+                            known_labels[remaining_surface] = remaining_label
+                    chosen_surface = next(
+                        surface
+                        for surface, label in known_labels.items()
+                        if label == low_need
+                    )
+
+                packet, _, terminated, truncated, info = execute_agent_action(
+                    world,
+                    packet,
+                    action_for_surface(
+                        packet,
+                        chosen_surface,
+                        "consume",
+                    ),
+                    consume_options=True,
+                    inspect_options=True,
+                )
+                life_ticks += int(info["duration"])
+                if not bool(info.get("semantic_choice_round_complete")):
+                    raise RuntimeError(
+                        "Persistent environment did not complete a round."
+                    )
+                completed += 1
+                life_utility += min(packet.needs)
+                outcomes[policy_name]["correct"] += int(
+                    bool(info["correct"])
+                )
+                outcomes[policy_name]["wrong_resource"] += int(
+                    bool(info["wrong_resource"])
+                )
+                outcomes[policy_name]["poison"] += int(bool(info["poison"]))
+
+                if completed < rounds:
+                    if terminated or truncated:
+                        raise RuntimeError(
+                            "Persistent environment life ended before final round."
+                        )
+                    packet, _, terminated, truncated, transition_info = (
+                        execute_agent_action(
+                            world,
+                            packet,
+                            ACTIONS.index(Action.WAIT),
+                            consume_options=True,
+                            inspect_options=True,
+                        )
+                    )
+                    if terminated or truncated or not bool(
+                        transition_info.get("forced_round_transition")
+                    ):
+                        raise RuntimeError(
+                            "Persistent environment round transition failed."
+                        )
+                    life_ticks += int(transition_info["duration"])
+                elif not (terminated or truncated):
+                    raise RuntimeError(
+                        "Persistent environment final round did not terminate."
+                    )
+
+            total_rounds[policy_name] += completed
+            total_ticks[policy_name] += life_ticks
+            life_utilities[policy_name].append(life_utility)
+
+    result: dict[str, float] = {
+        "audited_lives": float(lives),
+        "rounds_per_life": float(rounds),
+    }
+    blind = np.asarray(life_utilities["blind"], dtype=np.float64)
+    for policy_name in policy_names:
+        utilities = np.asarray(
+            life_utilities[policy_name],
+            dtype=np.float64,
+        )
+        denominator = max(1, total_rounds[policy_name])
+        result.update(
+            {
+                f"{policy_name}_completed_rounds_per_life": (
+                    total_rounds[policy_name] / lives
+                ),
+                f"{policy_name}_mean_final_min_need_per_round": (
+                    float(utilities.mean() / rounds)
+                ),
+                f"{policy_name}_paired_gain_per_round": (
+                    float((utilities - blind).mean() / rounds)
+                ),
+                f"{policy_name}_correct_rate": (
+                    outcomes[policy_name]["correct"] / denominator
+                ),
+                f"{policy_name}_wrong_resource_rate": (
+                    outcomes[policy_name]["wrong_resource"] / denominator
+                ),
+                f"{policy_name}_poison_rate": (
+                    outcomes[policy_name]["poison"] / denominator
+                ),
+                f"{policy_name}_mean_ticks_per_round": (
+                    total_ticks[policy_name] / denominator
+                ),
+                f"{policy_name}_mean_inspections_per_life": (
+                    total_inspections[policy_name] / lives
+                ),
+            }
+        )
+    return result
+
+
+def load_organism_checkpoint(
+    path: str,
+) -> tuple[OrganismModel, OrganismConfig]:
+    """Reconstruct the unified organism and load a saved checkpoint."""
+
+    weights_path = Path(path)
+    metadata_path = weights_path.with_suffix(weights_path.suffix + ".json")
+    config_data = json.loads(metadata_path.read_text())
+    island_data = config_data.pop("island")
+    config = OrganismConfig(
+        **config_data,
+        island=IslandConfig(**island_data),
+    )
+    trainer = OrganismTrainer(config)
+    trainer.model.load_weights(str(weights_path))
+    mx.eval(trainer.model.parameters())
+    return trainer.model, config
+
+
 def save_checkpoint(model: OrganismModel, config: OrganismConfig, path: str) -> None:
     weights_path = Path(path)
     weights_path.parent.mkdir(parents=True, exist_ok=True)
@@ -3616,7 +5476,9 @@ def write_life_stats(stats: list[LifeStats], path: str) -> None:
         "option_decisions,inspect_option_decisions,labels_received,harm_events,"
         "semantic_choice_trial,choice_need,chosen_kind,chosen_surface,"
         "chosen_surface_inspected,choice_correct,choice_poison,"
-        "choice_wrong_resource,choice_timeout\n"
+        "choice_wrong_resource,choice_timeout,choice_rounds_completed,"
+        "choice_correct_rounds,choice_poison_rounds,"
+        "choice_wrong_resource_rounds\n"
     )
     with target.open("w", encoding="utf-8") as handle:
         handle.write(header)
@@ -3634,5 +5496,9 @@ def write_life_stats(stats: list[LifeStats], path: str) -> None:
                 f"{int(life.chosen_surface_inspected)},"
                 f"{int(life.choice_correct)},{int(life.choice_poison)},"
                 f"{int(life.choice_wrong_resource)},"
-                f"{int(life.choice_timeout)}\n"
+                f"{int(life.choice_timeout)},"
+                f"{life.choice_rounds_completed},"
+                f"{life.choice_correct_rounds},"
+                f"{life.choice_poison_rounds},"
+                f"{life.choice_wrong_resource_rounds}\n"
             )

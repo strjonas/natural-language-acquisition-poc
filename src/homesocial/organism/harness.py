@@ -20,9 +20,15 @@ from homesocial.organism.train import (
     OrganismConfig,
     audit_label_referent_binding,
     audit_label_to_self_model,
+    audit_observation_branching_planner,
+    audit_cross_round_label_reuse,
+    audit_persistent_choice_environment,
+    audit_persistent_mapping_information_rent,
+    audit_semantic_choice_information_upper_bound,
     audit_self_model_actions,
     evaluate_organism,
     evaluate_semantic_choice,
+    load_organism_checkpoint,
     train_organism,
 )
 
@@ -32,6 +38,138 @@ EVAL_SEED_BASE = 900_000
 def main() -> None:
     args = _parse_args()
     rows: list[dict[str, object]] = []
+
+    if args.semantic_choice_information_upper_bound_contexts > 0:
+        audit = audit_semantic_choice_information_upper_bound(
+            episodes=args.semantic_choice_information_upper_bound_contexts,
+        )
+        rows.append(
+            {
+                "condition": "semantic_choice_information_upper_bound",
+                **audit,
+            }
+        )
+        _write_and_print(rows, args)
+        return
+
+    if args.persistent_mapping_rent_lives > 0:
+        audit = audit_persistent_mapping_information_rent(
+            lives=args.persistent_mapping_rent_lives,
+        )
+        rows.append(
+            {
+                "condition": "persistent_mapping_information_rent",
+                **audit,
+            }
+        )
+        _write_and_print(rows, args)
+        return
+
+    if args.persistent_choice_mechanics_lives > 0:
+        audit = audit_persistent_choice_environment(
+            lives=args.persistent_choice_mechanics_lives,
+        )
+        rows.append(
+            {
+                "condition": "persistent_choice_environment_mechanics",
+                **audit,
+            }
+        )
+        _write_and_print(rows, args)
+        return
+
+    if args.load_checkpoint is not None:
+        model, loaded_config = load_organism_checkpoint(args.load_checkpoint)
+        if args.evaluate_loaded_checkpoint:
+            args.consume_options = loaded_config.consume_options
+            args.inspect_options = loaded_config.inspect_options
+            args.episodic_binding_size = loaded_config.episodic_binding_size
+            args.semantic_choice_horizon = (
+                loaded_config.island.semantic_choice_horizon
+            )
+            args.semantic_choice_objects = (
+                loaded_config.island.semantic_choice_objects
+            )
+            args.semantic_choice_low_need = (
+                loaded_config.island.semantic_choice_low_need
+            )
+            args.semantic_choice_rounds = (
+                loaded_config.island.semantic_choice_rounds
+            )
+            args.semantic_choice_return_duration = (
+                loaded_config.island.semantic_choice_return_duration
+            )
+            if not args.self_model_planning:
+                # Without an explicit request the loaded checkpoint is
+                # evaluated exactly as it was trained.
+                args.planning_scale = loaded_config.self_model_planning_scale
+                args.planning_reward_weight = (
+                    loaded_config.self_model_planning_reward_weight
+                )
+                args.planning_horizon = (
+                    loaded_config.self_model_planning_horizon
+                )
+                args.self_model_planning = (
+                    loaded_config.self_model_planning_scale > 0.0
+                )
+            _append_semantic_choice_rows(
+                rows,
+                model=model,
+                language_mode=loaded_config.language_mode,
+                run_label="loaded_checkpoint",
+                args=args,
+            )
+            _write_and_print(rows, args)
+            return
+        if args.cross_round_reuse_lives > 0:
+            for label, mode, writes in (
+                ("grounded", "grounded", True),
+                ("acute_silent", "silent", True),
+                ("acute_no_writes", "grounded", False),
+            ):
+                writes_before = model.episodic_binding_writes
+                model.episodic_binding_writes = writes
+                try:
+                    audit = audit_cross_round_label_reuse(
+                        model,
+                        lives=args.cross_round_reuse_lives,
+                        semantic_choice_horizon=args.semantic_choice_horizon,
+                        semantic_choice_low_need=args.semantic_choice_low_need,
+                        semantic_choice_return_duration=(
+                            args.semantic_choice_return_duration
+                        ),
+                        language_mode=mode,
+                        urgent_deficit_utility=args.urgent_deficit_utility,
+                    )
+                finally:
+                    model.episodic_binding_writes = writes_before
+                rows.append(
+                    {"condition": f"cross_round_label_reuse_{label}", **audit}
+                )
+            _write_and_print(rows, args)
+            return
+        audit = audit_observation_branching_planner(
+            model,
+            episodes=args.observation_branching_audit_contexts,
+            semantic_choice_horizon=args.semantic_choice_horizon,
+            semantic_choice_low_need=args.semantic_choice_low_need,
+            semantic_choice_return_duration=(
+                args.semantic_choice_return_duration
+            ),
+            persistent_information_reuses=(
+                args.persistent_information_reuses
+            ),
+            urgent_deficit_utility=args.urgent_deficit_utility,
+            protocol_branch=args.protocol_branch_planning,
+        )
+        rows.append(
+            {
+                "condition": "checkpoint_observation_branching_feasibility",
+                **audit,
+            }
+        )
+        _write_and_print(rows, args)
+        return
 
     if args.eval_episodes > 0:
         for baseline in args.baselines:
@@ -71,6 +209,11 @@ def main() -> None:
                     if args.semantic_choice_low_need != 0.35
                     else ""
                 )
+                + (
+                    f"q{args.semantic_choice_rounds}"
+                    if args.semantic_choice_rounds != 1
+                    else ""
+                )
             )
         if args.consume_options:
             run_label += "_options"
@@ -84,6 +227,12 @@ def main() -> None:
             run_label += (
                 f"_plan{args.planning_scale:g}h{args.planning_horizon}"
             )
+            if args.observation_branching_planning:
+                run_label += "branch"
+                if args.persistent_information_reuses > 0:
+                    run_label += f"q{args.persistent_information_reuses}"
+            if args.urgent_deficit_utility:
+                run_label += "urgent"
         if args.replay_updates > 0:
             run_label += f"_replay{args.replay_capacity}x{args.replay_updates}"
         if model_horizon != args.planning_horizon:
@@ -117,6 +266,12 @@ def main() -> None:
             self_model_planning_start_steps=args.planning_start_steps,
             self_model_planning_reward_weight=args.planning_reward_weight,
             self_model_planning_horizon=args.planning_horizon,
+            observation_branching_planning=(
+                args.observation_branching_planning
+            ),
+            persistent_information_reuses=args.persistent_information_reuses,
+            urgent_deficit_utility=args.urgent_deficit_utility,
+            protocol_branch_planning=args.protocol_branch_planning,
             multi_step_model_horizon=model_horizon,
             multi_step_model_weight=args.multi_step_model_weight,
             world_model_replay_capacity=args.replay_capacity,
@@ -127,6 +282,7 @@ def main() -> None:
                 semantic_choice_horizon=args.semantic_choice_horizon,
                 semantic_choice_objects=args.semantic_choice_objects,
                 semantic_choice_low_need=args.semantic_choice_low_need,
+                semantic_choice_rounds=args.semantic_choice_rounds,
                 semantic_choice_return_duration=(
                     args.semantic_choice_return_duration
                 ),
@@ -306,6 +462,12 @@ def _append_semantic_choice_rows(
         return
 
     planning_scale = args.planning_scale if args.self_model_planning else 0.0
+    branching_kwargs = {
+        "observation_branching_planning": args.observation_branching_planning,
+        "persistent_information_reuses": args.persistent_information_reuses,
+        "urgent_deficit_utility": args.urgent_deficit_utility,
+        "protocol_branch_planning": args.protocol_branch_planning,
+    }
     for greedy, policy_name in ((False, "stochastic"), (True, "greedy")):
         stats = evaluate_semantic_choice(
             model,
@@ -315,6 +477,7 @@ def _append_semantic_choice_rows(
             semantic_choice_horizon=args.semantic_choice_horizon,
             semantic_choice_objects=args.semantic_choice_objects,
             semantic_choice_low_need=args.semantic_choice_low_need,
+            semantic_choice_rounds=args.semantic_choice_rounds,
             semantic_choice_return_duration=(
                 args.semantic_choice_return_duration
             ),
@@ -325,6 +488,7 @@ def _append_semantic_choice_rows(
             self_model_planning_scale=planning_scale,
             self_model_planning_reward_weight=args.planning_reward_weight,
             self_model_planning_horizon=args.planning_horizon,
+            **branching_kwargs,
         )
 
         # Audits are policy-sampled diagnostics, so one stochastic fixed-seed
@@ -450,6 +614,7 @@ def _append_semantic_choice_rows(
             semantic_choice_horizon=args.semantic_choice_horizon,
             semantic_choice_objects=args.semantic_choice_objects,
             semantic_choice_low_need=args.semantic_choice_low_need,
+            semantic_choice_rounds=args.semantic_choice_rounds,
             semantic_choice_return_duration=(
                 args.semantic_choice_return_duration
             ),
@@ -460,6 +625,7 @@ def _append_semantic_choice_rows(
             self_model_planning_scale=planning_scale,
             self_model_planning_reward_weight=args.planning_reward_weight,
             self_model_planning_horizon=args.planning_horizon,
+            **branching_kwargs,
         )
         rows.append(
             {
@@ -486,6 +652,7 @@ def _append_semantic_choice_rows(
                 semantic_choice_horizon=args.semantic_choice_horizon,
                 semantic_choice_objects=args.semantic_choice_objects,
                 semantic_choice_low_need=args.semantic_choice_low_need,
+                semantic_choice_rounds=args.semantic_choice_rounds,
                 semantic_choice_return_duration=(
                     args.semantic_choice_return_duration
                 ),
@@ -496,6 +663,7 @@ def _append_semantic_choice_rows(
                 self_model_planning_scale=planning_scale,
                 self_model_planning_reward_weight=args.planning_reward_weight,
                 self_model_planning_horizon=args.planning_horizon,
+                **branching_kwargs,
             )
         finally:
             model.episodic_binding_writes = writes_before
@@ -533,6 +701,11 @@ def _write_and_print(rows: list[dict[str, object]], args: argparse.Namespace) ->
             + (
                 f"n{args.semantic_choice_low_need:g}"
                 if args.semantic_choice_low_need != 0.35
+                else ""
+            )
+            + (
+                f"q{args.semantic_choice_rounds}"
+                if args.semantic_choice_rounds != 1
                 else ""
             )
         )
@@ -580,6 +753,58 @@ def _write_and_print(rows: list[dict[str, object]], args: argparse.Namespace) ->
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--load-checkpoint",
+        default=None,
+        help=(
+            "Load an existing unified-organism checkpoint for a read-only "
+            "audit instead of training."
+        ),
+    )
+    parser.add_argument(
+        "--evaluate-loaded-checkpoint",
+        action="store_true",
+        help=(
+            "Run semantic-choice evaluations on --load-checkpoint without "
+            "training; task mechanics are read from checkpoint metadata."
+        ),
+    )
+    parser.add_argument(
+        "--observation-branching-audit-contexts",
+        type=int,
+        default=0,
+        help=(
+            "Run the preregistered delayed-choice belief-planner feasibility "
+            "audit on this many fixed contexts."
+        ),
+    )
+    parser.add_argument(
+        "--semantic-choice-information-upper-bound-contexts",
+        type=int,
+        default=0,
+        help=(
+            "Run the audit-only exact-environment information-rent ceiling "
+            "on this many fixed delayed-choice contexts instead of training."
+        ),
+    )
+    parser.add_argument(
+        "--persistent-mapping-rent-lives",
+        type=int,
+        default=0,
+        help=(
+            "Run the preregistered exact-dynamics persistent-mapping rent "
+            "audit on this many fixed lives instead of training."
+        ),
+    )
+    parser.add_argument(
+        "--persistent-choice-mechanics-lives",
+        type=int,
+        default=0,
+        help=(
+            "Audit the implemented eight-round persistent-choice environment "
+            "with public-label and blind policies."
+        ),
+    )
     parser.add_argument("--train-steps", type=int, default=200_000)
     parser.add_argument("--segment-length", type=int, default=64)
     parser.add_argument("--hidden-size", type=int, default=256)
@@ -630,6 +855,15 @@ def _parse_args() -> argparse.Namespace:
         help=(
             "After each label in the delayed probe, force a fixed-duration "
             "padding-only return to center/NORTH; zero disables."
+        ),
+    )
+    parser.add_argument(
+        "--semantic-choice-rounds",
+        type=int,
+        default=1,
+        help=(
+            "Keep one hidden surface-kind mapping across this many recurring "
+            "body-choice rounds per childhood life."
         ),
     )
     parser.add_argument(
@@ -701,6 +935,53 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--planning-scale", type=float, default=6.0)
     parser.add_argument("--planning-reward-weight", type=float, default=0.5)
     parser.add_argument("--planning-horizon", type=int, choices=[1, 2], default=1)
+    parser.add_argument(
+        "--observation-branching-planning",
+        action="store_true",
+        help=(
+            "Value inspection by branching over learner-possible caregiver "
+            "labels, writing each hypothetically, and scoring the resulting "
+            "embodied choice. Requires --planning-horizon 2 and "
+            "--semantic-choice-return-duration."
+        ),
+    )
+    parser.add_argument(
+        "--cross-round-reuse-lives",
+        type=int,
+        default=0,
+        help=(
+            "Read-only audit: acquire one food and one water label in the "
+            "first rounds, then measure whether the organism's own terminal "
+            "scores still select the needed object in every later round."
+        ),
+    )
+    parser.add_argument(
+        "--protocol-branch-planning",
+        action="store_true",
+        help=(
+            "Value inspection by writing each candidate word to the lexical "
+            "bank and travelling the public padding-only protocol, instead of "
+            "reconstructing a post-inspect observation with the decoder."
+        ),
+    )
+    parser.add_argument(
+        "--urgent-deficit-utility",
+        action="store_true",
+        help=(
+            "Score an imagined action by the predicted level of the need the "
+            "organism currently observes as lowest, instead of the predicted "
+            "minimum over all needs. Only own interoception is read."
+        ),
+    )
+    parser.add_argument(
+        "--persistent-information-reuses",
+        type=int,
+        default=0,
+        help=(
+            "Back a hypothetical lexical write up through this many recurring "
+            "future bodily contexts, matching the public multi-round horizon."
+        ),
+    )
     parser.add_argument("--model-horizon", type=int, choices=[1, 2], default=None)
     parser.add_argument("--multi-step-model-weight", type=float, default=0.0)
     parser.add_argument("--replay-capacity", type=int, default=0)
@@ -777,6 +1058,88 @@ def _parse_args() -> argparse.Namespace:
         parser.error(
             "--semantic-choice-acute-disable-binding-writes requires "
             "--episodic-binding-size."
+        )
+    if args.protocol_branch_planning and not args.observation_branching_planning:
+        parser.error(
+            "--protocol-branch-planning requires "
+            "--observation-branching-planning."
+        )
+    if args.observation_branching_planning:
+        if args.planning_horizon != 2:
+            parser.error(
+                "--observation-branching-planning requires "
+                "--planning-horizon 2."
+            )
+        if args.semantic_choice_return_duration <= 0:
+            parser.error(
+                "--observation-branching-planning requires a positive "
+                "--semantic-choice-return-duration."
+            )
+        if args.episodic_binding_size <= 0:
+            parser.error(
+                "--observation-branching-planning requires "
+                "--episodic-binding-size."
+            )
+    if args.persistent_information_reuses < 0:
+        parser.error("--persistent-information-reuses must be nonnegative.")
+    if args.load_checkpoint is not None:
+        if (
+            args.semantic_choice_information_upper_bound_contexts > 0
+            or args.persistent_mapping_rent_lives > 0
+            or args.persistent_choice_mechanics_lives > 0
+        ):
+            parser.error(
+                "--load-checkpoint and simulator-only audits are mutually "
+                "exclusive."
+            )
+        if (
+            args.observation_branching_audit_contexts > 0
+            and args.evaluate_loaded_checkpoint
+        ):
+            parser.error(
+                "Choose either --evaluate-loaded-checkpoint or the "
+                "observation-branching audit."
+            )
+        if (
+            args.observation_branching_audit_contexts <= 0
+            and args.cross_round_reuse_lives <= 0
+            and not args.evaluate_loaded_checkpoint
+        ):
+            parser.error(
+                "--load-checkpoint requires --evaluate-loaded-checkpoint, a "
+                "positive --observation-branching-audit-contexts, or a "
+                "positive --cross-round-reuse-lives."
+            )
+        if (
+            args.evaluate_loaded_checkpoint
+            and args.semantic_choice_eval_episodes <= 0
+        ):
+            parser.error(
+                "--evaluate-loaded-checkpoint requires a positive "
+                "--semantic-choice-eval-episodes."
+            )
+    elif args.cross_round_reuse_lives > 0:
+        parser.error("--cross-round-reuse-lives requires --load-checkpoint.")
+    elif args.observation_branching_audit_contexts > 0:
+        parser.error(
+            "--observation-branching-audit-contexts requires "
+            "--load-checkpoint."
+        )
+    elif args.evaluate_loaded_checkpoint:
+        parser.error("--evaluate-loaded-checkpoint requires --load-checkpoint.")
+    if (
+        sum(
+            int(value > 0)
+            for value in (
+                args.semantic_choice_information_upper_bound_contexts,
+                args.persistent_mapping_rent_lives,
+                args.persistent_choice_mechanics_lives,
+            )
+        )
+        > 1
+    ):
+        parser.error(
+            "Choose only one simulator-only information-rent audit."
         )
     return args
 
