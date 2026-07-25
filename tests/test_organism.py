@@ -38,6 +38,7 @@ if mx is not None:
         _terminal_consume_scores,
         available_action_mask,
         compute_gae,
+        consumption_action_mask,
         decode_object_option,
         evaluate_organism,
         evaluate_semantic_choice,
@@ -2360,6 +2361,64 @@ class BodilyDriftLossTest(unittest.TestCase):
         mx.eval(weighted, plain)
         # One event-scale residual contributes exactly one.
         self.assertAlmostEqual(float(weighted) - float(plain), 1.0, places=6)
+
+    def test_consumption_event_term_excludes_unselected_event_rows(self):
+        target = mx.array(
+            [
+                [EVENT_ERROR_SCALE, 0.0, 0.0, 0.0],
+                [EVENT_ERROR_SCALE, 0.0, 0.0, 0.0],
+            ]
+        )
+        predicted = mx.zeros((2, 4))
+        plain = bodily_delta_prediction_loss(
+            predicted, target, change_boost=20.0
+        )
+        scoped = bodily_delta_prediction_loss(
+            predicted,
+            target,
+            change_boost=20.0,
+            consumption_event_weight=1.0,
+            consumption_valid=mx.array([1.0, 0.0]),
+        )
+        mx.eval(plain, scoped)
+        self.assertAlmostEqual(float(scoped) - float(plain), 1.0, places=6)
+
+    def test_consumption_event_term_requires_action_mask(self):
+        with self.assertRaises(ValueError):
+            bodily_delta_prediction_loss(
+                mx.zeros((1, 4)),
+                mx.array([[EVENT_ERROR_SCALE, 0.0, 0.0, 0.0]]),
+                change_boost=20.0,
+                consumption_event_weight=1.0,
+            )
+
+    def test_consumption_action_mask_selects_primitive_and_option_only(self):
+        visible_slots = 3
+        primitive = ACTIONS.index(Action.CONSUME)
+        consume_option = object_option_action_index(
+            "consume",
+            1,
+            consume_options=True,
+            inspect_options=True,
+            visible_slots=visible_slots,
+        )
+        inspect_option = object_option_action_index(
+            "inspect",
+            1,
+            consume_options=True,
+            inspect_options=True,
+            visible_slots=visible_slots,
+        )
+        mask = consumption_action_mask(
+            mx.array([primitive, consume_option, inspect_option]),
+            consume_options=True,
+            inspect_options=True,
+            visible_slots=visible_slots,
+        )
+        mx.eval(mask)
+        np.testing.assert_array_equal(
+            np.asarray(mask), np.asarray([True, True, False])
+        )
 
     def test_drift_entries_are_excluded_from_the_event_term(self):
         target = mx.zeros((1, 4))

@@ -97,6 +97,27 @@ def decode_object_option(
     return option_types[option_type_index], slot
 
 
+def consumption_action_mask(
+    actions: mx.array,
+    *,
+    consume_options: bool,
+    inspect_options: bool,
+    visible_slots: int,
+) -> mx.array:
+    """Select learner-visible primitive or object-option consumption."""
+
+    mask = actions == ACTIONS.index(Action.CONSUME)
+    option_types = enabled_object_options(
+        consume_options=consume_options,
+        inspect_options=inspect_options,
+    )
+    if "consume" not in option_types:
+        return mask
+    option_type = option_types.index("consume")
+    start = len(ACTIONS) + option_type * visible_slots
+    return mask | ((actions >= start) & (actions < start + visible_slots))
+
+
 def object_option_action_index(
     option_kind: str,
     slot: int,
@@ -1218,6 +1239,8 @@ def bodily_delta_prediction_loss(
     change_boost: float,
     drift_weight: float = 0.0,
     event_weight: float = 0.0,
+    consumption_event_weight: float = 0.0,
+    consumption_valid: mx.array | None = None,
     valid: mx.array | None = None,
 ) -> mx.array:
     """MSE that preserves rare, action-specific bodily consequences.
@@ -1241,6 +1264,11 @@ def bodily_delta_prediction_loss(
     and measures their residual relative to the world's 0.4 terminal event
     scale. It uses only lived next-body targets; zero leaves all prior behavior
     untouched.
+
+    ``consumption_event_weight`` applies the same calibration only where the
+    learner-visible action is consumption. The caller supplies that public
+    action mask through ``consumption_valid``; hidden outcome kind and
+    simulator event metadata are neither required nor accepted.
     """
 
     per_entry = (predicted_deltas - target_deltas) ** 2
@@ -1281,6 +1309,30 @@ def bodily_delta_prediction_loss(
             * bodily_event_term
             / (EVENT_ERROR_SCALE**2)
         )
+    if consumption_event_weight > 0.0:
+        if consumption_valid is None:
+            raise ValueError(
+                "Consumption-scoped event loss requires an action-validity mask."
+            )
+        consumption_event_mask = (
+            mx.abs(target_deltas) > DRIFT_REGIME_THRESHOLD
+        ).astype(per_entry.dtype)
+        consumption_event_mask = (
+            consumption_event_mask * consumption_valid[..., None]
+        )
+        if valid is not None:
+            consumption_event_mask = consumption_event_mask * valid[..., None]
+        consumption_event_term = (
+            per_entry * consumption_event_mask
+        ).sum() / mx.maximum(
+            consumption_event_mask.sum(),
+            mx.array(1e-8),
+        )
+        loss = loss + (
+            consumption_event_weight
+            * consumption_event_term
+            / (EVENT_ERROR_SCALE**2)
+        )
     return loss
 
 
@@ -1305,6 +1357,9 @@ class OrganismConfig:
     # Independently calibrates rare, single-need bodily events at their
     # measured physical scale. Zero preserves every prior loss exactly.
     bodily_event_loss_weight: float = 0.0
+    # Calibrates only agent-caused consumption endpoints; unlike the generic
+    # magnitude selector, it excludes exogenous protocol body resets.
+    bodily_consumption_event_loss_weight: float = 0.0
     # Gives that regime its own range-limited output path, so the dense
     # metabolic objective cannot overwrite the sparse binding-conditioned one
     # through a shared saturating head. False is the sealed default.
@@ -1392,6 +1447,10 @@ class OrganismConfig:
             raise ValueError("bodily_drift_loss_weight must be nonnegative.")
         if self.bodily_event_loss_weight < 0.0:
             raise ValueError("bodily_event_loss_weight must be nonnegative.")
+        if self.bodily_consumption_event_loss_weight < 0.0:
+            raise ValueError(
+                "bodily_consumption_event_loss_weight must be nonnegative."
+            )
         if self.semantic_choice_childhood_steps < 0:
             raise ValueError("semantic_choice_childhood_steps must be nonnegative.")
         if self.episodic_binding_size < 0:
@@ -1769,6 +1828,15 @@ class OrganismTrainer:
             change_boost=config.bodily_change_loss_boost,
             drift_weight=config.bodily_drift_loss_weight,
             event_weight=config.bodily_event_loss_weight,
+            consumption_event_weight=(
+                config.bodily_consumption_event_loss_weight
+            ),
+            consumption_valid=consumption_action_mask(
+                actions,
+                consume_options=config.consume_options,
+                inspect_options=config.inspect_options,
+                visible_slots=self.model.visible_slots,
+            ),
         )
         reward_loss = ((predicted_rewards[0] - env_rewards) ** 2).mean()
         return (
@@ -2267,6 +2335,15 @@ class OrganismTrainer:
             change_boost=config.bodily_change_loss_boost,
             drift_weight=config.bodily_drift_loss_weight,
             event_weight=config.bodily_event_loss_weight,
+            consumption_event_weight=(
+                config.bodily_consumption_event_loss_weight
+            ),
+            consumption_valid=consumption_action_mask(
+                actions[final_offset : final_offset + usable],
+                consume_options=config.consume_options,
+                inspect_options=config.inspect_options,
+                visible_slots=self.model.visible_slots,
+            ),
             valid=valid_float,
         )
         reward_error = (cumulative_reward[0] - target_reward) ** 2
@@ -2303,6 +2380,15 @@ class OrganismTrainer:
             change_boost=config.bodily_change_loss_boost,
             drift_weight=config.bodily_drift_loss_weight,
             event_weight=config.bodily_event_loss_weight,
+            consumption_event_weight=(
+                config.bodily_consumption_event_loss_weight
+            ),
+            consumption_valid=consumption_action_mask(
+                actions,
+                consume_options=config.consume_options,
+                inspect_options=config.inspect_options,
+                visible_slots=self.model.visible_slots,
+            ),
         )
         reward_loss = ((predicted_rewards[0] - env_rewards) ** 2).mean()
         token_log_probabilities = token_logits[0] - mx.logsumexp(
@@ -2403,6 +2489,15 @@ class OrganismTrainer:
             change_boost=config.bodily_change_loss_boost,
             drift_weight=config.bodily_drift_loss_weight,
             event_weight=config.bodily_event_loss_weight,
+            consumption_event_weight=(
+                config.bodily_consumption_event_loss_weight
+            ),
+            consumption_valid=consumption_action_mask(
+                actions,
+                consume_options=config.consume_options,
+                inspect_options=config.inspect_options,
+                visible_slots=self.model.visible_slots,
+            ),
         )
         reward_loss = ((predicted_rewards[0] - env_rewards) ** 2).mean()
         token_log_probabilities = token_logits[0] - mx.logsumexp(
@@ -2600,6 +2695,7 @@ class OrganismTrainer:
             predicted: mx.array,
             target: mx.array,
             valid: mx.array | None = None,
+            consumption_valid: mx.array | None = None,
         ) -> tuple[mx.array, mx.array]:
             base = bodily_delta_prediction_loss(
                 predicted,
@@ -2620,9 +2716,34 @@ class OrganismTrainer:
                 * event
                 / (EVENT_ERROR_SCALE**2)
             )
+            if config.bodily_consumption_event_loss_weight > 0.0:
+                if consumption_valid is None:
+                    raise ValueError(
+                        "Consumption event gradient audit needs an action mask."
+                    )
+                consumption_mask = mask * consumption_valid[..., None]
+                consumption_event = (
+                    (predicted - target) ** 2 * consumption_mask
+                ).sum() / mx.maximum(
+                    consumption_mask.sum(), mx.array(1e-8)
+                )
+                event = event + (
+                    config.bodily_consumption_event_loss_weight
+                    * consumption_event
+                    / (EVENT_ERROR_SCALE**2)
+                )
             return base, event
 
-        base, event = objectives(one_step_delta[0], target_delta)
+        base, event = objectives(
+            one_step_delta[0],
+            target_delta,
+            consumption_valid=consumption_action_mask(
+                actions,
+                consume_options=config.consume_options,
+                inspect_options=config.inspect_options,
+                visible_slots=active_model.visible_slots,
+            ),
+        )
         horizon = config.multi_step_model_horizon
         if (
             horizon > 1
@@ -2667,6 +2788,12 @@ class OrganismTrainer:
                 predicted_horizon,
                 target_horizon,
                 valid.astype(mx.float32),
+                consumption_action_mask(
+                    actions[horizon - 1 : horizon - 1 + usable],
+                    consume_options=config.consume_options,
+                    inspect_options=config.inspect_options,
+                    visible_slots=active_model.visible_slots,
+                ),
             )
             base = base + config.multi_step_model_weight * multi_base
             event = event + config.multi_step_model_weight * multi_event
@@ -2711,7 +2838,10 @@ class OrganismTrainer:
             for row in rows
         )
         if (
-            self.config.bodily_event_loss_weight <= 0.0
+            (
+                self.config.bodily_event_loss_weight <= 0.0
+                and self.config.bodily_consumption_event_loss_weight <= 0.0
+            )
             or self._bodily_event_audit_updates % 100
             or not bound_resource
         ):
@@ -2876,6 +3006,9 @@ class OrganismTrainer:
             "audit": "bodily_event_training_path",
             "total_steps": self.config.total_steps,
             "event_loss_weight": self.config.bodily_event_loss_weight,
+            "consumption_event_loss_weight": (
+                self.config.bodily_consumption_event_loss_weight
+            ),
             "online": online,
             "online_windows": windows,
             "final_replay": replay,

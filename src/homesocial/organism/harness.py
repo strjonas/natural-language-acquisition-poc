@@ -310,6 +310,10 @@ def main() -> None:
             run_label += f"_drift{args.bodily_drift_loss_weight:g}"
         if args.bodily_event_loss_weight > 0.0:
             run_label += f"_event{args.bodily_event_loss_weight:g}"
+        if args.bodily_consumption_event_loss_weight > 0.0:
+            run_label += (
+                f"_consume_event{args.bodily_consumption_event_loss_weight:g}"
+            )
         if args.split_drift_head:
             run_label += "split"
         if args.max_grad_norm != 1.0:
@@ -355,6 +359,9 @@ def main() -> None:
             multi_step_model_weight=args.multi_step_model_weight,
             bodily_drift_loss_weight=args.bodily_drift_loss_weight,
             bodily_event_loss_weight=args.bodily_event_loss_weight,
+            bodily_consumption_event_loss_weight=(
+                args.bodily_consumption_event_loss_weight
+            ),
             split_drift_head=args.split_drift_head,
             max_grad_norm=args.max_grad_norm,
             world_model_replay_capacity=args.replay_capacity,
@@ -816,6 +823,10 @@ def _write_and_print(rows: list[dict[str, object]], args: argparse.Namespace) ->
         suffix += f"_drift{args.bodily_drift_loss_weight:g}"
     if args.bodily_event_loss_weight > 0.0:
         suffix += f"_event{args.bodily_event_loss_weight:g}"
+    if args.bodily_consumption_event_loss_weight > 0.0:
+        suffix += (
+            f"_consume_event{args.bodily_consumption_event_loss_weight:g}"
+        )
     if args.split_drift_head:
         suffix += "split"
     if args.max_grad_norm != 1.0:
@@ -1166,6 +1177,16 @@ def _parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--bodily-consumption-event-loss-weight",
+        type=float,
+        default=0.0,
+        help=(
+            "Calibrate above-threshold bodily changes only at public consume "
+            "actions; horizon-two calibration requires consume as the final "
+            "action. Zero preserves prior behavior."
+        ),
+    )
+    parser.add_argument(
         "--audit-bodily-event-training-path",
         action="store_true",
         help=(
@@ -1284,6 +1305,10 @@ def _parse_args() -> argparse.Namespace:
         parser.error("--bodily-drift-loss-weight must be nonnegative.")
     if args.bodily_event_loss_weight < 0.0:
         parser.error("--bodily-event-loss-weight must be nonnegative.")
+    if args.bodily_consumption_event_loss_weight < 0.0:
+        parser.error(
+            "--bodily-consumption-event-loss-weight must be nonnegative."
+        )
     if args.load_checkpoint is not None:
         if (
             args.semantic_choice_information_upper_bound_contexts > 0
