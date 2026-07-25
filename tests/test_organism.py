@@ -2421,6 +2421,44 @@ class BodilyDriftLossTest(unittest.TestCase):
                 consumption_event_weight=1.0,
             )
 
+    def test_bound_consumption_term_balances_active_needs(self):
+        target = mx.array(
+            [
+                [EVENT_ERROR_SCALE, 0.0, 0.0, 0.0],
+                [EVENT_ERROR_SCALE, 0.0, 0.0, 0.0],
+                [0.0, EVENT_ERROR_SCALE, 0.0, 0.0],
+            ]
+        )
+        predicted = mx.array(
+            [
+                [0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0],
+                [0.0, EVENT_ERROR_SCALE / 2.0, 0.0, 0.0],
+            ]
+        )
+        plain = bodily_delta_prediction_loss(
+            predicted, target, change_boost=20.0
+        )
+        balanced = bodily_delta_prediction_loss(
+            predicted,
+            target,
+            change_boost=20.0,
+            bound_consumption_event_weight=1.0,
+            bound_consumption_valid=mx.ones((3,)),
+        )
+        mx.eval(plain, balanced)
+        # Food contributes 1.0 once after within-need averaging; water 0.25.
+        self.assertAlmostEqual(float(balanced) - float(plain), 0.625, places=6)
+
+    def test_bound_consumption_term_requires_binding_mask(self):
+        with self.assertRaises(ValueError):
+            bodily_delta_prediction_loss(
+                mx.zeros((1, 4)),
+                mx.array([[EVENT_ERROR_SCALE, 0.0, 0.0, 0.0]]),
+                change_boost=20.0,
+                bound_consumption_event_weight=1.0,
+            )
+
     def test_consumption_action_mask_selects_primitive_and_option_only(self):
         visible_slots = 3
         primitive = ACTIONS.index(Action.CONSUME)
