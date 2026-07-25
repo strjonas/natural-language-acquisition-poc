@@ -22,6 +22,11 @@ DRIFT_REGIME_THRESHOLD = 0.175
 # 0.015 while walking. Dividing by its square measures the drift regime as a
 # relative error instead of an absolute one.
 DRIFT_ERROR_SCALE = 0.02
+# A correct resource consumption is worth 0.4 on the demanded need relative
+# to either wrong terminal action in the fixed delayed task. This is the
+# measured physical scale of the sparse bodily-event regime, not a fitted
+# prediction scale.
+EVENT_ERROR_SCALE = 0.4
 
 
 class OrganismModel(nn.Module):

@@ -29,6 +29,7 @@ if mx is not None:
         audit_self_model_actions,
         DRIFT_ERROR_SCALE,
         DRIFT_REGIME_THRESHOLD,
+        EVENT_ERROR_SCALE,
         audit_metabolic_drift_forecast,
         bodily_delta_prediction_loss,
         _bodily_terminal_score,
@@ -2276,6 +2277,41 @@ class BodilyDriftLossTest(unittest.TestCase):
         mx.eval(weighted, plain)
         # A residual of exactly one metabolic scale contributes exactly one.
         self.assertAlmostEqual(float(weighted) - float(plain), 1.0, places=6)
+
+    def test_event_term_is_scaled_relative_to_the_bodily_event_scale(self):
+        target = mx.array([[EVENT_ERROR_SCALE, 0.0, 0.0, 0.0]])
+        predicted = mx.zeros((1, 4))
+        weighted = bodily_delta_prediction_loss(
+            predicted,
+            target,
+            change_boost=20.0,
+            event_weight=1.0,
+        )
+        plain = bodily_delta_prediction_loss(
+            predicted,
+            target,
+            change_boost=20.0,
+        )
+        mx.eval(weighted, plain)
+        # One event-scale residual contributes exactly one.
+        self.assertAlmostEqual(float(weighted) - float(plain), 1.0, places=6)
+
+    def test_drift_entries_are_excluded_from_the_event_term(self):
+        target = mx.zeros((1, 4))
+        predicted = mx.full((1, 4), EVENT_ERROR_SCALE)
+        weighted = bodily_delta_prediction_loss(
+            predicted,
+            target,
+            change_boost=20.0,
+            event_weight=1.0,
+        )
+        plain = bodily_delta_prediction_loss(
+            predicted,
+            target,
+            change_boost=20.0,
+        )
+        mx.eval(weighted, plain)
+        self.assertAlmostEqual(float(weighted), float(plain), places=9)
 
     def test_threshold_separates_the_two_regimes_of_the_task(self):
         self.assertGreater(DRIFT_REGIME_THRESHOLD, 0.14)

@@ -44,6 +44,7 @@ from homesocial.island.world import (
 from homesocial.organism.model import (
     DRIFT_ERROR_SCALE,
     DRIFT_REGIME_THRESHOLD,
+    EVENT_ERROR_SCALE,
     OrganismModel,
 )
 
@@ -1216,6 +1217,7 @@ def bodily_delta_prediction_loss(
     *,
     change_boost: float,
     drift_weight: float = 0.0,
+    event_weight: float = 0.0,
     valid: mx.array | None = None,
 ) -> mx.array:
     """MSE that preserves rare, action-specific bodily consequences.
@@ -1234,6 +1236,11 @@ def bodily_delta_prediction_loss(
     The term is self-limiting: it falls below the event term once the drift
     residual approaches that scale, so it cannot trade away the consumption
     fit. Zero reproduces the original loss exactly.
+
+    ``event_weight`` symmetrically selects the rare event entries themselves
+    and measures their residual relative to the world's 0.4 terminal event
+    scale. It uses only lived next-body targets; zero leaves all prior behavior
+    untouched.
     """
 
     per_entry = (predicted_deltas - target_deltas) ** 2
@@ -1244,17 +1251,37 @@ def bodily_delta_prediction_loss(
     event_term = (per_transition * weights).sum() / mx.maximum(
         weights.sum(), mx.array(1e-8)
     )
-    if drift_weight <= 0.0:
-        return event_term
-    drift_mask = (
-        mx.abs(target_deltas) <= DRIFT_REGIME_THRESHOLD
-    ).astype(per_entry.dtype)
-    if valid is not None:
-        drift_mask = drift_mask * valid[..., None]
-    drift_term = (per_entry * drift_mask).sum() / mx.maximum(
-        drift_mask.sum(), mx.array(1e-8)
-    )
-    return event_term + drift_weight * drift_term / (DRIFT_ERROR_SCALE**2)
+    loss = event_term
+    if drift_weight > 0.0:
+        drift_mask = (
+            mx.abs(target_deltas) <= DRIFT_REGIME_THRESHOLD
+        ).astype(per_entry.dtype)
+        if valid is not None:
+            drift_mask = drift_mask * valid[..., None]
+        drift_term = (per_entry * drift_mask).sum() / mx.maximum(
+            drift_mask.sum(), mx.array(1e-8)
+        )
+        loss = loss + (
+            drift_weight * drift_term / (DRIFT_ERROR_SCALE**2)
+        )
+    if event_weight > 0.0:
+        bodily_event_mask = (
+            mx.abs(target_deltas) > DRIFT_REGIME_THRESHOLD
+        ).astype(per_entry.dtype)
+        if valid is not None:
+            bodily_event_mask = bodily_event_mask * valid[..., None]
+        bodily_event_term = (
+            per_entry * bodily_event_mask
+        ).sum() / mx.maximum(
+            bodily_event_mask.sum(),
+            mx.array(1e-8),
+        )
+        loss = loss + (
+            event_weight
+            * bodily_event_term
+            / (EVENT_ERROR_SCALE**2)
+        )
+    return loss
 
 
 @dataclass(frozen=True)
@@ -1275,6 +1302,9 @@ class OrganismConfig:
     # Supervises the slow-metabolism regime the change boost starves. Zero is
     # the sealed default and reproduces every prior artifact exactly.
     bodily_drift_loss_weight: float = 0.0
+    # Independently calibrates rare, single-need bodily events at their
+    # measured physical scale. Zero preserves every prior loss exactly.
+    bodily_event_loss_weight: float = 0.0
     # Gives that regime its own range-limited output path, so the dense
     # metabolic objective cannot overwrite the sparse binding-conditioned one
     # through a shared saturating head. False is the sealed default.
@@ -1355,6 +1385,10 @@ class OrganismConfig:
             raise ValueError("world_model_replay_capacity must be nonnegative.")
         if self.world_model_replay_updates < 0:
             raise ValueError("world_model_replay_updates must be nonnegative.")
+        if self.bodily_drift_loss_weight < 0.0:
+            raise ValueError("bodily_drift_loss_weight must be nonnegative.")
+        if self.bodily_event_loss_weight < 0.0:
+            raise ValueError("bodily_event_loss_weight must be nonnegative.")
         if self.semantic_choice_childhood_steps < 0:
             raise ValueError("semantic_choice_childhood_steps must be nonnegative.")
         if self.episodic_binding_size < 0:
@@ -1723,6 +1757,7 @@ class OrganismTrainer:
             target_need_deltas,
             change_boost=config.bodily_change_loss_boost,
             drift_weight=config.bodily_drift_loss_weight,
+            event_weight=config.bodily_event_loss_weight,
         )
         reward_loss = ((predicted_rewards[0] - env_rewards) ** 2).mean()
         return (
@@ -2217,6 +2252,7 @@ class OrganismTrainer:
             target_needs - start_needs,
             change_boost=config.bodily_change_loss_boost,
             drift_weight=config.bodily_drift_loss_weight,
+            event_weight=config.bodily_event_loss_weight,
             valid=valid_float,
         )
         reward_error = (cumulative_reward[0] - target_reward) ** 2
@@ -2252,6 +2288,7 @@ class OrganismTrainer:
             target_need_deltas,
             change_boost=config.bodily_change_loss_boost,
             drift_weight=config.bodily_drift_loss_weight,
+            event_weight=config.bodily_event_loss_weight,
         )
         reward_loss = ((predicted_rewards[0] - env_rewards) ** 2).mean()
         token_log_probabilities = token_logits[0] - mx.logsumexp(
@@ -2351,6 +2388,7 @@ class OrganismTrainer:
             target_need_deltas,
             change_boost=config.bodily_change_loss_boost,
             drift_weight=config.bodily_drift_loss_weight,
+            event_weight=config.bodily_event_loss_weight,
         )
         reward_loss = ((predicted_rewards[0] - env_rewards) ** 2).mean()
         token_log_probabilities = token_logits[0] - mx.logsumexp(
