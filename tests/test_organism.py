@@ -21,6 +21,7 @@ if mx is not None:
         audit_label_to_self_model,
         audit_observation_branching_planner,
         audit_protocol_return_origin,
+        audit_real_vs_explicit_event_transfer,
         audit_terminal_consume_value_calibration,
         audit_cross_round_label_reuse,
         audit_persistent_choice_environment,
@@ -1459,6 +1460,39 @@ class TrainingSmokeTest(unittest.TestCase):
         self.assertGreater(stats["water_contexts"], 0.0)
         self.assertIn(
             "all_demanded_minus_best_wrong_predicted_realized_ratio",
+            stats,
+        )
+        for value in stats.values():
+            self.assertTrue(math.isfinite(value))
+
+    def test_real_explicit_event_transfer_is_paired_and_finite(self):
+        from dataclasses import replace as dc_replace
+
+        trainer = OrganismTrainer(
+            dc_replace(
+                self._config(),
+                semantic_choice_childhood_steps=1,
+                consume_options=True,
+                inspect_options=True,
+                episodic_binding_size=4,
+                island=IslandConfig(
+                    semantic_choice_horizon=40,
+                    semantic_choice_objects=3,
+                    semantic_choice_low_need=0.55,
+                    semantic_choice_return_duration=6,
+                ),
+            )
+        )
+        stats = audit_real_vs_explicit_event_transfer(
+            trainer.model,
+            contexts=6,
+            base_seed=1_991_000,
+        )
+        self.assertEqual(stats["all_real_immediate_contexts"], 6.0)
+        self.assertEqual(stats["all_real_settled_contexts"], 6.0)
+        self.assertEqual(stats["all_explicit_settled_contexts"], 6.0)
+        self.assertIn(
+            "all_real_settled_minus_explicit_settled_margin",
             stats,
         )
         for value in stats.values():

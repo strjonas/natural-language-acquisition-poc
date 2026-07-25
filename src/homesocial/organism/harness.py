@@ -23,6 +23,7 @@ from homesocial.organism.train import (
     audit_metabolic_drift_forecast,
     audit_observation_branching_planner,
     audit_protocol_return_origin,
+    audit_real_vs_explicit_event_transfer,
     audit_terminal_consume_value_calibration,
     audit_cross_round_label_reuse,
     audit_persistent_choice_environment,
@@ -169,6 +170,22 @@ def main() -> None:
             )
             rows.append(
                 {"condition": "terminal_consume_value_calibration", **audit}
+            )
+            _write_and_print(rows, args)
+            return
+        if args.real_explicit_event_transfer_contexts > 0:
+            audit = audit_real_vs_explicit_event_transfer(
+                model,
+                contexts=args.real_explicit_event_transfer_contexts,
+                semantic_choice_horizon=args.semantic_choice_horizon,
+                semantic_choice_low_need=args.semantic_choice_low_need,
+                semantic_choice_return_duration=(
+                    args.semantic_choice_return_duration
+                ),
+                semantic_choice_rounds=args.semantic_choice_rounds,
+            )
+            rows.append(
+                {"condition": "real_vs_explicit_event_transfer", **audit}
             )
             _write_and_print(rows, args)
             return
@@ -1058,6 +1075,15 @@ def _parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--real-explicit-event-transfer-contexts",
+        type=int,
+        default=0,
+        help=(
+            "Read-only paired audit: compare terminal value after real label "
+            "acquisition and an explicit matched lexical write."
+        ),
+    )
+    parser.add_argument(
         "--protocol-branch-planning",
         action="store_true",
         help=(
@@ -1265,6 +1291,7 @@ def _parse_args() -> argparse.Namespace:
             and args.drift_forecast_audit_contexts <= 0
             and args.protocol_return_origin_audit_contexts <= 0
             and args.terminal_consume_calibration_contexts <= 0
+            and args.real_explicit_event_transfer_contexts <= 0
             and not args.evaluate_loaded_checkpoint
         ):
             parser.error(
@@ -1273,7 +1300,8 @@ def _parse_args() -> argparse.Namespace:
                 "--cross-round-reuse-lives, or a positive "
                 "--drift-forecast-audit-contexts or "
                 "--protocol-return-origin-audit-contexts or "
-                "--terminal-consume-calibration-contexts."
+                "--terminal-consume-calibration-contexts or "
+                "--real-explicit-event-transfer-contexts."
             )
         if (
             args.evaluate_loaded_checkpoint
@@ -1297,6 +1325,11 @@ def _parse_args() -> argparse.Namespace:
     elif args.terminal_consume_calibration_contexts > 0:
         parser.error(
             "--terminal-consume-calibration-contexts requires "
+            "--load-checkpoint."
+        )
+    elif args.real_explicit_event_transfer_contexts > 0:
+        parser.error(
+            "--real-explicit-event-transfer-contexts requires "
             "--load-checkpoint."
         )
     elif args.observation_branching_audit_contexts > 0:

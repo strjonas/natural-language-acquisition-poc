@@ -6021,6 +6021,286 @@ def audit_terminal_consume_value_calibration(
     return result
 
 
+def audit_real_vs_explicit_event_transfer(
+    model: OrganismModel,
+    *,
+    contexts: int = 300,
+    base_seed: int = 1_700_000,
+    semantic_choice_horizon: int = 40,
+    semantic_choice_low_need: float = 0.55,
+    semantic_choice_return_duration: int = 6,
+    semantic_choice_rounds: int = 8,
+) -> dict[str, float]:
+    """Compare terminal value after real and explicit lexical acquisition."""
+
+    if contexts <= 0:
+        raise ValueError("contexts must be positive.")
+    if not model.has_episodic_bindings or model.object_option_types != 2:
+        raise ValueError(
+            "Event-transfer audit requires episodic consume/inspect options."
+        )
+
+    config = IslandConfig(
+        semantic_choice_trial=True,
+        semantic_choice_horizon=semantic_choice_horizon,
+        semantic_choice_objects=3,
+        semantic_choice_low_need=semantic_choice_low_need,
+        semantic_choice_rounds=semantic_choice_rounds,
+        semantic_choice_return_duration=semantic_choice_return_duration,
+        language_mode="grounded",
+        max_visible_slots=model.visible_slots or 8,
+    )
+    paths = ("real_immediate", "real_settled", "explicit_settled")
+    metric_names = (
+        "demanded_score",
+        "other_resource_score",
+        "poison_score",
+        "demanded_minus_best_wrong",
+        "demanded_choice",
+        "terminal_score_absolute_error",
+    )
+    totals = {
+        group: {
+            path: {
+                "contexts": 0.0,
+                **dict.fromkeys(metric_names, 0.0),
+            }
+            for path in paths
+        }
+        for group in ("all", "food", "water")
+    }
+    paired = {
+        group: {
+            "contexts": 0.0,
+            "real_minus_explicit_margin": 0.0,
+            "real_margin_larger": 0.0,
+        }
+        for group in ("all", "food", "water")
+    }
+    wait_index = ACTIONS.index(Action.WAIT)
+    candidates = semantic_choice_label_candidates()
+    padding_tokens = mx.array(
+        np.asarray(
+            [TOKEN_TO_ID[PAD_TOKEN]] * model.tokens_per_utterance,
+            dtype=np.int32,
+        )[None, None, :]
+    )
+
+    for context in range(contexts):
+        seed = base_seed + context
+        world = IslandWorld(config, seed=seed)
+        packet = world.reset(seed)
+        if len(packet.visible) != 3:
+            continue
+        demanded = str(world.grid.choice_need)
+        kinds = [
+            world.grid.kind_by_surface[SURFACES[surface_index]]
+            for _, _, surface_index in packet.visible
+        ]
+        demanded_slot = kinds.index(demanded)
+        other_slot = kinds.index(
+            "water" if demanded == "food" else "food"
+        )
+        poison_slot = kinds.index("poison")
+        initial_vector = mx.array(packet.vector()[None, None, :])
+        initial_tokens = mx.array(
+            np.asarray(packet.tokens, dtype=np.int32)[None, None, :]
+        )
+        initial_states, initial_carry = model.core_states(
+            initial_vector,
+            initial_tokens,
+        )
+        inspect_action = object_option_action_index(
+            "inspect",
+            demanded_slot,
+            consume_options=True,
+            inspect_options=True,
+            visible_slots=config.max_visible_slots,
+        )
+        label_packet, _, terminated, truncated, _ = execute_agent_action(
+            world,
+            packet,
+            inspect_action,
+            consume_options=True,
+            inspect_options=True,
+        )
+        if terminated or truncated:
+            continue
+        label_vector = mx.array(label_packet.vector()[None, None, :])
+        label_tokens = mx.array(
+            np.asarray(label_packet.tokens, dtype=np.int32)[None, None, :]
+        )
+        _, label_carry = model.core_states(
+            label_vector,
+            label_tokens,
+            initial_carry,
+        )
+        return_packet, _, terminated, truncated, _ = execute_agent_action(
+            world,
+            label_packet,
+            wait_index,
+            consume_options=True,
+            inspect_options=True,
+        )
+        if terminated or truncated:
+            continue
+        return_vector = mx.array(return_packet.vector()[None, None, :])
+        return_tokens = mx.array(
+            np.asarray(return_packet.tokens, dtype=np.int32)[None, None, :]
+        )
+        real_immediate, _ = model.core_states(
+            return_vector,
+            return_tokens,
+            label_carry,
+        )
+        real_settled = real_immediate
+        for _ in range(PROTOCOL_SETTLING_OBSERVATIONS - 1):
+            real_settled = model.observe_from_state(
+                real_settled,
+                return_vector,
+                padding_tokens,
+            )
+
+        initial_slots = model._visible_object_features(initial_vector)
+        target_surface = initial_slots[..., demanded_slot, 3:]
+        matching_branch = SEMANTIC_CHOICE_LABEL_KINDS.index(demanded)
+        canonical_tokens = mx.broadcast_to(
+            candidates[matching_branch][None, None, :],
+            (1, 1, model.tokens_per_utterance),
+        )
+        explicit_written = model.write_binding_into_state(
+            initial_states,
+            target_surface,
+            canonical_tokens,
+        )
+        explicit_settled = _settled_context_state(
+            model,
+            explicit_written,
+            return_vector,
+            steps=PROTOCOL_SETTLING_OBSERVATIONS,
+        )
+        path_states = {
+            "real_immediate": real_immediate,
+            "real_settled": real_settled,
+            "explicit_settled": explicit_settled,
+        }
+        path_scores: dict[str, np.ndarray] = {}
+        for path, path_state in path_states.items():
+            scores = _terminal_consume_scores(
+                model,
+                path_state,
+                return_vector,
+                urgent_deficit_utility=True,
+            )
+            mx.eval(scores)
+            path_scores[path] = np.asarray(
+                scores[0, 0, :3],
+                dtype=np.float64,
+            )
+
+        realized = np.zeros(3, dtype=np.float64)
+        for original_slot, (_, _, surface_index) in enumerate(packet.visible):
+            returned_slot = next(
+                slot
+                for slot, (_, _, returned_surface) in enumerate(
+                    return_packet.visible
+                )
+                if returned_surface == surface_index
+            )
+            consume_action = object_option_action_index(
+                "consume",
+                returned_slot,
+                consume_options=True,
+                inspect_options=True,
+                visible_slots=config.max_visible_slots,
+            )
+            consume_world = deepcopy(world)
+            consumed_packet, _, _, _, _ = execute_agent_action(
+                consume_world,
+                return_packet,
+                consume_action,
+                consume_options=True,
+                inspect_options=True,
+            )
+            urgent_index = 0 if demanded == "food" else 1
+            realized[original_slot] = consumed_packet.needs[urgent_index]
+        realized_values = np.asarray(
+            [
+                realized[demanded_slot],
+                realized[other_slot],
+                realized[poison_slot],
+            ]
+        )
+
+        path_margins: dict[str, float] = {}
+        for path, scores in path_scores.items():
+            values = np.asarray(
+                [
+                    scores[demanded_slot],
+                    scores[other_slot],
+                    scores[poison_slot],
+                ]
+            )
+            margin = float(values[0] - max(values[1:]))
+            path_margins[path] = margin
+            row = {
+                "demanded_score": values[0],
+                "other_resource_score": values[1],
+                "poison_score": values[2],
+                "demanded_minus_best_wrong": margin,
+                "demanded_choice": float(int(np.argmax(values) == 0)),
+                "terminal_score_absolute_error": float(
+                    np.abs(values - realized_values).mean()
+                ),
+            }
+            for group in ("all", demanded):
+                totals[group][path]["contexts"] += 1.0
+                for metric, value in row.items():
+                    totals[group][path][metric] += float(value)
+
+        margin_difference = (
+            path_margins["real_settled"]
+            - path_margins["explicit_settled"]
+        )
+        for group in ("all", demanded):
+            paired[group]["contexts"] += 1.0
+            paired[group]["real_minus_explicit_margin"] += margin_difference
+            paired[group]["real_margin_larger"] += int(
+                margin_difference > 0.0
+            )
+
+    result: dict[str, float] = {}
+    realized_margin = 0.4
+    for group, group_paths in totals.items():
+        for path, path_totals in group_paths.items():
+            count = path_totals["contexts"]
+            if count <= 0:
+                raise RuntimeError(
+                    f"Event-transfer audit found no {group}/{path} contexts."
+                )
+            result[f"{group}_{path}_contexts"] = count
+            for metric in metric_names:
+                result[f"{group}_{path}_{metric}"] = (
+                    path_totals[metric] / count
+                )
+            result[
+                f"{group}_{path}_demanded_minus_best_wrong_"
+                "predicted_realized_ratio"
+            ] = (
+                result[f"{group}_{path}_demanded_minus_best_wrong"]
+                / realized_margin
+            )
+        paired_count = paired[group]["contexts"]
+        result[f"{group}_real_settled_minus_explicit_settled_margin"] = (
+            paired[group]["real_minus_explicit_margin"] / paired_count
+        )
+        result[f"{group}_real_settled_margin_larger_context_rate"] = (
+            paired[group]["real_margin_larger"] / paired_count
+        )
+    result["realized_demanded_minus_best_wrong"] = realized_margin
+    return result
+
+
 def audit_persistent_choice_environment(
     *,
     lives: int = 2_500,
