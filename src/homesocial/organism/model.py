@@ -50,6 +50,7 @@ class OrganismModel(nn.Module):
         visible_radius: int = 2,
         pad_token_id: int = 0,
         referential_action_indices: tuple[int, ...] = (3, 4),
+        report_slots: int = 0,
     ) -> None:
         super().__init__()
         self.vector_size = vector_size
@@ -178,6 +179,17 @@ class OrganismModel(nn.Module):
             self.drift_needs = nn.Linear(hidden_size, 4)
         self.reward_head = nn.Linear(hidden_size, 1)
         self.next_tokens = nn.Linear(hidden_size, tokens_per_utterance * vocab_size)
+
+        # The mouth. It emits its own tokens over the same closed vocabulary the
+        # organism hears, from the same state that acts, values and predicts.
+        # Nothing supervises it: the only gradient it ever receives is the
+        # advantage of the life that followed what it said.
+        if report_slots < 0:
+            raise ValueError("report_slots must be nonnegative.")
+        self.report_slots = report_slots
+        self.can_speak = report_slots > 0
+        if self.can_speak:
+            self.report_head = nn.Linear(self.state_size, report_slots * vocab_size)
 
     def _encode_tokens(self, tokens: mx.array) -> mx.array:
         """(B, T, L) int token ids -> (B, T, E) utterance encodings."""
@@ -555,6 +567,14 @@ class OrganismModel(nn.Module):
         return mx.concatenate(
             [base[..., : self.primitive_action_size], *option_scores], axis=-1
         )
+
+    def report_logits(self, states: mx.array) -> mx.array:
+        """Per-slot logits over the whole vocabulary: (..., slots, vocab)."""
+
+        if not self.can_speak:
+            raise ValueError("This organism has no report head.")
+        logits = self.report_head(states)
+        return logits.reshape(*states.shape[:-1], self.report_slots, self.vocab_size)
 
     def _transition_features(
         self,

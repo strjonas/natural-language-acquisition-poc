@@ -232,6 +232,7 @@ class ReportWorld(IslandWorld):
         )
         self._pad_id = TOKEN_TO_ID[PAD_TOKEN]
         self._heard_need: str | None = None
+        self._heard_tick = -1
         self._last_utterance: tuple[int, ...] | None = None
         self._listener_rng = Random(0)
         self._help_rng = Random(0)
@@ -260,6 +261,7 @@ class ReportWorld(IslandWorld):
         self._shock_rng = Random(base + 5_500_011)
         self._shock_marker = None
         self._heard_need = None
+        self._heard_tick = -1
         self._last_utterance = None
         self._grants = 0
         self._grants_by_need = {need: 0 for need in REPORT_NEEDS}
@@ -284,10 +286,12 @@ class ReportWorld(IslandWorld):
                 int(token) != self._pad_id for token in tokens
             ):
                 self._heard_need = self._listener_rng.choice(REPORT_NEEDS)
+                self._heard_tick = self.grid.step_count
             return
         need = heard_need(self._last_utterance)
         if need is not None:
             self._heard_need = need
+            self._heard_tick = self.grid.step_count
 
     def step(
         self, action: Action | str
@@ -303,8 +307,9 @@ class ReportWorld(IslandWorld):
 
         granted_need: str | None = None
         granted_large: bool | None = None
+        grant_source_tick: int | None = None
         if not terminated and self.grid.step_count % self.report.help_period == 0:
-            granted_need, granted_large = self._grant_help()
+            granted_need, granted_large, grant_source_tick = self._grant_help()
 
         self._last_action_index = list(Action).index(action)
         packet = self._packet(self.grid._observe(None, info.get("event")), None)
@@ -320,6 +325,7 @@ class ReportWorld(IslandWorld):
                 "heard_need": self._heard_need,
                 "granted_need": granted_need,
                 "granted_large": granted_large,
+                "grant_source_tick": grant_source_tick,
                 "shock_need": shock_need,
                 "help_pending": self.pending_help_need(),
                 "utterance_tokens": self._last_utterance,
@@ -369,8 +375,14 @@ class ReportWorld(IslandWorld):
 
     # -- listener -----------------------------------------------------------
 
-    def _grant_help(self) -> tuple[str | None, bool | None]:
-        """Deliver one help for the last thing heard, spoiling anything unused."""
+    def _grant_help(self) -> tuple[str | None, bool | None, int]:
+        """Deliver one help for the last thing heard, spoiling anything unused.
+
+        Also reports which tick's utterance the listener actually acted on. Only
+        that utterance had any effect on the world; the rest were said into the
+        air. Learning that carries the utterance's causal footprint is what the
+        organism is entitled to, and no more.
+        """
 
         # Unused help spoils, so a grant cannot be hoarded and consumed later:
         # the word must be right when it is said. A shock marker is perception,
@@ -379,11 +391,18 @@ class ReportWorld(IslandWorld):
             obj for obj in self.grid.objects if obj is self._shock_marker
         ]
         need = self._heard_need
+        # An unanswered grant still has a moment that decided it: the last thing
+        # the organism said before help came, which happened not to be a
+        # request. That moment is what gets the credit for the silence.
+        source_tick = (
+            self._heard_tick if need is not None else self.grid.step_count - 1
+        )
         self._heard_need = None
+        self._heard_tick = -1
         self._grants += 1
         if need is None:
             self._silent_grants += 1
-            return None, None
+            return None, None, source_tick
         large = self._help_rng.random() < self.report.large_portion_probability
         portion = (
             self.report.portion_large if large else self.report.portion_small
@@ -398,7 +417,7 @@ class ReportWorld(IslandWorld):
             obj = WorldObject(surface, "shelter", pos, energy_delta=portion)
         self.grid.objects = [*self.grid.objects, obj]
         self._grants_by_need[need] += 1
-        return need, large
+        return need, large, source_tick
 
     # -- read-only accessors used by audits ---------------------------------
 

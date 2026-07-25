@@ -2119,7 +2119,7 @@ class TrainingSmokeTest(unittest.TestCase):
             consume_options=True,
             inspect_options=True,
         )[0]
-        _, _, _, forced_mask, decision_weight = trainer._act()
+        _, _, _, forced_mask, decision_weight, _ = trainer._act()
         self.assertEqual(decision_weight, 0.0)
         self.assertEqual(int(forced_mask.sum()), 1)
 

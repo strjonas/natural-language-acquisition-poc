@@ -15,8 +15,13 @@ import json
 from pathlib import Path
 
 from homesocial.island.calibrate import run_policy
+from homesocial.island.report import ReportConfig
 from homesocial.island.world import IslandConfig
 from homesocial.organism.model import OrganismModel
+from homesocial.organism.report_audit import (
+    most_frequent_utterances,
+    report_battery,
+)
 from homesocial.organism.train import (
     OrganismConfig,
     audit_binding_consequence_geometry,
@@ -48,6 +53,10 @@ EVAL_SEED_BASE = 900_000
 def main() -> None:
     args = _parse_args()
     rows: list[dict[str, object]] = []
+
+    if args.report_task:
+        _run_report_task(args)
+        return
 
     if args.semantic_choice_information_upper_bound_contexts > 0:
         audit = audit_semantic_choice_information_upper_bound(
@@ -897,6 +906,65 @@ def _append_semantic_choice_rows(
         )
 
 
+def _run_report_task(args: argparse.Namespace) -> None:
+    """Gate G3: train an organism that must say what it needs, then audit it."""
+
+    config = OrganismConfig(
+        language_mode="grounded",
+        total_steps=args.train_steps,
+        segment_length=args.segment_length,
+        hidden_size=args.hidden_size,
+        learning_rate=args.learning_rate,
+        entropy_weight=args.entropy_weight,
+        report_task=True,
+        report_slots=args.report_slots,
+        report_entropy_weight=args.report_entropy_weight,
+        # No caregiver speech exists on the report island, and the bodily
+        # prediction head is the one place the true body could enter a loss, so
+        # the headline condition switches it off.
+        token_prediction_weight=0.0,
+        next_needs_weight=args.report_body_prediction_weight,
+        max_steps=ReportConfig().life_steps,
+        report=ReportConfig(
+            help_period=args.report_help_period,
+            shock_probability=args.report_shock_probability,
+        ),
+        island=IslandConfig(max_steps=ReportConfig().life_steps, max_visible_slots=2),
+        seed=args.seed,
+        checkpoint=str(
+            Path(args.run_dir) / f"organism_report_seed{args.seed}.npz"
+        ),
+        stats_csv=str(Path(args.run_dir) / f"lives_report_seed{args.seed}.csv"),
+        log_every_lives=args.log_every_lives,
+    )
+
+    if args.load_checkpoint:
+        model, config = load_organism_checkpoint(args.load_checkpoint)
+    else:
+        Path(args.run_dir).mkdir(parents=True, exist_ok=True)
+        model, _ = train_organism(config)
+        print(f"checkpoint written to {config.checkpoint}")
+
+    rows = report_battery(
+        model,
+        config,
+        lives=args.report_audit_lives,
+        seed_base=EVAL_SEED_BASE,
+    )
+    for need, text, count in most_frequent_utterances(
+        model, config, lives=max(4, args.report_audit_lives // 8), seed_base=EVAL_SEED_BASE
+    ):
+        rows.append(
+            {
+                "condition": "utterance_census",
+                "lowest_need": need,
+                "utterance": text,
+                "count": count,
+            }
+        )
+    _write_and_print(rows, args)
+
+
 def _write_and_print(rows: list[dict[str, object]], args: argparse.Namespace) -> None:
     keys = ["condition"]
     for row in rows:
@@ -1044,6 +1112,37 @@ def _parse_args() -> argparse.Namespace:
             "with public-label and blind policies."
         ),
     )
+    parser.add_argument(
+        "--report-task",
+        action="store_true",
+        help=(
+            "Gate G3: train and audit an organism on the report island, where "
+            "its body is hidden from its senses and the caregiver acts only on "
+            "what it says."
+        ),
+    )
+    parser.add_argument("--report-slots", type=int, default=2)
+    parser.add_argument("--report-entropy-weight", type=float, default=0.02)
+    parser.add_argument("--report-audit-lives", type=int, default=200)
+    parser.add_argument("--report-help-period", type=int, default=ReportConfig().help_period)
+    parser.add_argument(
+        "--report-shock-probability",
+        type=float,
+        default=ReportConfig().shock_probability,
+    )
+    parser.add_argument(
+        "--report-body-prediction-weight",
+        type=float,
+        default=0.0,
+        help=(
+            "Weight on predicting one's own true bodily deltas. Zero is the "
+            "headline condition: nothing in any loss ever states the hidden "
+            "body. Positive values are the declared supervised comparison."
+        ),
+    )
+    parser.add_argument("--learning-rate", type=float, default=3e-4)
+    parser.add_argument("--entropy-weight", type=float, default=0.02)
+    parser.add_argument("--log-every-lives", type=int, default=10)
     parser.add_argument("--train-steps", type=int, default=200_000)
     parser.add_argument("--segment-length", type=int, default=64)
     parser.add_argument("--hidden-size", type=int, default=256)

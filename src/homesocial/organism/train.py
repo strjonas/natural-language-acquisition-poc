@@ -33,6 +33,12 @@ from homesocial.creole.vocab import (
 from homesocial.creole.situations import Situation
 from homesocial.env import Action, DELTAS, DIRECTION_ORDER, Direction
 from homesocial.island.oracle import OraclePolicy
+from homesocial.island.report import (
+    REPORT_NEEDS,
+    ReportConfig,
+    ReportWorld,
+    heard_need,
+)
 from homesocial.island.world import (
     CONSUMABLE_SURFACES,
     SURFACES,
@@ -1499,6 +1505,15 @@ class OrganismConfig:
     persistent_information_reuses: int = 0
     urgent_deficit_utility: bool = False
     protocol_branch_planning: bool = False
+    # Gate G3. On the report island the body is hidden from the senses and the
+    # caregiver acts only on what the organism says. ``report_slots`` gives the
+    # organism a mouth: that many token slots over the whole closed vocabulary,
+    # sampled every tick from the same state that acts. Zero is the mute
+    # control and preserves every prior artifact exactly.
+    report_task: bool = False
+    report_slots: int = 0
+    report_entropy_weight: float = 0.02
+    report: ReportConfig = field(default_factory=ReportConfig)
     seed: int = 1
     max_steps: int = 1000
     log_every_lives: int = 10
@@ -1560,6 +1575,10 @@ class OrganismConfig:
             raise ValueError(
                 "Episodic bindings require consume and inspect object options."
             )
+        if self.report_slots < 0:
+            raise ValueError("report_slots must be nonnegative.")
+        if self.report_slots > 0 and not self.report_task:
+            raise ValueError("A report head requires the report task.")
 
     def island_config(
         self, *, semantic_choice_trial: bool | None = None
@@ -1625,6 +1644,13 @@ class LifeStats:
     choice_correct_rounds: int
     choice_poison_rounds: int
     choice_wrong_resource_rounds: int
+    # Report island bookkeeping. These are observations of what the organism
+    # said and what happened; none of them enters a loss.
+    report_need_words: int = 0
+    report_truthful_words: int = 0
+    report_grants: int = 0
+    report_truthful_grants: int = 0
+    report_uptakes: int = 0
 
 
 @dataclass(frozen=True)
@@ -1687,6 +1713,7 @@ def build_model(config: OrganismConfig, world: IslandWorld) -> OrganismModel:
             ACTIONS.index(Action.POINT),
             ACTIONS.index(Action.ASK),
         ),
+        report_slots=config.report_slots,
     )
 
 
@@ -1725,6 +1752,15 @@ class _Segment:
         self.semantic_choice_delayed = False
         self.vectors: list[np.ndarray] = []
         self.tokens: list[tuple[int, ...]] = []
+        # True bodily state before each decision. Used only as the world-model
+        # delta baseline, which a masked observation can no longer supply, and
+        # never as a target for anything the organism says.
+        self.needs: list[tuple[float, ...]] = []
+        self.report_tokens: list[tuple[int, ...]] = []
+        # 1.0 on the utterance the listener actually acted on, 0.0 on the ones
+        # said into the air. An utterance with no causal footprint earns no
+        # credit for what followed it.
+        self.report_weights: list[float] = []
         self.actions: list[int] = []
         self.shaped_rewards: list[float] = []
         self.env_rewards: list[float] = []
@@ -1762,10 +1798,17 @@ class OrganismTrainer:
             config.semantic_choice_childhood_steps > 0
             or config.island.semantic_choice_trial
         )
-        self.world = IslandWorld(
-            config.island_config(semantic_choice_trial=initial_choice_trial),
-            seed=config.seed,
-        )
+        if config.report_task:
+            self.world: IslandWorld = ReportWorld(
+                config.island_config(semantic_choice_trial=False),
+                report=config.report,
+                seed=config.seed,
+            )
+        else:
+            self.world = IslandWorld(
+                config.island_config(semantic_choice_trial=initial_choice_trial),
+                seed=config.seed,
+            )
         self.model = build_model(config, self.world)
         self.optimizer = optim.Adam(learning_rate=config.learning_rate)
         self.rng = Random(config.seed)
@@ -1828,6 +1871,11 @@ class OrganismTrainer:
         self._life_choice_correct_rounds = 0
         self._life_choice_poison_rounds = 0
         self._life_choice_wrong_resource_rounds = 0
+        self._life_report_need_words = 0
+        self._life_report_truthful_words = 0
+        self._life_report_grants = 0
+        self._life_report_truthful_grants = 0
+        self._life_report_uptakes = 0
 
     def _semantic_choice_active(self) -> bool:
         if self.config.semantic_choice_childhood_steps > 0:
@@ -2128,7 +2176,7 @@ class OrganismTrainer:
 
     # ------------------------------------------------------------- acting
 
-    def _act(self) -> tuple[int, float, float, np.ndarray, float]:
+    def _act(self) -> tuple[int, float, float, np.ndarray, float, tuple[int, ...]]:
         vector = mx.array(self.packet.vector()[None, None, :])
         tokens = mx.array(
             np.asarray(self.packet.tokens, dtype=np.int32)[None, None, :]
@@ -2138,6 +2186,7 @@ class OrganismTrainer:
         )
         logits = self.model.policy_logits(states, vector)
         values = self.model.value(states).squeeze(-1)
+        report_tokens = self._sample_report(states)
         planning_scale = (
             self.config.self_model_planning_scale
             if self.global_steps >= self.config.self_model_planning_start_steps
@@ -2207,7 +2256,29 @@ class OrganismTrainer:
             planning_scale,
             action_mask,
             decision_weight,
+            report_tokens,
         )
+
+    def _sample_report(self, states: mx.array) -> tuple[int, ...]:
+        """Sample one utterance from the report head, or stay mute.
+
+        The organism speaks every tick from the state it is in. Nothing here
+        consults the body, the caregiver, or what would have been correct.
+        """
+
+        if not self.model.can_speak:
+            return ()
+        logits = self.model.report_logits(states)[0, 0]
+        mx.eval(logits)
+        probabilities = np.asarray(mx.softmax(logits, axis=-1), dtype=np.float64)
+        drawn: list[int] = []
+        for slot in range(self.model.report_slots):
+            weights = probabilities[slot]
+            weights = weights / weights.sum()
+            drawn.append(
+                int(self.rng.choices(range(self.model.vocab_size), weights=weights)[0])
+            )
+        return tuple(drawn)
 
     def collect_segment(self) -> tuple[_Segment, mx.array | None, float]:
         """Collect experience until segment length or end of life."""
@@ -2220,16 +2291,25 @@ class OrganismTrainer:
         )
         initial_hidden = self.hidden
         pad_id = TOKEN_TO_ID[PAD_TOKEN]
+        spoken_index: dict[int, int] = {}
         while len(segment) < self.config.segment_length:
             vector_before = self.packet.vector()
             tokens_before = self.packet.tokens
+            needs_before = self.packet.needs
             (
                 action_index,
                 value,
                 planning_scale,
                 action_mask,
                 decision_weight,
+                report_tokens,
             ) = self._act()
+            if self.model.can_speak:
+                # Said before acting, and heard by a listener that cannot see
+                # the body it is being told about.
+                spoken_tick = self.world.grid.step_count
+                spoken_index[spoken_tick] = len(segment)
+                self.world.hear(report_tokens)
             if action_index >= len(ACTIONS):
                 self._life_option_decisions += 1
                 decoded = decode_object_option(
@@ -2266,6 +2346,9 @@ class OrganismTrainer:
             )
             segment.vectors.append(vector_before)
             segment.tokens.append(tokens_before)
+            segment.needs.append(needs_before)
+            segment.report_tokens.append(report_tokens)
+            segment.report_weights.append(0.0)
             segment.actions.append(action_index)
             segment.shaped_rewards.append(shaped)
             segment.env_rewards.append(float(env_reward))
@@ -2301,6 +2384,29 @@ class OrganismTrainer:
             self._life_water_consumes += events.count("consumed_water")
             if bool(info.get("offered_consumed")):
                 self._life_offered_consumes += 1
+            if self.model.can_speak:
+                source_tick = info.get("grant_source_tick")
+                if source_tick is not None and source_tick in spoken_index:
+                    segment.report_weights[spoken_index[int(source_tick)]] = 1.0
+                said = heard_need(report_tokens)
+                if said is not None:
+                    self._life_report_need_words += 1
+                    self._life_report_truthful_words += int(
+                        said == info.get("lowest_need_before")
+                    )
+                if info.get("granted_need") is not None:
+                    self._life_report_grants += 1
+                    self._life_report_truthful_grants += int(
+                        info.get("granted_need") == info.get("lowest_need")
+                    )
+                self._life_report_uptakes += int(
+                    str(info.get("event") or "")
+                    in {
+                        "consumed_food",
+                        "consumed_water",
+                        "rested_shelter",
+                    }
+                )
             if str(info.get("situation", "")).startswith("label|"):
                 self._life_labels_received += 1
             self._life_harm_events += sum(
@@ -2386,6 +2492,11 @@ class OrganismTrainer:
                 choice_wrong_resource_rounds=(
                     self._life_choice_wrong_resource_rounds
                 ),
+                report_need_words=self._life_report_need_words,
+                report_truthful_words=self._life_report_truthful_words,
+                report_grants=self._life_report_grants,
+                report_truthful_grants=self._life_report_truthful_grants,
+                report_uptakes=self._life_report_uptakes,
             )
         )
         self.life_index += 1
@@ -2499,6 +2610,7 @@ class OrganismTrainer:
         next_needs: mx.array,
         env_rewards: mx.array,
         next_tokens: mx.array,
+        current_needs: mx.array,
     ) -> mx.array:
         """Auxiliary-only loss, safe for off-policy episodic replay."""
 
@@ -2508,7 +2620,7 @@ class OrganismTrainer:
             self.model.predict_consequences(states, actions[None, :], vectors)
         )
         vector_loss = ((predicted_vectors[0] - next_vectors) ** 2).mean()
-        target_need_deltas = next_needs - vectors[0, :, :4]
+        target_need_deltas = next_needs - current_needs
         needs_loss = bodily_delta_prediction_loss(
             predicted_need_deltas[0],
             target_need_deltas,
@@ -2581,6 +2693,9 @@ class OrganismTrainer:
         next_needs: mx.array,
         env_rewards: mx.array,
         next_tokens: mx.array,
+        current_needs: mx.array,
+        report_tokens: mx.array | None = None,
+        report_weights: mx.array | None = None,
     ) -> mx.array:
         config = self.config
         states, _ = self.model.core_states(vectors, tokens, hidden)
@@ -2624,11 +2739,40 @@ class OrganismTrainer:
             entropy_per_step * decision_weights
         ).sum() / decision_denominator
 
+        # What was said is credited exactly like what was done: one advantage,
+        # no separate signal, no target. If a word did not help the organism
+        # live, nothing about it was right.
+        report_loss = mx.array(0.0)
+        report_entropy = mx.array(0.0)
+        if (
+            report_tokens is not None
+            and report_weights is not None
+            and self.model.can_speak
+        ):
+            report_logits = self.model.report_logits(states)[0]
+            report_log_probabilities = report_logits - mx.logsumexp(
+                report_logits, axis=-1, keepdims=True
+            )
+            spoken = mx.take_along_axis(
+                report_log_probabilities, report_tokens[..., None], axis=-1
+            ).squeeze(-1).sum(axis=-1)
+            heard_weights = report_weights * decision_weights
+            heard_denominator = mx.maximum(heard_weights.sum(), mx.array(1.0))
+            report_loss = -(
+                advantages * spoken * heard_weights
+            ).sum() / heard_denominator
+            report_entropy_per_step = -(
+                mx.softmax(report_logits, axis=-1) * report_log_probabilities
+            ).sum(-1).sum(-1)
+            report_entropy = (
+                report_entropy_per_step * heard_weights
+            ).sum() / heard_denominator
+
         predicted_vectors, predicted_need_deltas, predicted_rewards, token_logits = (
             self.model.predict_consequences(states, actions[None, :], vectors)
         )
         vector_loss = ((predicted_vectors[0] - next_vectors) ** 2).mean()
-        target_need_deltas = next_needs - vectors[0, :, :4]
+        target_need_deltas = next_needs - current_needs
         needs_loss = bodily_delta_prediction_loss(
             predicted_need_deltas[0],
             target_need_deltas,
@@ -2682,6 +2826,8 @@ class OrganismTrainer:
             policy_loss
             + config.value_weight * value_loss
             - config.entropy_weight * entropy
+            + report_loss
+            - config.report_entropy_weight * report_entropy
             + config.next_vector_weight * vector_loss
             + config.next_needs_weight * needs_loss
             + config.reward_prediction_weight * reward_loss
@@ -3364,6 +3510,17 @@ class OrganismTrainer:
             mx.array(np.asarray(segment.next_needs, dtype=np.float32)),
             mx.array(np.asarray(segment.env_rewards, dtype=np.float32)),
             mx.array(np.asarray(segment.next_tokens, dtype=np.int32)),
+            mx.array(np.asarray(segment.needs, dtype=np.float32)),
+            (
+                mx.array(np.asarray(segment.report_tokens, dtype=np.int32))
+                if self.model.can_speak
+                else None
+            ),
+            (
+                mx.array(np.asarray(segment.report_weights, dtype=np.float32))
+                if self.model.can_speak
+                else None
+            ),
         )
         grads, _ = optim.clip_grad_norm(grads, self.config.max_grad_norm)
         self.optimizer.update(self.model, grads)
@@ -3509,6 +3666,7 @@ class OrganismTrainer:
             mx.array(np.asarray(segment.next_needs, dtype=np.float32)),
             mx.array(np.asarray(segment.env_rewards, dtype=np.float32)),
             mx.array(np.asarray(segment.next_tokens, dtype=np.int32)),
+            mx.array(np.asarray(segment.needs, dtype=np.float32)),
         )
         grads, _ = optim.clip_grad_norm(grads, self.config.max_grad_norm)
         self.optimizer.update(self.model, grads)
@@ -3580,12 +3738,27 @@ class OrganismTrainer:
                 mean_viability = sum(life.mean_viability for life in recent) / len(
                     recent
                 )
-                print(
+                message = (
                     f"steps {steps_done}: lives {lives_logged}, "
                     f"recent survival {survival:.2f}, "
                     f"life steps {mean_steps:.1f}, viability {mean_viability:.3f}, "
                     f"loss {loss:.4f}"
                 )
+                if self.model.can_speak:
+                    words = sum(life.report_need_words for life in recent)
+                    truthful = sum(life.report_truthful_words for life in recent)
+                    grants = sum(life.report_grants for life in recent)
+                    truthful_grants = sum(
+                        life.report_truthful_grants for life in recent
+                    )
+                    ticks = sum(life.steps for life in recent)
+                    message += (
+                        f", said a need on {words / max(1, ticks):.2f} of ticks, "
+                        f"fidelity {truthful / max(1, words):.3f}, "
+                        f"grants/life {grants / len(recent):.1f}, "
+                        f"right help {truthful_grants / max(1, grants):.3f}"
+                    )
+                print(message)
         if config.checkpoint:
             save_checkpoint(self.model, config, config.checkpoint)
         if config.stats_csv:
@@ -8500,9 +8673,22 @@ def load_organism_checkpoint(
     metadata_path = weights_path.with_suffix(weights_path.suffix + ".json")
     config_data = json.loads(metadata_path.read_text())
     island_data = config_data.pop("island")
+    report_data = config_data.pop("report", None)
     config = OrganismConfig(
         **config_data,
         island=IslandConfig(**island_data),
+        **(
+            {}
+            if report_data is None
+            else {
+                "report": ReportConfig(
+                    **{
+                        key: tuple(value) if isinstance(value, list) else value
+                        for key, value in report_data.items()
+                    }
+                )
+            }
+        ),
     )
     trainer = OrganismTrainer(config)
     trainer.model.load_weights(str(weights_path))
@@ -8532,7 +8718,9 @@ def write_life_stats(stats: list[LifeStats], path: str) -> None:
         "chosen_surface_inspected,choice_correct,choice_poison,"
         "choice_wrong_resource,choice_timeout,choice_rounds_completed,"
         "choice_correct_rounds,choice_poison_rounds,"
-        "choice_wrong_resource_rounds\n"
+        "choice_wrong_resource_rounds,"
+        "report_need_words,report_truthful_words,report_grants,"
+        "report_truthful_grants,report_uptakes\n"
     )
     with target.open("w", encoding="utf-8") as handle:
         handle.write(header)
@@ -8554,5 +8742,8 @@ def write_life_stats(stats: list[LifeStats], path: str) -> None:
                 f"{life.choice_rounds_completed},"
                 f"{life.choice_correct_rounds},"
                 f"{life.choice_poison_rounds},"
-                f"{life.choice_wrong_resource_rounds}\n"
+                f"{life.choice_wrong_resource_rounds},"
+                f"{life.report_need_words},{life.report_truthful_words},"
+                f"{life.report_grants},{life.report_truthful_grants},"
+                f"{life.report_uptakes}\n"
             )
