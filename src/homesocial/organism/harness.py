@@ -23,6 +23,7 @@ from homesocial.organism.train import (
     audit_metabolic_drift_forecast,
     audit_observation_branching_planner,
     audit_protocol_return_origin,
+    audit_terminal_consume_value_calibration,
     audit_cross_round_label_reuse,
     audit_persistent_choice_environment,
     audit_persistent_mapping_information_rent,
@@ -152,6 +153,22 @@ def main() -> None:
             )
             rows.append(
                 {"condition": "protocol_return_origin", **audit}
+            )
+            _write_and_print(rows, args)
+            return
+        if args.terminal_consume_calibration_contexts > 0:
+            audit = audit_terminal_consume_value_calibration(
+                model,
+                contexts=args.terminal_consume_calibration_contexts,
+                semantic_choice_horizon=args.semantic_choice_horizon,
+                semantic_choice_low_need=args.semantic_choice_low_need,
+                semantic_choice_return_duration=(
+                    args.semantic_choice_return_duration
+                ),
+                semantic_choice_rounds=args.semantic_choice_rounds,
+            )
+            rows.append(
+                {"condition": "terminal_consume_value_calibration", **audit}
             )
             _write_and_print(rows, args)
             return
@@ -1027,6 +1044,15 @@ def _parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--terminal-consume-calibration-contexts",
+        type=int,
+        default=0,
+        help=(
+            "Read-only audit: compare learned and simulator-scored terminal "
+            "consume values at the protocol branch decision."
+        ),
+    )
+    parser.add_argument(
         "--protocol-branch-planning",
         action="store_true",
         help=(
@@ -1220,6 +1246,7 @@ def _parse_args() -> argparse.Namespace:
             and args.cross_round_reuse_lives <= 0
             and args.drift_forecast_audit_contexts <= 0
             and args.protocol_return_origin_audit_contexts <= 0
+            and args.terminal_consume_calibration_contexts <= 0
             and not args.evaluate_loaded_checkpoint
         ):
             parser.error(
@@ -1227,7 +1254,8 @@ def _parse_args() -> argparse.Namespace:
                 "positive --observation-branching-audit-contexts, a positive "
                 "--cross-round-reuse-lives, or a positive "
                 "--drift-forecast-audit-contexts or "
-                "--protocol-return-origin-audit-contexts."
+                "--protocol-return-origin-audit-contexts or "
+                "--terminal-consume-calibration-contexts."
             )
         if (
             args.evaluate_loaded_checkpoint
@@ -1246,6 +1274,11 @@ def _parse_args() -> argparse.Namespace:
     elif args.protocol_return_origin_audit_contexts > 0:
         parser.error(
             "--protocol-return-origin-audit-contexts requires "
+            "--load-checkpoint."
+        )
+    elif args.terminal_consume_calibration_contexts > 0:
+        parser.error(
+            "--terminal-consume-calibration-contexts requires "
             "--load-checkpoint."
         )
     elif args.observation_branching_audit_contexts > 0:

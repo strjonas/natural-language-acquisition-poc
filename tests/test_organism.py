@@ -21,6 +21,7 @@ if mx is not None:
         audit_label_to_self_model,
         audit_observation_branching_planner,
         audit_protocol_return_origin,
+        audit_terminal_consume_value_calibration,
         audit_cross_round_label_reuse,
         audit_persistent_choice_environment,
         audit_persistent_mapping_information_rent,
@@ -1426,6 +1427,39 @@ class TrainingSmokeTest(unittest.TestCase):
         self.assertIn("aliased_worst_return_absolute_error", stats)
         self.assertIn("chained_worst_return_absolute_error", stats)
         self.assertIn("chained_lower_error_context_rate", stats)
+        for value in stats.values():
+            self.assertTrue(math.isfinite(value))
+
+    def test_terminal_consume_value_calibration_is_grouped_and_finite(self):
+        from dataclasses import replace as dc_replace
+
+        trainer = OrganismTrainer(
+            dc_replace(
+                self._config(),
+                semantic_choice_childhood_steps=1,
+                consume_options=True,
+                inspect_options=True,
+                episodic_binding_size=4,
+                island=IslandConfig(
+                    semantic_choice_horizon=40,
+                    semantic_choice_objects=3,
+                    semantic_choice_low_need=0.55,
+                    semantic_choice_return_duration=6,
+                ),
+            )
+        )
+        stats = audit_terminal_consume_value_calibration(
+            trainer.model,
+            contexts=6,
+            base_seed=1_991_000,
+        )
+        self.assertEqual(stats["all_contexts"], 6.0)
+        self.assertGreater(stats["food_contexts"], 0.0)
+        self.assertGreater(stats["water_contexts"], 0.0)
+        self.assertIn(
+            "all_demanded_minus_best_wrong_predicted_realized_ratio",
+            stats,
+        )
         for value in stats.values():
             self.assertTrue(math.isfinite(value))
 
