@@ -256,6 +256,8 @@ def main() -> None:
             run_label += f"_drift{args.bodily_drift_loss_weight:g}"
         if args.split_drift_head:
             run_label += "split"
+        if args.max_grad_norm != 1.0:
+            run_label += f"_clip{args.max_grad_norm:g}"
         if model_horizon != args.planning_horizon:
             run_label += f"_modelh{model_horizon}"
         config = OrganismConfig(
@@ -297,6 +299,7 @@ def main() -> None:
             multi_step_model_weight=args.multi_step_model_weight,
             bodily_drift_loss_weight=args.bodily_drift_loss_weight,
             split_drift_head=args.split_drift_head,
+            max_grad_norm=args.max_grad_norm,
             world_model_replay_capacity=args.replay_capacity,
             world_model_replay_updates=args.replay_updates,
             seed=args.seed,
@@ -748,6 +751,8 @@ def _write_and_print(rows: list[dict[str, object]], args: argparse.Namespace) ->
         suffix += f"_drift{args.bodily_drift_loss_weight:g}"
     if args.split_drift_head:
         suffix += "split"
+    if args.max_grad_norm != 1.0:
+        suffix += f"_clip{args.max_grad_norm:g}"
     model_horizon = args.model_horizon or args.planning_horizon
     if model_horizon != args.planning_horizon:
         suffix += f"_modelh{model_horizon}"
@@ -1021,6 +1026,16 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--model-horizon", type=int, choices=[1, 2], default=None)
     parser.add_argument("--multi-step-model-weight", type=float, default=0.0)
+    parser.add_argument(
+        "--max-grad-norm",
+        type=float,
+        default=1.0,
+        help=(
+            "Global gradient-norm trust region. Auxiliary losses with a large "
+            "gradient scale otherwise steal step size from every other "
+            "objective through this shared budget."
+        ),
+    )
     parser.add_argument(
         "--split-drift-head",
         action="store_true",
