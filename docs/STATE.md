@@ -4,143 +4,182 @@ Last rewritten: 2026-07-25. Rewrite this file, never append.
 
 ## Executive handover
 
-The organism now has a **persistent lexical self-model that is behaviorally
-sufficient**. Two words heard once each during ordinary embodied experience
-determine the correct consumption choice in every one of six subsequent
-recurring bodily demands within the same life, at 100.00% across 1,800 measured
-rounds. Acute silence gives 34.00%; acute write suppression, with the language
-still audible, gives 34.11%. The effect is carried by the persistent
-object-local lexical bank, not by an utterance being audible at decision time.
+The organism's bodily forecast is repaired, and with it the gate that had
+blocked this project for three successive planners. On one checkpoint, at once:
 
-Two things had to be fixed to see this, and both are now understood:
+- **A branch whose label names the demanded resource selects that object
+  99.78% of the time** (gate 6; the sealed baseline is 18.00%, and the
+  mean-observation, observation-branching and protocol-branch planners failed it
+  at 19.11%, 18.00% and 18.00%).
+- **Acquiring a word is now worth its cost**: the mean intact inspect advantage
+  is positive (+0.0205) for the first time. That was the one operation the last
+  handover named as missing.
+- **The persistent lexical memory is untouched at ceiling**: 100.00%
+  cross-round reuse in every one of rounds 3-8, against 30.94% under acute
+  silence and 31.17% under acute write suppression.
+- **The ten-tick forecast preserves the organism's own need ordering** 100.00%
+  of the time, against 18.00% before.
 
-1. **The environment had to pay for knowing.** The one-shot task made
-   information irrational: an exact-dynamics audit showed one truthful
-   inspection *loses* 0.1147 bodily units against blind consumption. The
-   eight-round persistent-mapping task pays +0.0813 per round instead.
-2. **The planner had to ask its self-model the right question.** Every planner
-   scored actions by the predicted *minimum* need. After a ten-tick detour that
-   minimum is fixed by energy, which no consumption choice affects, and it
-   rewards an uncertain smeared prediction over a correct concentrated one.
-   Scoring the need the organism currently observes as most urgent moves
-   post-label choice from 31.50% to 100.00% on identical states.
+Checkpoint: `runs/organism/probe33_online_budget/`.
 
-What is still missing is one operation: the organism does not **choose** to
-acquire words. Its deployed inspection rate is 14% and flat across rounds.
+What blocks promotion is now a different thing than before: four of the seven
+feasibility gates still fail, three of them narrowly. See "The current
+blocker".
+
+## How the forecast was repaired
+
+The last handover localized the failure to a systematic per-need metabolic
+drift bias. That was correct, and the fix had two parts.
+
+1. **The loss ignored slow metabolism.** Drift entries are 82.7% of all entries
+   but carry about one percent of the delta head's gradient, because they are
+   both smaller and less heavily weighted than consumption events. What the
+   head learned instead was the consumption confound: predicted delta
+   correlated -0.923 with the *current* food need, because consumption happens
+   when a need is low, so the fitted line extrapolated to a large spurious
+   decay whenever a need was high. A scale-balanced drift term, stratified per
+   need and normalized by the world's per-tick metabolic scale, fixes it.
+2. **The organism needed twice as much life.** At 30,000 ticks the dense
+   metabolic objective displaces the sparse lexical one and reuse falls to
+   63.33%. At 60,000 it does not, and both sit at 100.00%.
+
+The decisive measurement that licensed all of this was the **oracle
+substitution** in `audit_metabolic_drift_forecast`: replacing only the
+predicted drift with the simulator's true drift took the planner's own chain
+from 18.00% to 100.00%, proving forecast error was the whole of the failure
+rather than one contributor.
+
+## Three refuted explanations, kept refuted
+
+Before the budget was tried, three cheaper causes were tested and each was
+killed by its own control. None of these should be reopened.
+
+| Candidate | Test | Memory | Verdict |
+|---|---|---:|---|
+| The shared output head | split drift/event head | 57.83% | not the cause; the architecture-only control holds 100.00% |
+| Capacity | hidden 128 / 256 | 50.28% / 54.39% | not the cause |
+| The gradient budget | `max_grad_norm` 1.0 -> 10.0 | 62.56% | not the cause; the raised-clip control holds 98.89% |
+
+The gradient measurement is the one to remember as a caution. The drift term
+genuinely inflates the raw gradient sixfold and genuinely saturates the trust
+region on 100% of updates, which explained every observation including why head
+separation and capacity both failed. It was still not the cause. **A mechanism
+that explains every observation is not thereby the cause.**
+
+The capacity-based compute request that the split-head stop rule pointed at was
+withdrawn as refuted by its own diagnostic.
 
 ## The current blocker, measured
 
-Three planners have now failed to make inspection worth its cost, and the
-diagnosis has converged on a cause that is not a planner. The corrected utility
-reads whichever need the organism predicts will be most urgent, so it is only
-as good as that prediction:
+| Gate | Requirement | Sealed baseline | Now | Decision |
+|---|---:|---:|---:|---|
+| 1 Mean intact inspect advantage | > 0 | +0.1735 | +0.0205 | Pass |
+| 2 Positive-advantage contexts | >= 75% | 99.00% | 46.33% | **Fail** |
+| 3 Write-suppression advantage drop | >= 0.05 | 0.2371 | 0.0466 | **Fail** |
+| 4 Collapsed-label advantage drop | >= 0.05 | 0.2371 | 0.0466 | **Fail** |
+| 5 Label-contingent terminal choices | >= 60% | 99.89% | 85.11% | Pass |
+| 6 Matching label selects the target | >= 60% | 18.00% | **99.78%** | Pass |
+| 7 Danger label avoids the target | >= 90% | 100.00% | 85.33% | **Fail** |
 
-| Body state the urgent need is read from | Names the demanded resource |
-|---|---:|
-| The real current observation | 100.00% |
-| The model's predicted post-inspect body | 60.67% |
-| The model's predicted post-return body | 18.44% |
-
-The last planner's failing gate came in at 18.00%. The organism's semantics are
-intact; its ten-tick metabolic forecast is not.
-
-The bias is systematic and per-need. Over the four-tick inspect option the
-model predicts a food-need drop of -0.1000 against a realized -0.0400, while
-predicting -0.0460 for water against a realized -0.0560. The true metabolisms
-run the other way: water costs 0.014 per tick and food 0.010. The forecast
-therefore inverts the ordering of the two resource needs over a detour, which is
-precisely the quantity the corrected utility indexes on. This matches the
-training weights: next-observation prediction carries weight 0.1 while the
-bodily-change loss is boosted 20-fold, concentrating capacity on consumption
-jumps at the expense of slow drift.
+Branch contingency is fully write-caused: 85.11% intact against exactly 0.00%
+under both write suppression and collapsed labels.
 
 ## Exact next step
 
-Preregister and run a **world-model loss correction** that supervises slow
-metabolic drift over multi-tick option rollouts, and take the same gate 6 as
-its endpoint: in a hypothetical branch whose label names the resource the body
-needs, the terminal choice must select the labeled object at least 60% of the
-time.
+Gate 2 carries a specific, diagnosable anomaly and should be taken first,
+because it is the widest failure and the other three are near misses that may
+move with it.
 
-Preregister the mechanism-level endpoint first, since it is the cheaper and
-more diagnostic one: after retraining, the per-need drift bias of the table
-above must fall below 0.01 absolute on both resource needs for both options,
-and the urgent-need index must survive the ten-tick forecast at 90% or better,
-against the current 18.44%. Only then rerun gate 6 and the behavioral pair.
-The existing seed-1 configuration, budget, architecture and evaluation seeds
-are otherwise unchanged, so the loss weighting is the single manipulated
-variable.
+**The positive-advantage context rate is identical at 46.33% across intact,
+write-suppressed and collapsed conditions**, while the mean advantages differ
+(+0.0205 against -0.0262). Whether a context has positive inspect advantage is
+therefore decided by something the write does not touch, even though the *size*
+of the advantage is entirely write-caused. Find that context-level factor
+before changing anything: it is a property of the branch construction, not of
+the forecast, and it is measurable read-only on the existing checkpoint.
 
-Do not implement a fourth planner. Do not adjust the settling count, the reuse
-count, the planning scale, or the utility rule. If the forecast correction
-fails, the remaining option is to let the organism learn the value of knowing
-directly from experienced cross-round reuse under a longer training budget,
-which is the first thing in this project that would justify a compute request.
+A known, unfixed defect of that construction is the likeliest suspect and is
+already documented: the planner asks the model what happens if it waits from
+the *choice pose* and expects the answer for the six-tick return, but at the
+choice pose a wait is one tick. The query is structurally aliased, and no loss
+over lived transitions can resolve it, because the two situations carry the
+same action label. The repaired model answers something between the one-tick
+and six-tick quantity (predicted food -0.0188 against a realized -0.0600); the
+need *ordering* survives because the shortfall is proportional across needs,
+which is why gate 6 passes anyway. The advantage *magnitude* has no such
+protection, and gates 2, 3 and 4 are all magnitude gates.
+
+Do not add a fifth planner. Do not reopen the drift weight grid, the 0.175
+regime bound, the 0.02 scale, the gradient clip, or the split head. Do not
+sweep the budget further; 120,000 ticks was no better than 60,000 on any
+measured quantity.
 
 ## Sealed results that stand
 
-- **Cross-round reuse (headline).**
-  `docs/decisions/2026-07-25-protocol-branch-planner-result.md`;
-  artifacts `runs/organism/probe28_cross_round_reuse/`.
+- **Forecast repair and the budget resolution (headline).**
+  `docs/decisions/2026-07-25-forecast-memory-tension-result.md`; artifacts in
+  `runs/organism/probe31_split_drift_head/`, `probe32_gradient_budget/`,
+  `probe33_online_budget/`.
+- **The drift-supervision tension.**
+  `docs/decisions/2026-07-25-metabolic-drift-supervision-result.md`. The clean
+  monotone dose-response (100.00% / 63.33% / 46.11% / 9.89%) with three
+  `drift_weight = 0` retrains all at 100.00% as the control.
+- **Cross-round reuse.**
+  `docs/decisions/2026-07-25-protocol-branch-planner-result.md`.
 - **Homeostatic utility correction.**
-  `docs/decisions/2026-07-25-homeostatic-terminal-utility-result.md`. Real
-  post-label choice 100.00%/0.00%/0.00% by case, against 31.50% under the old
-  rule. Includes the one-factor bridge that localizes the branch failure to the
-  decoder-reconstructed observation.
+  `docs/decisions/2026-07-25-homeostatic-terminal-utility-result.md`.
 - **Information economics of the substrate.**
   `docs/decisions/2026-07-25-persistent-mapping-rent-result.md` and
-  `-persistent-choice-mechanics-result.md`. The implemented eight-round
-  environment gives a public-label policy +0.0813 per round over blind at 100%
-  correct with exactly two inspections per life.
-- **Delayed dual-code representation.** The 2026-07-19 sealed pair remains
-  valid: crossed true-label bodily-kind accuracy 100% versus 32.33% for a
-  matched write-disabled control.
+  `-persistent-choice-mechanics-result.md`.
+- **Delayed dual-code representation.** The 2026-07-19 sealed pair.
 
 ## Negative results that are now closed
 
 - One-shot delayed choice as a substrate for language acquisition: closed by
-  exact upper bound, not by tuning.
-- The mean-observation planner, the observation-branching planner, and the
-  protocol branch: all three fail the same gate, for the reason above. Do not
-  reopen without a fixed forecast.
+  exact upper bound.
 - The minimum-need utility as a planning score after a delay: superseded, kept
-  selectable and default-off so every sealed artifact reproduces.
-
-## Trained-behavior status
-
-The corrected persistent-childhood seed-1 pair (`probe24`) reaches 38.17%
-held-out correctness write-enabled against 32.42% write-disabled and 32.62%
-under acute write suppression, with 100% counterfactual word-to-bodily-kind
-accuracy and 100% delayed target localization. It fails the behavioral gates of
-`2026-07-25-persistent-childhood-learning-preregistration.md`, which remain the
-standing bar. Seed 2, freshly trained silent and shuffled controls, open-island
-transfer, generated speech, and any compute or data request stay blocked until a
-fresh pair clears them.
+  selectable and default-off.
+- The split drift/event head, a fourfold capacity increase, and the gradient
+  trust region: all three refuted as causes of the forecast/memory tension,
+  each by its own control.
+- The claim that the forecast is unfixable, or that fixing it cannot rescue
+  gate 6: refuted twice, by the oracle bound and then by a trained model.
 
 ## Architecture notes that matter
 
+- Training is **not bit-reproducible at a fixed seed**; evaluation on a fixed
+  checkpoint is. Every effect must be read against a retraining noise band, so
+  controls are retrained rather than compared to a single sealed number. A unit
+  test, not a checkpoint hash, guards the zero-weight reproduction path.
 - An externally injected memory row reaches the recurrent core only through
-  observation steps: 0 steps gives 18.67%, 3 gives 66.67%, 5 gives 81.33%. Real
-  acquisition reaches 100% because the protocol supplies those steps.
-- The world model's observation decoder has a mean L1 error of 13.55 on the
-  visual/pose part. Any planner that decodes and re-encodes an observation
-  inherits that error. `write_binding_into_state` exists so a counterfactual
-  word can be considered without fabricating a scene.
+  observation steps: 0 steps gives 18.67%, 3 gives 66.67%, 5 gives 81.33%.
+- The observation decoder has a mean L1 error of 13.55 on the visual/pose part.
+  Any planner that decodes and re-encodes an observation inherits it;
+  `write_binding_into_state` exists to avoid fabricating a scene.
 - Continual learning must stay live. Replay carries are detached at segment
-  boundaries, so long-life grounding will eventually need replay that includes
-  the write history.
+  boundaries.
 
 ## Claim boundary and research ethic
 
 Do not call this system conscious, sentient, human-like, authentically
 desiring, reflective, or a real `me`. Its needs and objective are engineered,
-and it does not generate language or report an internal state. The defensible
-claim is now stronger than in July but still narrow: online embodied experience
-produced a persistent, object-local, causally load-bearing word-to-own-body
-memory that determines correct action for the remainder of a life, and matched
-write and language ablations remove it.
+and it does not generate language or report an internal state.
+
+The defensible claim is now stronger than the last handover's and is still
+narrow: online embodied experience produced a persistent, object-local,
+causally load-bearing word-to-own-body memory that determines correct action
+for the remainder of a life; matched write and language ablations remove it;
+and the organism's own model of its body is now accurate enough that a
+hypothetical word almost always selects the right object and that acquiring one
+is, on average, worth its cost. It is one seed, with no write-disabled training
+pair yet.
+
+Seed 2, freshly trained silent and shuffled controls, the write-disabled
+training pair, open-island transfer and generated speech all remain blocked
+until the feasibility battery passes in full.
 
 No live LLM training/data calls, hidden-kind training targets, simulator
-counterfactuals in learning, direct language rewards, or compute requests are
-currently authorized or needed. Simulator branches stay audit-only; sealed
-artifacts and decision records are preserved.
+counterfactuals in learning, or direct language rewards are authorized or
+needed. **No compute request is justified**: the working configuration trains
+locally in under a minute, and the one compute request this project came close
+to making was withdrawn this session as refuted by its own diagnostic.
