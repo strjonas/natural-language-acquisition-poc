@@ -7233,6 +7233,181 @@ def audit_binding_consequence_geometry(
     return result
 
 
+def _paired_gradient_geometry(
+    left_grads: object,
+    right_grads: object,
+    *,
+    lexical_only: bool,
+) -> tuple[float, float, float, float]:
+    """Return cosine, left norm, right norm, and right/left ratio."""
+
+    from mlx.utils import tree_flatten
+
+    left = dict(tree_flatten(left_grads))
+    right = dict(tree_flatten(right_grads))
+    names = sorted(set(left) & set(right))
+    if lexical_only:
+        names = [
+            name
+            for name in names
+            if name.startswith(
+                ("token_embedding.", "binding_value.", "binding_read.")
+            )
+        ]
+    dot_terms = [mx.sum(left[name] * right[name]) for name in names]
+    left_terms = [mx.sum(left[name] * left[name]) for name in names]
+    right_terms = [mx.sum(right[name] * right[name]) for name in names]
+    dot = sum(dot_terms, mx.array(0.0))
+    left_norm = mx.sqrt(sum(left_terms, mx.array(0.0)))
+    right_norm = mx.sqrt(sum(right_terms, mx.array(0.0)))
+    mx.eval(dot, left_norm, right_norm)
+    left_value = float(left_norm)
+    right_value = float(right_norm)
+    cosine = float(dot) / max(left_value * right_value, 1e-12)
+    return (
+        cosine,
+        left_value,
+        right_value,
+        right_value / max(left_value, 1e-12),
+    )
+
+
+def audit_bound_event_gradient_alignment(
+    model: OrganismModel,
+    config: OrganismConfig,
+    *,
+    segments: int = 160,
+    max_ticks: int = 20_000,
+) -> dict[str, object]:
+    """Measure base/event gradient direction on fresh embodied segments."""
+
+    if segments <= 0 or max_ticks <= 0:
+        raise ValueError("Gradient alignment needs positive segments and ticks.")
+    audit_config = replace(
+        config,
+        total_steps=max_ticks,
+        checkpoint=None,
+        stats_csv=None,
+        bodily_event_audit_json=None,
+    )
+    trainer = OrganismTrainer(audit_config)
+    trainer.model = model
+    samples: list[dict[str, object]] = []
+    while trainer.global_steps < max_ticks and len(samples) < segments:
+        segment, hidden, _ = trainer.collect_segment()
+        if not segment:
+            continue
+        rows = trainer._bodily_event_rows(
+            segment,
+            hidden,
+            distribution="fresh_fixed_policy",
+            tick_stop=trainer.global_steps,
+        )
+        food = any(
+            row["category"] == "food_restoration"
+            and bool(row["binding_valid"])
+            for row in rows
+        )
+        water = any(
+            row["category"] == "water_restoration"
+            and bool(row["binding_valid"])
+            for row in rows
+        )
+        if not (food or water):
+            continue
+
+        def base_objective(active_model: OrganismModel) -> mx.array:
+            return trainer._bodily_objectives_for_gradient(
+                active_model, segment, hidden
+            )[0]
+
+        def event_objective(active_model: OrganismModel) -> mx.array:
+            return trainer._bodily_objectives_for_gradient(
+                active_model, segment, hidden
+            )[1]
+
+        base_value, base_grads = nn.value_and_grad(
+            model, base_objective
+        )(model)
+        event_value, event_grads = nn.value_and_grad(
+            model, event_objective
+        )(model)
+        global_geometry = _paired_gradient_geometry(
+            base_grads, event_grads, lexical_only=False
+        )
+        lexical_geometry = _paired_gradient_geometry(
+            base_grads, event_grads, lexical_only=True
+        )
+        mx.eval(base_value, event_value)
+        samples.append(
+            {
+                "tick": float(trainer.global_steps),
+                "food_bound": food,
+                "water_bound": water,
+                "group": (
+                    "both" if food and water else "food_only" if food else "water_only"
+                ),
+                "base_value": float(base_value),
+                "event_value": float(event_value),
+                "global_cosine": global_geometry[0],
+                "global_base_norm": global_geometry[1],
+                "global_event_norm": global_geometry[2],
+                "global_event_to_base_norm": global_geometry[3],
+                "lexical_cosine": lexical_geometry[0],
+                "lexical_base_norm": lexical_geometry[1],
+                "lexical_event_norm": lexical_geometry[2],
+                "lexical_event_to_base_norm": lexical_geometry[3],
+            }
+        )
+
+    result: dict[str, object] = {
+        "requested_segments": float(segments),
+        "measured_segments": float(len(samples)),
+        "elapsed_ticks": float(trainer.global_steps),
+        "raw_samples": samples,
+    }
+    groups = {
+        "all": samples,
+        "food_only": [
+            sample for sample in samples if sample["group"] == "food_only"
+        ],
+        "water_only": [
+            sample for sample in samples if sample["group"] == "water_only"
+        ],
+        "both": [sample for sample in samples if sample["group"] == "both"],
+        "food_present": [
+            sample for sample in samples if bool(sample["food_bound"])
+        ],
+        "water_present": [
+            sample for sample in samples if bool(sample["water_bound"])
+        ],
+    }
+    for group, selected in groups.items():
+        result[f"{group}_segments"] = float(len(selected))
+        if not selected:
+            continue
+        for scope in ("global", "lexical"):
+            cosines = np.asarray(
+                [float(sample[f"{scope}_cosine"]) for sample in selected]
+            )
+            ratios = np.asarray(
+                [
+                    float(sample[f"{scope}_event_to_base_norm"])
+                    for sample in selected
+                ]
+            )
+            result[f"{group}_{scope}_median_cosine"] = float(
+                np.median(cosines)
+            )
+            result[f"{group}_{scope}_negative_fraction"] = float(
+                np.mean(cosines < 0.0)
+            )
+            result[f"{group}_{scope}_median_event_to_base_norm"] = float(
+                np.median(ratios)
+            )
+    return result
+
+
 def audit_persistent_choice_environment(
     *,
     lives: int = 2_500,

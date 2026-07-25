@@ -45,6 +45,7 @@ if mx is not None:
         evaluate_semantic_choice,
         execute_agent_action,
         _is_voluntary_inspection_event,
+        _paired_gradient_geometry,
         object_option_action_index,
         observation_branching_action_scores,
         observation_branching_inspect_values,
@@ -57,6 +58,17 @@ if mx is not None:
 
 @unittest.skipIf(mx is None, "MLX is unavailable")
 class GaeTest(unittest.TestCase):
+    def test_paired_gradient_geometry_reports_direction_and_scale(self):
+        cosine, left_norm, right_norm, ratio = _paired_gradient_geometry(
+            {"weight": mx.array([1.0, 0.0])},
+            {"weight": mx.array([0.0, 2.0])},
+            lexical_only=False,
+        )
+        self.assertAlmostEqual(cosine, 0.0)
+        self.assertAlmostEqual(left_norm, 1.0)
+        self.assertAlmostEqual(right_norm, 2.0)
+        self.assertAlmostEqual(ratio, 2.0)
+
     def test_resource_swap_direction_tracks_current_body_need(self):
         self.assertAlmostEqual(
             _directed_resource_swap_probability_shift(

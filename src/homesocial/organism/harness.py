@@ -11,6 +11,7 @@ numbers come from here.
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 
 from homesocial.island.calibrate import run_policy
@@ -19,6 +20,7 @@ from homesocial.organism.model import OrganismModel
 from homesocial.organism.train import (
     OrganismConfig,
     audit_binding_consequence_geometry,
+    audit_bound_event_gradient_alignment,
     audit_label_referent_binding,
     audit_label_to_self_model,
     audit_metabolic_drift_forecast,
@@ -203,6 +205,27 @@ def main() -> None:
             )
             rows.append(
                 {"condition": "binding_consequence_geometry", **audit}
+            )
+            _write_and_print(rows, args)
+            return
+        if args.bound_event_gradient_alignment_segments > 0:
+            audit = audit_bound_event_gradient_alignment(
+                model,
+                loaded_config,
+                segments=args.bound_event_gradient_alignment_segments,
+            )
+            raw_samples = audit.pop("raw_samples")
+            raw_path = (
+                Path(args.run_dir)
+                / "bound_event_gradient_alignment_samples.json"
+            )
+            raw_path.parent.mkdir(parents=True, exist_ok=True)
+            raw_path.write_text(
+                json.dumps(raw_samples, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            rows.append(
+                {"condition": "bound_event_gradient_alignment", **audit}
             )
             _write_and_print(rows, args)
             return
@@ -1142,6 +1165,15 @@ def _parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--bound-event-gradient-alignment-segments",
+        type=int,
+        default=0,
+        help=(
+            "Read-only audit: collect fresh fixed-policy bound-event segments "
+            "and compare base versus calibration gradient direction."
+        ),
+    )
+    parser.add_argument(
         "--protocol-branch-planning",
         action="store_true",
         help=(
@@ -1388,6 +1420,7 @@ def _parse_args() -> argparse.Namespace:
             and args.terminal_consume_calibration_contexts <= 0
             and args.real_explicit_event_transfer_contexts <= 0
             and args.binding_consequence_geometry_contexts <= 0
+            and args.bound_event_gradient_alignment_segments <= 0
             and not args.evaluate_loaded_checkpoint
         ):
             parser.error(
@@ -1398,7 +1431,8 @@ def _parse_args() -> argparse.Namespace:
                 "--protocol-return-origin-audit-contexts or "
                 "--terminal-consume-calibration-contexts or "
                 "--real-explicit-event-transfer-contexts or "
-                "--binding-consequence-geometry-contexts."
+                "--binding-consequence-geometry-contexts or "
+                "--bound-event-gradient-alignment-segments."
             )
         if (
             args.evaluate_loaded_checkpoint
