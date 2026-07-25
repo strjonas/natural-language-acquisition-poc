@@ -20,6 +20,7 @@ from homesocial.organism.train import (
     OrganismConfig,
     audit_label_referent_binding,
     audit_label_to_self_model,
+    audit_metabolic_drift_forecast,
     audit_observation_branching_planner,
     audit_cross_round_label_reuse,
     audit_persistent_choice_environment,
@@ -118,6 +119,22 @@ def main() -> None:
                 language_mode=loaded_config.language_mode,
                 run_label="loaded_checkpoint",
                 args=args,
+            )
+            _write_and_print(rows, args)
+            return
+        if args.drift_forecast_audit_contexts > 0:
+            audit = audit_metabolic_drift_forecast(
+                model,
+                contexts=args.drift_forecast_audit_contexts,
+                semantic_choice_horizon=args.semantic_choice_horizon,
+                semantic_choice_low_need=args.semantic_choice_low_need,
+                semantic_choice_return_duration=(
+                    args.semantic_choice_return_duration
+                ),
+                semantic_choice_rounds=args.semantic_choice_rounds,
+            )
+            rows.append(
+                {"condition": "metabolic_drift_forecast", **audit}
             )
             _write_and_print(rows, args)
             return
@@ -956,6 +973,16 @@ def _parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--drift-forecast-audit-contexts",
+        type=int,
+        default=0,
+        help=(
+            "Read-only audit: predicted against realized bodily drift over "
+            "the planner's own inspect and return steps, with the oracle "
+            "substitution that bounds how well the chain could rank needs."
+        ),
+    )
+    parser.add_argument(
         "--protocol-branch-planning",
         action="store_true",
         help=(
@@ -1103,12 +1130,14 @@ def _parse_args() -> argparse.Namespace:
         if (
             args.observation_branching_audit_contexts <= 0
             and args.cross_round_reuse_lives <= 0
+            and args.drift_forecast_audit_contexts <= 0
             and not args.evaluate_loaded_checkpoint
         ):
             parser.error(
                 "--load-checkpoint requires --evaluate-loaded-checkpoint, a "
-                "positive --observation-branching-audit-contexts, or a "
-                "positive --cross-round-reuse-lives."
+                "positive --observation-branching-audit-contexts, a positive "
+                "--cross-round-reuse-lives, or a positive "
+                "--drift-forecast-audit-contexts."
             )
         if (
             args.evaluate_loaded_checkpoint
@@ -1120,6 +1149,10 @@ def _parse_args() -> argparse.Namespace:
             )
     elif args.cross_round_reuse_lives > 0:
         parser.error("--cross-round-reuse-lives requires --load-checkpoint.")
+    elif args.drift_forecast_audit_contexts > 0:
+        parser.error(
+            "--drift-forecast-audit-contexts requires --load-checkpoint."
+        )
     elif args.observation_branching_audit_contexts > 0:
         parser.error(
             "--observation-branching-audit-contexts requires "

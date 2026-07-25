@@ -5195,6 +5195,177 @@ def audit_cross_round_label_reuse(
     return result
 
 
+NEED_NAMES = ("food", "water", "energy", "health")
+
+
+def audit_metabolic_drift_forecast(
+    model: OrganismModel,
+    *,
+    contexts: int = 300,
+    base_seed: int = 1_700_000,
+    semantic_choice_horizon: int = 40,
+    semantic_choice_low_need: float = 0.55,
+    semantic_choice_return_duration: int = 6,
+    semantic_choice_rounds: int = 8,
+) -> dict[str, float]:
+    """Is the ten-tick bodily forecast accurate enough to rank its own needs?
+
+    The corrected homeostatic utility scores whichever need the organism
+    predicts will be most urgent when it returns, so the planner can only be as
+    good as that forecast. This audit measures the forecast directly, at the
+    two steps the planner actually takes -- the four-tick inspect option and
+    the six-tick return -- against the drift the simulator really applies.
+
+    It also reports the oracle substitution: the same chain with the true drift
+    in place of the predicted drift. That row is the upper bound the forecast
+    is being asked to reach, and it isolates forecast error from every other
+    part of the chain. Nothing is trained and no model input sees a hidden
+    kind; the simulator's demanded resource only scores the table.
+    """
+
+    if contexts <= 0:
+        raise ValueError("contexts must be positive.")
+    if not model.has_episodic_bindings or model.object_option_types != 2:
+        raise ValueError(
+            "The drift-forecast audit requires consume/inspect object options."
+        )
+
+    config = IslandConfig(
+        semantic_choice_trial=True,
+        semantic_choice_horizon=semantic_choice_horizon,
+        semantic_choice_objects=3,
+        semantic_choice_low_need=semantic_choice_low_need,
+        semantic_choice_rounds=semantic_choice_rounds,
+        semantic_choice_return_duration=semantic_choice_return_duration,
+        language_mode="grounded",
+        max_visible_slots=model.visible_slots or 8,
+    )
+    wait_index = ACTIONS.index(Action.WAIT)
+    steps = ("inspect", "return")
+    predicted = {step: [] for step in steps}
+    realized = {step: [] for step in steps}
+    survival = dict.fromkeys(
+        (
+            "real_observation",
+            "predicted_post_inspect",
+            "predicted_post_return",
+            "oracle_post_return",
+        ),
+        0,
+    )
+    margins: list[float] = []
+    audited = 0
+
+    def urgent_names_demand(needs: np.ndarray, demanded: str) -> int:
+        return int(NEED_NAMES[int(np.argmin(needs))] == demanded)
+
+    for context in range(contexts):
+        seed = base_seed + context
+        world = IslandWorld(config, seed=seed)
+        packet = world.reset(seed)
+        if len(packet.visible) != 3:
+            continue
+        demanded = str(world.grid.choice_need)
+        vector = mx.array(packet.vector()[None, None, :])
+        tokens = mx.array(
+            np.asarray(packet.tokens, dtype=np.int32)[None, None, :]
+        )
+        states, _ = model.core_states(vector, tokens)
+        current = np.asarray(vector[0, 0, :4], dtype=np.float64)
+
+        # The drift the world really applies over the same two steps.
+        probe = IslandWorld(config, seed=seed)
+        probe_packet = probe.reset(seed)
+        inspect_action = object_option_action_index(
+            "inspect",
+            0,
+            consume_options=True,
+            inspect_options=True,
+            visible_slots=probe.config.max_visible_slots,
+        )
+        probe_packet, _, _, _, _ = execute_agent_action(
+            probe,
+            probe_packet,
+            inspect_action,
+            consume_options=True,
+            inspect_options=True,
+        )
+        post_inspect = np.asarray(probe_packet.vector()[:4], dtype=np.float64)
+        true_inspect = post_inspect - current
+        probe_packet, _, _, _, _ = execute_agent_action(
+            probe,
+            probe_packet,
+            wait_index,
+            consume_options=True,
+            inspect_options=True,
+        )
+        true_return = (
+            np.asarray(probe_packet.vector()[:4], dtype=np.float64)
+            - post_inspect
+        )
+
+        # The drift the organism predicts at exactly the planner's two queries.
+        inspect_state = model.transition_state(
+            states, mx.array([[inspect_action]]), vector
+        )
+        _, inspect_delta, _, _ = model.decode_transition(inspect_state)
+        return_state = model.transition_state(
+            states, mx.array([[wait_index]]), vector
+        )
+        _, return_delta, _, _ = model.decode_transition(return_state)
+        mx.eval(inspect_delta, return_delta)
+        model_inspect = np.asarray(inspect_delta[0, 0], dtype=np.float64)
+        model_return = np.asarray(return_delta[0, 0], dtype=np.float64)
+
+        predicted["inspect"].append(model_inspect)
+        realized["inspect"].append(true_inspect)
+        predicted["return"].append(model_return)
+        realized["return"].append(true_return)
+
+        predicted_inspect_needs = np.clip(current + model_inspect, 0.0, 1.0)
+        oracle_inspect_needs = np.clip(current + true_inspect, 0.0, 1.0)
+        survival["real_observation"] += urgent_names_demand(current, demanded)
+        survival["predicted_post_inspect"] += urgent_names_demand(
+            predicted_inspect_needs, demanded
+        )
+        survival["predicted_post_return"] += urgent_names_demand(
+            np.clip(predicted_inspect_needs + model_return, 0.0, 1.0), demanded
+        )
+        survival["oracle_post_return"] += urgent_names_demand(
+            np.clip(oracle_inspect_needs + true_return, 0.0, 1.0), demanded
+        )
+        ordered = np.sort(current)
+        margins.append(float(ordered[1] - ordered[0]))
+        audited += 1
+
+    if audited == 0:
+        raise RuntimeError("The drift-forecast audit found no usable context.")
+
+    result: dict[str, float] = {"audited_contexts": float(audited)}
+    worst_resource_bias = 0.0
+    worst_absolute_error = 0.0
+    for step in steps:
+        pred = np.stack(predicted[step])
+        real = np.stack(realized[step])
+        for index, need in enumerate(NEED_NAMES):
+            bias = float((pred[:, index] - real[:, index]).mean())
+            absolute = float(np.abs(pred[:, index] - real[:, index]).mean())
+            result[f"{step}_{need}_predicted"] = float(pred[:, index].mean())
+            result[f"{step}_{need}_realized"] = float(real[:, index].mean())
+            result[f"{step}_{need}_bias"] = bias
+            result[f"{step}_{need}_absolute_error"] = absolute
+            worst_absolute_error = max(worst_absolute_error, absolute)
+            if need in ("food", "water"):
+                worst_resource_bias = max(worst_resource_bias, abs(bias))
+    result["worst_resource_drift_bias"] = worst_resource_bias
+    result["worst_need_absolute_error"] = worst_absolute_error
+    for name, hits in survival.items():
+        result[f"urgent_index_survives_{name}"] = hits / audited
+    result["mean_urgency_margin"] = float(np.mean(margins))
+    result["min_urgency_margin"] = float(np.min(margins))
+    return result
+
+
 def audit_persistent_choice_environment(
     *,
     lives: int = 2_500,
