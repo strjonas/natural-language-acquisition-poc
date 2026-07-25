@@ -42,10 +42,17 @@ as good as that prediction:
 | The model's predicted post-return body | 18.44% |
 
 The last planner's failing gate came in at 18.00%. The organism's semantics are
-intact; its ten-tick metabolic forecast is not. This matches the training
-weights: next-observation prediction carries weight 0.1 while the bodily-change
-loss is boosted 20-fold on consumption events, so slow metabolic drift over a
-long detour is the least-supervised quantity in the model.
+intact; its ten-tick metabolic forecast is not.
+
+The bias is systematic and per-need. Over the four-tick inspect option the
+model predicts a food-need drop of -0.1000 against a realized -0.0400, while
+predicting -0.0460 for water against a realized -0.0560. The true metabolisms
+run the other way: water costs 0.014 per tick and food 0.010. The forecast
+therefore inverts the ordering of the two resource needs over a detour, which is
+precisely the quantity the corrected utility indexes on. This matches the
+training weights: next-observation prediction carries weight 0.1 while the
+bodily-change loss is boosted 20-fold, concentrating capacity on consumption
+jumps at the expense of slow drift.
 
 ## Exact next step
 
@@ -53,8 +60,16 @@ Preregister and run a **world-model loss correction** that supervises slow
 metabolic drift over multi-tick option rollouts, and take the same gate 6 as
 its endpoint: in a hypothetical branch whose label names the resource the body
 needs, the terminal choice must select the labeled object at least 60% of the
-time. Success criterion at the mechanism level: the urgent-need index survives
-a ten-tick forecast.
+time.
+
+Preregister the mechanism-level endpoint first, since it is the cheaper and
+more diagnostic one: after retraining, the per-need drift bias of the table
+above must fall below 0.01 absolute on both resource needs for both options,
+and the urgent-need index must survive the ten-tick forecast at 90% or better,
+against the current 18.44%. Only then rerun gate 6 and the behavioral pair.
+The existing seed-1 configuration, budget, architecture and evaluation seeds
+are otherwise unchanged, so the loss weighting is the single manipulated
+variable.
 
 Do not implement a fourth planner. Do not adjust the settling count, the reuse
 count, the planning scale, or the utility rule. If the forecast correction

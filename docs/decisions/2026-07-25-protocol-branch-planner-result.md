@@ -66,6 +66,34 @@ drift over a long detour is the least-supervised quantity in the model.
 Per the stop rule, no further planner is implemented, and the settling count,
 reuse count, planning scale and utility are left untouched.
 
+### The forecast bias, measured per need
+
+Predicted against realized bodily drift for the two option types, 150 fixed
+contexts, read-only:
+
+| Option | Need | Predicted | Realized | Bias |
+|---|---|---:|---:|---:|
+| inspect, 4 ticks | food | -0.1000 | -0.0400 | **-0.0600** |
+| inspect, 4 ticks | water | -0.0460 | -0.0560 | +0.0100 |
+| inspect, 4 ticks | energy | -0.1105 | -0.0850 | -0.0255 |
+| inspect, 4 ticks | health | -0.0547 | -0.0080 | -0.0467 |
+| return, 6 ticks | food | -0.0795 | -0.0600 | -0.0195 |
+| return, 6 ticks | water | -0.0780 | -0.0840 | +0.0060 |
+| return, 6 ticks | energy | -0.0553 | -0.1100 | +0.0547 |
+| return, 6 ticks | health | -0.0387 | -0.0120 | -0.0267 |
+
+The model over-predicts hunger decay by a factor of 2.5 on the inspect option
+while slightly under-predicting thirst. The true metabolisms run the other way:
+water costs 0.014 per tick and food 0.010. The forecast therefore inverts the
+ordering of the two resource needs over a detour, which is exactly the quantity
+the corrected utility indexes on. Energy and health are also biased, energy in
+opposite directions across the two options.
+
+This is a concrete target rather than a vague one: the failure is a systematic
+per-need drift bias in a model whose consumption-event predictions are perfect,
+consistent with a 20-fold loss boost on bodily *change* concentrating capacity
+on consumption jumps at the expense of slow drift.
+
 ## Confirmatory result: an acquired word steers choice for the rest of the life
 
 300 fixed lives, eight rounds each, 1,800 measured rounds per condition. A
