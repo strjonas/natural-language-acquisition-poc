@@ -7408,6 +7408,202 @@ def audit_bound_event_gradient_alignment(
     return result
 
 
+def audit_bound_event_input_identifiability(
+    model: OrganismModel,
+    config: OrganismConfig,
+    *,
+    max_events: int = 1_000,
+    max_ticks: int = 20_000,
+    ridge: float = 1e-3,
+) -> dict[str, object]:
+    """Probe the exact lived transition input for bound resource identity."""
+
+    if max_events <= 0 or max_ticks <= 0 or ridge < 0.0:
+        raise ValueError("Identifiability audit arguments must be positive.")
+    audit_config = replace(
+        config,
+        total_steps=max_ticks,
+        checkpoint=None,
+        stats_csv=None,
+        bodily_event_audit_json=None,
+    )
+    trainer = OrganismTrainer(audit_config)
+    trainer.model = model
+    examples: list[dict[str, object]] = []
+    while trainer.global_steps < max_ticks and len(examples) < max_events:
+        segment, hidden, _ = trainer.collect_segment()
+        if not segment:
+            continue
+        vectors = mx.array(np.stack(segment.vectors)[None, ...])
+        tokens = mx.array(
+            np.asarray(segment.tokens, dtype=np.int32)[None, ...]
+        )
+        actions = mx.array(np.asarray(segment.actions, dtype=np.int32))[None, :]
+        states, _ = model.core_states(vectors, tokens, hidden)
+        action_features, object_features, binding_features = (
+            model._transition_features(states, actions, vectors)
+        )
+        transition_input = mx.concatenate(
+            [
+                states[..., : model.hidden_size],
+                action_features,
+                object_features,
+                binding_features,
+            ],
+            axis=-1,
+        )
+        _, predicted_delta, _, _ = model.predict_consequences(
+            states, actions, vectors
+        )
+        bound = bound_consumption_action_mask(
+            model,
+            states,
+            actions,
+            vectors,
+            consume_options=config.consume_options,
+            inspect_options=config.inspect_options,
+        )
+        mx.eval(
+            transition_input,
+            binding_features,
+            predicted_delta,
+            bound,
+        )
+        current = np.asarray(vectors[0], dtype=np.float32)
+        target = (
+            np.asarray(segment.next_needs, dtype=np.float32)
+            - current[:, :4]
+        )
+        full = np.asarray(transition_input[0], dtype=np.float64)
+        lexical = np.asarray(binding_features[0], dtype=np.float64)
+        predicted = np.asarray(predicted_delta[0], dtype=np.float64)
+        bound_array = np.asarray(bound[0], dtype=np.bool_)
+        for transition in range(len(segment)):
+            if not bound_array[transition]:
+                continue
+            food = target[transition, 0] > DRIFT_REGIME_THRESHOLD
+            water = target[transition, 1] > DRIFT_REGIME_THRESHOLD
+            if food == water:
+                continue
+            need_index = 0 if food else 1
+            examples.append(
+                {
+                    "tick": float(trainer.global_steps),
+                    "class": "food" if food else "water",
+                    "class_index": need_index,
+                    "full_input": full[transition].tolist(),
+                    "lexical_input": lexical[transition].tolist(),
+                    "no_direct_lexical_input": full[
+                        transition, : -lexical.shape[-1]
+                    ].tolist(),
+                    "target_delta": float(target[transition, need_index]),
+                    "predicted_delta": float(predicted[transition, need_index]),
+                }
+            )
+            if len(examples) >= max_events:
+                break
+
+    if len(examples) < 10:
+        raise RuntimeError(
+            "Identifiability audit collected fewer than ten bound restorations."
+        )
+    labels = np.asarray(
+        [int(example["class_index"]) for example in examples],
+        dtype=np.int64,
+    )
+    test = np.arange(len(examples)) % 5 == 0
+    train = ~test
+
+    def ridge_probe(key: str) -> tuple[float, np.ndarray, np.ndarray]:
+        features = np.asarray(
+            [example[key] for example in examples],
+            dtype=np.float64,
+        )
+        mean = features[train].mean(axis=0)
+        scale = features[train].std(axis=0)
+        scale = np.where(scale > 1e-8, scale, 1.0)
+        standardized = (features - mean) / scale
+        design = np.concatenate(
+            [standardized, np.ones((len(standardized), 1))],
+            axis=1,
+        )
+        targets = np.eye(2, dtype=np.float64)[labels]
+        gram = design[train].T @ design[train]
+        weights = np.linalg.solve(
+            gram + ridge * np.eye(gram.shape[0]),
+            design[train].T @ targets[train],
+        )
+        predictions = np.argmax(design @ weights, axis=1)
+        return float(np.mean(predictions[test] == labels[test])), standardized, predictions
+
+    full_accuracy, standardized_full, full_predictions = ridge_probe(
+        "full_input"
+    )
+    lexical_accuracy, _, lexical_predictions = ridge_probe("lexical_input")
+    no_lexical_accuracy, _, no_lexical_predictions = ridge_probe(
+        "no_direct_lexical_input"
+    )
+    squared_norms = np.sum(standardized_full**2, axis=1)
+    distances = (
+        squared_norms[:, None]
+        + squared_norms[None, :]
+        - 2.0 * standardized_full @ standardized_full.T
+    )
+    np.fill_diagonal(distances, np.inf)
+    neighbors = np.argmin(distances, axis=1)
+    nearest_agreement = float(np.mean(labels[neighbors] == labels))
+
+    result: dict[str, object] = {
+        "max_events": float(max_events),
+        "collected_events": float(len(examples)),
+        "elapsed_ticks": float(trainer.global_steps),
+        "food_events": float(np.sum(labels == 0)),
+        "water_events": float(np.sum(labels == 1)),
+        "full_heldout_accuracy": full_accuracy,
+        "lexical_heldout_accuracy": lexical_accuracy,
+        "no_direct_lexical_heldout_accuracy": no_lexical_accuracy,
+        "nearest_neighbor_class_agreement": nearest_agreement,
+        "raw_examples": examples,
+    }
+    for name, index in (("food", 0), ("water", 1)):
+        selected = labels == index
+        target_values = np.asarray(
+            [
+                float(example["target_delta"])
+                for example, keep in zip(examples, selected)
+                if keep
+            ]
+        )
+        predicted_values = np.asarray(
+            [
+                float(example["predicted_delta"])
+                for example, keep in zip(examples, selected)
+                if keep
+            ]
+        )
+        result[f"{name}_target_delta_mean"] = float(target_values.mean())
+        result[f"{name}_target_delta_std"] = float(target_values.std())
+        result[f"{name}_predicted_delta_mean"] = float(predicted_values.mean())
+        result[f"{name}_predicted_to_target_ratio"] = float(
+            predicted_values.mean() / max(target_values.mean(), 1e-12)
+        )
+        result[f"{name}_full_heldout_accuracy"] = float(
+            np.mean(full_predictions[test & selected] == labels[test & selected])
+        )
+        result[f"{name}_lexical_heldout_accuracy"] = float(
+            np.mean(
+                lexical_predictions[test & selected] == labels[test & selected]
+            )
+        )
+        result[f"{name}_no_direct_lexical_heldout_accuracy"] = float(
+            np.mean(
+                no_lexical_predictions[test & selected]
+                == labels[test & selected]
+            )
+        )
+    return result
+
+
 def audit_persistent_choice_environment(
     *,
     lives: int = 2_500,

@@ -21,6 +21,7 @@ from homesocial.organism.train import (
     OrganismConfig,
     audit_binding_consequence_geometry,
     audit_bound_event_gradient_alignment,
+    audit_bound_event_input_identifiability,
     audit_label_referent_binding,
     audit_label_to_self_model,
     audit_metabolic_drift_forecast,
@@ -226,6 +227,27 @@ def main() -> None:
             )
             rows.append(
                 {"condition": "bound_event_gradient_alignment", **audit}
+            )
+            _write_and_print(rows, args)
+            return
+        if args.bound_event_input_identifiability_events > 0:
+            audit = audit_bound_event_input_identifiability(
+                model,
+                loaded_config,
+                max_events=args.bound_event_input_identifiability_events,
+            )
+            raw_examples = audit.pop("raw_examples")
+            raw_path = (
+                Path(args.run_dir)
+                / "bound_event_input_identifiability_examples.json"
+            )
+            raw_path.parent.mkdir(parents=True, exist_ok=True)
+            raw_path.write_text(
+                json.dumps(raw_examples, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            rows.append(
+                {"condition": "bound_event_input_identifiability", **audit}
             )
             _write_and_print(rows, args)
             return
@@ -1174,6 +1196,15 @@ def _parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--bound-event-input-identifiability-events",
+        type=int,
+        default=0,
+        help=(
+            "Read-only audit: probe the exact lived transition input for "
+            "valid-bound food versus water identifiability."
+        ),
+    )
+    parser.add_argument(
         "--protocol-branch-planning",
         action="store_true",
         help=(
@@ -1421,6 +1452,7 @@ def _parse_args() -> argparse.Namespace:
             and args.real_explicit_event_transfer_contexts <= 0
             and args.binding_consequence_geometry_contexts <= 0
             and args.bound_event_gradient_alignment_segments <= 0
+            and args.bound_event_input_identifiability_events <= 0
             and not args.evaluate_loaded_checkpoint
         ):
             parser.error(
@@ -1432,7 +1464,8 @@ def _parse_args() -> argparse.Namespace:
                 "--terminal-consume-calibration-contexts or "
                 "--real-explicit-event-transfer-contexts or "
                 "--binding-consequence-geometry-contexts or "
-                "--bound-event-gradient-alignment-segments."
+                "--bound-event-gradient-alignment-segments or "
+                "--bound-event-input-identifiability-events."
             )
         if (
             args.evaluate_loaded_checkpoint
