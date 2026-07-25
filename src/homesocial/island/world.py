@@ -433,6 +433,11 @@ class ObsPacket:
     grid_size: tuple[int, int] = (9, 9)
     max_visible_slots: int = 8
     visible_radius: int = 2
+    # When true the interoceptive channel is severed: the learner's observation
+    # carries zeros where its body would be. ``needs`` still holds the truth for
+    # the simulator's own bookkeeping and for read-only audits; it never reaches
+    # the model except through ``vector``.
+    mask_needs: bool = False
 
     def vector(
         self,
@@ -444,7 +449,7 @@ class ObsPacket:
             max_visible_slots = self.max_visible_slots
         if visible_radius is None:
             visible_radius = self.visible_radius
-        parts: list[float] = list(self.needs)
+        parts: list[float] = [0.0] * 4 if self.mask_needs else list(self.needs)
         direction_onehot = [0.0] * len(DIRECTION_ORDER)
         direction_onehot[self.direction_index] = 1.0
         parts.extend(direction_onehot)
@@ -655,16 +660,7 @@ class IslandWorld:
             if self.config.semantic_choice_trial
             else self.config.max_steps
         )
-        self.grid = IslandGrid(
-            width=self.config.width,
-            height=self.config.height,
-            max_steps=grid_max_steps,
-            semantic_choice_trial=self.config.semantic_choice_trial,
-            semantic_choice_objects=self.config.semantic_choice_objects,
-            semantic_choice_low_need=self.config.semantic_choice_low_need,
-            semantic_choice_rounds=self.config.semantic_choice_rounds,
-            seed=seed,
-        )
+        self.grid = self._build_grid(grid_max_steps, seed)
         self.caregiver = Caregiver(
             bank if bank is not None else load_default_bank(),
             language_mode=self.config.language_mode,
@@ -679,6 +675,20 @@ class IslandWorld:
         self._inspected_surfaces: set[str] = set()
         self._semantic_choice_return_pending = False
         self._semantic_choice_round_pending = False
+
+    def _build_grid(self, max_steps: int, seed: int | None) -> IslandGrid:
+        """Construct this world's grid. Subclasses may supply another ecology."""
+
+        return IslandGrid(
+            width=self.config.width,
+            height=self.config.height,
+            max_steps=max_steps,
+            semantic_choice_trial=self.config.semantic_choice_trial,
+            semantic_choice_objects=self.config.semantic_choice_objects,
+            semantic_choice_low_need=self.config.semantic_choice_low_need,
+            semantic_choice_rounds=self.config.semantic_choice_rounds,
+            seed=seed,
+        )
 
     @property
     def tokens_per_utterance(self) -> int:
