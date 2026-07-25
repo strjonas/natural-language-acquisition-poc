@@ -376,6 +376,14 @@ def main() -> None:
             stats_csv=str(
                 Path(args.run_dir) / f"lives_{run_label}_seed{args.seed}.csv"
             ),
+            bodily_event_audit_json=(
+                str(
+                    Path(args.run_dir)
+                    / f"bodily_event_training_path_{run_label}_seed{args.seed}.json"
+                )
+                if args.audit_bodily_event_training_path
+                else None
+            ),
         )
         print(f"=== training organism under {language_mode} ===")
         model, _ = train_organism(config)
@@ -1155,6 +1163,15 @@ def _parse_args() -> argparse.Namespace:
         help=(
             "Calibrate rare lived bodily events per need at their measured "
             "physical scale. Zero preserves prior loss behavior exactly."
+        ),
+    )
+    parser.add_argument(
+        "--audit-bodily-event-training-path",
+        action="store_true",
+        help=(
+            "Record target coverage, selected-surface binding validity, "
+            "pre-update error, replay composition, and sampled event gradients. "
+            "The audit does not change learning."
         ),
     )
     parser.add_argument("--replay-capacity", type=int, default=0)

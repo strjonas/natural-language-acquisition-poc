@@ -1111,6 +1111,37 @@ class TrainingSmokeTest(unittest.TestCase):
         for entry in trainer.loss_log:
             self.assertTrue(math.isfinite(entry["loss"]))
 
+    def test_segment_keeps_audit_metadata_aligned(self):
+        trainer = OrganismTrainer(self._config())
+        segment, _, _ = trainer.collect_segment()
+        self.assertEqual(len(segment.events), len(segment))
+        self.assertEqual(len(segment.chosen_kinds), len(segment))
+        self.assertEqual(len(segment.chosen_surfaces), len(segment))
+
+    def test_bodily_event_audit_writes_observational_report(self):
+        import json
+        from dataclasses import replace as dc_replace
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+
+        with TemporaryDirectory() as directory:
+            audit_path = f"{directory}/event_path.json"
+            trainer = OrganismTrainer(
+                dc_replace(
+                    self._config(),
+                    total_steps=64,
+                    bodily_event_audit_json=audit_path,
+                    world_model_replay_capacity=2,
+                )
+            )
+            trainer.train()
+            report = json.loads(Path(audit_path).read_text())
+        self.assertEqual(report["audit"], "bodily_event_training_path")
+        self.assertEqual(report["total_steps"], 64)
+        self.assertIn("online", report)
+        self.assertIn("final_replay", report)
+        self.assertIn("gradient_samples", report)
+
     def test_evaluation_reports_stats(self):
         trainer = OrganismTrainer(self._config())
         stats = evaluate_organism(

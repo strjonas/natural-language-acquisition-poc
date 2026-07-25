@@ -12,7 +12,7 @@ language must come through behavior.
 
 from __future__ import annotations
 
-from collections import deque
+from collections import Counter, deque
 from copy import deepcopy
 import json
 from dataclasses import asdict, dataclass, field, replace
@@ -1362,6 +1362,9 @@ class OrganismConfig:
     log_every_lives: int = 10
     checkpoint: str | None = None
     stats_csv: str | None = None
+    # Optional, observation-only account of which bodily-event targets reach
+    # the learned lexical pathway. It must not affect updates or replay.
+    bodily_event_audit_json: str | None = None
     island: IslandConfig = field(default_factory=IslandConfig)
 
     def __post_init__(self) -> None:
@@ -1576,6 +1579,11 @@ class _Segment:
         self.next_vectors: list[np.ndarray] = []
         self.next_needs: list[tuple[float, ...]] = []
         self.next_tokens: list[tuple[int, ...]] = []
+        # Learner-inaccessible simulator metadata retained only when producing
+        # a declared training-path audit. None of it is passed to a model loss.
+        self.events: list[str] = []
+        self.chosen_kinds: list[str] = []
+        self.chosen_surfaces: list[str] = []
 
     def __len__(self) -> int:
         return len(self.actions)
@@ -1603,6 +1611,9 @@ class OrganismTrainer:
         self._replay_segments_seen = 0
         self.life_stats: list[LifeStats] = []
         self.loss_log: list[dict[str, float]] = []
+        self._bodily_event_online_rows: list[dict[str, object]] = []
+        self._bodily_event_gradient_samples: list[dict[str, float]] = []
+        self._bodily_event_audit_updates = 0
         self.bc_stats: BehaviorCloningStats | None = None
         self._loss_and_grad = nn.value_and_grad(self.model, self._loss)
         self._bc_loss_and_grad = nn.value_and_grad(self.model, self._bc_loss)
@@ -2075,6 +2086,9 @@ class OrganismTrainer:
             segment.next_vectors.append(next_packet.vector())
             segment.next_needs.append(next_packet.needs)
             segment.next_tokens.append(next_packet.tokens)
+            segment.events.append(str(info.get("event") or ""))
+            segment.chosen_kinds.append(str(info.get("chosen_kind") or ""))
+            segment.chosen_surfaces.append(str(info.get("chosen_surface") or ""))
 
             self._life_steps += duration
             self.global_steps += duration
@@ -2449,9 +2463,437 @@ class OrganismTrainer:
             advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-6)
         return advantages, returns
 
+    @staticmethod
+    def _bodily_event_category(event: str, need_index: int) -> str:
+        if event == "consumed_food" and need_index == 0:
+            return "food_restoration"
+        if event == "consumed_water" and need_index == 1:
+            return "water_restoration"
+        if event == "consumed_poison":
+            return "poison"
+        if event == "semantic_choice_round_transition":
+            return "round_transition"
+        return "other"
+
+    def _bodily_event_rows(
+        self,
+        segment: _Segment,
+        hidden: mx.array | np.ndarray | None,
+        *,
+        distribution: str,
+        tick_stop: int | None,
+    ) -> list[dict[str, object]]:
+        """Describe event targets without exposing metadata to learning."""
+
+        vectors = mx.array(np.stack(segment.vectors)[None, ...])
+        tokens = mx.array(np.asarray(segment.tokens, dtype=np.int32)[None, ...])
+        actions = mx.array(np.asarray(segment.actions, dtype=np.int32))[None, :]
+        initial = mx.array(hidden) if isinstance(hidden, np.ndarray) else hidden
+        states, _ = self.model.core_states(vectors, tokens, initial)
+        _, predicted_deltas, _, _ = self.model.predict_consequences(
+            states, actions, vectors
+        )
+        _, _, binding_features = self.model._transition_features(
+            states, actions, vectors
+        )
+        mx.eval(predicted_deltas, binding_features)
+
+        current = np.asarray(vectors[0], dtype=np.float32)
+        targets = (
+            np.asarray(segment.next_needs, dtype=np.float32)
+            - current[:, :4]
+        )
+        predictions = np.asarray(predicted_deltas[0], dtype=np.float32)
+        binding = np.asarray(binding_features[0], dtype=np.float32)
+        elapsed = np.cumsum(np.asarray(segment.durations, dtype=np.int64))
+        start_tick = None if tick_stop is None else tick_stop - int(elapsed[-1])
+
+        rows: list[dict[str, object]] = []
+        for transition, target in enumerate(targets):
+            event = segment.events[transition]
+            surface = segment.chosen_surfaces[transition]
+            outcome_kind = segment.chosen_kinds[transition]
+            binding_valid = bool(
+                binding.shape[-1] > 0 and binding[transition, -1] > 0.5
+            )
+            binding_norm = (
+                float(np.linalg.norm(binding[transition, :-1]))
+                if binding_valid
+                else 0.0
+            )
+            for need_index in np.flatnonzero(
+                np.abs(target) > DRIFT_REGIME_THRESHOLD
+            ):
+                category = self._bodily_event_category(event, int(need_index))
+                tick = (
+                    None
+                    if start_tick is None
+                    else start_tick + int(elapsed[transition])
+                )
+                rows.append(
+                    {
+                        "distribution": distribution,
+                        "tick": tick,
+                        "window": (
+                            None
+                            if tick is None
+                            else int((max(1, tick) - 1) // 10_000) * 10_000
+                        ),
+                        "category": category,
+                        "event": event,
+                        "need_index": int(need_index),
+                        "surface": surface,
+                        "outcome_kind": outcome_kind,
+                        "start_need": float(current[transition, need_index]),
+                        "start_body_bin": round(
+                            float(current[transition, need_index]), 1
+                        ),
+                        "target_delta": float(target[need_index]),
+                        "predicted_delta": float(
+                            predictions[transition, need_index]
+                        ),
+                        "absolute_error": float(
+                            abs(
+                                predictions[transition, need_index]
+                                - target[need_index]
+                            )
+                        ),
+                        "binding_valid": binding_valid,
+                        # For a consume option the selected visible surface is
+                        # read before the action and no same-step write occurs.
+                        "binding_read_into_core": (
+                            binding_valid
+                            and category
+                            in {"food_restoration", "water_restoration", "poison"}
+                        ),
+                        "lexical_transition_feature_norm": binding_norm,
+                    }
+                )
+        return rows
+
+    def _bodily_objectives_for_gradient(
+        self,
+        active_model: OrganismModel,
+        segment: _Segment,
+        hidden: mx.array | None,
+    ) -> tuple[mx.array, mx.array]:
+        """Original change loss and the already-weighted event addend."""
+
+        config = self.config
+        vectors = mx.array(np.stack(segment.vectors)[None, ...])
+        tokens = mx.array(np.asarray(segment.tokens, dtype=np.int32)[None, ...])
+        actions = mx.array(np.asarray(segment.actions, dtype=np.int32))
+        next_vectors = mx.array(np.stack(segment.next_vectors))
+        next_needs = mx.array(
+            np.asarray(segment.next_needs, dtype=np.float32)
+        )
+        next_tokens = mx.array(
+            np.asarray(segment.next_tokens, dtype=np.int32)
+        )
+        states, _ = active_model.core_states(vectors, tokens, hidden)
+        _, one_step_delta, _, _ = active_model.predict_consequences(
+            states, actions[None, :], vectors
+        )
+        target_delta = next_needs - vectors[0, :, :4]
+
+        def objectives(
+            predicted: mx.array,
+            target: mx.array,
+            valid: mx.array | None = None,
+        ) -> tuple[mx.array, mx.array]:
+            base = bodily_delta_prediction_loss(
+                predicted,
+                target,
+                change_boost=config.bodily_change_loss_boost,
+                valid=valid,
+            )
+            mask = (
+                mx.abs(target) > DRIFT_REGIME_THRESHOLD
+            ).astype(predicted.dtype)
+            if valid is not None:
+                mask = mask * valid[..., None]
+            event = ((predicted - target) ** 2 * mask).sum() / mx.maximum(
+                mask.sum(), mx.array(1e-8)
+            )
+            event = (
+                config.bodily_event_loss_weight
+                * event
+                / (EVENT_ERROR_SCALE**2)
+            )
+            return base, event
+
+        base, event = objectives(one_step_delta[0], target_delta)
+        horizon = config.multi_step_model_horizon
+        if (
+            horizon > 1
+            and config.multi_step_model_weight > 0.0
+            and actions.shape[0] >= horizon
+        ):
+            usable = actions.shape[0] - horizon + 1
+            imagined_state = states[:, :usable, :]
+            imagined_vector = vectors[:, :usable, :]
+            start_needs = imagined_vector[0, :, :4]
+            predicted_needs = start_needs
+            for offset in range(horizon):
+                imagined_state = active_model.transition_state(
+                    imagined_state,
+                    actions[offset : offset + usable][None, :],
+                    imagined_vector,
+                )
+                raw_vector, need_delta, _, _ = active_model.decode_transition(
+                    imagined_state
+                )
+                predicted_needs = mx.clip(
+                    imagined_vector[:, :, :4] + need_delta,
+                    0.0,
+                    1.0,
+                )[0]
+                imagined_vector = mx.concatenate(
+                    [predicted_needs[None, :, :], raw_vector[:, :, 4:]],
+                    axis=-1,
+                )
+            target_horizon = (
+                next_needs[horizon - 1 : horizon - 1 + usable] - start_needs
+            )
+            predicted_horizon = predicted_needs - start_needs
+            valid = mx.ones((usable,), dtype=mx.bool_)
+            pad_id = TOKEN_TO_ID[PAD_TOKEN]
+            for offset in range(horizon - 1):
+                valid = valid & mx.all(
+                    next_tokens[offset : offset + usable] == pad_id,
+                    axis=-1,
+                )
+            multi_base, multi_event = objectives(
+                predicted_horizon,
+                target_horizon,
+                valid.astype(mx.float32),
+            )
+            base = base + config.multi_step_model_weight * multi_base
+            event = event + config.multi_step_model_weight * multi_event
+        return base, event
+
+    @staticmethod
+    def _gradient_norms(grads: object) -> tuple[float, float]:
+        from mlx.utils import tree_flatten
+
+        flattened = tree_flatten(grads)
+        all_terms = [mx.sum(value * value) for _, value in flattened]
+        lexical_terms = [
+            mx.sum(value * value)
+            for name, value in flattened
+            if name.startswith(
+                ("token_embedding.", "binding_value.", "binding_read.")
+            )
+        ]
+        total = mx.sqrt(sum(all_terms, mx.array(0.0)))
+        lexical = mx.sqrt(sum(lexical_terms, mx.array(0.0)))
+        mx.eval(total, lexical)
+        return float(total), float(lexical)
+
+    def _record_bodily_event_training_path(
+        self,
+        segment: _Segment,
+        hidden: mx.array | None,
+    ) -> None:
+        if self.config.bodily_event_audit_json is None:
+            return
+        self._bodily_event_audit_updates += 1
+        rows = self._bodily_event_rows(
+            segment,
+            hidden,
+            distribution="online_preupdate",
+            tick_stop=self.global_steps,
+        )
+        self._bodily_event_online_rows.extend(rows)
+        bound_resource = any(
+            row["category"] in {"food_restoration", "water_restoration"}
+            and bool(row["binding_valid"])
+            for row in rows
+        )
+        if (
+            self.config.bodily_event_loss_weight <= 0.0
+            or self._bodily_event_audit_updates % 100
+            or not bound_resource
+        ):
+            return
+
+        def base_objective(active_model: OrganismModel) -> mx.array:
+            return self._bodily_objectives_for_gradient(
+                active_model, segment, hidden
+            )[0]
+
+        def event_objective(active_model: OrganismModel) -> mx.array:
+            return self._bodily_objectives_for_gradient(
+                active_model, segment, hidden
+            )[1]
+
+        base_value, base_grads = nn.value_and_grad(
+            self.model, base_objective
+        )(self.model)
+        event_value, event_grads = nn.value_and_grad(
+            self.model, event_objective
+        )(self.model)
+        base_norm, base_lexical_norm = self._gradient_norms(base_grads)
+        event_norm, event_lexical_norm = self._gradient_norms(event_grads)
+        mx.eval(base_value, event_value)
+        self._bodily_event_gradient_samples.append(
+            {
+                "update": float(self._bodily_event_audit_updates),
+                "tick": float(self.global_steps),
+                "base_value": float(base_value),
+                "event_value": float(event_value),
+                "base_gradient_norm": base_norm,
+                "event_gradient_norm": event_norm,
+                "event_to_base_gradient_ratio": (
+                    event_norm / max(base_norm, 1e-12)
+                ),
+                "base_lexical_gradient_norm": base_lexical_norm,
+                "event_lexical_gradient_norm": event_lexical_norm,
+                "event_to_base_lexical_gradient_ratio": (
+                    event_lexical_norm / max(base_lexical_norm, 1e-12)
+                ),
+            }
+        )
+
+    @staticmethod
+    def _summarize_bodily_event_rows(
+        rows: list[dict[str, object]],
+    ) -> dict[str, object]:
+        categories = Counter(str(row["category"]) for row in rows)
+        resource = [
+            row
+            for row in rows
+            if row["category"] in {"food_restoration", "water_restoration"}
+        ]
+        bound = [row for row in resource if bool(row["binding_valid"])]
+        grouped: dict[str, dict[str, float]] = {}
+        for category in sorted(categories):
+            for validity in ("all", "bound", "unbound"):
+                selected = [
+                    row
+                    for row in rows
+                    if row["category"] == category
+                    and (
+                        validity == "all"
+                        or bool(row["binding_valid"]) == (validity == "bound")
+                    )
+                ]
+                if not selected:
+                    continue
+                grouped[f"{category}:{validity}"] = {
+                    "count": float(len(selected)),
+                    "mae": float(
+                        np.mean([float(row["absolute_error"]) for row in selected])
+                    ),
+                    "mean_predicted_delta": float(
+                        np.mean(
+                            [float(row["predicted_delta"]) for row in selected]
+                        )
+                    ),
+                    "mean_target_delta": float(
+                        np.mean([float(row["target_delta"]) for row in selected])
+                    ),
+                    "mean_lexical_feature_norm": float(
+                        np.mean(
+                            [
+                                float(row["lexical_transition_feature_norm"])
+                                for row in selected
+                            ]
+                        )
+                    ),
+                }
+        contexts = {
+            (
+                str(row["category"]),
+                str(row["surface"]),
+                str(row["outcome_kind"]),
+                float(row["start_body_bin"]),
+                bool(row["binding_valid"]),
+            )
+            for row in rows
+        }
+        return {
+            "event_entries": dict(sorted(categories.items())),
+            "resource_restoration_entries": len(resource),
+            "bound_resource_entries": len(bound),
+            "bound_resource_fraction": len(bound) / max(1, len(resource)),
+            "unique_category_surface_kind_body_valid_contexts": len(contexts),
+            "groups": grouped,
+        }
+
+    def _write_bodily_event_training_audit(self) -> None:
+        path = self.config.bodily_event_audit_json
+        if path is None:
+            return
+        replay_rows: list[dict[str, object]] = []
+        for segment, hidden in self.world_model_replay:
+            replay_rows.extend(
+                self._bodily_event_rows(
+                    segment,
+                    hidden,
+                    distribution="final_replay",
+                    tick_stop=None,
+                )
+            )
+        online = self._summarize_bodily_event_rows(
+            self._bodily_event_online_rows
+        )
+        replay = self._summarize_bodily_event_rows(replay_rows)
+        windows: dict[str, object] = {}
+        for window in sorted(
+            {
+                int(row["window"])
+                for row in self._bodily_event_online_rows
+                if row["window"] is not None
+            }
+        ):
+            windows[str(window)] = self._summarize_bodily_event_rows(
+                [
+                    row
+                    for row in self._bodily_event_online_rows
+                    if row["window"] == window
+                ]
+            )
+        gradient_summary: dict[str, float] = {}
+        if self._bodily_event_gradient_samples:
+            for key in (
+                "base_gradient_norm",
+                "event_gradient_norm",
+                "event_to_base_gradient_ratio",
+                "base_lexical_gradient_norm",
+                "event_lexical_gradient_norm",
+                "event_to_base_lexical_gradient_ratio",
+            ):
+                gradient_summary[f"median_{key}"] = float(
+                    np.median(
+                        [
+                            sample[key]
+                            for sample in self._bodily_event_gradient_samples
+                        ]
+                    )
+                )
+        report = {
+            "audit": "bodily_event_training_path",
+            "total_steps": self.config.total_steps,
+            "event_loss_weight": self.config.bodily_event_loss_weight,
+            "online": online,
+            "online_windows": windows,
+            "final_replay": replay,
+            "replay_to_online_bound_fraction_ratio": (
+                float(replay["bound_resource_fraction"])
+                / max(float(online["bound_resource_fraction"]), 1e-12)
+            ),
+            "gradient_summary": gradient_summary,
+            "gradient_samples": self._bodily_event_gradient_samples,
+        }
+        target = Path(path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(json.dumps(report, indent=2) + "\n")
+
     def update(
         self, segment: _Segment, hidden: mx.array | None, bootstrap: float
     ) -> float:
+        self._record_bodily_event_training_path(segment, hidden)
         advantages, returns = self._policy_targets(segment, bootstrap)
 
         loss, grads = self._loss_and_grad(
@@ -2584,6 +3026,7 @@ class OrganismTrainer:
             save_checkpoint(self.model, config, config.checkpoint)
         if config.stats_csv:
             write_life_stats(self.life_stats, config.stats_csv)
+        self._write_bodily_event_training_audit()
         return self.life_stats
 
 
