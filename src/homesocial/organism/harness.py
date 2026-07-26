@@ -11,16 +11,35 @@ numbers come from here.
 from __future__ import annotations
 
 import argparse
+from dataclasses import replace
 import json
 from pathlib import Path
 
+import mlx.core as mx
+
 from homesocial.island.calibrate import run_policy
 from homesocial.island.report import ReportConfig
-from homesocial.island.world import IslandConfig
+from homesocial.island.world import IslandConfig, SURFACES
 from homesocial.organism.model import OrganismModel
+from homesocial.organism.causal_self import (
+    audit_structured_causal_self_model,
+    causal_social_report_battery,
+    train_structured_causal_self_model,
+)
+from homesocial.organism.causal_self_replication import (
+    causal_replication_seed_base,
+)
 from homesocial.organism.report_audit import (
+    audit_hidden_self_state_decoder,
+    audit_observable_history_filter_feasibility,
+    audit_oracle_listener_uptake,
+    audit_supervised_state_reporter_upper_bound,
     most_frequent_utterances,
     report_battery,
+)
+from homesocial.organism.self_belief import (
+    audit_explicit_self_belief,
+    train_explicit_self_belief,
 )
 from homesocial.organism.train import (
     OrganismConfig,
@@ -34,6 +53,8 @@ from homesocial.organism.train import (
     audit_metabolic_drift_forecast,
     audit_observation_branching_planner,
     audit_protocol_return_origin,
+    audit_report_lexical_comprehension,
+    audit_report_lexical_guidance_mechanics,
     audit_real_vs_explicit_event_transfer,
     audit_terminal_consume_value_calibration,
     audit_cross_round_label_reuse,
@@ -909,9 +930,47 @@ def _append_semantic_choice_rows(
 def _run_report_task(args: argparse.Namespace) -> None:
     """Gate G3: train an organism that must say what it needs, then audit it."""
 
+    if (
+        args.report_self_belief_development_steps > 0
+        and args.load_checkpoint is None
+    ):
+        raise ValueError(
+            "Self-belief development requires an existing adult report checkpoint."
+        )
+    if (
+        args.report_structured_causal_development_steps > 0
+        and args.load_checkpoint is None
+    ):
+        raise ValueError(
+            "Structured causal development requires an adult report checkpoint."
+        )
+    if args.report_causal_social_planner_battery and args.load_checkpoint is None:
+        raise ValueError("The causal social planner battery requires a checkpoint.")
+    if (
+        (
+            args.report_self_belief_ranking
+            or args.report_self_belief_relational_urgency
+        )
+        and args.report_self_belief_development_steps <= 0
+    ):
+        raise ValueError(
+            "Self-belief relational treatments require the development run."
+        )
+    if (
+        args.report_self_belief_ranking
+        and args.report_self_belief_relational_urgency
+    ):
+        raise ValueError("Select only one self-belief relational treatment.")
+    lexical_childhood = args.report_lexical_childhood_steps > 0
+    guided_lexical_childhood = args.report_lexical_guided_labels
+    adult_from_lexical = args.report_adult_from_lexical_checkpoint is not None
     config = OrganismConfig(
         language_mode="grounded",
-        total_steps=args.train_steps,
+        total_steps=(
+            args.report_lexical_childhood_steps
+            if lexical_childhood
+            else args.train_steps
+        ),
         segment_length=args.segment_length,
         hidden_size=args.hidden_size,
         learning_rate=args.learning_rate,
@@ -919,49 +978,450 @@ def _run_report_task(args: argparse.Namespace) -> None:
         report_task=True,
         report_slots=args.report_slots,
         report_entropy_weight=args.report_entropy_weight,
+        counterfactual_report_credit=args.report_counterfactual_credit,
+        report_lexical_childhood_steps=(
+            args.report_lexical_childhood_steps if lexical_childhood else 0
+        ),
+        tied_report_lexicon=lexical_childhood,
         # No caregiver speech exists on the report island, and the bodily
         # prediction head is the one place the true body could enter a loss, so
         # the headline condition switches it off.
-        token_prediction_weight=0.0,
-        next_needs_weight=args.report_body_prediction_weight,
+        token_prediction_weight=0.5 if lexical_childhood else 0.0,
+        next_needs_weight=(
+            1.0 if lexical_childhood else args.report_body_prediction_weight
+        ),
+        consume_options=lexical_childhood,
+        inspect_options=lexical_childhood,
+        episodic_binding_size=16 if lexical_childhood else 0,
         max_steps=ReportConfig().life_steps,
         report=ReportConfig(
             help_period=args.report_help_period,
             shock_probability=args.report_shock_probability,
+            unified_uptake=args.report_unified_uptake,
         ),
-        island=IslandConfig(max_steps=ReportConfig().life_steps, max_visible_slots=2),
+        island=IslandConfig(
+            max_steps=ReportConfig().life_steps,
+            semantic_choice_trial=lexical_childhood,
+            semantic_choice_horizon=40,
+            semantic_choice_objects=3,
+            semantic_choice_low_need=0.55,
+            semantic_choice_rounds=8,
+            semantic_choice_return_duration=6 if lexical_childhood else 0,
+            report_lexicon_choice=lexical_childhood,
+            report_lexicon_guided_labels=guided_lexical_childhood,
+            max_visible_slots=3 if lexical_childhood else 2,
+        ),
         seed=args.seed,
         checkpoint=str(
-            Path(args.run_dir) / f"organism_report_seed{args.seed}.npz"
+            Path(args.run_dir)
+            / (
+                f"organism_report_lexical_child_seed{args.seed}.npz"
+                if lexical_childhood
+                else f"organism_report_seed{args.seed}.npz"
+            )
         ),
-        stats_csv=str(Path(args.run_dir) / f"lives_report_seed{args.seed}.csv"),
+        stats_csv=str(
+            Path(args.run_dir)
+            / (
+                f"lives_report_lexical_child_seed{args.seed}.csv"
+                if lexical_childhood
+                else f"lives_report_seed{args.seed}.csv"
+            )
+        ),
         log_every_lives=args.log_every_lives,
     )
 
-    if args.load_checkpoint:
+    lexical_gate_row: dict[str, object] | None = None
+    mechanics_row: dict[str, object] | None = None
+    if adult_from_lexical:
+        Path(args.run_dir).mkdir(parents=True, exist_ok=True)
+        model, child_config = load_organism_checkpoint(
+            args.report_adult_from_lexical_checkpoint
+        )
+        if not (
+            child_config.tied_report_lexicon
+            and child_config.report_lexical_childhood_steps > 0
+            and child_config.island.report_lexicon_choice
+        ):
+            raise ValueError(
+                "Adult lexical continuation requires a completed lexical-child "
+                "checkpoint."
+            )
+        if child_config.seed != args.seed:
+            raise ValueError(
+                "Continuation seed must match the lexical-child checkpoint."
+            )
+        lexical_gate_row = {
+            "condition": "frozen_report_lexical_comprehension_gate",
+            **audit_report_lexical_comprehension(
+                model,
+                lives=args.report_lexical_gate_lives,
+                base_seed=EVAL_SEED_BASE + 1_100_000,
+            ),
+        }
+        if not bool(lexical_gate_row["gate_passed"]):
+            print(
+                "loaded lexical checkpoint failed its frozen gate; adult "
+                "report training was not started"
+            )
+            _write_and_print([lexical_gate_row], args)
+            return
+        config = replace(
+            child_config,
+            total_steps=args.train_steps,
+            report_lexical_childhood_steps=0,
+            token_prediction_weight=0.0,
+            next_needs_weight=args.report_body_prediction_weight,
+            checkpoint=str(
+                Path(args.run_dir) / f"organism_report_seed{args.seed}.npz"
+            ),
+            stats_csv=str(
+                Path(args.run_dir) / f"lives_report_seed{args.seed}.csv"
+            ),
+            island=replace(
+                child_config.island,
+                semantic_choice_trial=False,
+                semantic_choice_return_duration=0,
+                report_lexicon_choice=False,
+                report_lexicon_guided_labels=False,
+            ),
+        )
+        print(
+            "loaded lexical gate passed; continuing the same model in "
+            "adulthood with fresh optimizer moments"
+        )
+        model, _ = train_organism(config, model=model)
+        print(f"adult checkpoint written to {config.checkpoint}")
+    elif args.load_checkpoint:
         model, config = load_organism_checkpoint(args.load_checkpoint)
     else:
         Path(args.run_dir).mkdir(parents=True, exist_ok=True)
+        if guided_lexical_childhood:
+            mechanics_row = {
+                "condition": "report_lexical_guidance_mechanics",
+                **audit_report_lexical_guidance_mechanics(lives=300),
+            }
+            if not bool(mechanics_row["mechanics_passed"]):
+                print("guided lexical mechanics failed; training was not started")
+                _write_and_print([mechanics_row], args)
+                return
         model, _ = train_organism(config)
         print(f"checkpoint written to {config.checkpoint}")
+        if lexical_childhood:
+            lexical_gate_row = {
+                "condition": "frozen_report_lexical_comprehension_gate",
+                **audit_report_lexical_comprehension(
+                    model,
+                    lives=args.report_lexical_gate_lives,
+                    base_seed=EVAL_SEED_BASE + 1_100_000,
+                ),
+            }
+            if not bool(lexical_gate_row["gate_passed"]):
+                print(
+                    "lexical comprehension gate failed; adult report training "
+                    "was not started"
+                )
+                rows = [lexical_gate_row]
+                if mechanics_row is not None:
+                    rows.insert(0, mechanics_row)
+                _write_and_print(rows, args)
+                return
+            if args.report_lexical_gate_only:
+                print(
+                    "lexical comprehension gate passed; gate-only run leaves "
+                    "the adult phase untouched"
+                )
+                rows = [lexical_gate_row]
+                if mechanics_row is not None:
+                    rows.insert(0, mechanics_row)
+                _write_and_print(rows, args)
+                return
 
-    rows = report_battery(
-        model,
-        config,
-        lives=args.report_audit_lives,
-        seed_base=EVAL_SEED_BASE,
-    )
-    for need, text, count in most_frequent_utterances(
-        model, config, lives=max(4, args.report_audit_lives // 8), seed_base=EVAL_SEED_BASE
-    ):
+            # Preserve every learned model parameter and reset only optimizer
+            # moments at the declared developmental boundary. Adult losses can
+            # no longer read true hidden body or caregiver-token targets.
+            config = replace(
+                config,
+                total_steps=args.train_steps,
+                report_lexical_childhood_steps=0,
+                token_prediction_weight=0.0,
+                next_needs_weight=args.report_body_prediction_weight,
+                checkpoint=str(
+                    Path(args.run_dir) / f"organism_report_seed{args.seed}.npz"
+                ),
+                stats_csv=str(
+                    Path(args.run_dir) / f"lives_report_seed{args.seed}.csv"
+                ),
+                island=replace(
+                    config.island,
+                    semantic_choice_trial=False,
+                    semantic_choice_return_duration=0,
+                    report_lexicon_choice=False,
+                    report_lexicon_guided_labels=False,
+                ),
+            )
+            print(
+                "lexical comprehension gate passed; continuing the same model "
+                "in adulthood with fresh optimizer moments"
+            )
+            model, _ = train_organism(config, model=model)
+            print(f"adult checkpoint written to {config.checkpoint}")
+
+    if args.report_structured_causal_development_steps > 0:
+        if args.report_structured_causal_development_steps != 80_000:
+            raise ValueError("The locked structured causal budget is 80000.")
+        if model.has_structured_causal_self_model:
+            raise ValueError("The loaded organism already has a causal self-model.")
+        if not config.tied_report_lexicon:
+            raise ValueError("Causal self development requires the grounded lexicon.")
+        mx.random.seed(args.seed + 6_100_003)
+        model.enable_structured_causal_self_model(len(SURFACES))
+        checkpoint = str(
+            Path(args.run_dir) / f"organism_causal_self_seed{args.seed}.npz"
+        )
+        stats_csv = str(
+            Path(args.run_dir) / f"causal_self_development_seed{args.seed}.csv"
+        )
+        config, development = train_structured_causal_self_model(
+            model,
+            config,
+            steps=args.report_structured_causal_development_steps,
+            learning_rate=3e-3,
+            # The causal parameters initialize deterministically, so the mx
+            # seed above cannot vary this stage. Offset the developmental
+            # world stream by --seed instead, or every seed retrains an
+            # identical model. Seed 1 keeps the original probe57 stream, and
+            # the stride clears the gate/battery evaluation bands so no seed
+            # develops on the worlds it is scored against.
+            seed_base=causal_replication_seed_base(args.seed),
+            checkpoint=checkpoint,
+            stats_csv=stats_csv,
+            log_every_lives=args.log_every_lives,
+        )
+        gate = audit_structured_causal_self_model(
+            model,
+            config,
+            lives=args.report_audit_lives,
+            seed_base=EVAL_SEED_BASE + 5_600_000,
+        )
+        print(f"structured causal checkpoint written to {checkpoint}")
+        _write_and_print(
+            [
+                {
+                    "condition": "structured_causal_self_promotion_gate",
+                    **development,
+                    **gate,
+                }
+            ],
+            args,
+        )
+        return
+    if args.report_self_belief_development_steps > 0:
+        if args.report_self_belief_development_steps != 80_000:
+            raise ValueError("The locked self-belief development budget is 80000.")
+        if model.has_explicit_self_belief:
+            raise ValueError("The loaded organism already has explicit self-belief.")
+        if not config.tied_report_lexicon:
+            raise ValueError("Self-belief development requires the grounded lexicon.")
+        mx.random.seed(args.seed + 5_100_003)
+        model.enable_explicit_self_belief(
+            64,
+            relational_urgency=args.report_self_belief_relational_urgency,
+        )
+        checkpoint = str(
+            Path(args.run_dir) / f"organism_self_belief_seed{args.seed}.npz"
+        )
+        stats_csv = str(
+            Path(args.run_dir) / f"self_belief_development_seed{args.seed}.csv"
+        )
+        config, development = train_explicit_self_belief(
+            model,
+            config,
+            steps=args.report_self_belief_development_steps,
+            learning_rate=3e-4,
+            rank_weight=(0.1 if args.report_self_belief_ranking else 0.0),
+            urgency_rank_weight=(
+                1.0 if args.report_self_belief_relational_urgency else 0.0
+            ),
+            seed_base=EVAL_SEED_BASE + 4_200_000,
+            checkpoint=checkpoint,
+            stats_csv=stats_csv,
+            log_every_lives=args.log_every_lives,
+        )
+        gate = audit_explicit_self_belief(
+            model,
+            config,
+            lives=args.report_audit_lives,
+            seed_base=EVAL_SEED_BASE + 4_600_000,
+        )
+        print(f"self-belief checkpoint written to {checkpoint}")
+        _write_and_print(
+            [
+                {
+                    "condition": "learned_explicit_self_belief_gate",
+                    **development,
+                    **gate,
+                }
+            ],
+            args,
+        )
+        return
+    if args.report_causal_social_planner_battery:
+        promotion = {
+            "condition": "structured_causal_self_promotion_gate",
+            **audit_structured_causal_self_model(
+                model,
+                config,
+                lives=args.report_audit_lives,
+                seed_base=EVAL_SEED_BASE + 5_600_000,
+            ),
+        }
+        if not bool(promotion["gate_passed"]):
+            print("structured causal promotion failed; planner was not run")
+            _write_and_print([promotion], args)
+            return
+        lexical = {
+            "condition": "post_causal_report_lexical_comprehension_gate",
+            **audit_report_lexical_comprehension(
+                model,
+                lives=args.report_lexical_gate_lives,
+                base_seed=EVAL_SEED_BASE + 1_100_000,
+            ),
+        }
+        if not bool(lexical["gate_passed"]):
+            print("lexical recheck failed; planner was not run")
+            _write_and_print([promotion, lexical], args)
+            return
+        rows = [promotion, lexical]
+        rows.extend(
+            causal_social_report_battery(
+                model,
+                config,
+                lives=args.report_audit_lives,
+                seed_base=EVAL_SEED_BASE + 6_200_000,
+            )
+        )
+        _write_and_print(rows, args)
+        return
+    if args.report_structured_causal_diagnostic_only:
+        rows = [
+            {
+                "condition": "structured_causal_self_promotion_gate",
+                **audit_structured_causal_self_model(
+                    model,
+                    config,
+                    lives=args.report_audit_lives,
+                    seed_base=EVAL_SEED_BASE + 5_600_000,
+                ),
+            }
+        ]
+    elif args.report_self_belief_diagnostic_only:
+        rows = [
+            {
+                "condition": "learned_explicit_self_belief_gate",
+                **audit_explicit_self_belief(
+                    model,
+                    config,
+                    lives=args.report_audit_lives,
+                    seed_base=EVAL_SEED_BASE + 4_600_000,
+                ),
+            }
+        ]
+    elif args.report_observable_history_filter_only:
+        rows = [
+            {
+                "condition": "diagnostic_observable_history_filter",
+                **audit_observable_history_filter_feasibility(
+                    model,
+                    config,
+                    lives=args.report_audit_lives,
+                    seed_base=EVAL_SEED_BASE + 3_600_000,
+                ),
+            }
+        ]
+    elif args.report_self_state_diagnostic_only:
+        rows = [
+            {
+                "condition": "diagnostic_hidden_self_state_decoder",
+                **audit_hidden_self_state_decoder(
+                    model,
+                    config,
+                    lives=args.report_audit_lives,
+                    seed_base=EVAL_SEED_BASE + 1_000_000,
+                ),
+            }
+        ]
+    elif args.report_supervised_state_upper_bound_only:
+        train_lives = max(1, int(0.7 * args.report_audit_lives))
+        rows = [
+            {
+                "condition": "diagnostic_supervised_state_reporter_upper_bound",
+                **audit_supervised_state_reporter_upper_bound(
+                    model,
+                    config,
+                    train_lives=train_lives,
+                    test_lives=max(1, args.report_audit_lives - train_lives),
+                    seed_base=EVAL_SEED_BASE + 2_100_000,
+                ),
+            }
+        ]
+    elif args.report_uptake_diagnostic_only:
+        rows = [
+            {
+                "condition": "diagnostic_oracle_listener_uptake",
+                **audit_oracle_listener_uptake(
+                    model,
+                    config,
+                    lives=args.report_audit_lives,
+                    seed_base=EVAL_SEED_BASE + 900_000,
+                ),
+            }
+        ]
+    else:
+        rows = report_battery(
+            model,
+            config,
+            lives=args.report_audit_lives,
+            seed_base=EVAL_SEED_BASE,
+        )
         rows.append(
             {
-                "condition": "utterance_census",
-                "lowest_need": need,
-                "utterance": text,
-                "count": count,
+                "condition": "diagnostic_oracle_listener_uptake",
+                **audit_oracle_listener_uptake(
+                    model,
+                    config,
+                    lives=args.report_audit_lives,
+                    seed_base=EVAL_SEED_BASE + 900_000,
+                ),
             }
         )
+    if lexical_gate_row is not None:
+        rows.insert(0, lexical_gate_row)
+    if mechanics_row is not None:
+        rows.insert(0, mechanics_row)
+    if not (
+        args.report_causal_social_planner_battery
+        or args.report_structured_causal_diagnostic_only
+        or args.report_self_belief_diagnostic_only
+        or args.report_observable_history_filter_only
+        or args.report_uptake_diagnostic_only
+        or args.report_self_state_diagnostic_only
+        or args.report_supervised_state_upper_bound_only
+    ):
+        for need, text, count in most_frequent_utterances(
+            model,
+            config,
+            lives=max(4, args.report_audit_lives // 8),
+            seed_base=EVAL_SEED_BASE,
+        ):
+            rows.append(
+                {
+                    "condition": "utterance_census",
+                    "lowest_need": need,
+                    "utterance": text,
+                    "count": count,
+                }
+            )
     _write_and_print(rows, args)
 
 
@@ -1123,12 +1583,148 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--report-slots", type=int, default=2)
     parser.add_argument("--report-entropy-weight", type=float, default=0.02)
+    parser.add_argument(
+        "--report-counterfactual-credit",
+        action="store_true",
+        help=(
+            "Use the preregistered action-conditioned report critic and "
+            "per-slot counterfactual advantage."
+        ),
+    )
     parser.add_argument("--report-audit-lives", type=int, default=200)
+    parser.add_argument(
+        "--report-lexical-childhood-steps",
+        type=int,
+        default=0,
+        help=(
+            "Run the preregistered public report-word childhood before adult "
+            "report; the frozen comprehension gate controls continuation."
+        ),
+    )
+    parser.add_argument(
+        "--report-lexical-gate-lives",
+        type=int,
+        default=300,
+        help="Held-out paired lives in the pre-adult lexical gate.",
+    )
+    parser.add_argument(
+        "--report-lexical-gate-only",
+        action="store_true",
+        help="Stop after the lexical checkpoint and frozen comprehension gate.",
+    )
+    parser.add_argument(
+        "--report-lexical-guided-labels",
+        action="store_true",
+        help=(
+            "Use the preregistered need-independent caregiver joint-attention "
+            "event once per lexical childhood round."
+        ),
+    )
+    parser.add_argument(
+        "--report-adult-from-lexical-checkpoint",
+        default=None,
+        help=(
+            "Continue a gate-passed lexical-child checkpoint into the locked "
+            "adult report phase without resetting model parameters."
+        ),
+    )
+    parser.add_argument(
+        "--report-causal-social-planner-battery",
+        action="store_true",
+        help=(
+            "After rechecking the structured-self and lexical gates, run the "
+            "full learned listener-consequence report battery."
+        ),
+    )
+    parser.add_argument(
+        "--report-structured-causal-development-steps",
+        type=int,
+        default=0,
+        help=(
+            "Append and identify the preregistered structured causal self and "
+            "listener models. The locked budget is 80000."
+        ),
+    )
+    parser.add_argument(
+        "--report-structured-causal-diagnostic-only",
+        action="store_true",
+        help="Run only the frozen structured causal promotion gate.",
+    )
+    parser.add_argument(
+        "--report-self-belief-development-steps",
+        type=int,
+        default=0,
+        help=(
+            "Append and train the preregistered explicit self-belief module "
+            "on a loaded adult lexical checkpoint. The locked budget is 80000."
+        ),
+    )
+    parser.add_argument(
+        "--report-self-belief-ranking",
+        action="store_true",
+        help=(
+            "Use the locked probe55 weight-0.1 pairwise continuous body-rank "
+            "loss during self-belief development."
+        ),
+    )
+    parser.add_argument(
+        "--report-self-belief-relational-urgency",
+        action="store_true",
+        help=(
+            "Use the locked probe56 separate three-axis urgency head with "
+            "weight-1 pairwise continuous-body ordering."
+        ),
+    )
+    parser.add_argument(
+        "--report-self-belief-diagnostic-only",
+        action="store_true",
+        help="Run only the frozen learned self-belief gate on a loaded checkpoint.",
+    )
+    parser.add_argument(
+        "--report-observable-history-filter-only",
+        action="store_true",
+        help=(
+            "Run only the preregistered audit-only exact-dynamics body filter "
+            "using birth interoception and learner-visible action/perception "
+            "history. It never updates or enters the organism."
+        ),
+    )
+    parser.add_argument(
+        "--report-uptake-diagnostic-only",
+        action="store_true",
+        help=(
+            "On a report checkpoint, skip the sealed battery and run only the "
+            "post-hoc oracle-listener motor-uptake diagnostic."
+        ),
+    )
+    parser.add_argument(
+        "--report-self-state-diagnostic-only",
+        action="store_true",
+        help=(
+            "On a report checkpoint, run only the post-hoc held-out decoder "
+            "comparison between recurrent state and masked observation."
+        ),
+    )
+    parser.add_argument(
+        "--report-supervised-state-upper-bound-only",
+        action="store_true",
+        help=(
+            "Fit a disposable supervised need decoder on frozen recurrent "
+            "states from separate oracle-speaking lives, then deploy it in "
+            "the real held-out listener loop. This is an audit upper bound "
+            "and never updates the organism."
+        ),
+    )
     parser.add_argument("--report-help-period", type=int, default=ReportConfig().help_period)
     parser.add_argument(
         "--report-shock-probability",
         type=float,
         default=ReportConfig().shock_probability,
+    )
+    parser.add_argument(
+        "--report-unified-uptake",
+        action="store_true",
+        help="Use the preregistered report substrate with CONSUME for all help.",
     )
     parser.add_argument(
         "--report-body-prediction-weight",
@@ -1549,6 +2145,96 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--run-dir", default="runs/organism")
     args = parser.parse_args()
+    if args.report_lexical_childhood_steps < 0:
+        parser.error("--report-lexical-childhood-steps must be nonnegative.")
+    if args.report_lexical_gate_lives <= 0:
+        parser.error("--report-lexical-gate-lives must be positive.")
+    if args.report_lexical_gate_only and args.report_lexical_childhood_steps <= 0:
+        parser.error(
+            "--report-lexical-gate-only requires "
+            "--report-lexical-childhood-steps."
+        )
+    if args.report_lexical_guided_labels and args.report_lexical_childhood_steps <= 0:
+        parser.error(
+            "--report-lexical-guided-labels requires "
+            "--report-lexical-childhood-steps."
+        )
+    if args.report_adult_from_lexical_checkpoint is not None:
+        if not args.report_task:
+            parser.error(
+                "--report-adult-from-lexical-checkpoint requires --report-task."
+            )
+        if args.load_checkpoint is not None:
+            parser.error(
+                "Choose only one report checkpoint continuation/audit input."
+            )
+        if args.report_lexical_childhood_steps > 0:
+            parser.error(
+                "Adult continuation loads an existing childhood; do not start "
+                "another lexical childhood."
+            )
+        if args.report_lexical_gate_only or args.report_lexical_guided_labels:
+            parser.error(
+                "Adult continuation cannot be combined with childhood-only flags."
+            )
+        if not args.report_unified_uptake:
+            parser.error(
+                "The locked adult continuation requires --report-unified-uptake."
+            )
+        if args.report_counterfactual_credit:
+            parser.error(
+                "The locked adult continuation uses ordinary report credit."
+            )
+        if args.report_body_prediction_weight != 0.0:
+            parser.error(
+                "The locked adult continuation has no hidden-body target."
+            )
+        if args.train_steps != 200_000 or args.report_audit_lives != 200:
+            parser.error(
+                "The locked continuation requires 200000 adult ticks and 200 "
+                "audit lives."
+            )
+    if args.report_lexical_childhood_steps > 0:
+        if not args.report_task:
+            parser.error(
+                "--report-lexical-childhood-steps requires --report-task."
+            )
+        if args.load_checkpoint is not None:
+            parser.error(
+                "Lexical childhood trains a fresh staged organism and cannot "
+                "be combined with --load-checkpoint."
+            )
+        if args.report_lexical_childhood_steps != 60_000:
+            parser.error(
+                "The locked lexical childhood is exactly 60000 primitive ticks."
+            )
+        if not args.report_unified_uptake:
+            parser.error(
+                "The locked adult continuation requires --report-unified-uptake."
+            )
+        if args.report_counterfactual_credit:
+            parser.error(
+                "The locked lexical continuation uses ordinary report credit."
+            )
+        if args.report_body_prediction_weight != 0.0:
+            parser.error(
+                "Adult lexical continuation requires zero hidden-body "
+                "prediction weight."
+            )
+        if (
+            args.hidden_size != 256
+            or args.segment_length != 64
+            or args.report_slots != 2
+            or args.report_entropy_weight != 0.02
+        ):
+            parser.error(
+                "The locked lexical run requires hidden-size 256, segment 64, "
+                "two report slots, and report entropy 0.02."
+            )
+        if not args.report_lexical_gate_only and args.train_steps != 200_000:
+            parser.error(
+                "The locked adult continuation is exactly 200000 primitive ticks."
+            )
     if args.disable_episodic_binding_writes and args.episodic_binding_size <= 0:
         parser.error(
             "--disable-episodic-binding-writes requires --episodic-binding-size."
@@ -1635,9 +2321,11 @@ def _parse_args() -> argparse.Namespace:
             and args.population_cross_need_gradient_segments <= 0
             and args.bound_event_input_identifiability_events <= 0
             and not args.evaluate_loaded_checkpoint
+            and not args.report_task
         ):
             parser.error(
-                "--load-checkpoint requires --evaluate-loaded-checkpoint, a "
+                "--load-checkpoint requires --report-task, "
+                "--evaluate-loaded-checkpoint, a "
                 "positive --observation-branching-audit-contexts, a positive "
                 "--cross-round-reuse-lives, or a positive "
                 "--drift-forecast-audit-contexts or "

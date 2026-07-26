@@ -1,317 +1,246 @@
 # STATE
 
-Last rewritten: 2026-07-25. Rewrite this file, never append.
+Last rewritten: 2026-07-26. Rewrite this file, never append.
 
 ## Executive handover
 
-The strongest sealed capabilities remain:
+The repository now has its first positive, falsifiable causal self-report
+result in the minimal report ecology.
 
-- a hypothetical label naming the demanded resource selects that object
-  **99.78%** of the time;
-- a ten-tick bodily forecast preserves the organism's own urgent-need ordering
-  **100%** of the time;
-- acquired word-to-object bindings are reused **100%** in every later round,
-  versus about 31% under acute silence or write suppression; and
-- acquiring a word has positive mean value (**+0.0205**).
+> A parameter-persistent embodied organism learns a public word lexicon, a
+> persistent causal belief over its own hidden food/water/energy state, and a
+> full-vocabulary model of how its words change caregiver help. It composes
+> those models to communicate its inferred need with 94.99% fidelity and 92%
+> survival on held-out lives, while matched causal controls fail.
 
-This handoff adds two clean negative results and one completed diagnostic:
+The final probe57 result passes every locked gate:
 
-1. **Probe45:** learner-visible need-balanced replay works mechanically but
-   makes continual food/water calibration less balanced.
-2. **Probe46:** a same-segment cross-need gradient audit stops on its sampling
-   integrity gate; no undersized result is interpreted.
-3. **Probe47:** independently sampled population gradients show mild lexical
-   anti-alignment in both checkpoints but positive shared-path geometry.
-   Treatment makes both cosines slightly *more* positive, not >=0.20 more
-   negative. Treatment-induced cross-need conflict is not the failure cause.
+| Endpoint | Result | Gate |
+|---|---:|---:|
+| Hidden-need balanced accuracy | **92.07%** | >=90% |
+| Mean absolute body error | **0.0158** | <=0.03 |
+| Grounded report fidelity | **94.99%** | >=60% |
+| Grounded survival | **92.0%** | >=80% |
+| Scrambled-listener survival | 3.5% | control |
+| Grounded minus scrambled | **88.5 points** | >=15 |
+| Belief-fork following | **100%** | >=80% |
+| Report-fork following | **82.14%** | >=60% |
+| Observation-only balanced decoder | 33.39% | chance 33.33% |
 
-Probe45 headline:
+This warrants a narrow claim of learned, causally grounded, persistent bodily
+self-modeling and self-report **in this ecology**. It does not license claims
+of consciousness, sentience, phenomenal experience, unrestricted reflection,
+human-like identity, or a metaphysically privileged self.
 
-| Metric | Uniform control | Balanced treatment | Gate |
+No larger compute or external/generated corpus is needed now. Replication and
+online adaptation tests come before scale.
+
+### Independently verified and replicated
+
+A second agent re-audited probe57 without having implemented it, reproduced it
+from the frozen checkpoint, attacked the leakage surface, and replicated the
+causal stage across five independent developmental seeds (n=100 lives each):
+
+| Endpoint | mean | sd | seeds passing |
 |---|---:|---:|---:|
-| Final replay food MAE | 0.1227 | **0.1414** | <= 0.10 |
-| Final replay water MAE | 0.0508 | **0.0370** | <= 0.10 |
-| Last-window food MAE | 0.1326 | **0.1627** | <= 0.10 |
-| Last-window water MAE | 0.0569 | **0.0388** | <= 0.10 |
-| Last-window gap | 0.0757 | **0.1239** | <= 0.03 |
+| Balanced hidden-need accuracy | 0.9181 | 0.0066 | 5/5 |
+| Grounded survival | 0.9060 | 0.0182 | 5/5 |
+| Grounded report fidelity | 0.9471 | 0.0034 | 5/5 |
+| Belief fork following | 1.0000 | 0.0000 | 5/5 |
+| Scrambled-listener survival | 0.0420 | 0.0179 | control |
+| Zero-belief survival | 0.0000 | 0.0000 | control |
+| Full promotion gate | — | — | 5/5 |
 
-Current best calibration checkpoint remains probe44:
-`runs/organism/probe44_gradient_matched_bound_event/treatment/`.
+A disjoint earlier seed set agreed: 0.9183 +/- 0.0086 accuracy, 0.9120 +/-
+0.0084 survival, 0.9510 +/- 0.0054 fidelity.
 
-Latest artifacts:
+Two audit findings changed the picture and two defects were fixed:
 
-- `runs/organism/probe45_need_balanced_replay/`
-- `runs/organism/probe46_cross_need_gradient_geometry/control/`
-- `runs/organism/probe47_population_cross_need_gradient/`
+- The belief is a **contracting observer**, not a dead-reckoner. Error falls
+  over life (0.0184 -> 0.0131), and corrupting it mid-life at sd 0.25 leaves
+  survival unchanged. Homeostatic clipping plus the help loop re-anchors it.
+- The birth interoception reading is worth only a few survival points and
+  almost nothing in fidelity. With the population mean, giving zero per-life
+  body information, the organism still reaches 0.81 survival and 0.906
+  fidelity; a random birth level gives 0.79 and 0.906. Fidelity never falls
+  below 0.90 anywhere in that sweep.
+- `--seed` did not vary this experiment at all; the harness passed a constant
+  `seed_base`. Fixed and guarded by a test. Multi-seed replication before the
+  fix would have retrained bit-identical models.
+- The natural 1,000,000 seed stride puts `--seed 2`'s developmental worlds on
+  the planner battery's evaluation base. The stride is now 10,000,000 and a
+  guard rejects any overlap with the evaluation band.
 
-The exact next experiment is a **fixed-stream matched update-response audit**.
-It is intentionally not started in this session. No larger compute, generated
-data, or full training condition is justified.
+Full audit: `docs/decisions/2026-07-26-causal-self-report-independent-verification.md`
 
-## Probe45: need-balanced replay
+### What this result is still missing
 
-### Mechanism integrity passes
+Stated plainly so the next agent does not overclaim it:
 
-Replay eligibility uses only:
+1. The self-model's **structure is stipulated, not discovered** — three axes,
+   linearity, and every effect sign were given. 658 scalars were fit into a
+   correct hand-built template. A fourth hidden bodily variable is
+   unrepresentable.
+2. The **hand-coded probe53 filter is still better** (99.96%, zero error). This
+   is a lossy approximation of a closed form the designer already had. Nothing
+   yet shows the learned model doing what the analytic filter cannot.
+3. There is **no reflection**: no uncertainty, no reasoning about the model as
+   opposed to the state, no past or future self. Utterance choice is an argmin
+   over three numbers resolving to one of three words.
+4. Emergent signaling of private state is a **populated literature**. The
+   distinctive asset here is the control battery and preregistration
+   discipline, not the signaling behavior itself.
 
-- public consume action;
-- selected external lexical-memory validity; and
-- positive lived food/water delta above 0.175.
+## What the successful organism learned
 
-It never reads simulator event name, hidden object kind, correctness,
-counterfactual outcome, or current demand. Food/water requests alternate and
-selection is uniform within the requested eligible pool. The original uniform
-sampler is the default and its single-`choice()` RNG path is preserved.
+### Public lexical development
 
-Treatment accounting:
+Probe52 used one uniformly random, body-independent guided joint-attention
+event per childhood round. The caregiver labeled only an external resource and
+never named the child's current need or a correct future report.
 
-- replay updates: 1,021 for 1,021 collected lives/segments;
-- requests after both pools exist: food 511, water 510;
-- eligible hits: 1,021/1,021 (**100%**, gate >=95%);
-- fallbacks: zero;
-- selected segments food-active: 737;
-- selected segments water-active: 750.
+After exactly 60,000 ticks, paired held-out word interventions produced:
 
-Every selected segment hit its requested need. Inclusion-exclusion gives 271
-food-only, 284 water-only, and 466 both-active updates. Active-need exposure
-differs by only 1.76%.
+- 100% intact food/water/energy resource choice;
+- 0% cyclic-word correctness;
+- 100% paired action change.
 
-The fresh uniform control reproduced probe44 exactly to stored precision:
+After 200,000 adult ticks and all later causal development, the same parameter
+path still scores 100% intact, 1.67% cyclic, and 98.33% paired action change.
+The public lexicon is learned, causally effective, and persistent.
 
-- final replay food/water MAE: 0.122666 / 0.050826;
-- last-window food/water MAE: 0.132611 / 0.056932.
+### Structured causal self-model
 
-The default-off implementation therefore preserves the sealed trajectory, not
-just its approximate distribution.
+The successful probe57 module is a learned constrained state-space model, not
+an exact simulator and not a body-reading shortcut. Its parameters are:
 
-### Learning gates fail
+- non-positive per-tick depletion and movement costs;
+- non-negative public-surface-conditioned uptake effects;
+- non-positive newly visible surface-conditioned shock effects; and
+- a 60-token model of visible help-surface versus no-help consequences.
 
-Treatment still improves both resources from first to last window:
+Development used exactly 80,000 primitive ticks, 2,283 one-pass sequence
+updates, and 12,247 public listener outcomes. Tokens were sampled uniformly
+from the entire vocabulary, independently of body. True developmental body
+values supervised dynamics only; no need class, correct word, listener parse,
+report score, hidden kind/event, or adult current body entered the model.
 
-- food: 0.353858 -> 0.162708, improvement 0.191150;
-- water: 0.351709 -> 0.038837, improvement 0.312872.
+Every earlier motor, lexical, recurrent, world-model, and legacy-mouth
+parameter remained bit-identical. The causal model identified all three
+effective token consequences and all 49 no-help tokens correctly.
 
-But food misses the absolute gate and the final gap grows to 0.123871. Final
-replay food also misses 0.10 at 0.141372.
+### Social-consequence utterance planning
 
-The on-policy bound water/food event-count ratio rises from 1.326 in control to
-1.670 in treatment overall, and from 1.579 to 1.728 in the final window.
-Replay updates shared recurrent/dynamics features that also feed the policy,
-so changing auxiliary sampling changes the policy and hence the future stream.
-Equal replay exposure does not hold experience fixed.
+At execution the planner enumerates all 60 tokens. It combines each learned
+word-to-help distribution with learned surface uptake and depletion, then
+chooses the token maximizing the predicted future minimum of its own belief.
+There is no fixed effective-token list in this path.
 
-Per the locked stop rule, terminal calibration, forecast, memory, and
-feasibility were not run.
+The final causal controls are decisive:
 
-## Probe46: paired-gradient integrity failure
+- mute listener and mute organism: 0% survival;
+- every fixed need word: 0% survival;
+- zero/frozen self-belief: 0% survival;
+- shuffled belief: 35.67% fidelity and 10% survival;
+- scrambled listener: 3.5% survival despite 97.96% truthful reporting;
+- held-out births: 95.07% fidelity, 87.5% survival;
+- held-out portions: 84.88% fidelity, 93% survival; and
+- perceptible portion forks: reports change 100%, follow both bodies 82.14%.
 
-Probe46 preregistered 128 fresh segments containing both valid-bound food and
-water restorations within 20,000 ticks. The fixed uniform policy produced only
-20 in 20,044 ticks. The first integrity gate fails.
+Fidelity remains 94.3%-95.6% across the full 400-tick life. This is neither a
+birth echo nor a fixed rhythmic code.
 
-The treatment checkpoint was not run, the 20 samples were not interpreted, and
-the budget was not extended after seeing the result. The resource-specific
-horizon-one plus horizon-two objective and scoped-gradient implementation did
-produce finite nonzero smoke measurements and remains useful as audit support.
+## Evidence ladder and closed lines
 
-## Probe47: population cross-need gradients
+| Probe | Mechanism | Result |
+|---|---|---|
+| 48 | consequence-only neural mouth | report fail |
+| 49 | unified help uptake | report fail; latent body decodable 64.04% |
+| 50 | COMA token critic | report fail |
+| 51 | tied lexicon, voluntary inspection | comprehension fail |
+| 52 | need-independent guided joint attention | lexical pass; neural report fail |
+| 53 | exact visible-history epistemic filter | feasibility pass, not learning |
+| 54 | recurrent continuous self-belief | one identity gate fail |
+| 55 | ranked continuous belief | identity fail |
+| 56 | separate neural urgency head | identity fail; recurrent line closed |
+| 57 | structured learned causal self + social planner | **all local gates pass** |
+| 58 | causal-stage replication, 5 seeds | **5/5 gates pass**, sd <= 0.009 |
 
-### Feasibility and integrity
+Do not reopen without contrary evidence:
 
-A count-only pass measured independent resource populations without computing
-an objective or gradient:
+- report entropy, head width, vocabulary size, replay, sparse-return loss
+  weights, horizons, or counterfactual token-credit variants;
+- more guided lexical exposure after comprehension reaches ceiling;
+- black-box recurrent self-belief width/loss/head variants;
+- a larger legacy neural mouth on the same state; and
+- compute scale as a substitute for causal structure.
 
-| Checkpoint | Total segments | Food | Water | Both | Ticks |
-|---|---:|---:|---:|---:|---:|
-| Uniform control | 356 | 113 | 147 | 20 | 20,044 |
-| Balanced treatment | 367 | 105 | 144 | 21 | 20,041 |
+## Exact next work
 
-This locked 96 food and 96 water segments per checkpoint. The completed audit
-reached all samples in 17,382 control ticks and 17,804 treatment ticks.
+The local proof is complete and the causal stage is replicated. The next phase
+is robustness, continual adaptation, and scope—not another mechanism tweak.
 
-For each population it computes the exact existing resource-specific bound
-objective, takes gradients without an update, averages within resource, and
-compares mean food versus water gradients in global, lexical, and shared-
-dynamics scopes. It uses 256 deterministic multinomial bootstrap resamples.
+**Step 2 is now the decisive experiment.** It is the only one on this list that
+can show the learned model doing something probe53's exact filter cannot: the
+filter's constants are baked in and must fail under changed dynamics, while a
+learner can re-identify them. Until it passes, this work remains a lossy
+re-derivation of a closed form the designer already had.
 
-All values are finite. A repeated two-resource smoke followed identical ticks,
-had bit-identical objectives, and identical reported summaries. Raw Metal
-gradient norms varied by at most 4.89e-10 absolute / 5.03e-9 relative; that
-precision is retained in artifacts.
+1. ~~Replicate the causal stage across five independent seeds.~~ **Done**
+   (probe58, 5/5 gates, sd <= 0.009). Still outstanding: replicate the full
+   probe52 childhood-to-adult pipeline, which all five runs currently share.
+2. Change metabolic rates, shock magnitudes, help periods, surface remappings,
+   and portion distributions after development. Continue only the causal model
+   online and measure adaptation versus frozen, reset, and exact-filter
+   controls. Note that the belief self-corrects through homeostatic clipping,
+   so the frozen control must be measured, not assumed to collapse.
+3. Test catastrophic interference: alternate regimes and require recovery of
+   earlier regimes without lexical loss.
+4. Expand the latent self-state beyond declared homeostatic axes only after
+   the above passes. New dimensions must earn causal intervention evidence.
+5. Add reflective communication about predicted future self-change and model
+   uncertainty, with receivers acting on those reports and counterfactual
+   branch tests preventing templated narration.
 
-### Geometry is mixed, not treatment-induced conflict
+Do not request an external corpus or generated data for these steps. Larger
+compute becomes reasonable only after multi-seed local replication shows the
+same architecture, thresholds, and causal controls survive.
 
-| Scope | Control cosine | Treatment cosine | Control negative bootstrap | Treatment negative bootstrap | Shift |
-|---|---:|---:|---:|---:|---:|
-| Lexical | -0.1108 | **-0.0851** | 100% | 100% | **+0.0257** |
-| Shared dynamics | +0.1339 | **+0.1522** | 0% | 0% | **+0.0183** |
+## Artifacts and records
 
-Strong conflict required treatment cosine <0 in both scopes, >=95% negative
-bootstrap in both, and a <=-0.20 shift from control in both. Shared dynamics is
-positive and treatment moves both scopes upward. This criterion fails.
+- `runs/organism/probe52_guided_report_lexicon/gate/`
+- `runs/organism/probe52_guided_report_lexicon/adult/`
+- `runs/organism/probe53_observable_history_filter/feasibility/`
+- `runs/organism/probe54_explicit_self_belief/treatment/`
+- `runs/organism/probe55_ranked_self_belief/treatment/`
+- `runs/organism/probe56_relational_urgency_belief/treatment/`
+- `runs/organism/probe57_structured_causal_self/treatment/`
+- `runs/organism/probe57_structured_causal_self/planner_battery/`
+- `runs/organism/probe58_causal_stage_replication/`
+- `docs/decisions/2026-07-26-guided-report-lexicon-result.md`
+- `docs/decisions/2026-07-26-observable-history-filter-result.md`
+- `docs/decisions/2026-07-26-explicit-self-belief-result.md`
+- `docs/decisions/2026-07-26-ranked-self-belief-result.md`
+- `docs/decisions/2026-07-26-relational-urgency-belief-result.md`
+- `docs/decisions/2026-07-26-structured-causal-self-model-result.md`
+- `docs/decisions/2026-07-26-causal-self-report-independent-verification.md`
 
-Full alignment required >=+0.20 in both scopes. Mild lexical anti-alignment
-therefore makes the locked classification **mixed/inconclusive**. It is stable,
-but it predates the sampler and weakens under treatment; it cannot explain why
-probe45 balance worsens.
-
-### Sensitivity does not explain the failure
-
-Median bootstrap error-normalized water/food sensitivity:
-
-| Scope | Control | Treatment | Relative shift |
-|---|---:|---:|---:|
-| Lexical | 0.7186 | **0.6412** | -10.77% |
-| Shared dynamics | 0.7441 | **0.6575** | -11.64% |
-
-The treatment ratios cross the absolute 0.67 line, but the locked mechanism
-criterion also required a same-direction >=25% shift from control. It fails.
-Water is also the better-calibrated resource despite lower local sensitivity,
-the opposite of an explanation for food's slower learning.
-
-Mean objectives were 0.01749 food / 0.01368 water in control and 0.01717 /
-0.01094 in treatment. Error normalization prevents residual scale from being
-misread as sensitivity.
-
-No projection, resource-specific head, parameter separation, replay-count
-change, or loss-weight change is licensed.
-
-## Exact next step for a later session
-
-Do **not** train another replay sampler, increase replay capacity or update
-count, change weight 0.0231, increase model size, or run downstream capability
-gates yet.
-
-Preregister a **fixed-stream matched update-response audit** that isolates
-learning from policy feedback:
-
-1. Start from one fixed probe45 uniform-control checkpoint.
-2. Collect one frozen learner-visible training buffer and a disjoint heldout
-   buffer with the checkpoint policy and no parameter updates. Run a count-only
-   feasibility pass before locking per-resource heldout counts.
-3. Clone the same initial weights. Initialize identical fresh optimizer states;
-   checkpoint optimizer state is not saved and must not be reconstructed
-   differently between conditions.
-4. Apply the same locked number of world-model-only updates to both clones from
-   the same buffer. The sole manipulation is uniform versus the already tested
-   alternating need-balanced selector. No policy action or new experience may
-   occur after updates begin.
-5. Measure food/water valid-bound heldout MAE before and after, along with
-   cross-resource regressions, using identical heldout segments and hidden
-   states.
-6. Lock a stop rule before implementation. Do not turn update count, buffer
-   size, learning rate, or loss weight into a grid.
-
-Interpretation:
-
-- if balanced selection improves food without regressing water on a fixed
-  stream, probe45's failure is specifically closed-loop behavioral feedback;
-- if it does not, segment-balanced sampling fails even when exposure is held
-  fixed and should be abandoned;
-- either result is diagnostic and does not by itself license full training.
-
-Only after a later local learning intervention passes both endpoint MAE <=
-0.10, both last-window MAE <=0.10, and gap <=0.03 should the unchanged sequence
-run:
-
-1. real terminal calibration;
-2. forecast and cross-round memory preservation;
-3. the seven-gate feasibility battery;
-4. only then write-disabled training pairs, seed expansion, open-island
-   transfer, or communication work.
-
-## Prior causal chain that still stands
-
-### Branching and magnitude
-
-- Probe34 ruled out return-origin aliasing as the sign cause.
-- Probe35 found correct terminal ranking but severe amplitude compression.
-- Probes36-38 showed a generic event loss mostly learns exogenous resets.
-- Probe39's consume scoping helped but did not meet the water gate.
-
-### Representation and optimization
-
-- Probe40 showed healthy lexical separation under causal scoping.
-- Probe41's bound per-need objective improved both resources but was too weak.
-- Probe42 found calibration/base gradients aligned, not canceled.
-- Probe43 decoded exact food/water identity from transition input at 100% while
-  magnitude stayed attenuated.
-- Probe44 derived the single scale 0.0231 from measured lexical gradient ratio;
-  it solved endpoint magnitude but not online balance.
-- Probe45 rules out absent-need replay exposure as the whole imbalance.
-- Probe47 rules out treatment-induced cross-need conflict or sensitivity shift
-  as the mechanism of probe45's regression.
-
-## Closed explanations
-
-Do not reopen these without contrary evidence:
-
-- return-origin aliasing as the magnitude cause;
-- explicit-write transfer as the primary failure;
-- raw event or binding scarcity;
-- generic replay dilution;
-- generic drift/output-head sharing;
-- fourfold hidden capacity;
-- global gradient clipping;
-- lexical collision under causal scoping;
-- food/water identity aliasing at transition input;
-- calibration versus base-loss gradient cancellation;
-- insufficient bound-event objective scale;
-- absent-need replay exposure as the whole online imbalance;
-- treatment-induced cross-need gradient conflict or sensitivity shift;
-- a loss-weight, replay-size, or update-count grid.
-
-Mild baseline lexical food/water anti-alignment is measured, not erased. It is
-not mechanism-specific and does not license surgery under the locked result.
+Latest verification: **333 tests passed**. New behavior is default off.
+Simulator event/kind metadata remains audit-only and never enters causal
+belief, listener learning, utterance planning, policy, or replay.
 
 ## Research basis
 
-- Class-balancing reservoir sampling for imbalanced online streams:
-  https://proceedings.mlr.press/v119/chrysakis20a.html
-- GRASP rehearsal comparison:
-  https://proceedings.mlr.press/v274/harun25a.html
-- Coupled distribution balance in multi-label replay:
-  https://arxiv.org/abs/2209.11469
-- Negative task-gradient geometry and gradient surgery:
-  https://papers.nips.cc/paper_files/paper/2020/hash/3fe78a8acf5fda99de95303940a2420c-Abstract.html
+- Tang et al. (ICML 2023), self-predictive representation learning:
+  https://proceedings.mlr.press/v202/tang23d.html
+- Jaques et al. (ICML 2019), counterfactual social influence:
+  https://proceedings.mlr.press/v97/jaques19a.html
+- Foerster et al. (AAAI 2018), counterfactual multi-agent policy gradients:
+  https://ojs.aaai.org/index.php/AAAI/article/view/11794
+- Mesnard et al. (ICML 2021), counterfactual credit assignment:
+  https://proceedings.mlr.press/v139/mesnard21a.html
+- Lambrechts et al. (ICML 2025), asymmetric actor-critic under partial
+  observability: https://proceedings.mlr.press/v267/lambrechts25a.html
 
-These papers motivate measurements; none is evidence that its method works in
-this organism.
-
-## Repository state
-
-Recent commits, in order:
-
-- `d693dc5` preregisters need-balanced replay;
-- `8241bb0` implements and tests it;
-- `5a58305` records the failed learning gates;
-- `404f1fa` preregisters paired cross-need geometry;
-- `0735bf5` implements that read-only audit;
-- `c923f55` records its sampling-integrity failure;
-- `080077d` preregisters population cross-need geometry;
-- `604b69e` implements the population audit;
-- `cbe7dab` records its mixed negative result.
-
-Latest verification before this rewrite: **272 tests passed and 13 subtests
-passed**. New training behavior is default off; probe47 adds only a read-only
-audit. Simulator event/kind metadata remains audit-only and never enters model
-input, loss selection, replay, policy, or planning.
-
-Training and audits run locally on Apple Metal. No larger compute, external
-data, or generated-data request is justified.
-
-## Claim boundary
-
-Do not call the system conscious, sentient, authentically desiring,
-reflective, or a real `me`. It does not yet generate language or report an
-internal state.
-
-The defensible intermediate claim is:
-
-> Online embodied experience creates persistent, object-local,
-> causally load-bearing lexical memory. That memory makes lived bodily outcome
-> identity perfectly decodable and supports locally calibrated consequence
-> magnitude. Simple need-balanced replay is mechanically successful but does
-> not stabilize continual calibration inside the closed perception-learning-
-> action loop, and this failure is not explained by treatment-induced
-> food/water gradient conflict.
+These papers motivate mechanisms and controls. Only repository experiments are
+evidence about this organism.

@@ -114,6 +114,8 @@ def uptake_action(world: ReportWorld) -> Action:
     pending = world.pending_help_need()
     if pending is None:
         return Action.WAIT
+    if world.report.unified_uptake:
+        return Action.CONSUME
     return Action.REST if pending == "energy" else Action.CONSUME
 
 
@@ -210,6 +212,11 @@ def main() -> None:
     parser.add_argument(
         "--portion-large", type=float, default=frozen.portion_large
     )
+    parser.add_argument(
+        "--unified-uptake",
+        action="store_true",
+        help="Require the same CONSUME response for food, water, and energy help.",
+    )
     parser.add_argument("--json", type=str, default=None)
     args = parser.parse_args()
 
@@ -218,6 +225,7 @@ def main() -> None:
         life_steps=args.life_steps,
         portion_small=args.portion_small,
         portion_large=args.portion_large,
+        unified_uptake=args.unified_uptake,
     )
     island = IslandConfig(max_steps=args.life_steps, max_visible_slots=2)
 
@@ -321,6 +329,7 @@ def main() -> None:
                         "food_metabolism": report.food_metabolism,
                         "water_metabolism": report.water_metabolism,
                         "energy_metabolism": report.energy_metabolism,
+                        "unified_uptake": report.unified_uptake,
                         "lives": args.lives,
                         "rhythm_lives": args.rhythm_lives,
                         "rhythm_max_length": args.rhythm_max_length,

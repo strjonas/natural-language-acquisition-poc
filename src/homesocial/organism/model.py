@@ -51,6 +51,12 @@ class OrganismModel(nn.Module):
         pad_token_id: int = 0,
         referential_action_indices: tuple[int, ...] = (3, 4),
         report_slots: int = 0,
+        counterfactual_report_credit: bool = False,
+        tied_report_lexicon: bool = False,
+        explicit_self_belief: bool = False,
+        self_belief_hidden_size: int = 64,
+        self_belief_relational_urgency: bool = False,
+        structured_causal_self_model: bool = False,
     ) -> None:
         super().__init__()
         self.vector_size = vector_size
@@ -58,6 +64,7 @@ class OrganismModel(nn.Module):
         self.tokens_per_utterance = tokens_per_utterance
         self.action_size = action_size
         self.hidden_size = hidden_size
+        self.token_embed_size = token_embed_size
         self.primitive_action_size = (
             action_size if primitive_action_size is None else primitive_action_size
         )
@@ -188,8 +195,188 @@ class OrganismModel(nn.Module):
             raise ValueError("report_slots must be nonnegative.")
         self.report_slots = report_slots
         self.can_speak = report_slots > 0
+        self.has_counterfactual_report_critic = counterfactual_report_credit
+        self.has_tied_report_lexicon = tied_report_lexicon
+        if tied_report_lexicon and not self.can_speak:
+            raise ValueError("A tied report lexicon requires a mouth.")
+        if counterfactual_report_credit and not self.can_speak:
+            raise ValueError("A counterfactual report critic requires a mouth.")
         if self.can_speak:
-            self.report_head = nn.Linear(self.state_size, report_slots * vocab_size)
+            if self.has_tied_report_lexicon:
+                # Production and comprehension meet in one declared lexical
+                # space.  The query is state-dependent, while candidate word
+                # vectors are exactly the table used by the auditory encoder.
+                self.report_query = nn.Linear(
+                    self.state_size, report_slots * token_embed_size
+                )
+                self.report_bias = mx.zeros((report_slots, vocab_size))
+            else:
+                self.report_head = nn.Linear(
+                    self.state_size, report_slots * vocab_size
+                )
+        if self.has_counterfactual_report_critic:
+            # Centralized during learning, absent from execution.  Each slot's
+            # critic holds the other sampled token fixed and scores every
+            # alternative token for this slot from the organism's own state.
+            self.report_critic_token_embedding = nn.Embedding(
+                vocab_size, token_embed_size
+            )
+            self.report_critic_hidden = nn.Linear(
+                self.state_size + token_embed_size + report_slots,
+                hidden_size,
+            )
+            self.report_critic_out = nn.Linear(hidden_size, vocab_size)
+
+        self.has_explicit_self_belief = False
+        self.has_self_belief_relational_urgency = False
+        self.self_belief_hidden_size = 0
+        if explicit_self_belief:
+            self.enable_explicit_self_belief(
+                self_belief_hidden_size,
+                relational_urgency=self_belief_relational_urgency,
+            )
+        self.has_structured_causal_self_model = False
+        if structured_causal_self_model:
+            self.enable_structured_causal_self_model(self.surface_count)
+
+    def enable_structured_causal_self_model(self, surface_count: int) -> None:
+        """Append a constrained learned body dynamics and listener model."""
+
+        if surface_count <= 0:
+            raise ValueError("Structured causal self-model requires surfaces.")
+        if self.has_structured_causal_self_model:
+            if surface_count != self.surface_count:
+                raise ValueError("Structured causal self-model surface mismatch.")
+            return
+        # Generic small-effect initialization. Signs are structural; magnitudes
+        # and every surface/token association must be learned from experience.
+        self.causal_drift_raw = mx.full((3,), -4.0)
+        self.causal_move_extra_raw = mx.array([-4.0])
+        self.causal_uptake_raw = mx.full((surface_count, 3), -3.0)
+        self.causal_shock_raw = mx.full((surface_count, 3), -3.0)
+        self.causal_listener_logits = mx.zeros(
+            (self.vocab_size, surface_count + 1)
+        )
+        self.has_structured_causal_self_model = True
+
+    @staticmethod
+    def _positive(raw: mx.array) -> mx.array:
+        return mx.logaddexp(mx.array(0.0), raw)
+
+    def causal_self_parameters(
+        self,
+    ) -> tuple[mx.array, mx.array, mx.array, mx.array]:
+        if not self.has_structured_causal_self_model:
+            raise ValueError("This organism has no structured causal self-model.")
+        drift = -self._positive(self.causal_drift_raw)
+        move_extra = -self._positive(self.causal_move_extra_raw)[0]
+        uptake = self._positive(self.causal_uptake_raw)
+        shock = -self._positive(self.causal_shock_raw)
+        return drift, move_extra, uptake, shock
+
+    def causal_self_transition(
+        self,
+        current: mx.array,
+        durations: mx.array,
+        move_counts: mx.array,
+        uptake_surfaces: mx.array,
+        shock_surfaces: mx.array,
+    ) -> mx.array:
+        """Apply one constrained learned transition to persistent self-belief."""
+
+        drift, move_extra, uptake, shock = self.causal_self_parameters()
+        delta = (
+            durations[..., None] * drift
+            + move_counts[..., None]
+            * mx.array([0.0, 0.0, move_extra], dtype=current.dtype)
+            + uptake_surfaces @ uptake
+            + shock_surfaces @ shock
+        )
+        return mx.clip(current + delta, 0.0, 1.0)
+
+    def enable_explicit_self_belief(
+        self,
+        hidden_size: int = 64,
+        *,
+        relational_urgency: bool = False,
+    ) -> None:
+        """Append the default-off learned body-history filter.
+
+        The module is deliberately separate from the legacy recurrent carry so
+        a gate-passed lexical organism can acquire it developmentally without
+        reinitializing its policy or tied word representations.
+        """
+
+        if hidden_size <= 0:
+            raise ValueError("Self-belief hidden size must be positive.")
+        if self.has_explicit_self_belief:
+            if (
+                hidden_size != self.self_belief_hidden_size
+                or relational_urgency
+                != self.has_self_belief_relational_urgency
+            ):
+                raise ValueError("The organism already has a different self-belief size.")
+            return
+        self.self_belief_hidden_size = hidden_size
+        self.self_belief_input = nn.Linear(
+            self.vector_size + 1, hidden_size
+        )
+        self.self_belief_norm = nn.LayerNorm(hidden_size)
+        self.self_belief_core = nn.GRU(hidden_size, hidden_size)
+        self.self_belief_head = nn.Linear(hidden_size, 3)
+        if relational_urgency:
+            self.self_belief_urgency_head = nn.Linear(hidden_size, 3)
+        self.has_self_belief_relational_urgency = relational_urgency
+        self.has_explicit_self_belief = True
+
+    def self_belief_outputs(
+        self,
+        vectors: mx.array,
+        durations: mx.array,
+        hidden: mx.array | None = None,
+    ) -> tuple[mx.array, mx.array | None, mx.array]:
+        """Infer food/water/energy from birth plus observable lived history.
+
+        ``durations`` is elapsed primitive time since the preceding decision;
+        zero occurs only for a life-origin packet. Current body channels are
+        forcibly removed everywhere else, even if a caller accidentally hands
+        this module an unmasked developmental vector.
+        """
+
+        if not self.has_explicit_self_belief:
+            raise ValueError("This organism has no explicit self-belief module.")
+        if durations.shape != vectors.shape[:-1]:
+            raise ValueError("Self-belief durations must align with observations.")
+        birth = (durations <= 0).astype(vectors.dtype)[..., None]
+        observable = mx.concatenate(
+            [
+                vectors[..., :3] * birth,
+                mx.zeros_like(vectors[..., 3:4]),
+                vectors[..., 4:],
+                mx.clip(durations[..., None] / 12.0, 0.0, 1.0),
+            ],
+            axis=-1,
+        )
+        features = nn.relu(
+            self.self_belief_norm(self.self_belief_input(observable))
+        )
+        states = self.self_belief_core(features, hidden)
+        belief = mx.sigmoid(self.self_belief_head(states))
+        urgency = (
+            self.self_belief_urgency_head(states)
+            if self.has_self_belief_relational_urgency
+            else None
+        )
+        return belief, urgency, states[:, -1, :]
+
+    def self_belief_states(
+        self,
+        vectors: mx.array,
+        durations: mx.array,
+        hidden: mx.array | None = None,
+    ) -> tuple[mx.array, mx.array]:
+        belief, _, carry = self.self_belief_outputs(vectors, durations, hidden)
+        return belief, carry
 
     def _encode_tokens(self, tokens: mx.array) -> mx.array:
         """(B, T, L) int token ids -> (B, T, E) utterance encodings."""
@@ -573,8 +760,52 @@ class OrganismModel(nn.Module):
 
         if not self.can_speak:
             raise ValueError("This organism has no report head.")
-        logits = self.report_head(states)
-        return logits.reshape(*states.shape[:-1], self.report_slots, self.vocab_size)
+        if not self.has_tied_report_lexicon:
+            logits = self.report_head(states)
+            return logits.reshape(
+                *states.shape[:-1], self.report_slots, self.vocab_size
+            )
+        query = self.report_query(states).reshape(
+            *states.shape[:-1], self.report_slots, self.token_embed_size
+        )
+        return (
+            query @ self.token_embedding.weight.T
+            / (self.token_embed_size**0.5)
+            + self.report_bias
+        )
+
+    def counterfactual_report_q(
+        self, states: mx.array, report_tokens: mx.array
+    ) -> mx.array:
+        """Score every token per slot while holding the other slots fixed."""
+
+        if not self.has_counterfactual_report_critic:
+            raise ValueError("This organism has no counterfactual report critic.")
+        if report_tokens.shape != (*states.shape[:-1], self.report_slots):
+            raise ValueError("Report tokens must align with states and slots.")
+        slot_identity = mx.eye(self.report_slots, dtype=states.dtype)
+        scores: list[mx.array] = []
+        for slot in range(self.report_slots):
+            other_slots = [index for index in range(self.report_slots) if index != slot]
+            if other_slots:
+                other = self.report_critic_token_embedding(
+                    report_tokens[..., other_slots]
+                ).mean(axis=-2)
+            else:
+                other = mx.zeros(
+                    (*states.shape[:-1], self.token_embed_size),
+                    dtype=states.dtype,
+                )
+            identity = mx.broadcast_to(
+                slot_identity[slot], (*states.shape[:-1], self.report_slots)
+            )
+            hidden = nn.relu(
+                self.report_critic_hidden(
+                    mx.concatenate([states, other, identity], axis=-1)
+                )
+            )
+            scores.append(self.report_critic_out(hidden))
+        return mx.stack(scores, axis=-2)
 
     def _transition_features(
         self,

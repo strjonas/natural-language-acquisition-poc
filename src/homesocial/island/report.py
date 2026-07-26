@@ -95,6 +95,10 @@ class ReportConfig:
     shock_probability: float = 0.025
     shock_size: float = 0.25
     reveal_birth_needs: bool = True
+    # Default-off treatment for the preregistered substrate test: every help
+    # object uses the same voluntary CONSUME response.  The legacy ecology
+    # keeps energy-specific REST uptake exactly unchanged.
+    unified_uptake: bool = False
     # Audit conditions. ``scrambled`` replaces what the caregiver heard with a
     # uniformly random need word; ``mute`` makes it hear nothing. Both keep the
     # help clock and every other dynamic identical.
@@ -238,6 +242,10 @@ class ReportWorld(IslandWorld):
         self._help_rng = Random(0)
         self._shock_rng = Random(0)
         self._shock_marker: WorldObject | None = None
+        # Read-only counterfactual audits may force exactly one forthcoming
+        # portion size.  Training and ordinary evaluation never set this, so
+        # their RNG path and ecology are unchanged.
+        self._forced_next_help_large: bool | None = None
         self._grants = 0
         self._grants_by_need = {need: 0 for need in REPORT_NEEDS}
         self._silent_grants = 0
@@ -260,6 +268,7 @@ class ReportWorld(IslandWorld):
         self._help_rng = Random(base + 3_300_013)
         self._shock_rng = Random(base + 5_500_011)
         self._shock_marker = None
+        self._forced_next_help_large = None
         self._heard_need = None
         self._heard_tick = -1
         self._last_utterance = None
@@ -375,6 +384,17 @@ class ReportWorld(IslandWorld):
 
     # -- listener -----------------------------------------------------------
 
+    def force_next_help_portion(self, *, large: bool) -> None:
+        """Force one perceptible help size for a paired causal audit.
+
+        The intervention is consumed by the next non-silent grant.  It changes
+        both the lived bodily consequence and the learner-visible surface that
+        identifies the portion, so the resulting state remains inferable from
+        experience.  No training path calls this method.
+        """
+
+        self._forced_next_help_large = bool(large)
+
     def _grant_help(self) -> tuple[str | None, bool | None, int]:
         """Deliver one help for the last thing heard, spoiling anything unused.
 
@@ -403,7 +423,11 @@ class ReportWorld(IslandWorld):
         if need is None:
             self._silent_grants += 1
             return None, None, source_tick
-        large = self._help_rng.random() < self.report.large_portion_probability
+        if self._forced_next_help_large is None:
+            large = self._help_rng.random() < self.report.large_portion_probability
+        else:
+            large = self._forced_next_help_large
+            self._forced_next_help_large = None
         portion = (
             self.report.portion_large if large else self.report.portion_small
         )
@@ -414,7 +438,13 @@ class ReportWorld(IslandWorld):
         elif need == "water":
             obj = WorldObject(surface, "water", pos, water_delta=portion, consumable=True)
         else:
-            obj = WorldObject(surface, "shelter", pos, energy_delta=portion)
+            obj = WorldObject(
+                surface,
+                "shelter",
+                pos,
+                energy_delta=portion,
+                consumable=self.report.unified_uptake,
+            )
         self.grid.objects = [*self.grid.objects, obj]
         self._grants_by_need[need] += 1
         return need, large, source_tick

@@ -137,6 +137,32 @@ def test_help_restores_only_the_need_it_names():
     assert info["event"] == "consumed_food"
 
 
+def test_forced_audit_portion_is_both_perceptible_and_bodily():
+    small = make_world(seed=71, shock_probability=0.0)
+    large = make_world(seed=71, shock_probability=0.0)
+    packets = []
+    for world, is_large in ((small, False), (large, True)):
+        world.force_next_help_portion(large=is_large)
+        for _ in range(world.report.help_period):
+            world.hear(NEED_UTTERANCE["food"])
+            packet, _, _, _, info = world.step(Action.WAIT)
+        assert info["granted_large"] is is_large
+        packets.append(packet)
+
+    assert small.pending_help_need() == large.pending_help_need() == "food"
+    assert small.grid.needs == large.grid.needs
+    # The portion surface is the sole post-grant perceptual difference.
+    assert packets[0].vector().tolist() != packets[1].vector().tolist()
+
+    small.grid.needs = replace(small.grid.needs, food=0.10)
+    large.grid.needs = replace(large.grid.needs, food=0.10)
+    small.step(Action.CONSUME)
+    large.step(Action.CONSUME)
+    assert large.grid.needs.food - small.grid.needs.food == pytest.approx(
+        large.report.portion_large - small.report.portion_small
+    )
+
+
 def test_shelter_help_needs_rest_and_free_rest_gives_nothing():
     world = make_world()
     world.reset(8)
@@ -152,6 +178,24 @@ def test_shelter_help_needs_rest_and_free_rest_gives_nothing():
     _, _, _, _, info = world.step(Action.REST)
     assert info["event"] == "rested_shelter"
     assert world.grid.needs.energy > before
+
+
+def test_unified_uptake_uses_consume_for_every_help_kind():
+    for need in REPORT_NEEDS:
+        world = make_world(seed=81, unified_uptake=True, shock_probability=0.0)
+        for _ in range(world.report.help_period):
+            world.hear(NEED_UTTERANCE[need])
+            world.step(Action.WAIT)
+        assert uptake_action(world) == Action.CONSUME
+        before = getattr(world.grid.needs, need)
+        _, _, _, _, info = world.step(Action.CONSUME)
+        after = getattr(world.grid.needs, need)
+        assert after > before
+        assert info["event"] == {
+            "food": "consumed_food",
+            "water": "consumed_water",
+            "energy": "consumed_shelter",
+        }[need]
 
 
 def test_shocks_are_perceptible_but_not_interoceptive():

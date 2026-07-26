@@ -398,6 +398,86 @@ base body checkpoints:
 PYTHONPATH=src python3 -m homesocial.option_body_mediation_replication --checkpoints runs/bc_m8_stochastic_persistent_seed12.weights.npz runs/bc_m8_stochastic_persistent_seed13.weights.npz --seeds 10112 10113 --horizon 6 --state-policy cycle --resource-ecology rich --feature-mode delta --option-action-noise 0.15 --mediation-target-mode self_model --score-pretrain-epochs 15 --message-commitment-weight 0.005 --rank-finetune-epochs 4 --rank-finetune-dynamics-weight 0.25 --self-model-rank-control --random-model-control
 ```
 
+## Unified organism self-report
+
+The current frontier is the report island: interoception is visible once at
+birth and then masked, and a caregiver who cannot inspect the body grants help
+only for generated full-vocabulary reports. Start with the exact-dynamics
+feasibility seal:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.island.report_calibrate --lives 400 --rhythm-lives 100 --rhythm-max-length 4 --unified-uptake
+```
+
+Reproduce probe52's need-independent guided lexical childhood and stop at its
+frozen comprehension gate:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.organism.harness --report-task --report-unified-uptake --report-lexical-childhood-steps 60000 --report-lexical-guided-labels --report-lexical-gate-only --train-steps 200000 --segment-length 64 --hidden-size 256 --report-slots 2 --report-entropy-weight 0.02 --report-audit-lives 200 --seed 1 --run-dir runs/organism/probe52_guided_report_lexicon/gate --log-every-lives 100
+```
+
+Continue the exact gate-passed model into the scaffold-free adult report task:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.organism.harness --report-task --report-unified-uptake --report-adult-from-lexical-checkpoint runs/organism/probe52_guided_report_lexicon/gate/organism_report_lexical_child_seed1.npz --train-steps 200000 --segment-length 64 --hidden-size 256 --report-slots 2 --report-entropy-weight 0.02 --report-audit-lives 200 --seed 1 --run-dir runs/organism/probe52_guided_report_lexicon/adult --log-every-lives 100
+```
+
+The child reaches 100% paired causal word comprehension, and the adult retains
+it, but adult self-report still fails at 31.46% fidelity and 3% survival. Run
+the read-only state diagnostics without changing the organism:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.organism.harness --report-task --load-checkpoint runs/organism/probe52_guided_report_lexicon/adult/organism_report_seed1.npz --report-audit-lives 200 --report-self-state-diagnostic-only --run-dir runs/organism/probe52_guided_report_lexicon/diagnostic_self_state
+PYTHONPATH=src python3 -m homesocial.organism.harness --report-task --load-checkpoint runs/organism/probe52_guided_report_lexicon/adult/organism_report_seed1.npz --report-audit-lives 200 --report-supervised-state-upper-bound-only --run-dir runs/organism/probe52_guided_report_lexicon/diagnostic_supervised_upper_bound
+```
+
+The supervised decoder is an audit-only upper bound trained on frozen states,
+not an organism capability. Verify that the permitted observation/action
+history is epistemically sufficient before learning a causal self-model:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.organism.harness --report-task --load-checkpoint runs/organism/probe52_guided_report_lexicon/adult/organism_report_seed1.npz --report-audit-lives 200 --report-observable-history-filter-only --run-dir runs/organism/probe53_observable_history_filter/feasibility
+```
+
+Train the successful structured causal body and full-vocabulary listener
+models. Random developmental tokens are independent of body, and every
+pre-existing organism parameter remains frozen:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.organism.harness --report-task --load-checkpoint runs/organism/probe52_guided_report_lexicon/adult/organism_report_seed1.npz --report-structured-causal-development-steps 80000 --report-audit-lives 200 --seed 1 --run-dir runs/organism/probe57_structured_causal_self/treatment --log-every-lives 200
+```
+
+After the self-model and lexical gates re-pass, run the sealed learned
+social-consequence planner battery:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.organism.harness --report-task --load-checkpoint runs/organism/probe57_structured_causal_self/treatment/organism_causal_self_seed1.npz --report-causal-social-planner-battery --report-audit-lives 200 --report-lexical-gate-lives 300 --seed 1 --run-dir runs/organism/probe57_structured_causal_self/planner_battery
+```
+
+Probe57 reaches 94.99% report fidelity and 92% survival versus 3.5% with a
+scrambled listener. Belief lesions, mute/fixed-word controls, held-out births
+and portions, and perceptible body forks all support the causal interpretation.
+See `docs/STATE.md` for the exact boundary: this is learned causal self-report
+in the minimal ecology, not a consciousness claim.
+
+Replicate the causal stage across independent developmental seeds and degrade
+the one privileged birth reading. Note that `--seed` alone cannot vary this
+stage, because the causal parameters initialize deterministically; the
+developmental world stream is what must move:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.organism.causal_self_replication --parent runs/organism/probe52_guided_report_lexicon/adult/organism_report_seed1.npz --run-dir runs/organism/probe58_causal_stage_replication --seeds 5 --lives 100
+```
+
+All five seeds pass every promotion gate: balanced accuracy 0.9181 +/- 0.0066,
+survival 0.9060 +/- 0.0182, fidelity 0.9471 +/- 0.0034, belief fork following
+1.00, zero-belief survival 0.00. Replacing the birth reading with the
+population mean, which gives zero per-life bodily information, still yields
+0.81 survival and 0.906 fidelity, so the belief is a contracting observer
+rather than a dead-reckoner. See
+`docs/decisions/2026-07-26-causal-self-report-independent-verification.md` for
+the full re-audit and for what this result still does not show.
+
 Train a fresh option-world model per seed, then test whether option mediation
 still works on those independently trained world-model heads:
 

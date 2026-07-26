@@ -34,6 +34,7 @@ from homesocial.creole.situations import Situation
 from homesocial.env import Action, DELTAS, DIRECTION_ORDER, Direction
 from homesocial.island.oracle import OraclePolicy
 from homesocial.island.report import (
+    NEED_TO_REPORT_WORD,
     REPORT_NEEDS,
     ReportConfig,
     ReportWorld,
@@ -318,8 +319,9 @@ def _semantic_choice_return_action(world: IslandWorld) -> Action:
         if grid.direction != desired:
             return _turn_toward(grid.direction, desired)
         return Action.MOVE_FORWARD
-    if grid.direction != Direction.NORTH:
-        return _turn_toward(grid.direction, Direction.NORTH)
+    canonical_direction = world.semantic_choice_direction
+    if grid.direction != canonical_direction:
+        return _turn_toward(grid.direction, canonical_direction)
     return Action.WAIT
 
 
@@ -354,7 +356,7 @@ def _execute_semantic_choice_return(
     if not terminated and not truncated:
         if world.grid.agent_pos != world.semantic_choice_center:
             raise RuntimeError("Fixed return failed to reach semantic-choice center.")
-        if world.grid.direction != Direction.NORTH:
+        if world.grid.direction != world.semantic_choice_direction:
             raise RuntimeError("Fixed return failed to canonicalize heading.")
         if current_packet.last_action_index != ACTIONS.index(Action.WAIT):
             raise RuntimeError("Fixed return must end in a padding WAIT packet.")
@@ -438,7 +440,14 @@ def execute_agent_action(
             consume_options=False,
             inspect_options=False,
         )
-    dx, dy, _ = packet.visible[slot]
+    dx, dy, surface_index = packet.visible[slot]
+    target_surface = SURFACES[surface_index]
+    guided_label = bool(
+        option_kind == "inspect"
+        and world.semantic_choice_guidance_surface == target_surface
+    )
+    if guided_label:
+        world.complete_semantic_choice_guidance(target_surface)
     target = (packet.position[0] + dx, packet.position[1] + dy)
     terminal_action = (
         Action.CONSUME if option_kind == "consume" else Action.ASK
@@ -496,6 +505,7 @@ def execute_agent_action(
     final_info["events"] = tuple(events)
     final_info["option_kind"] = option_kind
     final_info["option_slot"] = slot
+    final_info["guided_label"] = guided_label
     return current_packet, reward_sum, terminated, truncated, final_info
 
 
@@ -1513,6 +1523,25 @@ class OrganismConfig:
     report_task: bool = False
     report_slots: int = 0
     report_entropy_weight: float = 0.02
+    # Default-off COMA-style critic for the factored report-token action.  It
+    # learns only from ordinary returns and is absent at execution.
+    counterfactual_report_credit: bool = False
+    # Default-off developmental bridge. Positive values begin the report
+    # organism in a public three-resource semantic-choice childhood for this
+    # many primitive ticks. Adult report training is launched only after a
+    # separate frozen comprehension gate in the harness.
+    report_lexical_childhood_steps: int = 0
+    tied_report_lexicon: bool = False
+    # Default-off explicit recurrent estimate of hidden food/water/energy.
+    # It is trained and gated by the separate developmental harness before it
+    # may influence any report planner.
+    explicit_self_belief: bool = False
+    self_belief_hidden_size: int = 64
+    self_belief_development_steps: int = 0
+    self_belief_rank_weight: float = 0.0
+    self_belief_relational_urgency: bool = False
+    structured_causal_self_model: bool = False
+    structured_causal_development_steps: int = 0
     report: ReportConfig = field(default_factory=ReportConfig)
     seed: int = 1
     max_steps: int = 1000
@@ -1579,14 +1608,76 @@ class OrganismConfig:
             raise ValueError("report_slots must be nonnegative.")
         if self.report_slots > 0 and not self.report_task:
             raise ValueError("A report head requires the report task.")
+        if self.counterfactual_report_credit and self.report_slots <= 0:
+            raise ValueError(
+                "Counterfactual report credit requires positive report slots."
+            )
+        if self.report_lexical_childhood_steps < 0:
+            raise ValueError(
+                "report_lexical_childhood_steps must be nonnegative."
+            )
+        if self.report_lexical_childhood_steps > 0 and not self.report_task:
+            raise ValueError(
+                "Report lexical childhood requires the report task."
+            )
+        if self.report_lexical_childhood_steps > 0 and not (
+            self.consume_options
+            and self.inspect_options
+            and self.episodic_binding_size > 0
+        ):
+            raise ValueError(
+                "Report lexical childhood requires consume/inspect options "
+                "and a positive episodic binding size."
+            )
+        if self.tied_report_lexicon and self.report_slots <= 0:
+            raise ValueError("A tied report lexicon requires positive report slots.")
+        if self.explicit_self_belief and self.self_belief_hidden_size <= 0:
+            raise ValueError("Explicit self-belief requires a positive hidden size.")
+        if self.self_belief_development_steps < 0:
+            raise ValueError("Self-belief development steps must be nonnegative.")
+        if self.self_belief_development_steps > 0 and not self.explicit_self_belief:
+            raise ValueError(
+                "Self-belief development steps require an explicit module."
+            )
+        if self.self_belief_rank_weight < 0.0:
+            raise ValueError("Self-belief rank weight must be nonnegative.")
+        if self.self_belief_relational_urgency and not self.explicit_self_belief:
+            raise ValueError(
+                "Relational urgency requires an explicit self-belief module."
+            )
+        if self.structured_causal_self_model and not (
+            self.consume_options and self.inspect_options
+        ):
+            raise ValueError(
+                "Structured causal self-model requires public object options."
+            )
+        if self.structured_causal_development_steps < 0:
+            raise ValueError(
+                "Structured causal development steps must be nonnegative."
+            )
+        if (
+            self.structured_causal_development_steps > 0
+            and not self.structured_causal_self_model
+        ):
+            raise ValueError(
+                "Structured causal development requires its model."
+            )
 
     def island_config(
-        self, *, semantic_choice_trial: bool | None = None
+        self,
+        *,
+        semantic_choice_trial: bool | None = None,
+        report_lexicon_choice: bool | None = None,
     ) -> IslandConfig:
         choice_trial = (
             self.island.semantic_choice_trial
             if semantic_choice_trial is None
             else semantic_choice_trial
+        )
+        lexical_choice = (
+            self.island.report_lexicon_choice
+            if report_lexicon_choice is None
+            else report_lexicon_choice
         )
         return IslandConfig(
             width=self.island.width,
@@ -1601,6 +1692,12 @@ class OrganismConfig:
             ),
             semantic_choice_return_duration=(
                 self.island.semantic_choice_return_duration if choice_trial else 0
+            ),
+            report_lexicon_choice=(lexical_choice if choice_trial else False),
+            report_lexicon_guided_labels=(
+                self.island.report_lexicon_guided_labels
+                if choice_trial and lexical_choice
+                else False
             ),
             language_mode=self.language_mode,
             ask_state_period=self.island.ask_state_period,
@@ -1714,6 +1811,14 @@ def build_model(config: OrganismConfig, world: IslandWorld) -> OrganismModel:
             ACTIONS.index(Action.ASK),
         ),
         report_slots=config.report_slots,
+        counterfactual_report_credit=config.counterfactual_report_credit,
+        tied_report_lexicon=config.tied_report_lexicon,
+        explicit_self_belief=config.explicit_self_belief,
+        self_belief_hidden_size=config.self_belief_hidden_size,
+        self_belief_relational_urgency=(
+            config.self_belief_relational_urgency
+        ),
+        structured_causal_self_model=config.structured_causal_self_model,
     )
 
 
@@ -1791,16 +1896,31 @@ class _ReplayItem:
 
 
 class OrganismTrainer:
-    def __init__(self, config: OrganismConfig) -> None:
+    def __init__(
+        self, config: OrganismConfig, *, model: OrganismModel | None = None
+    ) -> None:
         self.config = config
         mx.random.seed(config.seed)
         initial_choice_trial = (
+            config.report_lexical_childhood_steps > 0
+            or
             config.semantic_choice_childhood_steps > 0
             or config.island.semantic_choice_trial
         )
-        if config.report_task:
+        if config.report_task and config.report_lexical_childhood_steps > 0:
+            self.world = IslandWorld(
+                config.island_config(
+                    semantic_choice_trial=True,
+                    report_lexicon_choice=True,
+                ),
+                seed=config.seed,
+            )
+        elif config.report_task:
             self.world: IslandWorld = ReportWorld(
-                config.island_config(semantic_choice_trial=False),
+                config.island_config(
+                    semantic_choice_trial=False,
+                    report_lexicon_choice=False,
+                ),
                 report=config.report,
                 seed=config.seed,
             )
@@ -1809,7 +1929,29 @@ class OrganismTrainer:
                 config.island_config(semantic_choice_trial=initial_choice_trial),
                 seed=config.seed,
             )
-        self.model = build_model(config, self.world)
+        self.model = model if model is not None else build_model(config, self.world)
+        expected = build_model(config, self.world) if model is not None else self.model
+        if model is not None and (
+            model.vector_size != expected.vector_size
+            or model.action_size != expected.action_size
+            or model.vocab_size != expected.vocab_size
+            or model.report_slots != expected.report_slots
+            or model.has_tied_report_lexicon != expected.has_tied_report_lexicon
+            or model.has_explicit_self_belief
+            != expected.has_explicit_self_belief
+            or (
+                model.has_explicit_self_belief
+                and model.self_belief_hidden_size
+                != expected.self_belief_hidden_size
+            )
+            or model.has_self_belief_relational_urgency
+            != expected.has_self_belief_relational_urgency
+            or model.has_structured_causal_self_model
+            != expected.has_structured_causal_self_model
+        ):
+            raise ValueError(
+                "Initial model is incompatible with the requested organism config."
+            )
         self.optimizer = optim.Adam(learning_rate=config.learning_rate)
         self.rng = Random(config.seed)
         self.replay_rng = Random(config.seed + 1_000_003)
@@ -1878,15 +2020,50 @@ class OrganismTrainer:
         self._life_report_uptakes = 0
 
     def _semantic_choice_active(self) -> bool:
+        if self.config.report_lexical_childhood_steps > 0:
+            return self.global_steps < self.config.report_lexical_childhood_steps
         if self.config.semantic_choice_childhood_steps > 0:
             return self.global_steps < self.config.semantic_choice_childhood_steps
         return self.config.island.semantic_choice_trial
 
     def _start_next_life(self) -> None:
         choice_trial = self._semantic_choice_active()
-        if self.world.config.semantic_choice_trial != choice_trial:
+        lexical_choice = (
+            self.config.report_task
+            and self.config.report_lexical_childhood_steps > 0
+            and choice_trial
+        )
+        if lexical_choice and (
+            isinstance(self.world, ReportWorld)
+            or not self.world.config.report_lexicon_choice
+        ):
             self.world = IslandWorld(
-                self.config.island_config(semantic_choice_trial=choice_trial),
+                self.config.island_config(
+                    semantic_choice_trial=True,
+                    report_lexicon_choice=True,
+                ),
+                seed=self.life_seed,
+            )
+        elif self.config.report_task and not lexical_choice and not isinstance(
+            self.world, ReportWorld
+        ):
+            self.world = ReportWorld(
+                self.config.island_config(
+                    semantic_choice_trial=False,
+                    report_lexicon_choice=False,
+                ),
+                report=self.config.report,
+                seed=self.life_seed,
+            )
+        elif (
+            not self.config.report_task
+            and self.world.config.semantic_choice_trial != choice_trial
+        ):
+            self.world = IslandWorld(
+                self.config.island_config(
+                    semantic_choice_trial=choice_trial,
+                    report_lexicon_choice=False,
+                ),
                 seed=self.life_seed,
             )
         self.packet = self.world.reset(self.life_seed)
@@ -2194,11 +2371,12 @@ class OrganismTrainer:
         )
         return_pending = self.world.semantic_choice_return_pending
         round_pending = self.world.semantic_choice_round_pending
+        guidance_surface = self.world.semantic_choice_guidance_surface
         delayed_choice = (
             self.world.config.semantic_choice_trial
             and self.world.config.semantic_choice_return_duration > 0
         )
-        if return_pending or round_pending:
+        if return_pending or round_pending or guidance_surface is not None:
             planning_scale = 0.0
         if planning_scale > 0.0:
             logits = planned_policy_logits(
@@ -2238,6 +2416,21 @@ class OrganismTrainer:
         mx.eval(logits, values, self.hidden)
         if return_pending or round_pending:
             action_index = ACTIONS.index(Action.WAIT)
+            decision_weight = 0.0
+        elif guidance_surface is not None:
+            surface_index = SURFACE_INDEX[guidance_surface]
+            guidance_slot = next(
+                slot
+                for slot, (_, _, surface) in enumerate(self.packet.visible)
+                if surface == surface_index
+            )
+            action_index = object_option_action_index(
+                "inspect",
+                guidance_slot,
+                consume_options=self.config.consume_options,
+                inspect_options=self.config.inspect_options,
+                visible_slots=self.world.config.max_visible_slots,
+            )
             decision_weight = 0.0
         else:
             probabilities = np.asarray(
@@ -2404,6 +2597,7 @@ class OrganismTrainer:
                     in {
                         "consumed_food",
                         "consumed_water",
+                        "consumed_shelter",
                         "rested_shelter",
                     }
                 )
@@ -2743,6 +2937,7 @@ class OrganismTrainer:
         # no separate signal, no target. If a word did not help the organism
         # live, nothing about it was right.
         report_loss = mx.array(0.0)
+        report_critic_loss = mx.array(0.0)
         report_entropy = mx.array(0.0)
         if (
             report_tokens is not None
@@ -2755,12 +2950,37 @@ class OrganismTrainer:
             )
             spoken = mx.take_along_axis(
                 report_log_probabilities, report_tokens[..., None], axis=-1
-            ).squeeze(-1).sum(axis=-1)
+            ).squeeze(-1)
             heard_weights = report_weights * decision_weights
             heard_denominator = mx.maximum(heard_weights.sum(), mx.array(1.0))
-            report_loss = -(
-                advantages * spoken * heard_weights
-            ).sum() / heard_denominator
+            if config.counterfactual_report_credit:
+                report_q = self.model.counterfactual_report_q(
+                    states, report_tokens[None, ...]
+                )[0]
+                chosen_q = mx.take_along_axis(
+                    report_q, report_tokens[..., None], axis=-1
+                ).squeeze(-1)
+                counterfactual_baseline = (
+                    mx.softmax(report_logits, axis=-1)
+                    * mx.stop_gradient(report_q)
+                ).sum(axis=-1)
+                counterfactual_advantage = mx.stop_gradient(
+                    chosen_q - counterfactual_baseline
+                )
+                report_loss = -(
+                    (spoken * counterfactual_advantage).sum(axis=-1)
+                    * heard_weights
+                ).sum() / heard_denominator
+                critic_error = (
+                    chosen_q - mx.stop_gradient(returns[..., None])
+                ) ** 2
+                report_critic_loss = (
+                    critic_error * heard_weights[..., None]
+                ).sum() / (heard_denominator * self.model.report_slots)
+            else:
+                report_loss = -(
+                    advantages * spoken.sum(axis=-1) * heard_weights
+                ).sum() / heard_denominator
             report_entropy_per_step = -(
                 mx.softmax(report_logits, axis=-1) * report_log_probabilities
             ).sum(-1).sum(-1)
@@ -2827,6 +3047,7 @@ class OrganismTrainer:
             + config.value_weight * value_loss
             - config.entropy_weight * entropy
             + report_loss
+            + config.value_weight * report_critic_loss
             - config.report_entropy_weight * report_entropy
             + config.next_vector_weight * vector_loss
             + config.next_needs_weight * needs_loss
@@ -2867,6 +3088,8 @@ class OrganismTrainer:
             return "food_restoration"
         if event == "consumed_water" and need_index == 1:
             return "water_restoration"
+        if event == "consumed_energy" and need_index == 2:
+            return "energy_restoration"
         if event == "consumed_poison":
             return "poison"
         if event == "semantic_choice_round_transition":
@@ -3708,6 +3931,12 @@ class OrganismTrainer:
                         config.semantic_choice_childhood_steps
                         - self.global_steps,
                     )
+                if config.report_lexical_childhood_steps > 0:
+                    choice_steps_left = min(
+                        choice_steps_left,
+                        config.report_lexical_childhood_steps
+                        - self.global_steps,
+                    )
                 exact_limit = self.world.grid.step_count + choice_steps_left
                 self.world.grid.max_steps = min(
                     self.world.grid.max_steps, exact_limit
@@ -3767,8 +3996,12 @@ class OrganismTrainer:
         return self.life_stats
 
 
-def train_organism(config: OrganismConfig) -> tuple[OrganismModel, list[LifeStats]]:
-    trainer = OrganismTrainer(config)
+def train_organism(
+    config: OrganismConfig,
+    *,
+    model: OrganismModel | None = None,
+) -> tuple[OrganismModel, list[LifeStats]]:
+    trainer = OrganismTrainer(config, model=model)
     stats = trainer.train()
     return trainer.model, stats
 
@@ -4154,6 +4387,505 @@ def evaluate_semantic_choice(
                 ),
             }
         )
+    return result
+
+
+REPORT_LEXICON_CYCLE = {
+    "hungry": "thirsty",
+    "thirsty": "tired",
+    "tired": "hungry",
+}
+
+
+def audit_report_lexical_comprehension(
+    model: OrganismModel,
+    *,
+    lives: int = 300,
+    base_seed: int = 4_901_000,
+    semantic_choice_horizon: int = 40,
+    semantic_choice_low_need: float = 0.55,
+    semantic_choice_return_duration: int = 6,
+) -> dict[str, float]:
+    """Paired frozen test that heard report words control resource choice.
+
+    The protocol chooses a target only to establish joint attention and score
+    the frozen result.  The model receives the ordinary visible object, label,
+    fixed return, and bodily observation packets; no kind or correct-action
+    metadata enters it.  The paired branch changes only one heard content word.
+    """
+
+    if lives <= 0:
+        raise ValueError("Lexical comprehension audit requires positive lives.")
+    if not model.has_episodic_bindings or model.visible_slots < 3:
+        raise ValueError(
+            "Lexical comprehension audit requires bindings and three slots."
+        )
+
+    def run_branch(seed: int, *, cyclic: bool) -> tuple[str, str, int]:
+        world = IslandWorld(
+            IslandConfig(
+                language_mode="grounded",
+                semantic_choice_trial=True,
+                semantic_choice_horizon=semantic_choice_horizon,
+                semantic_choice_objects=3,
+                semantic_choice_low_need=semantic_choice_low_need,
+                semantic_choice_rounds=8,
+                semantic_choice_return_duration=semantic_choice_return_duration,
+                report_lexicon_choice=True,
+                max_visible_slots=model.visible_slots,
+            ),
+            seed=seed,
+        )
+        packet = world.reset(seed)
+        target_kind = str(world.grid.choice_need)
+        target_surface = next(
+            surface
+            for surface, kind in world.grid.kind_by_surface.items()
+            if kind == target_kind
+            and any(
+                visible_surface == SURFACE_INDEX[surface]
+                for _, _, visible_surface in packet.visible
+            )
+        )
+        target_surface_index = SURFACE_INDEX[target_surface]
+        target_slot = next(
+            slot
+            for slot, (_, _, surface) in enumerate(packet.visible)
+            if surface == target_surface_index
+        )
+
+        vector = mx.array(packet.vector()[None, None, :])
+        tokens = mx.array(
+            np.asarray(packet.tokens, dtype=np.int32)[None, None, :]
+        )
+        _, carry = model.core_states(vector, tokens, None)
+
+        inspect_action = object_option_action_index(
+            "inspect",
+            target_slot,
+            consume_options=True,
+            inspect_options=True,
+            visible_slots=model.visible_slots,
+        )
+        label_packet, _, terminated, truncated, info = execute_agent_action(
+            world,
+            packet,
+            inspect_action,
+            consume_options=True,
+            inspect_options=True,
+        )
+        if terminated or truncated or not _is_voluntary_inspection_event(info):
+            raise RuntimeError("Report-lexicon target inspection failed.")
+        if cyclic:
+            words = [VOCAB[token] for token in label_packet.tokens]
+            changed = False
+            for index, word in enumerate(words):
+                replacement = REPORT_LEXICON_CYCLE.get(word)
+                if replacement is not None:
+                    words[index] = replacement
+                    changed = True
+            if not changed:
+                raise RuntimeError("Report-lexicon label contained no need word.")
+            label_packet = replace(
+                label_packet,
+                tokens=tuple(TOKEN_TO_ID[word] for word in words),
+            )
+        label_vector = mx.array(label_packet.vector()[None, None, :])
+        label_tokens = mx.array(
+            np.asarray(label_packet.tokens, dtype=np.int32)[None, None, :]
+        )
+        _, carry = model.core_states(label_vector, label_tokens, carry)
+
+        return_packet, _, terminated, truncated, _ = execute_agent_action(
+            world,
+            label_packet,
+            ACTIONS.index(Action.WAIT),
+            consume_options=True,
+            inspect_options=True,
+        )
+        if terminated or truncated:
+            raise RuntimeError("Report-lexicon fixed return ended early.")
+        return_vector = mx.array(return_packet.vector()[None, None, :])
+        return_tokens = mx.array(
+            np.asarray(return_packet.tokens, dtype=np.int32)[None, None, :]
+        )
+        states, _ = model.core_states(return_vector, return_tokens, carry)
+        scores = _terminal_consume_scores(
+            model,
+            states,
+            return_vector,
+            urgent_deficit_utility=True,
+        )
+        mx.eval(scores)
+        visible_count = len(return_packet.visible)
+        selected_slot = int(
+            np.argmax(np.asarray(scores[0, 0, :visible_count]))
+        )
+        selected_surface_index = int(return_packet.visible[selected_slot][2])
+        selected_surface = SURFACES[selected_surface_index]
+        selected_kind = world.grid.kind_by_surface[selected_surface]
+        return target_kind, selected_kind, selected_surface_index
+
+    intact_correct = 0
+    cyclic_correct = 0
+    action_changes = 0
+    per_need_total = {need: 0 for need in REPORT_NEEDS}
+    per_need_correct = {need: 0 for need in REPORT_NEEDS}
+    writes_before = model.episodic_binding_writes
+    model.episodic_binding_writes = True
+    try:
+        for life in range(lives):
+            seed = base_seed + life
+            target, intact_kind, intact_surface = run_branch(seed, cyclic=False)
+            paired_target, cyclic_kind, cyclic_surface = run_branch(
+                seed, cyclic=True
+            )
+            if paired_target != target:
+                raise RuntimeError("Paired lexical worlds diverged in target.")
+            intact_hit = intact_kind == target
+            intact_correct += int(intact_hit)
+            cyclic_correct += int(cyclic_kind == target)
+            action_changes += int(intact_surface != cyclic_surface)
+            per_need_total[target] += 1
+            per_need_correct[target] += int(intact_hit)
+    finally:
+        model.episodic_binding_writes = writes_before
+
+    intact_rate = intact_correct / lives
+    cyclic_rate = cyclic_correct / lives
+    result: dict[str, float] = {
+        "lives": float(lives),
+        "intact_correct_rate": intact_rate,
+        "cyclic_correct_rate": cyclic_rate,
+        "intact_minus_cyclic_correct_rate": intact_rate - cyclic_rate,
+        "paired_action_change_rate": action_changes / lives,
+    }
+    for need in REPORT_NEEDS:
+        result[f"intact_{need}_correct_rate"] = (
+            per_need_correct[need] / max(1, per_need_total[need])
+        )
+        result[f"{need}_lives"] = float(per_need_total[need])
+    result["gate_passed"] = float(report_lexical_comprehension_passed(result))
+    return result
+
+
+def report_lexical_comprehension_passed(result: dict[str, float]) -> bool:
+    """Apply the locked pre-adult report-lexicon promotion thresholds."""
+
+    return bool(
+        result["intact_correct_rate"] >= 0.80
+        and all(
+            result[f"intact_{need}_correct_rate"] >= 0.70
+            for need in REPORT_NEEDS
+        )
+        and result["cyclic_correct_rate"] <= 0.45
+        and result["intact_minus_cyclic_correct_rate"] >= 0.30
+        and result["paired_action_change_rate"] >= 0.60
+    )
+
+
+def audit_report_lexical_geometry(
+    model: OrganismModel,
+    *,
+    contexts: int = 300,
+    base_seed: int = 4_902_000,
+) -> dict[str, float]:
+    """Localize a failed report-lexicon gate without updating the model.
+
+    This controlled audit fixes state, surface and body, explicitly writes each
+    possible public word through the organism's ordinary lexical operation,
+    and reads the learned bodily consequence and resource ranking. It therefore
+    separates token geometry, word-conditioned consequence geometry, and the
+    final consequence-to-action reduction.
+    """
+
+    if contexts <= 0:
+        raise ValueError("Lexical geometry audit requires positive contexts.")
+    if not model.has_episodic_bindings or model.visible_slots < 3:
+        raise ValueError("Lexical geometry audit requires bindings and 3 slots.")
+
+    candidates = mx.array(
+        np.asarray(
+            [
+                encode_utterance(("this", NEED_TO_REPORT_WORD[need]))
+                for need in REPORT_NEEDS
+            ],
+            dtype=np.int32,
+        )
+    )
+    encoded = model._encode_tokens(candidates[:, None, :])[:, 0, :]
+    lexical_values = mx.tanh(model.binding_value(encoded))
+    mx.eval(lexical_values)
+    lexical = np.asarray(lexical_values, dtype=np.float64)
+    pairwise_lexical = [
+        float(np.linalg.norm(lexical[left] - lexical[right], ord=1))
+        for left in range(3)
+        for right in range(left + 1, 3)
+    ]
+
+    delta_sum = np.zeros((3, 3), dtype=np.float64)
+    word_kind_hits = 0
+    matching_kind_hits = 0
+    matching_target_hits = 0
+    selection_contingent = 0
+    cyclic_selection_changes = 0
+    target_delta_l1: list[float] = []
+
+    writes_before = model.episodic_binding_writes
+    model.episodic_binding_writes = True
+    try:
+        for context in range(contexts):
+            seed = base_seed + context
+            world = IslandWorld(
+                IslandConfig(
+                    language_mode="grounded",
+                    semantic_choice_trial=True,
+                    semantic_choice_horizon=40,
+                    semantic_choice_objects=3,
+                    semantic_choice_low_need=0.55,
+                    semantic_choice_rounds=8,
+                    semantic_choice_return_duration=6,
+                    report_lexicon_choice=True,
+                    max_visible_slots=model.visible_slots,
+                ),
+                seed=seed,
+            )
+            packet = world.reset(seed)
+            vector = mx.array(packet.vector()[None, None, :])
+            tokens = mx.array(
+                np.asarray(packet.tokens, dtype=np.int32)[None, None, :]
+            )
+            states, _ = model.core_states(vector, tokens, None)
+            target_need = str(world.grid.choice_need)
+            target_need_index = REPORT_NEEDS.index(target_need)
+            target_slot = next(
+                slot
+                for slot, (_, _, surface) in enumerate(packet.visible)
+                if world.grid.kind_by_surface[SURFACES[surface]] == target_need
+            )
+            target_surface = model._visible_object_features(vector)[
+                ..., target_slot, 3:
+            ]
+            selected_surfaces: list[int] = []
+            target_deltas: list[np.ndarray] = []
+            for word_index in range(3):
+                written = model.write_binding_into_state(
+                    states,
+                    target_surface,
+                    candidates[word_index][None, None, :],
+                )
+                settled = _settled_context_state(
+                    model, written, vector, steps=PROTOCOL_SETTLING_OBSERVATIONS
+                )
+                target_action = object_option_action_index(
+                    "consume",
+                    target_slot,
+                    consume_options=True,
+                    inspect_options=True,
+                    visible_slots=model.visible_slots,
+                )
+                _, predicted_delta, _, _ = model.predict_consequences(
+                    settled,
+                    mx.array([[target_action]], dtype=mx.int32),
+                    vector,
+                )
+                scores = _terminal_consume_scores(
+                    model,
+                    settled,
+                    vector,
+                    urgent_deficit_utility=True,
+                )
+                mx.eval(predicted_delta, scores)
+                delta = np.asarray(predicted_delta[0, 0, :3], dtype=np.float64)
+                target_deltas.append(delta)
+                delta_sum[word_index] += delta
+                predicted_kind = int(np.argmax(delta))
+                word_kind_hits += int(predicted_kind == word_index)
+                if word_index == target_need_index:
+                    matching_kind_hits += int(predicted_kind == target_need_index)
+                selected_slot = int(
+                    np.argmax(
+                        np.asarray(scores[0, 0, : len(packet.visible)])
+                    )
+                )
+                selected_surface = int(packet.visible[selected_slot][2])
+                selected_surfaces.append(selected_surface)
+                if word_index == target_need_index:
+                    matching_target_hits += int(selected_slot == target_slot)
+            selection_contingent += int(len(set(selected_surfaces)) > 1)
+            cyclic_index = (target_need_index + 1) % 3
+            cyclic_selection_changes += int(
+                selected_surfaces[target_need_index]
+                != selected_surfaces[cyclic_index]
+            )
+            for left in range(3):
+                for right in range(left + 1, 3):
+                    target_delta_l1.append(
+                        float(np.abs(target_deltas[left] - target_deltas[right]).sum())
+                    )
+    finally:
+        model.episodic_binding_writes = writes_before
+
+    mean_delta = delta_sum / contexts
+    result: dict[str, float] = {
+        "contexts": float(contexts),
+        "mean_pairwise_lexical_l1": float(np.mean(pairwise_lexical)),
+        "min_pairwise_lexical_l1": float(np.min(pairwise_lexical)),
+        "mean_pairwise_target_delta_l1": float(np.mean(target_delta_l1)),
+        "word_conditioned_predicted_kind_rate": word_kind_hits / (contexts * 3),
+        "matching_word_predicted_kind_rate": matching_kind_hits / contexts,
+        "matching_word_selects_target_rate": matching_target_hits / contexts,
+        "any_word_changes_selection_rate": selection_contingent / contexts,
+        "cyclic_word_changes_selection_rate": cyclic_selection_changes / contexts,
+    }
+    for word_index, word_need in enumerate(REPORT_NEEDS):
+        for need_index, predicted_need in enumerate(REPORT_NEEDS):
+            result[
+                f"{word_need}_word_predicted_{predicted_need}_delta"
+            ] = float(mean_delta[word_index, need_index])
+    return result
+
+
+def audit_report_lexical_guidance_mechanics(
+    *,
+    lives: int = 300,
+    base_seed: int = 4_903_000,
+) -> dict[str, float]:
+    """Verify guided joint attention is balanced and independent of need."""
+
+    if lives <= 0:
+        raise ValueError("Guidance mechanics audit requires positive lives.")
+    label_counts = {need: 0 for need in REPORT_NEEDS}
+    rounds = 0
+    matching_need = 0
+    four_tick_inspects = 0
+    six_tick_returns = 0
+    guided_events = 0
+    for life in range(lives):
+        seed = base_seed + life
+        world = IslandWorld(
+            IslandConfig(
+                language_mode="grounded",
+                semantic_choice_trial=True,
+                semantic_choice_horizon=40,
+                semantic_choice_objects=3,
+                semantic_choice_low_need=0.55,
+                semantic_choice_rounds=8,
+                semantic_choice_return_duration=6,
+                report_lexicon_choice=True,
+                report_lexicon_guided_labels=True,
+                max_visible_slots=3,
+            ),
+            seed=seed,
+        )
+        packet = world.reset(seed)
+        for round_index in range(8):
+            guidance_surface = world.semantic_choice_guidance_surface
+            if guidance_surface is None:
+                raise RuntimeError("Guided round has no joint-attention target.")
+            target_kind = world.grid.kind_by_surface[guidance_surface]
+            matching_need += int(target_kind == world.grid.choice_need)
+            guidance_slot = next(
+                slot
+                for slot, (_, _, surface) in enumerate(packet.visible)
+                if SURFACES[surface] == guidance_surface
+            )
+            inspect_action = object_option_action_index(
+                "inspect",
+                guidance_slot,
+                consume_options=True,
+                inspect_options=True,
+                visible_slots=3,
+            )
+            packet, _, terminated, truncated, inspect_info = execute_agent_action(
+                world,
+                packet,
+                inspect_action,
+                consume_options=True,
+                inspect_options=True,
+            )
+            if terminated or truncated:
+                raise RuntimeError("Guided inspection ended mechanics life early.")
+            guided_events += int(bool(inspect_info.get("guided_label")))
+            four_tick_inspects += int(inspect_info["duration"] == 4)
+            heard_word = VOCAB[packet.tokens[1]]
+            heard_need = next(
+                need
+                for need, word in NEED_TO_REPORT_WORD.items()
+                if word == heard_word
+            )
+            label_counts[heard_need] += 1
+            packet, _, terminated, truncated, return_info = execute_agent_action(
+                world,
+                packet,
+                ACTIONS.index(Action.WAIT),
+                consume_options=True,
+                inspect_options=True,
+            )
+            if terminated or truncated:
+                raise RuntimeError("Guided return ended mechanics life early.")
+            six_tick_returns += int(return_info["duration"] == 6)
+
+            needed = str(world.grid.choice_need)
+            needed_slot = next(
+                slot
+                for slot, (_, _, surface) in enumerate(packet.visible)
+                if world.grid.kind_by_surface[SURFACES[surface]] == needed
+            )
+            consume_action = object_option_action_index(
+                "consume",
+                needed_slot,
+                consume_options=True,
+                inspect_options=True,
+                visible_slots=3,
+            )
+            packet, _, terminated, truncated, consume_info = execute_agent_action(
+                world,
+                packet,
+                consume_action,
+                consume_options=True,
+                inspect_options=True,
+            )
+            if not bool(consume_info.get("semantic_choice_round_complete")):
+                raise RuntimeError("Guidance mechanics did not complete round.")
+            rounds += 1
+            if round_index < 7:
+                if terminated or truncated:
+                    raise RuntimeError("Guidance mechanics life ended early.")
+                packet, _, terminated, truncated, transition_info = (
+                    execute_agent_action(
+                        world,
+                        packet,
+                        ACTIONS.index(Action.WAIT),
+                        consume_options=True,
+                        inspect_options=True,
+                    )
+                )
+                if terminated or truncated or not bool(
+                    transition_info.get("forced_round_transition")
+                ):
+                    raise RuntimeError("Guidance round transition failed.")
+
+    result: dict[str, float] = {
+        "lives": float(lives),
+        "completed_rounds": float(rounds),
+        "guided_labels_per_round": guided_events / rounds,
+        "guidance_matches_low_need_rate": matching_need / rounds,
+        "four_tick_inspect_rate": four_tick_inspects / rounds,
+        "six_tick_return_rate": six_tick_returns / rounds,
+    }
+    for need in REPORT_NEEDS:
+        result[f"{need}_guided_label_fraction"] = label_counts[need] / rounds
+    result["mechanics_passed"] = float(
+        result["guided_labels_per_round"] == 1.0
+        and 0.28 <= result["guidance_matches_low_need_rate"] <= 0.38
+        and all(
+            0.28 <= result[f"{need}_guided_label_fraction"] <= 0.38
+            for need in REPORT_NEEDS
+        )
+        and result["four_tick_inspect_rate"] == 1.0
+        and result["six_tick_return_rate"] == 1.0
+    )
     return result
 
 

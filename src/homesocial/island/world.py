@@ -59,6 +59,7 @@ ENV_KIND_TO_CREOLE = {
     "shelter": "shelter",
     "danger": "danger",
     "poison": "danger",
+    "energy": "tired",
     "tree": "tree",
     "rock": "rock",
 }
@@ -93,10 +94,25 @@ STABLE_SURFACE_KINDS = {
 
 LANGUAGE_MODES = ("grounded", "silent", "shuffled")
 CAREGIVER_SEED_SALT = 1_000_003
+GUIDANCE_SEED_SALT = 8_100_019
 SEMANTIC_CHOICE_SHUFFLED_KINDS = {
     2: ("food", "water", "danger", "danger"),
     3: ("food", "water", "danger"),
 }
+REPORT_LEXICON_KINDS = ("food", "water", "energy")
+REPORT_LEXICON_WORD_BY_KIND = {
+    "food": "hungry",
+    "water": "thirsty",
+    "energy": "tired",
+}
+REPORT_LEXICON_SURFACES = (
+    "water",
+    "spring",
+    "berry",
+    "roots",
+    "mushroom",
+    "hut",
+)
 
 
 def _caregiver_seed(seed: int | None) -> int:
@@ -130,6 +146,14 @@ class IslandConfig:
     # returned to the agent only after a fixed-duration, padding-only return
     # to the canonical center/NORTH pose.
     semantic_choice_return_duration: int = 0
+    # Developmental bridge into generated report.  In this default-off
+    # variant the three delayed-choice labels are the report words and the
+    # three external kinds restore food, water, and energy respectively.
+    report_lexicon_choice: bool = False
+    # Default-off developmental pedagogy: one uniformly selected external
+    # object is inspected by a fixed caregiver-guided macro at each round
+    # start. Selection is independent of the body's current need.
+    report_lexicon_guided_labels: bool = False
     language_mode: str = "grounded"
     ask_state_period: int = 25
     visible_radius: int = 2
@@ -164,6 +188,18 @@ class IslandConfig:
             raise ValueError(
                 f"semantic_choice_trial requires at least {minimum} visible slots."
             )
+        if self.report_lexicon_choice and not self.semantic_choice_trial:
+            raise ValueError(
+                "report_lexicon_choice requires a semantic-choice trial."
+            )
+        if self.report_lexicon_choice and self.semantic_choice_objects != 3:
+            raise ValueError(
+                "report_lexicon_choice requires exactly three visible objects."
+            )
+        if self.report_lexicon_guided_labels and not self.report_lexicon_choice:
+            raise ValueError(
+                "Guided report labels require report_lexicon_choice."
+            )
         if not 0.0 <= self.caregiver_offer_threshold <= 1.0:
             raise ValueError("caregiver_offer_threshold must be in [0, 1].")
         if self.caregiver_offer_distance < 0:
@@ -183,6 +219,7 @@ class IslandGrid(HomeostaticSocialGrid):
         semantic_choice_objects: int = 2,
         semantic_choice_low_need: float = 0.35,
         semantic_choice_rounds: int = 1,
+        report_lexicon_choice: bool = False,
         seed: int | None = None,
     ) -> None:
         super().__init__(
@@ -199,16 +236,28 @@ class IslandGrid(HomeostaticSocialGrid):
         self.semantic_choice_objects = semantic_choice_objects
         self.semantic_choice_low_need = semantic_choice_low_need
         self.semantic_choice_rounds = semantic_choice_rounds
+        self.report_lexicon_choice = report_lexicon_choice
         self.choice_need: str | None = None
         self.choice_surfaces: tuple[str, ...] = ()
         self.choice_round_index = 0
         self.choice_round_start_step = 0
         self.choice_object_template: tuple[WorldObject, ...] = ()
+        self.choice_direction = Direction.NORTH
         self.offered_kind: str | None = None
         self.offered_surface: str | None = None
         self.offered_pos: tuple[int, int] | None = None
 
     def _assign_kinds(self) -> dict[str, str]:
+        if self.report_lexicon_choice:
+            kinds = {
+                surface: kind
+                for surface, kind in STABLE_SURFACE_KINDS.items()
+                if surface not in REPORT_LEXICON_SURFACES
+            }
+            assigned = [kind for kind in REPORT_LEXICON_KINDS for _ in range(2)]
+            self.rng.shuffle(assigned)
+            kinds.update(zip(REPORT_LEXICON_SURFACES, assigned))
+            return kinds
         kinds = dict(STABLE_SURFACE_KINDS)
         assigned = list(CONSUMABLE_KIND_QUOTA)
         self.rng.shuffle(assigned)
@@ -224,6 +273,10 @@ class IslandGrid(HomeostaticSocialGrid):
             return WorldObject(
                 surface, kind, pos,
                 safety_delta=-0.30, energy_delta=-0.05, consumable=True,
+            )
+        if kind == "energy":
+            return WorldObject(
+                surface, kind, pos, energy_delta=0.40, consumable=True
             )
         if kind == "shelter":
             return WorldObject(surface, kind, pos)
@@ -241,6 +294,7 @@ class IslandGrid(HomeostaticSocialGrid):
         self.choice_round_index = 0
         self.choice_round_start_step = 0
         self.choice_object_template = ()
+        self.choice_direction = Direction.NORTH
         if self.semantic_choice_trial:
             return self._make_semantic_choice_world()
         surfaces = [
@@ -275,7 +329,11 @@ class IslandGrid(HomeostaticSocialGrid):
         self.step_count += 1
         self.choice_round_index += 1
         self.choice_round_start_step = self.step_count
-        self.choice_need = "water" if self.choice_need == "food" else "food"
+        if self.report_lexicon_choice:
+            current = REPORT_LEXICON_KINDS.index(self.choice_need)
+            self.choice_need = REPORT_LEXICON_KINDS[(current + 1) % 3]
+        else:
+            self.choice_need = "water" if self.choice_need == "food" else "food"
         self.needs = replace(
             self.needs,
             food=(
@@ -288,11 +346,19 @@ class IslandGrid(HomeostaticSocialGrid):
                 if self.choice_need == "water"
                 else 0.75
             ),
-            energy=0.75,
+            energy=(
+                self.semantic_choice_low_need
+                if self.choice_need == "energy"
+                else 0.75
+            ),
             safety=0.75,
         )
         self.agent_pos = (self.width // 2, self.height // 2)
-        self.direction = Direction.NORTH
+        self.direction = (
+            self.choice_direction
+            if self.report_lexicon_choice
+            else Direction.NORTH
+        )
         self.objects = list(self.choice_object_template)
         self.offered_kind = None
         self.offered_surface = None
@@ -309,7 +375,12 @@ class IslandGrid(HomeostaticSocialGrid):
         recovered from the currently low need.
         """
 
-        self.choice_need = self.rng.choice(("food", "water"))
+        choice_kinds = (
+            REPORT_LEXICON_KINDS
+            if self.report_lexicon_choice
+            else ("food", "water")
+        )
+        self.choice_need = self.rng.choice(choice_kinds)
         self.needs = replace(
             self.needs, **{self.choice_need: self.semantic_choice_low_need}
         )
@@ -319,15 +390,34 @@ class IslandGrid(HomeostaticSocialGrid):
             for surface in CONSUMABLE_SURFACES
             if self.kind_by_surface[surface] == self.choice_need
         ]
-        poison_surface = next(
-            surface
-            for surface in CONSUMABLE_SURFACES
-            if self.kind_by_surface[surface] == "poison"
-        )
         resource_surface = self.rng.choice(matching_surfaces)
-        if self.semantic_choice_objects == 2:
+        if self.report_lexicon_choice:
+            surfaces = [resource_surface]
+            for kind in REPORT_LEXICON_KINDS:
+                if kind == self.choice_need:
+                    continue
+                surfaces.append(
+                    self.rng.choice(
+                        [
+                            surface
+                            for surface in REPORT_LEXICON_SURFACES
+                            if self.kind_by_surface[surface] == kind
+                        ]
+                    )
+                )
+        elif self.semantic_choice_objects == 2:
+            poison_surface = next(
+                surface
+                for surface in CONSUMABLE_SURFACES
+                if self.kind_by_surface[surface] == "poison"
+            )
             surfaces = [resource_surface, poison_surface]
         else:
+            poison_surface = next(
+                surface
+                for surface in CONSUMABLE_SURFACES
+                if self.kind_by_surface[surface] == "poison"
+            )
             other_need = "water" if self.choice_need == "food" else "food"
             wrong_surface = self.rng.choice(
                 [
@@ -365,7 +455,27 @@ class IslandGrid(HomeostaticSocialGrid):
                 (center[0], center[1] + 2),
             ]
             positions = self.rng.sample(cardinal_positions, 3)
-            self.direction = self.rng.choice(tuple(DIRECTION_ORDER))
+            if self.report_lexicon_choice:
+                # A four-tick kind-blind option has room for one turn, two
+                # moves, and ASK/CONSUME. Put the sole omitted cardinal target
+                # directly behind the organism so every presented target is
+                # ahead or one turn away. This also equalizes option duration.
+                omitted = next(
+                    pos for pos in cardinal_positions if pos not in positions
+                )
+                offset = (omitted[0] - center[0], omitted[1] - center[1])
+                omitted_direction = next(
+                    direction
+                    for direction, delta in DELTAS.items()
+                    if (2 * delta[0], 2 * delta[1]) == offset
+                )
+                self.direction = DIRECTION_ORDER[
+                    (DIRECTION_ORDER.index(omitted_direction) + 2)
+                    % len(DIRECTION_ORDER)
+                ]
+            else:
+                self.direction = self.rng.choice(tuple(DIRECTION_ORDER))
+        self.choice_direction = self.direction
         objects = [
             self._object_for(surface, self.kind_by_surface[surface], pos)
             for surface, pos in zip(surfaces, positions)
@@ -621,7 +731,11 @@ class Caregiver:
         return self.bank.sample(situation, self._rng)
 
     def utter_semantic_choice_label(
-        self, situation: Situation, *, choice_objects: int = 2
+        self,
+        situation: Situation,
+        *,
+        choice_objects: int = 2,
+        report_lexicon: bool = False,
     ) -> tuple[str, ...] | None:
         """Emit a length-matched minimal label for the paired-choice trial."""
 
@@ -629,13 +743,17 @@ class Caregiver:
             raise ValueError("Semantic-choice speech must be an object label.")
         if self.language_mode == "silent":
             return None
-        if self.language_mode == "shuffled":
+        if self.language_mode == "shuffled" and report_lexicon:
+            kind = self._rng.choice(tuple(REPORT_LEXICON_WORD_BY_KIND.values()))
+        elif self.language_mode == "shuffled":
             kind = self._rng.choice(
                 SEMANTIC_CHOICE_SHUFFLED_KINDS[choice_objects]
             )
         else:
             kind = situation.slot("kind")
             assert kind is not None
+            if report_lexicon:
+                kind = REPORT_LEXICON_WORD_BY_KIND.get(kind, kind)
         return ("this", kind)
 
 
@@ -675,6 +793,8 @@ class IslandWorld:
         self._inspected_surfaces: set[str] = set()
         self._semantic_choice_return_pending = False
         self._semantic_choice_round_pending = False
+        self._semantic_choice_guidance_surface: str | None = None
+        self._guidance_rng = Random(0)
 
     def _build_grid(self, max_steps: int, seed: int | None) -> IslandGrid:
         """Construct this world's grid. Subclasses may supply another ecology."""
@@ -687,6 +807,7 @@ class IslandWorld:
             semantic_choice_objects=self.config.semantic_choice_objects,
             semantic_choice_low_need=self.config.semantic_choice_low_need,
             semantic_choice_rounds=self.config.semantic_choice_rounds,
+            report_lexicon_choice=self.config.report_lexicon_choice,
             seed=seed,
         )
 
@@ -698,11 +819,25 @@ class IslandWorld:
         observation = self.grid.reset(seed)
         if seed is not None:
             self.caregiver.reset(_caregiver_seed(seed))
+        base = 0 if seed is None else seed
+        self._guidance_rng = Random(base + GUIDANCE_SEED_SALT)
         self._last_action_index = -1
         self._inspected_surfaces.clear()
         self._semantic_choice_return_pending = False
         self._semantic_choice_round_pending = False
+        self._schedule_report_lexicon_guidance()
         return self._packet(observation, None)
+
+    def hear(self, tokens: tuple[int, ...] | None) -> None:
+        """Accept speech in worlds without an acting listener.
+
+        A speaking organism keeps the same mouth through lexical childhood and
+        adult report. Childhood speech has no environmental consequence, so it
+        receives no report credit; this no-op makes that causal boundary
+        explicit while preserving one world interface.
+        """
+
+        del tokens
 
     @property
     def semantic_choice_return_pending(self) -> bool:
@@ -717,8 +852,39 @@ class IslandWorld:
         return self._semantic_choice_round_pending
 
     @property
+    def semantic_choice_guidance_surface(self) -> str | None:
+        """Public surface selected for the next fixed joint-attention event."""
+
+        return self._semantic_choice_guidance_surface
+
+    def complete_semantic_choice_guidance(self, surface: str) -> None:
+        if surface != self._semantic_choice_guidance_surface:
+            raise ValueError("Completed guidance does not match its public target.")
+        self._semantic_choice_guidance_surface = None
+
+    def _schedule_report_lexicon_guidance(self) -> None:
+        if not self.config.report_lexicon_guided_labels:
+            self._semantic_choice_guidance_surface = None
+            return
+        if not self.grid.choice_surfaces:
+            raise RuntimeError("Guided label round has no external objects.")
+        self._semantic_choice_guidance_surface = self._guidance_rng.choice(
+            self.grid.choice_surfaces
+        )
+
+    @property
     def semantic_choice_center(self) -> tuple[int, int]:
         return (self.config.width // 2, self.config.height // 2)
+
+    @property
+    def semantic_choice_direction(self) -> Direction:
+        """Canonical heading shared by choice starts and fixed returns."""
+
+        return (
+            self.grid.choice_direction
+            if self.config.report_lexicon_choice
+            else Direction.NORTH
+        )
 
     def complete_semantic_choice_return(self) -> None:
         self._semantic_choice_return_pending = False
@@ -732,6 +898,7 @@ class IslandWorld:
             raise ValueError("No semantic-choice round transition is pending.")
         observation = self.grid.start_next_semantic_choice_round()
         self._semantic_choice_round_pending = False
+        self._schedule_report_lexicon_guidance()
         self._last_action_index = list(Action).index(Action.WAIT)
         packet = self._packet(observation, None)
         viability = min(packet.needs)
@@ -795,6 +962,7 @@ class IslandWorld:
             words = self.caregiver.utter_semantic_choice_label(
                 situation,
                 choice_objects=self.config.semantic_choice_objects,
+                report_lexicon=self.config.report_lexicon_choice,
             )
         else:
             situation, words = self.caregiver.utter(
@@ -820,7 +988,13 @@ class IslandWorld:
             self.config.semantic_choice_trial
             and object_ahead_before is not None
             and object_ahead_before.consumable
-            and event in {"consumed_food", "consumed_water", "consumed_poison"}
+            and event
+            in {
+                "consumed_food",
+                "consumed_water",
+                "consumed_energy",
+                "consumed_poison",
+            }
         ):
             consumed_kind = object_ahead_before.kind
             consumed_surface = object_ahead_before.name
@@ -828,8 +1002,7 @@ class IslandWorld:
                 choice_round_index_before + 1
                 >= self.config.semantic_choice_rounds
             )
-            if not terminated and not final_round:
-                truncated = False
+            if not terminated and not truncated and not final_round:
                 self._semantic_choice_round_pending = True
             else:
                 truncated = True
@@ -867,7 +1040,7 @@ class IslandWorld:
                 ),
                 "poison": consumed_kind == "poison",
                 "wrong_resource": (
-                    consumed_kind in {"food", "water"}
+                    consumed_kind in {"food", "water", "energy"}
                     and consumed_kind != choice_need_before
                 ),
                 "timeout": timeout,
