@@ -1,3 +1,7 @@
+> **FROZEN HISTORICAL RECORD.** Superseded by `docs/DIRECTION_2026-07-26.md`.
+> Kept as evidence of what was tried. Do not append to it and do not treat any
+> plan, status, or number in it as current. Current state: `docs/STATE.md`.
+
 # Direction: From Probe Collection to Organism
 
 Date: 2026-07-12

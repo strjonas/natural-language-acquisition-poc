@@ -1,3 +1,7 @@
+> **FROZEN HISTORICAL RECORD.** Superseded by `docs/DIRECTION_2026-07-26.md`.
+> Kept as evidence of what was tried. Do not append to it and do not treat any
+> plan, status, or number in it as current. Current state: `docs/STATE.md`.
+
 
 Context:
 think in humans. many religons, especially christianity emphasize 'the flesh' and 'the spriit'. There seem to be two parts of us. The agentic part of us, that is in a way, an animal, and the rational part. both come together. The animal part gives us the illusion of the self that our rational part builds stories around (not sure if this is correct, but swamping over it, thats roughly how i understand it). The same should be possible to achieve in artificial systems also, right? 

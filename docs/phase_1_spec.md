@@ -1,3 +1,7 @@
+> **FROZEN HISTORICAL RECORD.** Superseded by `docs/DIRECTION_2026-07-26.md`.
+> Kept as evidence of what was tried. Do not append to it and do not treat any
+> plan, status, or number in it as current. Current state: `docs/STATE.md`.
+
 # Phase 1 Spec: Homeostatic Social Grid
 
 This phase should answer one question:

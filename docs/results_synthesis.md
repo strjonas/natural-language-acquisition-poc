@@ -1,3 +1,7 @@
+> **FROZEN HISTORICAL RECORD.** Superseded by `docs/DIRECTION_2026-07-26.md`.
+> Kept as evidence of what was tried. Do not append to it and do not treat any
+> plan, status, or number in it as current. Current state: `docs/STATE.md`.
+
 # Probe-Era Results Synthesis (through v0-probe-era, 2026-07-13)
 
 One row per established or refuted claim. "Audit" names the strongest control
