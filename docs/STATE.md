@@ -73,6 +73,29 @@ Two audit findings changed the picture and two defects were fixed:
 
 Full audit: `docs/decisions/2026-07-26-causal-self-report-independent-verification.md`
 
+### Probe59: the self-model is no longer the bottleneck
+
+Online adaptation after a body-rule change (metabolism and portions x1.5):
+recalibration works and does not help.
+
+- Body error 0.0879 -> **0.0164**; learned-constant error 0.0978 -> **0.0175**,
+  toward the new truth on **5/5** seeds.
+- Survival 0.480 -> 0.500 (sd 0.095). **Both survival gates fail.**
+- A **perfect** body model survives only 0.840, and the adapted system's own
+  planner drags that to 0.504.
+
+The planner is the constraint. `causal_social_token` maximizes the minimum
+predicted axis, so it abandons the real deficit whenever two needs are close:
+need-word rate 100% under a clear deficit, 49.6%/42.2% when the two lowest are
+within 0.05. **A1b (planner repair) is now on the critical path** and A2
+(structure discovery) is promoted.
+
+Binding on all later phases: state a **belief-side endpoint** alongside any
+behavioural one, and **check the oracle ceiling before locking a gate** -- if a
+perfect model cannot reach the threshold, the gate measures something else.
+
+Result: `docs/decisions/2026-07-26-online-adaptation-result.md`
+
 ### What this result is still missing
 
 Stated plainly so the next agent does not overclaim it:
@@ -165,6 +188,7 @@ birth echo nor a fixed rhythmic code.
 | 56 | separate neural urgency head | identity fail; recurrent line closed |
 | 57 | structured learned causal self + social planner | **all local gates pass** |
 | 58 | causal-stage replication, 5 seeds | **5/5 gates pass**, sd <= 0.009 |
+| 59 | online adaptation after a body-rule change | recalibration passes 5/5; survival gates **fail**; planner identified as the bottleneck |
 
 Do not reopen without contrary evidence:
 

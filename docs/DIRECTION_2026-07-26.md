@@ -68,8 +68,35 @@ rescue it.
 
 ### Phase A -- earn the word "learned"
 
-**A1. Online adaptation under changed body dynamics.** *This is the decisive
-next experiment and the only one that should start now.*
+**A1. Online adaptation under changed body dynamics.** **RUN 2026-07-26. Gates
+1 and 2 failed; gate 3 passed 5/5.** Recalibration works -- body error fell
+5.4x and every learned constant moved toward the new truth on every seed -- but
+it bought no survival, because survival in this ecology is not controlled by
+the self-model. A *perfect* body model survives 0.840, and the adapted system's
+own planner pulls that to 0.504. See
+`decisions/2026-07-26-online-adaptation-result.md`.
+
+Two lessons are now binding on every later phase:
+
+- **State a belief-side endpoint** (body error, constant recovery, calibration)
+  alongside any behavioural one. A survival endpoint measures the policy.
+- **Check the oracle ceiling before locking a gate.** If a perfect model cannot
+  reach the threshold, the gate is measuring something else.
+
+**A1b. Repair the utterance planner.** Newly identified and now on the critical
+path. `causal_social_token` maximizes the *minimum* predicted axis. A need word
+concentrates help on one axis and stops improving `min` as soon as that axis
+passes the second-lowest; a word with diffuse listener mass lifts every axis a
+little and so raises `min` directly. When the two lowest needs are close, the
+diffuse word wins and the organism stops naming what it lacks -- need-word rate
+falls from 100% under a clear deficit to 49.6% (developed) and 42.2% (adapted)
+when the two lowest are within 0.05.
+
+Preregister a replacement objective -- expected deficit reduction, or survival
+probability under the learned dynamics, rather than max-min -- gated against
+the oracle-planner ceiling of 0.840. Do not bolt a fix onto A1.
+
+*Historical framing, kept because it explains why A1 was run:*
 
 After development, change metabolic rates, shock magnitudes, and portion
 sizes. Continue **only** the causal parameters online. Controls: frozen model,
@@ -86,7 +113,11 @@ frozen control **must be measured**, not assumed to collapse. If frozen does
 not degrade, the regime shift was too weak; strengthen it and rerun rather
 than reporting a null as a pass.
 
-**A2. Structure discovery.** Stop telling the agent it has three axes. Give it
+**A2. Structure discovery.** **Promoted by A1's gate-2 failure**, as that
+preregistration specified. Its endpoints are belief-side, so it does not
+depend on the survival instrument A1 showed to be unreliable here.
+
+Stop telling the agent it has three axes. Give it
 a latent state larger than the body (say 8 dims) plus a sparsity or rank
 penalty, and require it to recover the true dimensionality.
 

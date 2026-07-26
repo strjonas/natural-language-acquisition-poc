@@ -237,6 +237,68 @@ def test_structured_causal_development_actually_varies_with_its_seed():
     ), "distinct seed_base values must produce distinct causal parameters"
 
 
+def test_maxmin_planner_abandons_the_deficit_when_two_needs_are_close():
+    """Pin the A1b defect so a repair has something to move.
+
+    ``causal_social_token`` maximizes the *minimum* predicted axis. A need word
+    concentrates listener mass on one surface, so it delivers a large gain to a
+    single axis -- but once that axis passes the second-lowest, ``min`` stops
+    improving and the rest of the gain is wasted. A word whose listener mass is
+    spread delivers a small gain to every axis, which raises ``min`` directly.
+    When the two lowest needs are close together the spreading word wins, and
+    the organism stops asking for what it actually lacks.
+
+    Measured on the real checkpoint: with a clear single deficit both the
+    developed and the adapted planner emit a need word 100% of the time; with
+    the two lowest needs within 0.05 that falls to 49.6% and 42.2%.
+
+    When the planner objective is replaced, update this test to assert the new
+    behaviour rather than deleting it.
+    """
+
+    config = report_config(
+        structured_causal_self_model=True,
+        consume_options=True,
+        inspect_options=True,
+        report=ReportConfig(life_steps=30, unified_uptake=True),
+    )
+    model = OrganismTrainer(config).model
+    no_help = len(SURFACES)
+    food_token = TOKEN_TO_ID[NEED_TO_REPORT_WORD["food"]]
+    spread_token = TOKEN_TO_ID["more"]
+    need_surfaces = [SURFACES.index(name) for name in ("roots", "spring", "mushroom")]
+
+    uptake = np.full((len(SURFACES), 3), -20.0, dtype=np.float32)
+    for axis, surface in enumerate(need_surfaces):
+        uptake[surface, axis] = float(np.log(np.expm1(0.90)))
+    model.causal_uptake_raw = mx.array(uptake)
+
+    listener = np.full((model.vocab_size, no_help + 1), -20.0, dtype=np.float32)
+    listener[:, no_help] = 20.0
+    # The food word buys food, and only food.
+    listener[food_token, need_surfaces[0]] = 20.0
+    listener[food_token, no_help] = -20.0
+    # The spreading word buys a third of each, helping every axis a little.
+    for surface in need_surfaces:
+        listener[spread_token, surface] = 20.0
+    listener[spread_token, no_help] = -20.0
+    model.causal_listener_logits = mx.array(listener)
+    mx.eval(model.parameters())
+
+    # One clear deficit: the food word raises the minimum most, and wins.
+    clear = causal_social_token(
+        model, np.array([0.20, 0.90, 0.95]), step_count=0, help_period=6
+    )
+    # Two nearly tied deficits: fixing food leaves min at water's 0.32, while
+    # spreading lifts both to ~0.6. The planner abandons the real deficit.
+    tied = causal_social_token(
+        model, np.array([0.30, 0.32, 0.90]), step_count=0, help_period=6
+    )
+
+    assert clear == food_token
+    assert tied == spread_token
+
+
 def test_replication_seed_streams_never_touch_the_evaluation_bands():
     """No developmental stream may overlap the worlds it is scored against.
 
