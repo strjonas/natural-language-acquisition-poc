@@ -39,6 +39,12 @@ from homesocial.organism.causal_self_replication import (
     SEED_STRIDE,
     _check_seed_isolation,
 )
+from homesocial.organism.outcome_aware_self import (
+    CausalTokenPlanner,
+    legacy_expected_state_scores,
+    outcome_aware_scores,
+    tied_deficit_intervention,
+)
 from homesocial.organism.self_belief import train_explicit_self_belief
 from homesocial.organism.train import (
     OrganismConfig,
@@ -297,6 +303,74 @@ def test_maxmin_planner_abandons_the_deficit_when_two_needs_are_close():
 
     assert clear == food_token
     assert tied == spread_token
+
+
+def test_outcome_aware_planner_repairs_the_locked_tied_deficit_intervention():
+    result = tied_deficit_intervention()
+
+    assert result == {
+        "clear_legacy_targeted": 1.0,
+        "clear_outcome_aware_targeted": 1.0,
+        "tied_legacy_diffuse": 1.0,
+        "tied_outcome_aware_targeted": 1.0,
+        "gate_passed": 1.0,
+    }
+
+
+def test_outcome_aware_planner_keeps_utility_inside_listener_expectation():
+    """The listener can grant one resource, never a fraction of all three."""
+
+    uptake = np.eye(3, dtype=np.float64) * 0.9
+    listener = np.zeros((2, 4), dtype=np.float64)
+    listener[0, 0] = 1.0
+    listener[1, :3] = 1.0 / 3.0
+    belief = np.array([0.30, 0.32, 0.90], dtype=np.float64)
+    drift = np.zeros(3, dtype=np.float64)
+
+    legacy = legacy_expected_state_scores(
+        listener, drift, uptake, belief, ticks_to_help=1
+    )
+    outcome_aware = outcome_aware_scores(
+        listener, drift, uptake, belief, ticks_to_help=1
+    )
+
+    assert legacy[1] > legacy[0]
+    assert outcome_aware[0] > outcome_aware[1]
+    assert outcome_aware[0] == pytest.approx(0.32)
+    assert outcome_aware[1] == pytest.approx((0.32 + 0.30 + 0.30) / 3.0)
+
+
+def test_outcome_aware_planner_can_ground_an_arbitrary_full_vocabulary_token():
+    """Selection follows learned consequences, not the public need-word table."""
+
+    config = report_config(
+        structured_causal_self_model=True,
+        consume_options=True,
+        inspect_options=True,
+        report=ReportConfig(life_steps=30, unified_uptake=True),
+    )
+    model = OrganismTrainer(config).model
+    no_help = len(SURFACES)
+    arbitrary_token = TOKEN_TO_ID["more"]
+    food_surface = SURFACES.index("roots")
+    uptake = np.full((len(SURFACES), 3), -20.0, dtype=np.float32)
+    uptake[food_surface, 0] = float(np.log(np.expm1(0.90)))
+    listener = np.full(
+        (model.vocab_size, no_help + 1), -20.0, dtype=np.float32
+    )
+    listener[:, no_help] = 20.0
+    listener[arbitrary_token, :] = -20.0
+    listener[arbitrary_token, food_surface] = 20.0
+    model.causal_uptake_raw = mx.array(uptake)
+    model.causal_listener_logits = mx.array(listener)
+    mx.eval(model.parameters())
+
+    planner = CausalTokenPlanner.from_model(model)
+    selected = planner.token(
+        np.array([0.20, 0.90, 0.95]), step_count=0, help_period=6
+    )
+
+    assert selected == arbitrary_token
 
 
 def test_replication_seed_streams_never_touch_the_evaluation_bands():
