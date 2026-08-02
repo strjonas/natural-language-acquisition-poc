@@ -33,6 +33,72 @@ template cannot represent.
 | K3 | safety | food, water, energy | 3 |
 | K4 | none -- the frozen ecology | food, water, energy, **safety** | 4 |
 
+### Seed 0 of the treatment run: what four worlds already say
+
+**This is one seed of five. It is not the result and no gate is decided by it.**
+Nothing was changed after seeing it. Artifacts:
+`runs/organism/probe61_discovered_self/seed0/`.
+
+| gate | requirement | seed 0 | |
+|---|---|---|---|
+| F0 | K3 body error `<= 0.05` | **0.0183** | on track |
+| G1 | `d_eff == K` | K1 **1/1**, K2 **2/2**, K4 **4/4**, K3 **4 vs 3** | K3 misses |
+| G2 | one-to-one map, three channels agree, concentration `>= 0.80` | K3 and K4 both **pass** | on track |
+| G3 | rates within 25%, movement on the energy dimension | all six rates within 5%; movement **0.983** on energy | see caveat |
+| G4 | lesion drops the lesioned need's recall `>= 30` points | **fails as worded** | see below |
+| G5 | survival `>= 0.75`, fidelity `>= 0.80`, controls `>= 30` points down | K3 **passes**, K4 **fails** | K4 as predicted |
+
+What the organism recovered in K4 -- the unmodified frozen ecology -- from
+nothing but how good and how bad it feels:
+
+| quantity | discovered | true |
+|---|---:|---:|
+| food depletion / tick | 0.0078 | 0.008 |
+| water depletion / tick | 0.0112 | 0.012 |
+| energy depletion / tick | 0.0160 | 0.016 |
+| extra cost of moving | **0.983 share on the energy dimension** | energy only |
+| food uptake, small / large | 0.201 / 0.608 | 0.20 / 0.60 |
+| water uptake, small / large | 0.193 / 0.605 | 0.20 / 0.60 |
+| energy uptake, small / large | 0.199 / 0.601 | 0.20 / 0.60 |
+
+The need-to-dimension map is one-to-one and **three independent causal channels
+agree on it** -- learned uptake, learned shock, and a live forced-grant
+intervention -- at concentrations of 0.92 to 1.00. Nothing about movement
+costing energy was given; probe57 was told it.
+
+**Four findings the next agent must not lose:**
+
+1. **The K3 world is the negative control for the "discovered fourth variable"
+   claim, and on seed 0 it fires.** In K4, an extra effective dimension appears
+   with drift **0.0027** and near-zero uptake, which matches `safety`'s true
+   0.002 and satisfies G3's silent-variable clause. But K3, where `safety` is
+   frozen and no fourth variable exists, produced an extra dimension with drift
+   **0.0022** and the same signature. So that clause is **confounded**: a
+   drift-only dimension near 0.002 also appears when there is nothing to find,
+   which is most simply read as a nuisance dimension absorbing model
+   misspecification. Do not claim the discovered `safety` variable on the K4
+   number alone. Running K4 without K3 would have produced exactly that
+   overclaim.
+2. **G4 fails as worded, and the underlying phenomenon is the *opposite* of what
+   the gate assumed.** Lesioning a discovered dimension does not blind the
+   organism to that need, it **fixates** it on that need, because the frozen
+   birth prior (about 0.58) sits below where help keeps the real axes. The
+   effect is perfectly one-to-one on the diagonal -- freezing the food, water
+   and energy dimensions moves that need's share of utterances from
+   0.27/0.31/0.42 to **0.47/0.61/0.71** respectively, and drives that need's
+   truly-lowest ticks down three- to four-fold. That description is **post hoc
+   and not a gate**. The locked gate stands as failed; a corrected lesion
+   endpoint needs its own preregistration.
+3. **K4 deployment degenerates exactly as predicted.** Survival 0.58 and
+   fidelity 0.450 in K4 against 0.90 and 0.824 in K3. `safety` is unreachable,
+   the discovered drift for it is 35% too fast, so it crashes to zero late in
+   life, becomes the running minimum in every branch, and probe60's
+   `E[min(next latent)]` objective goes indifferent across all 60 tokens.
+4. **The K3 causal battery is clean.** Grounded 0.90 survival and 0.824
+   fidelity; scrambled listener 0.05; mute listener, mute organism, zero belief
+   and all three fixed words **0.00**; and freezing a dimension the criterion
+   discarded changes nothing at all.
+
 ### What is already established
 
 Preregistration: `docs/decisions/2026-08-02-discovered-self-structure-preregistration.md`,
@@ -60,10 +126,15 @@ floor rather than near the null.
 
 Also settled and locked:
 
-- Hyperparameters, selected on held-out sensory error alone on seed 0 / K4:
-  shooting schedule A, learning rate **0.03**. The sparsity coefficient was
-  being selected when this handover was written -- read
-  `runs/organism/probe61_discovered_self/selection.json`.
+- Hyperparameters, selected on held-out sensory error alone on seed 0 / K4 and
+  then frozen across every seed and every world: shooting schedule A, learning
+  rate **0.03**, sparsity **3e-5**. Full grids in
+  `runs/organism/probe61_discovered_self/selection.json`. The sparsity rule --
+  the largest coefficient within 5% of the best held-out RMSE -- had to be run
+  on an extended grid; the original one started an order of magnitude above the
+  data term (sensory MSE is about 1.7e-4, so 1e-4 across eight gates swamps it,
+  and 1e-3 destroys the fit outright at RMSE 0.100). Recorded as the third
+  amendment.
 - `src/homesocial/organism/discovered_self.py` -- the whole mechanism, the
   audits, the deployment battery, the gate evaluation, and a CLI. Default off,
   own module, no `OrganismConfig` knob.
@@ -86,17 +157,15 @@ Roughly four to five hours. Then write
 `docs/decisions/2026-08-02-discovered-self-structure-result.md` against the
 locked gates F0 and G1--G5, and rewrite this file.
 
-Two things to expect and report rather than patch:
+Seed 0 has already been run and is summarised above; `--seeds 5` reruns it
+identically and adds the other four. Run the controls in the same invocation or
+a second one.
 
-1. **The planner may go degenerate in K4.** `safety` is unreachable -- no word
-   requests it and no help restores it -- so once it becomes the running
-   minimum, every token scores the same expected `min(next latent)` and the
-   preregistered tie-break picks token 0. This is a predicted failure mode of
-   probe60's promoted objective in a world with an unreachable variable. Measure
-   it, report it, do not special-case it.
-2. **G1 is the gate most at risk**, because at zero sparsity the fit sometimes
-   splits one bodily axis across two latent dimensions, which the elimination
-   criterion would then count twice.
+On the write-up: G1, G3's silent-variable clause, G4 and G5 all already have
+seed-0 evidence against them or around them. Report each as it lands. A failed
+gate closes its mechanism here, and probes 48 through 56 are why probe57 was
+credible -- do not soften one, and do not rewrite G4 to match the fixation
+effect that was found after the fact.
 
 ## Executive handover (probe57--60, unchanged)
 
