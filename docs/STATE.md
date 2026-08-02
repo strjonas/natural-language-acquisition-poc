@@ -1,8 +1,104 @@
 # STATE
 
-Last rewritten: 2026-07-26. Rewrite this file, never append.
+Last rewritten: 2026-08-02. Rewrite this file, never append.
 
-## Executive handover
+## Where the next agent should start
+
+**Phase A2 (probe61, structure discovery) is preregistered, implemented, tested
+and hyperparameter-selected. The five-seed treatment run has not been run yet.**
+Everything needed to run it is in place; the immediate next action is at the
+bottom of this section.
+
+The mechanism, in one sentence: the organism is given an overcomplete
+eight-dimensional latent and only two scalar sensations per transition -- the
+**mean** and the **minimum** of its own bodily variables, which are exactly the
+world's own reward signal and its death signal -- and has to work out for itself
+how many bodily variables it has, what each one's depletion rate is, and which
+of the world's resources restores which. It is told neither the number three,
+nor an axis order, nor an axis name, nor a per-life birth reading. This is a
+strict *reduction* of privilege against probe57, which was handed the true
+per-axis body vector at every developmental transition.
+
+The ground truth is varied **in the world**, by freezing bodily axes, so the
+recovered dimension is checked against a number that moves. `K4` is the
+unmodified frozen report ecology and its true bodily dimension is **four**,
+because `safety` really does deplete at 0.002/tick and enters both viability
+signals -- it is precisely the variable probe57's hand-written three-axis
+template cannot represent.
+
+| condition | frozen | live variables | true `K` |
+|---|---|---|---:|
+| K1 | food, water, safety | energy | 1 |
+| K2 | food, safety | water, energy | 2 |
+| K3 | safety | food, water, energy | 3 |
+| K4 | none -- the frozen ecology | food, water, energy, **safety** | 4 |
+
+### What is already established
+
+Preregistration: `docs/decisions/2026-08-02-discovered-self-structure-preregistration.md`,
+with three amendments all recorded **before any treatment run** and all
+concerning fitting or measurement scale, never a gate, a threshold, or a
+control.
+
+Single-fit pilot evidence that the mechanism identifies the body (K4, seed 0,
+80,000 developmental ticks, no sparsity penalty). This is **one seed of one
+world and is not the result**; it is why the run is worth doing:
+
+| quantity | discovered | world's true value |
+|---|---:|---:|
+| held-out sensory RMSE | **0.0158** | null 0.1513 |
+| food uptake, small / large | 0.195 / 0.614 | 0.20 / 0.60 |
+| water uptake, small / large | 0.189 / 0.588 | 0.20 / 0.60 |
+| energy uptake, small / large | 0.208 / 0.608 | 0.20 / 0.60 |
+| food depletion per tick | 0.0076 | 0.008 |
+| water depletion per tick | 0.0115 | 0.012 |
+| energy depletion per tick | 0.0158 | 0.016 |
+
+An oracle carrying the world's true constants reaches 0.0032 per-tick rollout
+error on the same stream, so 0.0158 is within a small factor of the achievable
+floor rather than near the null.
+
+Also settled and locked:
+
+- Hyperparameters, selected on held-out sensory error alone on seed 0 / K4:
+  shooting schedule A, learning rate **0.03**. The sparsity coefficient was
+  being selected when this handover was written -- read
+  `runs/organism/probe61_discovered_self/selection.json`.
+- `src/homesocial/organism/discovered_self.py` -- the whole mechanism, the
+  audits, the deployment battery, the gate evaluation, and a CLI. Default off,
+  own module, no `OrganismConfig` knob.
+- `tests/test_discovered_self.py` -- 14 guards, including that the frozen
+  ecology is bit-identical by default, that freezing one axis leaves every other
+  axis's random stream untouched, that the ground truth actually moves across
+  the sweep, that `--seed` actually varies this stage's model, that the two
+  sensations are permutation-symmetric across latent dimensions, and that the
+  planner's choice is invariant to relabelling the discovered dimensions.
+- `ReportConfig.frozen_needs`, `ReportWorld.death_need`, and
+  `ReportWorld.force_next_help_need` -- all additive, all default-inert.
+
+### The immediate next action
+
+```bash
+PYTHONPATH=src .venv/bin/python -m homesocial.organism.discovered_self --parent runs/organism/probe52_guided_report_lexicon/adult/organism_report_seed1.npz --run-dir runs/organism/probe61_discovered_self --seeds 5 --lives 100 --worlds K1,K2,K3,K4 --learning-rate 0.03 --sparsity <selection.json chosen_sparsity> --controls
+```
+
+Roughly four to five hours. Then write
+`docs/decisions/2026-08-02-discovered-self-structure-result.md` against the
+locked gates F0 and G1--G5, and rewrite this file.
+
+Two things to expect and report rather than patch:
+
+1. **The planner may go degenerate in K4.** `safety` is unreachable -- no word
+   requests it and no help restores it -- so once it becomes the running
+   minimum, every token scores the same expected `min(next latent)` and the
+   preregistered tie-break picks token 0. This is a predicted failure mode of
+   probe60's promoted objective in a world with an unreachable variable. Measure
+   it, report it, do not special-case it.
+2. **G1 is the gate most at risk**, because at zero sparsity the fit sometimes
+   splits one bodily axis across two latent dimensions, which the elimination
+   criterion would then count twice.
+
+## Executive handover (probe57--60, unchanged)
 
 The repository now has its first positive, falsifiable causal self-report
 result in the minimal report ecology.
@@ -84,17 +180,41 @@ recalibration works and does not help.
 - A **perfect** body model survives only 0.840, and the adapted system's own
   planner drags that to 0.504.
 
-The planner is the constraint. `causal_social_token` maximizes the minimum
+The legacy planner is the constraint. `causal_social_token` maximizes the minimum
 predicted axis, so it abandons the real deficit whenever two needs are close:
 need-word rate 100% under a clear deficit, 49.6%/42.2% when the two lowest are
-within 0.05. **A1b (planner repair) is now on the critical path** and A2
-(structure discovery) is promoted.
+within 0.05. Probe60 tests the preregistered repair below; A2 (structure
+discovery) remains promoted.
 
 Binding on all later phases: state a **belief-side endpoint** alongside any
 behavioural one, and **check the oracle ceiling before locking a gate** -- if a
 perfect model cannot reach the threshold, the gate measures something else.
 
 Result: `docs/decisions/2026-07-26-online-adaptation-result.md`
+
+### Probe60: planner repaired; continual self-model still not load-bearing
+
+The outcome-aware planner preserves the learned listener consequence
+distribution until after homeostatic utility: `E[min(next body)]`, not the
+legacy `min(E[next body])`.
+
+- Adapted survival rises **0.500 -> 0.904** (sd 0.009, range 0.89--0.91);
+  G2 passes 5/5.
+- Scrambled-listener and zero-belief survival are both **0.000**; report
+  fidelity is 0.911 and the lexical gate remains intact 5/5.
+- Body error remains **0.0158** and causal constant error moves 0.0978 ->
+  **0.0175** on 5/5 seeds.
+- But frozen belief reaches **0.890** and the stale analytic belief reaches
+  **0.904**, exactly matching adapted survival. G3 fails (+1.4 and +0.0 points
+  against locked +5-point gates).
+
+The planner defect is real and repaired. The stronger Phase A1b claim is
+falsified: continual recalibration is more accurate, but the repaired
+three-way help policy is insensitive to the remaining numerical error. The
+outcome-aware planner can be used as a controlled instrument; it is not
+evidence that self-model adaptation controls behaviour.
+
+Result: `docs/decisions/2026-07-30-outcome-aware-self-planner-result.md`
 
 ### What this result is still missing
 
@@ -108,8 +228,9 @@ Stated plainly so the next agent does not overclaim it:
    is a lossy approximation of a closed form the designer already had. Nothing
    yet shows the learned model doing what the analytic filter cannot.
 3. There is **no reflection**: no uncertainty, no reasoning about the model as
-   opposed to the state, no past or future self. Utterance choice is an argmin
-   over three numbers resolving to one of three words.
+   opposed to the state, no past or future self. The improved planner
+   enumerates learned one-step consequences but still only allocates one of
+   three kinds of immediate help.
 4. Emergent signaling of private state is a **populated literature**. The
    distinctive asset here is the control battery and preregistration
    discipline, not the signaling behavior itself.
@@ -189,6 +310,8 @@ birth echo nor a fixed rhythmic code.
 | 57 | structured learned causal self + social planner | **all local gates pass** |
 | 58 | causal-stage replication, 5 seeds | **5/5 gates pass**, sd <= 0.009 |
 | 59 | online adaptation after a body-rule change | recalibration passes 5/5; survival gates **fail**; planner identified as the bottleneck |
+| 60 | outcome-aware realized-consequence planner | planner repair passes (+40.4 survival points); continual-model load-bearing gate **fails** |
+| 61 | discovered bodily structure from two sensations | preregistered, built, guarded, hyperparameters selected; **treatment run not yet run** |
 
 Do not reopen without contrary evidence:
 
@@ -201,30 +324,25 @@ Do not reopen without contrary evidence:
 
 ## Exact next work
 
-The local proof is complete and the causal stage is replicated. The next phase
-is robustness, continual adaptation, and scope—not another mechanism tweak.
+Phase A1 established online parameter recalibration on the belief side;
+Phase A1b repaired the policy but falsified the claim that the recalibration is
+behaviourally load-bearing in this ecology. Do not retune either result.
 
-**Step 2 is now the decisive experiment.** It is the only one on this list that
-can show the learned model doing something probe53's exact filter cannot: the
-filter's constants are baked in and must fail under changed dynamics, while a
-learner can re-identify them. Until it passes, this work remains a lossy
-re-derivation of a closed form the designer already had.
-
-1. ~~Replicate the causal stage across five independent seeds.~~ **Done**
-   (probe58, 5/5 gates, sd <= 0.009). Still outstanding: replicate the full
-   probe52 childhood-to-adult pipeline, which all five runs currently share.
-2. Change metabolic rates, shock magnitudes, help periods, surface remappings,
-   and portion distributions after development. Continue only the causal model
-   online and measure adaptation versus frozen, reset, and exact-filter
-   controls. Note that the belief self-corrects through homeostatic clipping,
-   so the frozen control must be measured, not assumed to collapse.
-3. Test catastrophic interference: alternate regimes and require recovery of
-   earlier regimes without lexical loss.
-4. Expand the latent self-state beyond declared homeostatic axes only after
-   the above passes. New dimensions must earn causal intervention evidence.
-5. Add reflective communication about predicted future self-change and model
-   uncertainty, with receivers acting on those reports and counterfactual
-   branch tests preventing templated narration.
+1. **Phase A2 structure discovery is under way as probe61.** See "Where the next
+   agent should start" at the top of this file: it is preregistered, built,
+   guarded and hyperparameter-selected, and the five-seed treatment run is the
+   next thing to execute. Its endpoints are belief-side and survive the policy
+   insensitivity exposed by probes59--60.
+2. Design B1 evidence integration only after A2. Before using survival, prove
+   that the correction intervention changes the action selected; otherwise a
+   robust policy can flatten a real belief improvement again.
+3. Test catastrophic interference by alternating body regimes and measuring
+   parameter/belief recovery, not survival alone.
+4. Replicate the full probe52 childhood-to-adult pipeline; all causal-stage
+   replications still share one lexical/motor parent.
+5. Add future-self and uncertainty communication only after A2 and B1 pass,
+   with listener-mediated consequences and same-present/different-future
+   branch controls.
 
 Do not request an external corpus or generated data for these steps. Larger
 compute becomes reasonable only after multi-seed local replication shows the
@@ -241,6 +359,8 @@ same architecture, thresholds, and causal controls survive.
 - `runs/organism/probe57_structured_causal_self/treatment/`
 - `runs/organism/probe57_structured_causal_self/planner_battery/`
 - `runs/organism/probe58_causal_stage_replication/`
+- `runs/organism/probe59_online_adaptation/`
+- `runs/organism/probe60_outcome_aware_self_planner/`
 - `docs/decisions/2026-07-26-guided-report-lexicon-result.md`
 - `docs/decisions/2026-07-26-observable-history-filter-result.md`
 - `docs/decisions/2026-07-26-explicit-self-belief-result.md`
@@ -248,6 +368,8 @@ same architecture, thresholds, and causal controls survive.
 - `docs/decisions/2026-07-26-relational-urgency-belief-result.md`
 - `docs/decisions/2026-07-26-structured-causal-self-model-result.md`
 - `docs/decisions/2026-07-26-causal-self-report-independent-verification.md`
+- `docs/decisions/2026-07-26-online-adaptation-result.md`
+- `docs/decisions/2026-07-30-outcome-aware-self-planner-result.md`
 
 Latest verification: **333 tests passed**. New behavior is default off.
 Simulator event/kind metadata remains audit-only and never enters causal

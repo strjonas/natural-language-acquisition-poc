@@ -42,6 +42,10 @@ from homesocial.island.world import (
 
 # The needs an organism can ask about, in the order used by every audit.
 REPORT_NEEDS = ("food", "water", "energy")
+# Every bodily axis this body actually has. ``safety`` is not reportable and no
+# help restores it, but it depletes and it enters both viability signals, so it
+# is a real variable of the body whether or not any model has a slot for it.
+BODY_NEEDS = ("food", "water", "energy", "safety")
 NEED_TO_REPORT_WORD = {"food": "hungry", "water": "thirsty", "energy": "tired"}
 REPORT_WORD_TO_NEED = {word: need for need, word in NEED_TO_REPORT_WORD.items()}
 REPORT_WORD_IDS = {
@@ -99,6 +103,13 @@ class ReportConfig:
     # object uses the same voluntary CONSUME response.  The legacy ecology
     # keeps energy-specific REST uptake exactly unchanged.
     unified_uptake: bool = False
+    # Bodily axes switched off, for the probe61 ground-truth dimension sweep.
+    # A frozen axis is born full, never depletes, and is never shocked, so it
+    # contributes no variance to anything the organism can feel.  Its random
+    # draws are still consumed, so every unfrozen stream stays bit-identical to
+    # the default ecology.  ``safety`` is nameable here even though it is not a
+    # reportable need: it is a real depleting variable of this body.
+    frozen_needs: tuple[str, ...] = ()
     # Audit conditions. ``scrambled`` replaces what the caregiver heard with a
     # uniformly random need word; ``mute`` makes it hear nothing. Both keep the
     # help clock and every other dynamic identical.
@@ -123,6 +134,30 @@ class ReportConfig:
             raise ValueError("birth_levels must lie in (0, 1].")
         if self.listener_mode not in ("grounded", "scrambled", "mute"):
             raise ValueError(f"Unknown listener mode: {self.listener_mode}.")
+        for need in self.frozen_needs:
+            if need not in BODY_NEEDS:
+                raise ValueError(f"Unknown bodily axis to freeze: {need}.")
+        if len(set(self.frozen_needs)) != len(self.frozen_needs):
+            raise ValueError("frozen_needs must not repeat an axis.")
+        if set(self.frozen_needs) >= set(BODY_NEEDS):
+            raise ValueError("At least one bodily axis must stay live.")
+
+    def metabolism_of(self, need: str) -> float:
+        if need in self.frozen_needs:
+            return 0.0
+        return float(getattr(self, f"{need}_metabolism"))
+
+    def live_needs(self) -> tuple[str, ...]:
+        """The bodily axes that actually vary in this ecology.
+
+        This is the ground truth the probe61 dimension sweep is scored against.
+        An axis born full whose metabolism is zero never moves, so nothing the
+        organism can feel carries any information about it.
+        """
+
+        return tuple(
+            need for need in BODY_NEEDS if self.metabolism_of(need) > 0.0
+        )
 
 
 class ReportGrid(IslandGrid):
@@ -135,10 +170,16 @@ class ReportGrid(IslandGrid):
 
     def _make_default_world(self) -> list[WorldObject]:
         levels = self.report.birth_levels
+        # The draws happen unconditionally so that freezing one axis leaves
+        # every other axis's stream bit-identical to the default ecology.
+        drawn = {
+            need: self.rng.choice(levels) for need in REPORT_NEEDS
+        }
+        frozen = set(self.report.frozen_needs)
         self.needs = Needs(
-            food=self.rng.choice(levels),
-            water=self.rng.choice(levels),
-            energy=self.rng.choice(levels),
+            food=1.0 if "food" in frozen else drawn["food"],
+            water=1.0 if "water" in frozen else drawn["water"],
+            energy=1.0 if "energy" in frozen else drawn["energy"],
             safety=1.0,
         )
         self.birth_needs = self.needs
@@ -186,17 +227,20 @@ class ReportGrid(IslandGrid):
 
     def _apply_metabolism(self, action: Action) -> None:
         report = self.report
+        frozen = set(report.frozen_needs)
         energy_cost = (
             report.move_energy_metabolism
             if action == Action.MOVE_FORWARD
             else report.energy_metabolism
         )
+        if "energy" in frozen:
+            energy_cost = 0.0
         self.needs = replace(
             self.needs,
-            food=self.needs.food - report.food_metabolism,
-            water=self.needs.water - report.water_metabolism,
+            food=self.needs.food - report.metabolism_of("food"),
+            water=self.needs.water - report.metabolism_of("water"),
             energy=self.needs.energy - energy_cost,
-            safety=self.needs.safety - report.safety_metabolism,
+            safety=self.needs.safety - report.metabolism_of("safety"),
         )
 
 
@@ -246,6 +290,7 @@ class ReportWorld(IslandWorld):
         # portion size.  Training and ordinary evaluation never set this, so
         # their RNG path and ecology are unchanged.
         self._forced_next_help_large: bool | None = None
+        self._forced_next_help_need: str | None = None
         self._grants = 0
         self._grants_by_need = {need: 0 for need in REPORT_NEEDS}
         self._silent_grants = 0
@@ -269,6 +314,7 @@ class ReportWorld(IslandWorld):
         self._shock_rng = Random(base + 5_500_011)
         self._shock_marker = None
         self._forced_next_help_large = None
+        self._forced_next_help_need = None
         self._heard_need = None
         self._heard_tick = -1
         self._last_utterance = None
@@ -336,6 +382,9 @@ class ReportWorld(IslandWorld):
                 "granted_large": granted_large,
                 "grant_source_tick": grant_source_tick,
                 "shock_need": shock_need,
+                # Audit-only: which bodily axis actually ran out. Never reaches
+                # a model, a belief, a listener, or a planner.
+                "death_need": self.death_need() if terminated else None,
                 "help_pending": self.pending_help_need(),
                 "utterance_tokens": self._last_utterance,
                 "spoke": self._last_utterance is not None
@@ -362,6 +411,10 @@ class ReportWorld(IslandWorld):
         if self._shock_rng.random() >= report.shock_probability:
             return None
         need = self._shock_rng.choice(REPORT_NEEDS)
+        # The draw is consumed either way, so freezing one axis leaves the
+        # shock stream of the others bit-identical.
+        if need in report.frozen_needs:
+            return None
         self.grid.needs = replace(
             self.grid.needs,
             **{need: getattr(self.grid.needs, need) - report.shock_size},
@@ -395,6 +448,18 @@ class ReportWorld(IslandWorld):
 
         self._forced_next_help_large = bool(large)
 
+    def force_next_help_need(self, need: str | None) -> None:
+        """Force which resource the next grant delivers, for a paired audit.
+
+        The intervention replaces what the listener heard, so the grant and its
+        perceptible surface stay consistent with each other. No training path
+        calls this method.
+        """
+
+        if need is not None and need not in REPORT_NEEDS:
+            raise ValueError(f"Unknown need to force: {need}.")
+        self._forced_next_help_need = need
+
     def _grant_help(self) -> tuple[str | None, bool | None, int]:
         """Deliver one help for the last thing heard, spoiling anything unused.
 
@@ -411,6 +476,9 @@ class ReportWorld(IslandWorld):
             obj for obj in self.grid.objects if obj is self._shock_marker
         ]
         need = self._heard_need
+        if self._forced_next_help_need is not None:
+            need = self._forced_next_help_need
+            self._forced_next_help_need = None
         # An unanswered grant still has a moment that decided it: the last thing
         # the organism said before help came, which happened not to be a
         # request. That moment is what gets the credit for the silence.
@@ -450,6 +518,17 @@ class ReportWorld(IslandWorld):
         return need, large, source_tick
 
     # -- read-only accessors used by audits ---------------------------------
+
+    def death_need(self, needs: Needs | None = None) -> str | None:
+        """Which bodily axis ran out, for lesion-specificity audits only."""
+
+        current = self.grid.needs if needs is None else needs
+        exhausted = [
+            need for need in BODY_NEEDS if getattr(current, need) <= 0.0
+        ]
+        if not exhausted:
+            return None
+        return min(exhausted, key=lambda need: getattr(current, need))
 
     def lowest_need(self, needs: Needs | None = None) -> str:
         current = self.grid.needs if needs is None else needs

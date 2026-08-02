@@ -83,18 +83,27 @@ Two lessons are now binding on every later phase:
 - **Check the oracle ceiling before locking a gate.** If a perfect model cannot
   reach the threshold, the gate is measuring something else.
 
-**A1b. Repair the utterance planner.** Newly identified and now on the critical
-path. `causal_social_token` maximizes the *minimum* predicted axis. A need word
-concentrates help on one axis and stops improving `min` as soon as that axis
-passes the second-lowest; a word with diffuse listener mass lifts every axis a
-little and so raises `min` directly. When the two lowest needs are close, the
-diffuse word wins and the organism stops naming what it lacks -- need-word rate
-falls from 100% under a clear deficit to 49.6% (developed) and 42.2% (adapted)
-when the two lowest are within 0.05.
+**A1b. Repair the utterance planner. RUN 2026-07-30. G2 passes; G3 fails.**
+Probe60 replaced `min(E[next body])` with the outcome-aware
+`E[min(next body)]`, retaining the learned distribution over listener
+consequences until after nonlinear viability utility. Survival rose from 0.500
+to **0.904 +/- 0.009**, all five seeds cleared 0.89, and scrambled-listener and
+zero-belief controls both scored 0.000. The lexical gate remained intact.
 
-Preregister a replacement objective -- expected deficit reduction, or survival
-probability under the learned dynamics, rather than max-min -- gated against
-the oracle-planner ceiling of 0.840. Do not bolt a fix onto A1.
+The full Phase A1b claim nevertheless fails. Frozen belief survived 0.890 and
+the stale analytic belief survived **0.904**, exactly matching the adapted
+belief despite 4.2x worse body error. The repaired three-way decision is robust
+to numerical state error, so continual recalibration is not behaviourally
+load-bearing here. The exact one-step mechanism is closed as a route to that
+claim; do not rescue it with objective temperatures, deficit weights, tie
+rules, vocabulary restrictions, or ecology retuning. The planner may remain a
+controlled instrument in later probes. See
+`decisions/2026-07-30-outcome-aware-self-planner-result.md`.
+
+Binding addition: before a later corrigibility experiment uses survival as a
+gate, its belief intervention must first be shown to change the selected
+action. A policy-invariant belief improvement is still scientifically useful,
+but it cannot establish load-bearing self-correction.
 
 *Historical framing, kept because it explains why A1 was run:*
 
@@ -116,6 +125,9 @@ than reporting a null as a pass.
 **A2. Structure discovery.** **Promoted by A1's gate-2 failure**, as that
 preregistration specified. Its endpoints are belief-side, so it does not
 depend on the survival instrument A1 showed to be unreliable here.
+**Preregistered and built as probe61 on 2026-08-02; the five-seed treatment run
+is pending.** See `decisions/2026-08-02-discovered-self-structure-preregistration.md`
+and the top of `STATE.md`.
 
 Stop telling the agent it has three axes. Give it
 a latent state larger than the body (say 8 dims) plus a sparsity or rank
@@ -124,6 +136,25 @@ penalty, and require it to recover the true dimensionality.
 Gates: recovered effective dimensionality is 3; each discovered dimension maps
 to exactly one true need under intervention; and ablating a discovered
 dimension causes the *specific* bodily failure it encodes, not a general one.
+
+Two things the preregistration adds to that sketch, because as sketched the
+first gate is not falsifiable on its own:
+
+- **The ground truth has to move.** A sparsity coefficient tuned to return "3"
+  will return "3" whatever the body is. Probe61 therefore freezes bodily axes to
+  build worlds whose true dimension is 1, 2, 3 and 4, and runs the same learner
+  with the same frozen hyperparameters on all four. The recovered dimension must
+  track the true one.
+- **The supervision has to go too.** Recovering three dimensions is not
+  discovery if the training target is still the true three-vector. Probe61
+  replaces it with two scalars the world already computes for its own purposes:
+  the mean of the bodily variables, which is literally the organism's reward,
+  and their minimum, which is what kills it. Neither names an axis or a count.
+
+The fourth world is the payoff: the unmodified frozen ecology's true bodily
+dimension is four, because `safety` depletes and enters both viability signals,
+and it is exactly the variable this repository's hand-written template cannot
+represent.
 
 This is the single largest step toward "not parroted". Until it passes, the
 self-model's content is authored, not learned.

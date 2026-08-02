@@ -478,6 +478,42 @@ rather than a dead-reckoner. See
 `docs/decisions/2026-07-26-causal-self-report-independent-verification.md` for
 the full re-audit and for what this result still does not show.
 
+Reproduce the post-shift outcome-aware planner experiment. It preserves the
+listener outcome distribution until after applying homeostatic utility, and
+factorially separates the adapted belief, planning model, objective, and real
+listener:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.organism.outcome_aware_self --parent runs/organism/probe57_structured_causal_self/treatment/organism_causal_self_seed1.npz --run-dir runs/organism/probe60_outcome_aware_self_planner --seeds 5 --lives 100 --adaptation-ticks 40000 --lexical-lives 90
+```
+
+The planner repair raises survival from 0.500 to 0.904 and both scrambled
+listener and zero-belief lesions score 0.000. The full gate still fails:
+frozen and stale beliefs survive 0.890 and 0.904, so continual recalibration is
+more accurate but not behaviourally load-bearing in this three-choice ecology.
+See
+`docs/decisions/2026-07-30-outcome-aware-self-planner-result.md`.
+
+Ask whether the organism can discover the variables of its own body instead of
+being handed them. The learner gets an overcomplete eight-dimensional latent and
+only two scalar sensations per transition -- the mean of its bodily variables,
+which is the world's own reward signal, and their minimum, which is what kills
+it -- and no axis count, no axis order, no axis name, and no per-life birth
+reading. The true number of bodily variables is varied in the world by freezing
+axes, so the recovered dimension is scored against a ground truth that moves:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.organism.discovered_self --parent runs/organism/probe52_guided_report_lexicon/adult/organism_report_seed1.npz --run-dir runs/organism/probe61_discovered_self --seeds 5 --lives 100 --worlds K1,K2,K3,K4 --learning-rate 0.03 --sparsity 1e-5 --controls
+```
+
+`K4` is the unmodified frozen report ecology, whose true bodily dimension is
+four: `safety` depletes at 0.002 per tick and enters both viability signals, and
+it is the variable probe57's hand-written three-axis template cannot represent.
+Pass `--sparsity` the value recorded in
+`runs/organism/probe61_discovered_self/selection.json`, which is chosen by
+held-out sensory error alone. Preregistration and locked gates:
+`docs/decisions/2026-08-02-discovered-self-structure-preregistration.md`.
+
 Train a fresh option-world model per seed, then test whether option mediation
 still works on those independently trained world-model heads:
 
