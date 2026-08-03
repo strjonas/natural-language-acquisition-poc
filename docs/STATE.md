@@ -1,13 +1,59 @@
 # STATE
 
-Last rewritten: 2026-08-02. Rewrite this file, never append.
+Last rewritten: 2026-08-03. Rewrite this file, never append.
 
 ## Where the next agent should start
 
-**Phase A2 (probe61, structure discovery) is preregistered, implemented, tested
-and hyperparameter-selected. The five-seed treatment run has not been run yet.**
-Everything needed to run it is in place; the immediate next action is at the
-bottom of this section.
+Two things are live.
+
+1. **Probe61's five-seed treatment run is executing now**, split across four
+   processes, one per world. See "Probe61: the run in flight" immediately below
+   for how to check it, merge it, and write it up.
+2. **Probe62's ceiling survey is finished and it closes the uncertainty
+   mechanism** before it was built. See "Probe62" below. It also opens the one
+   comparison this repository has never been able to make -- learned self-model
+   against hand-written filter -- and names the experiment.
+
+## Probe61: the run in flight
+
+The twenty treatment fits were launched as four processes because
+`run_world_seed` is pure in `(world, seed)`: the developmental stream comes from
+`development_seed_base(seed_index, world_name)` and the fit is seeded by
+`seed_index` alone, so splitting by world changes no number and costs about a
+quarter of the wall clock on this machine.
+
+```bash
+PYTHONPATH=src .venv/bin/python -m homesocial.organism.discovered_self --parent runs/organism/probe52_guided_report_lexicon/adult/organism_report_seed1.npz --run-dir runs/organism/probe61_discovered_self/full/K3 --seeds 5 --lives 100 --worlds K3 --learning-rate 0.03 --sparsity 3e-5
+```
+
+Progress is one `.npz` per completed fit in
+`runs/organism/probe61_discovered_self/full/<world>/`, and a running commentary
+in `full/<world>.log`. K3 is the critical path -- it carries the deployment
+battery and is the slowest world.
+
+When all four `discovered_self.json` files exist, merge and evaluate the locked
+gates over the pooled twenty records:
+
+```bash
+PYTHONPATH=src .venv/bin/python scripts/probe61_merge_worlds.py --run-dir runs/organism/probe61_discovered_self/full
+```
+
+The script **refuses to merge a partial sweep** and refuses worlds that disagree
+on hyperparameters or that have ragged seed sets, because either would evaluate
+a locked gate on an experiment that was not run. Then write
+`docs/decisions/2026-08-02-discovered-self-structure-result.md` against F0 and
+G1--G5 and rewrite this file.
+
+**Partial evidence so far, which is not the result and decides no gate.** G1
+(`d_eff == K`) is looking like the weak gate: beyond seed 0's K3 miss (4 vs 3),
+K1 seed 2 also over-counts (`d_eff=2`, true 1). Report it as it lands. Do not
+soften it.
+
+**Controls have not been run.** `--controls` in the CLI reruns the treatment
+loop before the controls, so a controls-only pass needs either a separate
+invocation per world or a small driver calling `run_world_seed` directly.
+
+## Probe61: what it is testing
 
 The mechanism, in one sentence: the organism is given an overcomplete
 eight-dimensional latent and only two scalar sensations per transition -- the
@@ -147,25 +193,94 @@ Also settled and locked:
 - `ReportConfig.frozen_needs`, `ReportWorld.death_need`, and
   `ReportWorld.force_next_help_need` -- all additive, all default-inert.
 
-### The immediate next action
+### On the write-up
 
-```bash
-PYTHONPATH=src .venv/bin/python -m homesocial.organism.discovered_self --parent runs/organism/probe52_guided_report_lexicon/adult/organism_report_seed1.npz --run-dir runs/organism/probe61_discovered_self --seeds 5 --lives 100 --worlds K1,K2,K3,K4 --learning-rate 0.03 --sparsity <selection.json chosen_sparsity> --controls
-```
+G1, G3's silent-variable clause, G4 and G5 all already have seed-0 evidence
+against them or around them. Report each as it lands. A failed gate closes its
+mechanism here, and probes 48 through 56 are why probe57 was credible -- do not
+soften one, and do not rewrite G4 to match the fixation effect that was found
+after the fact.
 
-Roughly four to five hours. Then write
-`docs/decisions/2026-08-02-discovered-self-structure-result.md` against the
-locked gates F0 and G1--G5, and rewrite this file.
+## Probe62: the uncertainty mechanism is closed before it was built
 
-Seed 0 has already been run and is summarised above; `--seeds 5` reruns it
-identically and adds the other four. Run the controls in the same invocation or
-a second one.
+Full record: `docs/decisions/2026-08-03-self-uncertainty-ceiling-survey.md`.
+Artifacts: `runs/organism/probe62_uncertain_self/ceiling_survey.json`. Module:
+`src/homesocial/organism/uncertain_self.py`. Guards:
+`tests/test_uncertain_self.py` (9).
 
-On the write-up: G1, G3's silent-variable clause, G4 and G5 all already have
-seed-0 evidence against them or around them. Report each as it lands. A failed
-gate closes its mechanism here, and probes 48 through 56 are why probe57 was
-credible -- do not soften one, and do not rewrite G4 to match the fixation
-effect that was found after the fact.
+Reflection -- reporting the reliability of one's own model rather than one's
+state -- was the next rung. Following probe60's binding instruction to check the
+oracle ceiling *before* locking a gate, the precondition was measured first. It
+fails, and it fails at the ceiling, which is the strongest form the failure could
+take.
+
+**The lever.** `ReportConfig.silent_shock_probability`, default `0.0`,
+default-inert. A silent shock changes the body exactly as a loud one does, from
+the same stream; only its perceptible marker is withheld, and the silence draw
+uses its own generator so nothing else moves. Guarded by a full-life test: with a
+forced identical action sequence the body trajectory at `q=1.0` is bit-identical
+to `q=0.0` while every shock flips from loud to silent.
+
+**What was found**, on one shared history, 40 lives, 48 particles:
+
+| q | oracle | naive (probe53 filter) | posterior_vote (Bayes rule) | spread~error r | coverage |
+|---:|---:|---:|---:|---:|---:|
+| 0.00 | 0.945 | 0.945 | 0.945 | -0.116 | 0.942 |
+| 0.50 | 0.957 | 0.803 | 0.804 | +0.432 | 0.931 |
+| 1.00 | 0.959 | 0.693 | 0.692 | +0.415 | 0.923 |
+
+1. The lever opens a **26.6-point** gap at `q=1.0` on naming the truly lowest
+   need -- the first substantial headroom on the report endpoint in this
+   repository.
+2. **None of it is recoverable.** `posterior_vote` is the Bayes-optimal rule
+   given the observable history and it ties the biased point filter at every
+   silence rate. The oracle's advantage is information the silent shocks
+   destroyed, not better inference.
+3. The posterior **is** genuinely calibrated: coverage 0.92--0.94 against nominal
+   0.90, and the least-certain quartile of ticks carries about 2.4x the error of
+   the most-certain. The organism does know when it does not know.
+4. **That calibration is actionable, but barely.** At matched inspection budget,
+   uncertainty-timed beats rate-matched random by +0.0 to **+2.7** points, while
+   inspecting at all is worth up to **+22.1**. Timing by the *true* error is not
+   better and is often worse (-6.2 to +3.3), so it is a poor policy rather than
+   an upper bound -- the best timing rule is not established, only the size of
+   the prize. The +2.7 costs 34.3 inspections per life against ~66 help windows,
+   and this test grants inspections for free.
+
+**Why**, measured not inferred: the naive filter's signed bias at `q=1.0` is
++0.051 and **flat across the whole life** against ~0.68 of cumulative hidden
+loss. The body is bounded in [0,1] and the filter saturates at the ceiling on
+~9.7% of ticks; every saturation erases the accumulated offset. The bound is an
+unmodelled evidence channel -- *I know I am not above full* -- and it does the
+self-model's job for free. This is `CLAUDE.md`'s "environment doing the model's
+job" trap with a number on it, and it retrospectively explains probes 59--60: a
+self-model whose error is capped at 0.05 by homeostasis cannot be load-bearing
+however accurate it becomes.
+
+**Binding consequence.** Do not preregister uncertainty communication in this
+ecology. Finding 2 is the strong reason and is a measured impossibility; finding
+4 is a judgement that ~2.5 points at an unaffordable budget does not justify a
+listener response, a token and a rent structure, recorded as a judgement. For
+self-uncertainty to pay rent the uncertainty must be **bursty**, and a bounded,
+frequently-saturated state variable cannot produce that.
+
+### What probe62 opens
+
+The silent-shock lever is the first thing in this repository that makes the
+probe53 hand-written filter **strictly wrong** rather than merely redundant.
+That is the standing obstacle recorded below under "what this result is still
+missing", item 2: *nothing yet shows the learned model doing what the analytic
+filter cannot.*
+
+The filter is hand-coded to the visible events, so it cannot represent an
+unobservable drift at all. A model fitted to how the body *actually behaves* --
+which is exactly what probe61 does, from two scalars -- should absorb that drift
+into its learned parameters. The comparison is now runnable and **has not been
+run**: fit a probe61 discovered self-model in a `q > 0` ecology and score its
+body error and named-need accuracy against `naive` on the same shared history,
+with `q = 0` as the null where the two must tie. That is the highest-value
+experiment now available, it needs a preregistration, and its endpoints are
+belief-side so probes 59--60's policy insensitivity cannot flatten them.
 
 ## Executive handover (probe57--60, unchanged)
 
@@ -380,7 +495,8 @@ birth echo nor a fixed rhythmic code.
 | 58 | causal-stage replication, 5 seeds | **5/5 gates pass**, sd <= 0.009 |
 | 59 | online adaptation after a body-rule change | recalibration passes 5/5; survival gates **fail**; planner identified as the bottleneck |
 | 60 | outcome-aware realized-consequence planner | planner repair passes (+40.4 survival points); continual-model load-bearing gate **fails** |
-| 61 | discovered bodily structure from two sensations | preregistered, built, guarded, hyperparameters selected; **treatment run not yet run** |
+| 61 | discovered bodily structure from two sensations | preregistered, built, guarded, selected; **five-seed treatment run in flight** |
+| 62 | self-uncertainty ceiling survey (feasibility, no gates) | calibrated posterior **ties** the point filter at every silence rate; oracle-timed inspection does not beat random; mechanism **closed**, lever kept |
 
 Do not reopen without contrary evidence:
 

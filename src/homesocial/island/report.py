@@ -98,6 +98,14 @@ class ReportConfig:
     safety_metabolism: float = 0.002
     shock_probability: float = 0.025
     shock_size: float = 0.25
+    # Default-off observability lever for the probe62 ceiling survey. A silent
+    # shock changes the body exactly as a loud one does and is drawn from the
+    # same stream; only its perceptible marker is withheld. So this constant
+    # moves what the organism can *know* about itself while leaving what happens
+    # to it bit-identical. The silence draw comes from its own generator, so
+    # every other stream stays untouched at any value, and the draws are nested:
+    # the silent set at 0.25 is a subset of the silent set at 0.50.
+    silent_shock_probability: float = 0.0
     reveal_birth_needs: bool = True
     # Default-off treatment for the preregistered substrate test: every help
     # object uses the same voluntary CONSUME response.  The legacy ecology
@@ -126,6 +134,8 @@ class ReportConfig:
             raise ValueError("large_portion_probability must be in [0, 1].")
         if not 0.0 <= self.shock_probability <= 1.0:
             raise ValueError("shock_probability must be in [0, 1].")
+        if not 0.0 <= self.silent_shock_probability <= 1.0:
+            raise ValueError("silent_shock_probability must be in [0, 1].")
         if self.shock_size < 0.0:
             raise ValueError("shock_size must be nonnegative.")
         if not self.birth_levels:
@@ -285,7 +295,11 @@ class ReportWorld(IslandWorld):
         self._listener_rng = Random(0)
         self._help_rng = Random(0)
         self._shock_rng = Random(0)
+        # Silence is a property of perception, not of dynamics, so it draws from
+        # its own generator and never perturbs the shock stream itself.
+        self._silence_rng = Random(0)
         self._shock_marker: WorldObject | None = None
+        self._last_shock_silent = False
         # Read-only counterfactual audits may force exactly one forthcoming
         # portion size.  Training and ordinary evaluation never set this, so
         # their RNG path and ecology are unchanged.
@@ -312,6 +326,7 @@ class ReportWorld(IslandWorld):
         self._listener_rng = Random(base + 7_700_017)
         self._help_rng = Random(base + 3_300_013)
         self._shock_rng = Random(base + 5_500_011)
+        self._silence_rng = Random(base + 8_800_019)
         self._shock_marker = None
         self._forced_next_help_large = None
         self._forced_next_help_need = None
@@ -356,6 +371,7 @@ class ReportWorld(IslandWorld):
         self._clear_shock_marker()
         observation, reward, terminated, truncated, info = self.grid.step(action)
 
+        self._last_shock_silent = False
         shock_need = None if terminated else self._apply_shock()
         if shock_need is not None:
             terminated = self.grid.needs.viability() <= 0.0
@@ -382,6 +398,9 @@ class ReportWorld(IslandWorld):
                 "granted_large": granted_large,
                 "grant_source_tick": grant_source_tick,
                 "shock_need": shock_need,
+                # Audit-only, like death_need: whether that shock left a marker.
+                # Never reaches a belief, a listener, a planner, or a policy.
+                "shock_silent": shock_need is not None and self._last_shock_silent,
                 # Audit-only: which bodily axis actually ran out. Never reaches
                 # a model, a belief, a listener, or a planner.
                 "death_need": self.death_need() if terminated else None,
@@ -419,7 +438,12 @@ class ReportWorld(IslandWorld):
             self.grid.needs,
             **{need: getattr(self.grid.needs, need) - report.shock_size},
         ).clipped()
-        marker_pos = self._marker_position()
+        # Drawn for every landed shock regardless of the rate, so the silent set
+        # at a lower rate is a subset of the silent set at a higher one and the
+        # sweep compares nested observability over one fixed shock history.
+        silent = self._silence_rng.random() < report.silent_shock_probability
+        self._last_shock_silent = silent
+        marker_pos = None if silent else self._marker_position()
         if marker_pos is not None:
             self._shock_marker = WorldObject(
                 SHOCK_SURFACES[need], "tree", marker_pos

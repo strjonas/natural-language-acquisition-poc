@@ -514,6 +514,38 @@ Pass `--sparsity` the value recorded in
 held-out sensory error alone. Preregistration and locked gates:
 `docs/decisions/2026-08-02-discovered-self-structure-preregistration.md`.
 
+The twenty treatment fits may be split by world, because `run_world_seed` is
+pure in `(world, seed)`. Run one process per world into
+`runs/organism/probe61_discovered_self/full/<world>`, then merge and evaluate the
+locked gates over the pooled records; the merge refuses a partial or ragged
+sweep:
+
+```bash
+PYTHONPATH=src python3 scripts/probe61_merge_worlds.py --run-dir runs/organism/probe61_discovered_self/full
+```
+
+Ask whether self-uncertainty is worth anything before building a mechanism to
+communicate it. `silent_shock_probability` withholds a shock's perceptible
+marker while leaving the body change and every random stream identical, so it
+moves what the organism can know about itself and nothing about what happens to
+it. Four bodies -- the true one, probe53's exact visible-history filter, that
+filter debiased, and a particle cloud conditioned on being alive -- are scored on
+one shared history:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.organism.uncertain_self --parent runs/organism/probe52_guided_report_lexicon/adult/organism_report_seed1.npz --run-dir runs/organism/probe62_uncertain_self --lives 40 --particles 48 --skip-closed-loop
+```
+
+Silence opens a 26.6-point gap to the oracle on naming the truly lowest need,
+and none of it is recoverable: the Bayes-optimal rule ties the biased point
+filter at every silence rate. The cloud is genuinely calibrated -- coverage
+0.92--0.94 against a nominal 0.90 -- but at matched inspection budget that
+calibration is worth only +0.0 to +2.7 points over rate-matched random, against
+up to +22.1 for inspecting at all. The body is bounded in [0,1] and the filter
+saturates on ~9.7% of ticks, so its bias equilibrates at +0.051 instead of
+accumulating. The ecology carries the self-model. Full record:
+`docs/decisions/2026-08-03-self-uncertainty-ceiling-survey.md`.
+
 Train a fresh option-world model per seed, then test whether option mediation
 still works on those independently trained world-model heads:
 

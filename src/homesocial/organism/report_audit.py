@@ -154,14 +154,17 @@ class _ObservableBodyFilter:
         pre_ticks = duration - 1
         pre_moves = min(pre_ticks, routed_moves)
 
+        # Indexed on the trailing axis so the identical dynamics can also be
+        # carried by a particle cloud of shape (particles, 3). The (3,) case is
+        # bit-identical to plain positional indexing.
         belief = self._belief
-        belief[0] -= self.report.food_metabolism * pre_ticks
-        belief[1] -= self.report.water_metabolism * pre_ticks
-        belief[2] -= (
+        belief[..., 0] -= self.report.food_metabolism * pre_ticks
+        belief[..., 1] -= self.report.water_metabolism * pre_ticks
+        belief[..., 2] -= (
             self.report.move_energy_metabolism * pre_moves
             + self.report.energy_metabolism * (pre_ticks - pre_moves)
         )
-        belief[:] = np.clip(belief, 0.0, 1.0)
+        belief[...] = np.clip(belief, 0.0, 1.0)
 
         # An unused object is cleared at an intermediate grant boundary. A
         # boundary on the terminal tick occurs after uptake, so it does not
@@ -183,17 +186,17 @@ class _ObservableBodyFilter:
                     if large
                     else self.report.portion_small
                 )
-                belief[REPORT_NEEDS.index(need)] += portion
+                belief[..., REPORT_NEEDS.index(need)] += portion
 
         final_energy_cost = (
             self.report.move_energy_metabolism
             if primitive_move
             else self.report.energy_metabolism
         )
-        belief[0] -= self.report.food_metabolism
-        belief[1] -= self.report.water_metabolism
-        belief[2] -= final_energy_cost
-        belief[:] = np.clip(belief, 0.0, 1.0)
+        belief[..., 0] -= self.report.food_metabolism
+        belief[..., 1] -= self.report.water_metabolism
+        belief[..., 2] -= final_energy_cost
+        belief[...] = np.clip(belief, 0.0, 1.0)
 
         # A final-tick shock is visible in the next packet. Shocks occurring
         # inside a temporally abstract option are not visible and intentionally
@@ -211,8 +214,8 @@ class _ObservableBodyFilter:
             raise RuntimeError("A report tick exposed more than one shock marker.")
         if shock_needs:
             shock_need = next(iter(shock_needs))
-            belief[REPORT_NEEDS.index(shock_need)] -= self.report.shock_size
-            belief[:] = np.clip(belief, 0.0, 1.0)
+            belief[..., REPORT_NEEDS.index(shock_need)] -= self.report.shock_size
+            belief[...] = np.clip(belief, 0.0, 1.0)
 
 
 def _evaluate_observable_history_filter(
