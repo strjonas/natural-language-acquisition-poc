@@ -44,28 +44,37 @@ a locked gate on an experiment that was not run. Then write
 `docs/decisions/2026-08-02-discovered-self-structure-result.md` against F0 and
 G1--G5 and rewrite this file.
 
-**Partial evidence so far, which is not the result and decides no gate.** Twelve
-of the twenty fits, recovered dimension against truth:
+**Partial evidence so far, which is not the result and decides no gate.** K1 and
+K2 are complete; K3 and K4 are at two seeds of five. Recovered dimension against
+truth:
 
-| world | true `K` | seed 0 | seed 1 | seed 2 | seed 3 |
-|---|---:|---:|---:|---:|---:|
-| K1 | 1 | 1 | 1 | **2** | **2** |
-| K2 | 2 | 2 | 2 | 2 | **3** |
-| K3 | 3 | **4** | **4** | | |
-| K4 | 4 | 4 | 4 | | |
+| world | true `K` | s0 | s1 | s2 | s3 | s4 | mean | G1 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| K1 | 1 | 1 | 1 | **2** | **2** | **2** | 1.6 | 2/5 |
+| K2 | 2 | 2 | 2 | 2 | **3** | **4** | 2.6 | 3/5 |
+| K3 | 3 | **4** | **4** | | | | 4.0 | 0/2 |
+| K4 | 4 | 4 | 4 | | | | 4.0 | 2/2 |
 
-G1 (`d_eff == K`) is failing, and the errors are all in one direction: the
-criterion **over-counts by exactly one** and never under-counts. Held-out sensory
-RMSE is uniformly good (0.0093--0.0205) on the misses as well as the hits, so
-this is the dimension criterion, not the fit.
+G1 (`d_eff == K`) is failing on K1 and K2 and on K3 so far. Two things about the
+shape of the failure, and the second was not visible at twelve fits:
+
+1. The criterion **never under-counts**. Every miss is an over-count, by one or
+   -- K2 seed 4 -- by **two**. Held-out sensory RMSE is uniformly good on the
+   misses as well as the hits (0.0088--0.0205), so this is the dimension
+   criterion and not the fit.
+2. The recovered count **tracks the ground truth over K1--K3 and then saturates
+   at four**: means 1.6, 2.6, 4.0, 4.0, and no fit anywhere in the sweep has
+   returned more than four. So there is real signal -- the count does move with a
+   ground truth that moves, which is what the sweep was built to test -- but it
+   is biased upward and ceilinged.
 
 **This sharpens the seed-0 warning into something the write-up must confront
-head on.** K4's "4 of 4" is the same over-count as K3's "4 versus 3"; it merely
-coincides with the truth because K4's true dimension is the largest in the sweep
-and the recovered count appears to saturate near four. **On this evidence the
-discovered-`safety` claim is not supported at all**, and the K4 number alone
-would have produced exactly that overclaim -- which is why the sweep varies the
-ground truth. Report the direction of the error, not just the pass rate.
+head on.** K4's "4 of 4" is not distinguishable from that saturation: K2 seed 4,
+K3 seed 0, K3 seed 1 and both K4 seeds all return exactly four against true
+dimensions of 2, 3, 3, 4, 4. **On this evidence the discovered-`safety` claim is
+not supported**, and K4 run alone would have produced exactly that overclaim --
+which is why the sweep varies the ground truth. Report the direction and the
+ceiling of the error, not just the pass rate.
 
 **Controls have not been run.** `--controls` in the CLI reruns the treatment
 loop before the controls, so a controls-only pass needs either a separate
