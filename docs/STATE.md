@@ -44,10 +44,28 @@ a locked gate on an experiment that was not run. Then write
 `docs/decisions/2026-08-02-discovered-self-structure-result.md` against F0 and
 G1--G5 and rewrite this file.
 
-**Partial evidence so far, which is not the result and decides no gate.** G1
-(`d_eff == K`) is looking like the weak gate: beyond seed 0's K3 miss (4 vs 3),
-K1 seed 2 also over-counts (`d_eff=2`, true 1). Report it as it lands. Do not
-soften it.
+**Partial evidence so far, which is not the result and decides no gate.** Twelve
+of the twenty fits, recovered dimension against truth:
+
+| world | true `K` | seed 0 | seed 1 | seed 2 | seed 3 |
+|---|---:|---:|---:|---:|---:|
+| K1 | 1 | 1 | 1 | **2** | **2** |
+| K2 | 2 | 2 | 2 | 2 | **3** |
+| K3 | 3 | **4** | **4** | | |
+| K4 | 4 | 4 | 4 | | |
+
+G1 (`d_eff == K`) is failing, and the errors are all in one direction: the
+criterion **over-counts by exactly one** and never under-counts. Held-out sensory
+RMSE is uniformly good (0.0093--0.0205) on the misses as well as the hits, so
+this is the dimension criterion, not the fit.
+
+**This sharpens the seed-0 warning into something the write-up must confront
+head on.** K4's "4 of 4" is the same over-count as K3's "4 versus 3"; it merely
+coincides with the truth because K4's true dimension is the largest in the sweep
+and the recovered count appears to saturate near four. **On this evidence the
+discovered-`safety` claim is not supported at all**, and the K4 number alone
+would have produced exactly that overclaim -- which is why the sweep varies the
+ground truth. Report the direction of the error, not just the pass rate.
 
 **Controls have not been run.** `--controls` in the CLI reruns the treatment
 loop before the controls, so a controls-only pass needs either a separate
