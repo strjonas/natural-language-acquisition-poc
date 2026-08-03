@@ -44,37 +44,42 @@ a locked gate on an experiment that was not run. Then write
 `docs/decisions/2026-08-02-discovered-self-structure-result.md` against F0 and
 G1--G5 and rewrite this file.
 
-**Partial evidence so far, which is not the result and decides no gate.** K1 and
-K2 are complete; K3 and K4 are at two seeds of five. Recovered dimension against
-truth:
+**Partial evidence: the raw numbers only.** K1, K2 and K4 are complete; K3 is at
+four seeds of five. Recovered dimension against truth:
 
-| world | true `K` | s0 | s1 | s2 | s3 | s4 | mean | G1 |
+| world | true `K` | s0 | s1 | s2 | s3 | s4 | mean | matches |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | K1 | 1 | 1 | 1 | **2** | **2** | **2** | 1.6 | 2/5 |
 | K2 | 2 | 2 | 2 | 2 | **3** | **4** | 2.6 | 3/5 |
-| K3 | 3 | **4** | **4** | | | | 4.0 | 0/2 |
-| K4 | 4 | 4 | 4 | | | | 4.0 | 2/2 |
+| K3 | 3 | **4** | **4** | 3 | 3 | pending | 3.5 | 2/4 |
+| K4 | 4 | 4 | 4 | 4 | 4 | 4 | 4.0 | 5/5 |
 
-G1 (`d_eff == K`) is failing on K1 and K2 and on K3 so far. Two things about the
-shape of the failure, and the second was not visible at twelve fits:
+Held-out sensory RMSE is uniformly good on the misses as well as the hits
+(0.0088--0.0233), so whatever is happening is in the dimension criterion and not
+in the fit. No fit anywhere has under-counted, and none has returned more than
+four.
 
-1. The criterion **never under-counts**. Every miss is an over-count, by one or
-   -- K2 seed 4 -- by **two**. Held-out sensory RMSE is uniformly good on the
-   misses as well as the hits (0.0088--0.0205), so this is the dimension
-   criterion and not the fit.
-2. The recovered count **tracks the ground truth over K1--K3 and then saturates
-   at four**: means 1.6, 2.6, 4.0, 4.0, and no fit anywhere in the sweep has
-   returned more than four. So there is real signal -- the count does move with a
-   ground truth that moves, which is what the sweep was built to test -- but it
-   is biased upward and ceilinged.
+**Deliberately not characterized further here.** Two earlier readings of this
+table were written on partial data and both had to be withdrawn -- "over-counts
+by exactly one" died when K2 seed 4 returned 4 against a true 2, and "saturates
+at four" died when K3 seeds 2 and 3 returned 3. Wait for the twentieth fit, then
+characterize once. The interpretive question the write-up has to answer is
+whether K4's 5/5 is discovery of `safety` or an upward bias that happens to land
+on four; K3's split (4, 4, 3, 3) is the evidence that bears on it, and it is not
+yet complete.
 
-**This sharpens the seed-0 warning into something the write-up must confront
-head on.** K4's "4 of 4" is not distinguishable from that saturation: K2 seed 4,
-K3 seed 0, K3 seed 1 and both K4 seeds all return exactly four against true
-dimensions of 2, 3, 3, 4, 4. **On this evidence the discovered-`safety` claim is
-not supported**, and K4 run alone would have produced exactly that overclaim --
-which is why the sweep varies the ground truth. Report the direction and the
-ceiling of the error, not just the pass rate.
+**Do not read the per-world `discovered_self.json` gate blocks as results.**
+Nearly every gate is defined over the pooled record set, so a world holding no
+records for a gate reports `passed: false` with `seeds_passing: 0/0` -- K1, K2
+and K4 all show F0 false for that reason alone, and K4 shows `G1 passed: true`
+on its own five records in isolation. Only `scripts/probe61_merge_worlds.py` over
+all twenty fits evaluates the locked gates as preregistered.
+
+**One world-specific result that is real and complete.** K4 deployment fails G5
+on **0 of 5 seeds** -- survival 0.56--0.58, report fidelity 0.42--0.45, scrambled
+0.07 -- confirming across all five seeds the degeneration predicted from seed 0:
+`safety` is unreachable, so the discovered drift for it drives the running
+minimum and probe60's `E[min]` objective goes indifferent across the vocabulary.
 
 **Controls have not been run.** `--controls` in the CLI reruns the treatment
 loop before the controls, so a controls-only pass needs either a separate
