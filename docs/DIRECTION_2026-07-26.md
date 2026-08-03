@@ -49,15 +49,24 @@ finish line. Nothing below is worth doing except as a step toward it.
 
 Each is a gate, not a vibe. Current status in brackets.
 
-1. **Discovered** -- the agent finds its own state variables. [no]
+Status updated 2026-08-03 after probe63.
+
+1. **Discovered** -- the agent finds its own state variables. [**partial**:
+   probe63 discovers the *values* of its own causal constants and *which* of them
+   differ from its species, across worlds whose ground truth moves. It does not
+   discover its state variables; probe61 tried and is closed.]
 2. **Corrigible** -- evidence updates the model, including evidence it was
-   wrong. [no: there is no correction pathway at all]
+   wrong. [**yes**: probe63, phase B1, surviving the clipping control by 70.7%
+   of error, destroyed by shuffled readings.]
 3. **Load-bearing across uses** -- one model drives action, prediction, and
    speech, so damaging it damages all three together. [partial]
 4. **Productive under novel demand** -- it can say things it was never trained
-   to say, because a listener needs them. [no]
+   to say, because a listener needs them. [no -- untouched, and now the binding
+   constraint. Probe63's organism knows something no listener can hear.]
 5. **Reflexive** -- it represents facts about the model itself (uncertainty,
-   staleness, error), not only about the state. [no]
+   staleness, error), not only about the state. [**partial**: probe63 computes
+   and acts on `d(its own prediction)/d(its own parameter)`, which is about the
+   model rather than the state. It does not yet *report* any of it.]
 
 ## 3. The ladder
 
@@ -161,7 +170,38 @@ self-model's content is authored, not learned.
 
 ### Phase B -- earn corrigibility
 
-**B1. Evidence integration.** Return interoception intermittently and
+**B1. Evidence integration. RUN 2026-08-03 as probe63. All seven locked gates
+pass on the recursive arm.** See
+`decisions/2026-08-03-individual-self-calibration-result.md`.
+
+The sketch below was implemented almost literally: interoception returns
+intermittently and unpredictably, and the systematically biased body is an
+*individual* one -- each organism's metabolism and absorption drawn at birth, so
+the species constants are wrong about it in a need-specific direction that
+persists for the whole life.
+
+That change also resolved section 1's second bullet, which had stood since v1.
+Probe53's hand-written filter is not merely worse here; its constants are **not
+knowable at design time**, because they are facts about an individual that does
+not exist until it is born. A designer can supply the form of an estimator but
+not its content. At `metabolic_spread` 0.60 and reading rate 0.03, over 5 seeds:
+body error 0.0785 (species filter) -> 0.0454 (`snap` -- identical readings, no
+self-model) -> **0.0133** (learned); report accuracy 0.665 -> 0.815 -> **0.946**.
+
+The clipping warning below was justified and is why `snap` is the control the
+result is stated against: correcting to each reading and modelling nothing
+already recovers a large part of the gap. What survives that baseline is 70.7%
+of the remaining error and +13.2 points of report accuracy.
+
+Two findings worth carrying into C: **prediction and attribution come apart** --
+a greedy rule is fully corrigible while being confidently wrong about *which* of
+its own constants differs, and its accuracy gives no signal that it is wrong; and
+**a self-model can only localize a fact its own parameter set can express**, and
+when it cannot it does not fail loudly, it produces a confident wrong answer.
+
+*Original sketch, kept because it is what was built:*
+
+Return interoception intermittently and
 unpredictably, and add a learned correction gain. Introduce a *systematically
 biased* body the current model cannot represent.
 

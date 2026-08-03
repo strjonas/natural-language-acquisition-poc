@@ -106,6 +106,36 @@ class ReportConfig:
     # every other stream stays untouched at any value, and the draws are nested:
     # the silent set at 0.25 is a subset of the silent set at 0.50.
     silent_shock_probability: float = 0.0
+    # Default-off levers for probe63. They are a pair and neither is meaningful
+    # alone.
+    #
+    # ``metabolic_spread`` makes the body *individual*: each life scales every
+    # axis's per-tick metabolism by its own draw from Uniform(1-s, 1+s). Until
+    # now every organism in this ecology burned fuel at exactly the species
+    # rate, so a self-model built from species constants was already correct
+    # about this body and nothing in it was about *this* organism. A spread
+    # makes those constants systematically wrong per individual, in a
+    # need-specific direction that persists for the whole life -- which is the
+    # "systematically biased body the current model cannot represent" that
+    # phase B1 asks for.
+    #
+    # ``interoception_probability`` is the only channel through which that fact
+    # could ever be found out: the body is otherwise visible exactly once, at
+    # birth. A reading is delivered in ``info`` and never in the packet, so the
+    # motor path and everything the policy sees stay bit-identical at any rate.
+    #
+    # Both draw from dedicated generators, so at their defaults every other
+    # stream in the ecology is untouched.
+    metabolic_spread: float = 0.0
+    # The second way a body can be individual: how much good the same help
+    # does it. The granted surface is public and still names the portion class,
+    # so what varies is absorption, which is private. Paired with
+    # ``metabolic_spread`` this lets the ground truth *move* -- one world where
+    # only the burn rate is individual, one where only absorption is, one where
+    # both are -- so a self-model that merely detects "something is off" can be
+    # told apart from one that finds out *what* about itself is off.
+    uptake_spread: float = 0.0
+    interoception_probability: float = 0.0
     reveal_birth_needs: bool = True
     # Default-off treatment for the preregistered substrate test: every help
     # object uses the same voluntary CONSUME response.  The legacy ecology
@@ -136,6 +166,12 @@ class ReportConfig:
             raise ValueError("shock_probability must be in [0, 1].")
         if not 0.0 <= self.silent_shock_probability <= 1.0:
             raise ValueError("silent_shock_probability must be in [0, 1].")
+        if not 0.0 <= self.metabolic_spread < 1.0:
+            raise ValueError("metabolic_spread must be in [0, 1).")
+        if not 0.0 <= self.uptake_spread < 1.0:
+            raise ValueError("uptake_spread must be in [0, 1).")
+        if not 0.0 <= self.interoception_probability <= 1.0:
+            raise ValueError("interoception_probability must be in [0, 1].")
         if self.shock_size < 0.0:
             raise ValueError("shock_size must be nonnegative.")
         if not self.birth_levels:
@@ -177,6 +213,11 @@ class ReportGrid(IslandGrid):
         super().__init__(**kwargs)  # type: ignore[arg-type]
         self.report = report
         self.birth_needs = Needs()
+        # This life's own metabolic rates, as multipliers on the species
+        # constants. Set by ``ReportWorld.reset`` from a dedicated generator;
+        # all ones is the species body and is what every organism had before
+        # probe63.
+        self.metabolic_scale: dict[str, float] = {need: 1.0 for need in BODY_NEEDS}
 
     def _make_default_world(self) -> list[WorldObject]:
         levels = self.report.birth_levels
@@ -238,6 +279,7 @@ class ReportGrid(IslandGrid):
     def _apply_metabolism(self, action: Action) -> None:
         report = self.report
         frozen = set(report.frozen_needs)
+        scale = self.metabolic_scale
         energy_cost = (
             report.move_energy_metabolism
             if action == Action.MOVE_FORWARD
@@ -245,12 +287,17 @@ class ReportGrid(IslandGrid):
         )
         if "energy" in frozen:
             energy_cost = 0.0
+        # One multiplier per axis, so an individual's resting and moving energy
+        # costs scale together. A body that burns energy fast burns it fast in
+        # both regimes; the alternative would be two independent facts about the
+        # self where the biology has one.
         self.needs = replace(
             self.needs,
-            food=self.needs.food - report.metabolism_of("food"),
-            water=self.needs.water - report.metabolism_of("water"),
-            energy=self.needs.energy - energy_cost,
-            safety=self.needs.safety - report.metabolism_of("safety"),
+            food=self.needs.food - report.metabolism_of("food") * scale["food"],
+            water=self.needs.water - report.metabolism_of("water") * scale["water"],
+            energy=self.needs.energy - energy_cost * scale["energy"],
+            safety=self.needs.safety
+            - report.metabolism_of("safety") * scale["safety"],
         )
 
 
@@ -298,6 +345,12 @@ class ReportWorld(IslandWorld):
         # Silence is a property of perception, not of dynamics, so it draws from
         # its own generator and never perturbs the shock stream itself.
         self._silence_rng = Random(0)
+        # This life's own body, and the intermittent channel through which it
+        # could be found out. Separate generators for the same reason as above:
+        # at their defaults every other stream is bit-identical.
+        self._body_rng = Random(0)
+        self._intero_rng = Random(0)
+        self._uptake_scale = {need: 1.0 for need in REPORT_NEEDS}
         self._shock_marker: WorldObject | None = None
         self._last_shock_silent = False
         # Read-only counterfactual audits may force exactly one forthcoming
@@ -327,6 +380,10 @@ class ReportWorld(IslandWorld):
         self._help_rng = Random(base + 3_300_013)
         self._shock_rng = Random(base + 5_500_011)
         self._silence_rng = Random(base + 8_800_019)
+        self._body_rng = Random(base + 9_900_023)
+        self._intero_rng = Random(base + 1_100_027)
+        self.grid.metabolic_scale = self._draw_metabolic_scale()
+        self._uptake_scale = self._draw_uptake_scale()
         self._shock_marker = None
         self._forced_next_help_large = None
         self._forced_next_help_need = None
@@ -384,8 +441,18 @@ class ReportWorld(IslandWorld):
 
         self._last_action_index = list(Action).index(action)
         packet = self._packet(self.grid._observe(None, info.get("event")), None)
+        # A body reading, if one arrived this tick. Delivered here and never in
+        # the packet, so what the policy sees is bit-identical at any rate: this
+        # lever moves what a *self-model* can be corrected by, and nothing else.
+        # Drawn unconditionally so the stream does not depend on the rate.
+        interoception = (
+            tuple(getattr(self.grid.needs, need) for need in REPORT_NEEDS)
+            if self._intero_rng.random() < self.report.interoception_probability
+            else None
+        )
         info.update(
             {
+                "interoception": interoception,
                 "viability": self.grid.needs.viability(),
                 "mean_viability": self.grid.needs.mean_viability(),
                 "report_needs": tuple(
@@ -412,6 +479,72 @@ class ReportWorld(IslandWorld):
         )
         truncated = truncated or self.grid.step_count >= self.report.life_steps
         return packet, reward, terminated, truncated, info
+
+    # -- this life's own body ------------------------------------------------
+
+    def _draw_metabolic_scale(self) -> dict[str, float]:
+        """One multiplier per bodily axis, fixed for this life.
+
+        At spread 0 this is exactly all ones -- the species body every organism
+        in this ecology had before probe63 -- and the draws are still consumed,
+        from a generator nothing else reads.
+        """
+
+        spread = self.report.metabolic_spread
+        return {
+            need: self._body_rng.uniform(1.0 - spread, 1.0 + spread)
+            for need in BODY_NEEDS
+        }
+
+    def _draw_uptake_scale(self) -> dict[str, float]:
+        """How much of a granted portion this body actually absorbs.
+
+        Drawn after the metabolic scale and from the same dedicated generator,
+        so a world that varies only metabolism keeps bit-identical rates whether
+        or not absorption also varies.
+        """
+
+        spread = self.report.uptake_spread
+        return {
+            need: self._body_rng.uniform(1.0 - spread, 1.0 + spread)
+            for need in REPORT_NEEDS
+        }
+
+    @property
+    def metabolic_scale(self) -> dict[str, float]:
+        """This life's true rates as multipliers. Audit-only, like death_need.
+
+        Reading this is knowing the answer. It is what the ceiling tier is
+        allowed and what any learner must instead infer.
+        """
+
+        return dict(self.grid.metabolic_scale)
+
+    @property
+    def uptake_scale(self) -> dict[str, float]:
+        """This life's absorption, as multipliers. Audit-only, like death_need."""
+
+        return dict(self._uptake_scale)
+
+    def individual_report(self) -> ReportConfig:
+        """This life's ecology constants with its own metabolism substituted.
+
+        Lets an exact-dynamics filter be built for *this* body rather than for
+        the species, which is the only difference between the ``population`` and
+        ``individual`` tiers of the probe63 survey.
+        """
+
+        scale = self.grid.metabolic_scale
+        return replace(
+            self.report,
+            food_metabolism=self.report.food_metabolism * scale["food"],
+            water_metabolism=self.report.water_metabolism * scale["water"],
+            energy_metabolism=self.report.energy_metabolism * scale["energy"],
+            move_energy_metabolism=(
+                self.report.move_energy_metabolism * scale["energy"]
+            ),
+            safety_metabolism=self.report.safety_metabolism * scale["safety"],
+        )
 
     # -- the world acting on the body ---------------------------------------
 
@@ -520,9 +653,11 @@ class ReportWorld(IslandWorld):
         else:
             large = self._forced_next_help_large
             self._forced_next_help_large = None
+        # The surface still names the portion class the caregiver granted; how
+        # much of it this body takes up is private to this body.
         portion = (
             self.report.portion_large if large else self.report.portion_small
-        )
+        ) * self._uptake_scale[need]
         surface = HELP_SURFACES[(need, large)]
         pos = self.grid.agent_pos
         if need == "food":

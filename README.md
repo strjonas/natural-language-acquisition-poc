@@ -546,6 +546,37 @@ saturates on ~9.7% of ticks, so its bias equilibrates at +0.051 instead of
 accumulating. The ecology carries the self-model. Full record:
 `docs/decisions/2026-08-03-self-uncertainty-ceiling-survey.md`.
 
+### Probe63: an organism that finds out what its own body is
+
+Every organism in this ecology used to burn fuel at exactly the species rate, so
+its "self-model" was a model of bodies in general -- which is why the hand-written
+probe53 filter was exact and why nothing learned could ever beat it. Three
+default-inert levers change that: `metabolic_spread` gives each life its own burn
+rates, `uptake_spread` its own absorption, and `interoception_probability` the
+only channel through which either could be found out (the body is otherwise
+visible exactly once, at birth). Measure the headroom before building anything:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.organism.individual_self --lives 40 --closed-loop-lives 40
+```
+
+At spread 0.60 the species filter carries body error 0.0833 and names the truly
+lowest need on 0.660 of ticks; the same filter on this life's constants is
+*exact* and names it on 1.000. Unlike probe62's gap, all 34 points are
+recoverable. Then run the preregistered treatment, five seeds, two learning
+rules against one set of locked gates:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.organism.self_calibration --lives 40 --seeds 5
+```
+
+The organism keeps one copy of its body filter per constant it could be wrong
+about and reads off `d(predicted body)/d(log parameter)` -- a fact about its own
+model rather than about its body -- then attributes each interoceptive residual
+across its own parameters. Preregistration:
+`docs/decisions/2026-08-03-individual-self-calibration-preregistration.md`.
+Feasibility: `docs/decisions/2026-08-03-individual-self-ceiling-survey.md`.
+
 Train a fresh option-world model per seed, then test whether option mediation
 still works on those independently trained world-model heads:
 
