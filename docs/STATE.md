@@ -4,234 +4,65 @@ Last rewritten: 2026-08-03. Rewrite this file, never append.
 
 ## Where the next agent should start
 
-Two things are live.
+Both of the last two probes are **finished and both close their mechanism.**
 
-1. **Probe61's five-seed treatment run is executing now**, split across four
-   processes, one per world. See "Probe61: the run in flight" immediately below
-   for how to check it, merge it, and write it up.
-2. **Probe62's ceiling survey is finished and it closes the uncertainty
-   mechanism** before it was built. See "Probe62" below. It also opens the one
-   comparison this repository has never been able to make -- learned self-model
-   against hand-written filter -- and names the experiment.
+1. **Probe61 (structure discovery) is complete: four of five locked gates fail.**
+   Result: `docs/decisions/2026-08-02-discovered-self-structure-result.md`. The
+   mechanism is closed by the preregistered failure rule. Its passing parts (F0,
+   G2, the recovered rates) are real but uncontrolled, because the preregistered
+   controls were **not run** -- that is the one piece of unfinished business on
+   this probe and it is described under "Probe61" below.
+2. **Probe62's ceiling survey closes the uncertainty mechanism** before it was
+   built. See "Probe62" below. It also opens the one comparison this repository
+   has never been able to make -- learned self-model against hand-written filter
+   -- and names the experiment.
 
-## Probe61: the run in flight
+**The next experiment is the one probe62 opened**, described at the end of the
+probe62 section. Phase A2 is closed; do not reopen it by re-tuning probe61.
 
-The twenty treatment fits were launched as four processes because
-`run_world_seed` is pure in `(world, seed)`: the developmental stream comes from
-`development_seed_base(seed_index, world_name)` and the fit is seeded by
-`seed_index` alone, so splitting by world changes no number and costs about a
-quarter of the wall clock on this machine.
+## Probe61: complete, closed, and what is left undone
 
-```bash
-PYTHONPATH=src .venv/bin/python -m homesocial.organism.discovered_self --parent runs/organism/probe52_guided_report_lexicon/adult/organism_report_seed1.npz --run-dir runs/organism/probe61_discovered_self/full/K3 --seeds 5 --lives 100 --worlds K3 --learning-rate 0.03 --sparsity 3e-5
-```
+Result: `docs/decisions/2026-08-02-discovered-self-structure-result.md`.
+Artifacts: `runs/organism/probe61_discovered_self/full/discovered_self.json`,
+20 fits.
 
-Progress is one `.npz` per completed fit in
-`runs/organism/probe61_discovered_self/full/<world>/`, and a running commentary
-in `full/<world>.log`. K3 is the critical path -- it carries the deployment
-battery and is the slowest world.
+| gate | result | |
+|---|---|---|
+| F0 body tracking | K3 error 0.0161--0.0209, mean **0.0177** vs gate 0.05 | **pass** |
+| G1 dimension | per-K matches 2/5, 3/5, 2/5, 5/5; means 1.6 < 2.6 < 3.6 < 4.0 | **fail** |
+| G2 mapping | **5/5 in K3 and 5/5 in K4** | **pass** |
+| G3 rates | 3/5 where 4/5 required | **fail** |
+| G4 lesion | 0/5, as worded | **fail** |
+| G5 deployment | K3 fidelity clears 0.80 on 2/5; K4 degenerates 5/5 | **fail** |
 
-When all four `discovered_self.json` files exist, merge and evaluate the locked
-gates over the pooled twenty records:
+Four of five fail, so the mechanism is closed by the preregistered failure rule.
+Do not rescue it by raising `L`, changing the sparsity family, re-tuning per
+world, or shrinking the sweep; the preregistration forbids each by name.
 
-```bash
-PYTHONPATH=src .venv/bin/python scripts/probe61_merge_worlds.py --run-dir runs/organism/probe61_discovered_self/full
-```
+**Three things worth carrying forward.**
 
-The script **refuses to merge a partial sweep** and refuses worlds that disagree
-on hyperparameters or that have ragged seed sets, because either would evaluate
-a locked gate on an experiment that was not run. Then write
-`docs/decisions/2026-08-02-discovered-self-structure-result.md` against F0 and
-G1--G5 and rewrite this file.
+1. **The feared falsification did not occur.** The preregistration said constant
+   `d_eff` across `K` would convict the sparsity coefficient of setting the
+   answer. Mean `d_eff` is strictly increasing in `K`, so the count is genuinely
+   responsive to a moving body. G1 fails on accuracy, not on responsiveness.
+2. **The seed-0 K3 warning does not replicate.** `silent_variable_found` is False
+   on **5/5** K3 seeds and True on **3/5** K4 seeds. The discriminating clause is
+   causal quietness, not drift: K3's spurious extra dimensions never fall below
+   an uptake ratio of 0.125, K4's reach 0.078. The old caution was a hand-read of
+   drift alone. This still does not license the discovered-`safety` claim -- 3/5
+   is below the locked 4/5, the drift overshoots by 35--170%, and nothing in 20
+   fits ever exceeded four, so K4's 5/5 stays consistent with a capped upward
+   bias. A true `K = 5` world would discriminate; this ecology has none.
+3. **The split-by-world execution was verified, not assumed.** Every scalar field
+   of all four seed-0 records is bit-identical to the earlier single-process run.
 
-**Partial evidence: the raw numbers only.** K1, K2 and K4 are complete; K3 is at
-four seeds of five. Recovered dimension against truth:
-
-| world | true `K` | s0 | s1 | s2 | s3 | s4 | mean | matches |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| K1 | 1 | 1 | 1 | **2** | **2** | **2** | 1.6 | 2/5 |
-| K2 | 2 | 2 | 2 | 2 | **3** | **4** | 2.6 | 3/5 |
-| K3 | 3 | **4** | **4** | 3 | 3 | pending | 3.5 | 2/4 |
-| K4 | 4 | 4 | 4 | 4 | 4 | 4 | 4.0 | 5/5 |
-
-Held-out sensory RMSE is uniformly good on the misses as well as the hits
-(0.0088--0.0233), so whatever is happening is in the dimension criterion and not
-in the fit. No fit anywhere has under-counted, and none has returned more than
-four.
-
-**Deliberately not characterized further here.** Two earlier readings of this
-table were written on partial data and both had to be withdrawn -- "over-counts
-by exactly one" died when K2 seed 4 returned 4 against a true 2, and "saturates
-at four" died when K3 seeds 2 and 3 returned 3. Wait for the twentieth fit, then
-characterize once. The interpretive question the write-up has to answer is
-whether K4's 5/5 is discovery of `safety` or an upward bias that happens to land
-on four; K3's split (4, 4, 3, 3) is the evidence that bears on it, and it is not
-yet complete.
-
-**Do not read the per-world `discovered_self.json` gate blocks as results.**
-Nearly every gate is defined over the pooled record set, so a world holding no
-records for a gate reports `passed: false` with `seeds_passing: 0/0` -- K1, K2
-and K4 all show F0 false for that reason alone, and K4 shows `G1 passed: true`
-on its own five records in isolation. Only `scripts/probe61_merge_worlds.py` over
-all twenty fits evaluates the locked gates as preregistered.
-
-**One world-specific result that is real and complete.** K4 deployment fails G5
-on **0 of 5 seeds** -- survival 0.56--0.58, report fidelity 0.42--0.45, scrambled
-0.07 -- confirming across all five seeds the degeneration predicted from seed 0:
-`safety` is unreachable, so the discovered drift for it drives the running
-minimum and probe60's `E[min]` objective goes indifferent across the vocabulary.
-
-**Controls have not been run.** `--controls` in the CLI reruns the treatment
-loop before the controls, so a controls-only pass needs either a separate
-invocation per world or a small driver calling `run_world_seed` directly.
-
-## Probe61: what it is testing
-
-The mechanism, in one sentence: the organism is given an overcomplete
-eight-dimensional latent and only two scalar sensations per transition -- the
-**mean** and the **minimum** of its own bodily variables, which are exactly the
-world's own reward signal and its death signal -- and has to work out for itself
-how many bodily variables it has, what each one's depletion rate is, and which
-of the world's resources restores which. It is told neither the number three,
-nor an axis order, nor an axis name, nor a per-life birth reading. This is a
-strict *reduction* of privilege against probe57, which was handed the true
-per-axis body vector at every developmental transition.
-
-The ground truth is varied **in the world**, by freezing bodily axes, so the
-recovered dimension is checked against a number that moves. `K4` is the
-unmodified frozen report ecology and its true bodily dimension is **four**,
-because `safety` really does deplete at 0.002/tick and enters both viability
-signals -- it is precisely the variable probe57's hand-written three-axis
-template cannot represent.
-
-| condition | frozen | live variables | true `K` |
-|---|---|---|---:|
-| K1 | food, water, safety | energy | 1 |
-| K2 | food, safety | water, energy | 2 |
-| K3 | safety | food, water, energy | 3 |
-| K4 | none -- the frozen ecology | food, water, energy, **safety** | 4 |
-
-### Seed 0 of the treatment run: what four worlds already say
-
-**This is one seed of five. It is not the result and no gate is decided by it.**
-Nothing was changed after seeing it. Artifacts:
-`runs/organism/probe61_discovered_self/seed0/`.
-
-| gate | requirement | seed 0 | |
-|---|---|---|---|
-| F0 | K3 body error `<= 0.05` | **0.0183** | on track |
-| G1 | `d_eff == K` | K1 **1/1**, K2 **2/2**, K4 **4/4**, K3 **4 vs 3** | K3 misses |
-| G2 | one-to-one map, three channels agree, concentration `>= 0.80` | K3 and K4 both **pass** | on track |
-| G3 | rates within 25%, movement on the energy dimension | all six rates within 5%; movement **0.983** on energy | see caveat |
-| G4 | lesion drops the lesioned need's recall `>= 30` points | **fails as worded** | see below |
-| G5 | survival `>= 0.75`, fidelity `>= 0.80`, controls `>= 30` points down | K3 **passes**, K4 **fails** | K4 as predicted |
-
-What the organism recovered in K4 -- the unmodified frozen ecology -- from
-nothing but how good and how bad it feels:
-
-| quantity | discovered | true |
-|---|---:|---:|
-| food depletion / tick | 0.0078 | 0.008 |
-| water depletion / tick | 0.0112 | 0.012 |
-| energy depletion / tick | 0.0160 | 0.016 |
-| extra cost of moving | **0.983 share on the energy dimension** | energy only |
-| food uptake, small / large | 0.201 / 0.608 | 0.20 / 0.60 |
-| water uptake, small / large | 0.193 / 0.605 | 0.20 / 0.60 |
-| energy uptake, small / large | 0.199 / 0.601 | 0.20 / 0.60 |
-
-The need-to-dimension map is one-to-one and **three independent causal channels
-agree on it** -- learned uptake, learned shock, and a live forced-grant
-intervention -- at concentrations of 0.92 to 1.00. Nothing about movement
-costing energy was given; probe57 was told it.
-
-**Four findings the next agent must not lose:**
-
-1. **The K3 world is the negative control for the "discovered fourth variable"
-   claim, and on seed 0 it fires.** In K4, an extra effective dimension appears
-   with drift **0.0027** and near-zero uptake, which matches `safety`'s true
-   0.002 and satisfies G3's silent-variable clause. But K3, where `safety` is
-   frozen and no fourth variable exists, produced an extra dimension with drift
-   **0.0022** and the same signature. So that clause is **confounded**: a
-   drift-only dimension near 0.002 also appears when there is nothing to find,
-   which is most simply read as a nuisance dimension absorbing model
-   misspecification. Do not claim the discovered `safety` variable on the K4
-   number alone. Running K4 without K3 would have produced exactly that
-   overclaim.
-2. **G4 fails as worded, and the underlying phenomenon is the *opposite* of what
-   the gate assumed.** Lesioning a discovered dimension does not blind the
-   organism to that need, it **fixates** it on that need, because the frozen
-   birth prior (about 0.58) sits below where help keeps the real axes. The
-   effect is perfectly one-to-one on the diagonal -- freezing the food, water
-   and energy dimensions moves that need's share of utterances from
-   0.27/0.31/0.42 to **0.47/0.61/0.71** respectively, and drives that need's
-   truly-lowest ticks down three- to four-fold. That description is **post hoc
-   and not a gate**. The locked gate stands as failed; a corrected lesion
-   endpoint needs its own preregistration.
-3. **K4 deployment degenerates exactly as predicted.** Survival 0.58 and
-   fidelity 0.450 in K4 against 0.90 and 0.824 in K3. `safety` is unreachable,
-   the discovered drift for it is 35% too fast, so it crashes to zero late in
-   life, becomes the running minimum in every branch, and probe60's
-   `E[min(next latent)]` objective goes indifferent across all 60 tokens.
-4. **The K3 causal battery is clean.** Grounded 0.90 survival and 0.824
-   fidelity; scrambled listener 0.05; mute listener, mute organism, zero belief
-   and all three fixed words **0.00**; and freezing a dimension the criterion
-   discarded changes nothing at all.
-
-### What is already established
-
-Preregistration: `docs/decisions/2026-08-02-discovered-self-structure-preregistration.md`,
-with three amendments all recorded **before any treatment run** and all
-concerning fitting or measurement scale, never a gate, a threshold, or a
-control.
-
-Single-fit pilot evidence that the mechanism identifies the body (K4, seed 0,
-80,000 developmental ticks, no sparsity penalty). This is **one seed of one
-world and is not the result**; it is why the run is worth doing:
-
-| quantity | discovered | world's true value |
-|---|---:|---:|
-| held-out sensory RMSE | **0.0158** | null 0.1513 |
-| food uptake, small / large | 0.195 / 0.614 | 0.20 / 0.60 |
-| water uptake, small / large | 0.189 / 0.588 | 0.20 / 0.60 |
-| energy uptake, small / large | 0.208 / 0.608 | 0.20 / 0.60 |
-| food depletion per tick | 0.0076 | 0.008 |
-| water depletion per tick | 0.0115 | 0.012 |
-| energy depletion per tick | 0.0158 | 0.016 |
-
-An oracle carrying the world's true constants reaches 0.0032 per-tick rollout
-error on the same stream, so 0.0158 is within a small factor of the achievable
-floor rather than near the null.
-
-Also settled and locked:
-
-- Hyperparameters, selected on held-out sensory error alone on seed 0 / K4 and
-  then frozen across every seed and every world: shooting schedule A, learning
-  rate **0.03**, sparsity **3e-5**. Full grids in
-  `runs/organism/probe61_discovered_self/selection.json`. The sparsity rule --
-  the largest coefficient within 5% of the best held-out RMSE -- had to be run
-  on an extended grid; the original one started an order of magnitude above the
-  data term (sensory MSE is about 1.7e-4, so 1e-4 across eight gates swamps it,
-  and 1e-3 destroys the fit outright at RMSE 0.100). Recorded as the third
-  amendment.
-- `src/homesocial/organism/discovered_self.py` -- the whole mechanism, the
-  audits, the deployment battery, the gate evaluation, and a CLI. Default off,
-  own module, no `OrganismConfig` knob.
-- `tests/test_discovered_self.py` -- 14 guards, including that the frozen
-  ecology is bit-identical by default, that freezing one axis leaves every other
-  axis's random stream untouched, that the ground truth actually moves across
-  the sweep, that `--seed` actually varies this stage's model, that the two
-  sensations are permutation-symmetric across latent dimensions, and that the
-  planner's choice is invariant to relabelling the discovered dimensions.
-- `ReportConfig.frozen_needs`, `ReportWorld.death_need`, and
-  `ReportWorld.force_next_help_need` -- all additive, all default-inert.
-
-### On the write-up
-
-G1, G3's silent-variable clause, G4 and G5 all already have seed-0 evidence
-against them or around them. Report each as it lands. A failed gate closes its
-mechanism here, and probes 48 through 56 are why probe57 was credible -- do not
-soften one, and do not rewrite G4 to match the fixation effect that was found
-after the fact.
+**Unfinished: the preregistered controls were never run.** Shuffled feelings,
+mean-channel-only, minimum-channel-only, and the labeled three-dimensional
+reference. They exist to void a positive result, so they do not change a verdict
+that is negative on four gates -- but **F0 and G2 are uncontrolled and must not
+be cited as standalone positives until they are run.** The CLI runs the treatment
+loop before controls, so this needs a small driver calling `run_world_seed`
+directly with `shuffle_feelings=True` / `channels="mean"` / `channels="min"`.
 
 ## Probe62: the uncertainty mechanism is closed before it was built
 
@@ -527,7 +358,7 @@ birth echo nor a fixed rhythmic code.
 | 58 | causal-stage replication, 5 seeds | **5/5 gates pass**, sd <= 0.009 |
 | 59 | online adaptation after a body-rule change | recalibration passes 5/5; survival gates **fail**; planner identified as the bottleneck |
 | 60 | outcome-aware realized-consequence planner | planner repair passes (+40.4 survival points); continual-model load-bearing gate **fails** |
-| 61 | discovered bodily structure from two sensations | preregistered, built, guarded, selected; **five-seed treatment run in flight** |
+| 61 | discovered bodily structure from two sensations | **4 of 5 locked gates fail**; mechanism closed. F0 and G2 pass (uncontrolled); rates within 11%; `d_eff` responsive but inaccurate |
 | 62 | self-uncertainty ceiling survey (feasibility, no gates) | calibrated posterior **ties** the point filter at every silence rate; oracle-timed inspection does not beat random; mechanism **closed**, lever kept |
 
 Do not reopen without contrary evidence:
@@ -545,21 +376,29 @@ Phase A1 established online parameter recalibration on the belief side;
 Phase A1b repaired the policy but falsified the claim that the recalibration is
 behaviourally load-bearing in this ecology. Do not retune either result.
 
-1. **Phase A2 structure discovery is under way as probe61.** See "Where the next
-   agent should start" at the top of this file: it is preregistered, built,
-   guarded and hyperparameter-selected, and the five-seed treatment run is the
-   next thing to execute. Its endpoints are belief-side and survive the policy
-   insensitivity exposed by probes59--60.
-2. Design B1 evidence integration only after A2. Before using survival, prove
+**Phase A2 is closed.** Probe61 failed four of five locked gates and probe62
+closed the uncertainty rung above it. Neither is reopened by retuning.
+
+1. **Run the learned-versus-analytic comparison probe62 opened.** Preregister it
+   first. Fit a probe61-style discovered model in a `q > 0` ecology and score it
+   against probe53's hand-written filter on a shared history, with `q = 0` as the
+   null where the two must tie. This is the first available test of the standing
+   obstacle -- that nothing yet shows the learned model doing what the analytic
+   filter cannot -- and its endpoints are belief-side.
+2. **Run probe61's missing controls** if F0 or G2 are ever to be cited. Small
+   driver, cheap, and they are already specified in the preregistration.
+3. Design B1 evidence integration only after (1). Before using survival, prove
    that the correction intervention changes the action selected; otherwise a
-   robust policy can flatten a real belief improvement again.
-3. Test catastrophic interference by alternating body regimes and measuring
+   robust policy can flatten a real belief improvement again. Probe62 gives the
+   quantitative reason this keeps happening: homeostatic bounding caps
+   self-model error at ~0.05 however much of the body is hidden.
+4. Test catastrophic interference by alternating body regimes and measuring
    parameter/belief recovery, not survival alone.
-4. Replicate the full probe52 childhood-to-adult pipeline; all causal-stage
+5. Replicate the full probe52 childhood-to-adult pipeline; all causal-stage
    replications still share one lexical/motor parent.
-5. Add future-self and uncertainty communication only after A2 and B1 pass,
-   with listener-mediated consequences and same-present/different-future
-   branch controls.
+6. Future-self report is the remaining reflection rung. Before building it, run
+   its ceiling survey the way probe62 did -- it costs hours and it saved building
+   an entire mechanism.
 
 Do not request an external corpus or generated data for these steps. Larger
 compute becomes reasonable only after multi-seed local replication shows the
@@ -578,6 +417,10 @@ same architecture, thresholds, and causal controls survive.
 - `runs/organism/probe58_causal_stage_replication/`
 - `runs/organism/probe59_online_adaptation/`
 - `runs/organism/probe60_outcome_aware_self_planner/`
+- `runs/organism/probe61_discovered_self/full/`
+- `runs/organism/probe62_uncertain_self/`
+- `docs/decisions/2026-08-02-discovered-self-structure-result.md`
+- `docs/decisions/2026-08-03-self-uncertainty-ceiling-survey.md`
 - `docs/decisions/2026-07-26-guided-report-lexicon-result.md`
 - `docs/decisions/2026-07-26-observable-history-filter-result.md`
 - `docs/decisions/2026-07-26-explicit-self-belief-result.md`
@@ -588,7 +431,7 @@ same architecture, thresholds, and causal controls survive.
 - `docs/decisions/2026-07-26-online-adaptation-result.md`
 - `docs/decisions/2026-07-30-outcome-aware-self-planner-result.md`
 
-Latest verification: **333 tests passed**. New behavior is default off.
+Latest verification: **361 tests passed**. New behavior is default off.
 Simulator event/kind metadata remains audit-only and never enters causal
 belief, listener learning, utterance planning, policy, or replay.
 
