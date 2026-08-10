@@ -1,0 +1,284 @@
+{
+  "closed_loop": [
+    {
+      "interoception_probability": 0.1,
+      "lives": 40,
+      "metabolic_spread": 0.6,
+      "report_fidelity": 1.0,
+      "survival": 0.7,
+      "tier": "oracle"
+    },
+    {
+      "interoception_probability": 0.1,
+      "lives": 40,
+      "metabolic_spread": 0.6,
+      "report_fidelity": 0.645354563361786,
+      "survival": 0.525,
+      "tier": "population"
+    },
+    {
+      "interoception_probability": 0.1,
+      "lives": 40,
+      "metabolic_spread": 0.6,
+      "report_fidelity": 1.0,
+      "survival": 0.7,
+      "tier": "individual"
+    },
+    {
+      "interoception_probability": 0.1,
+      "lives": 40,
+      "metabolic_spread": 0.6,
+      "report_fidelity": 0.8719267347657625,
+      "survival": 0.675,
+      "tier": "snap"
+    },
+    {
+      "interoception_probability": 0.1,
+      "lives": 40,
+      "metabolic_spread": 0.6,
+      "report_fidelity": 0.9558264055234607,
+      "survival": 0.675,
+      "tier": "corrigible"
+    }
+  ],
+  "evidence": [
+    {
+      "argmin_accuracy": {
+        "corrigible": 0.8230449447015452,
+        "individual": 1.0,
+        "oracle": 1.0,
+        "population": 0.6595811436191074,
+        "snap": 0.72421366381677
+      },
+      "body_error": {
+        "corrigible": 0.048150153137680195,
+        "individual": 1.2225754645633389e-09,
+        "oracle": 0.0,
+        "population": 0.08327011191021044,
+        "snap": 0.06907656695757367
+      },
+      "driver": "population",
+      "estimator_intervals_skipped": 0.375,
+      "estimator_intervals_used": 9.15,
+      "interoception_probability": 0.01,
+      "lives": 40,
+      "mean_life_steps": 343.725,
+      "metabolic_spread": 0.6,
+      "prior_rate_error": 0.3,
+      "rate_error": 0.20594029437261968,
+      "readings_per_life": 3.2,
+      "scored_ticks": 12749
+    },
+    {
+      "argmin_accuracy": {
+        "corrigible": 0.9083849713703036,
+        "individual": 1.0,
+        "oracle": 1.0,
+        "population": 0.6595811436191074,
+        "snap": 0.8166130676915837
+      },
+      "body_error": {
+        "corrigible": 0.025354518902081482,
+        "individual": 1.2225754645633389e-09,
+        "oracle": 0.0,
+        "population": 0.08327011191021044,
+        "snap": 0.04781049908218305
+      },
+      "driver": "population",
+      "estimator_intervals_skipped": 1.0,
+      "estimator_intervals_used": 28.7,
+      "interoception_probability": 0.03,
+      "lives": 40,
+      "mean_life_steps": 343.725,
+      "metabolic_spread": 0.6,
+      "prior_rate_error": 0.3,
+      "rate_error": 0.1507193476141067,
+      "readings_per_life": 9.95,
+      "scored_ticks": 12749
+    },
+    {
+      "argmin_accuracy": {
+        "corrigible": 0.9806259314456036,
+        "individual": 1.0,
+        "oracle": 1.0,
+        "population": 0.6595811436191074,
+        "snap": 0.9204643501451094
+      },
+      "body_error": {
+        "corrigible": 0.005877959081802749,
+        "individual": 1.2225754645633389e-09,
+        "oracle": 0.0,
+        "population": 0.08327011191021044,
+        "snap": 0.022545635383544576
+      },
+      "driver": "population",
+      "estimator_intervals_skipped": 3.2,
+      "estimator_intervals_used": 97.075,
+      "interoception_probability": 0.1,
+      "lives": 40,
+      "mean_life_steps": 343.725,
+      "metabolic_spread": 0.6,
+      "prior_rate_error": 0.3,
+      "rate_error": 0.07137749914179034,
+      "readings_per_life": 33.475,
+      "scored_ticks": 12749
+    }
+  ],
+  "headroom": [
+    {
+      "argmin_accuracy": {
+        "corrigible": 0.9996666666666667,
+        "individual": 0.9996666666666667,
+        "oracle": 1.0,
+        "population": 0.9996666666666667,
+        "snap": 0.9996666666666667
+      },
+      "body_error": {
+        "corrigible": 9.046660523420206e-10,
+        "individual": 9.046660523420206e-10,
+        "oracle": 0.0,
+        "population": 9.046660523420206e-10,
+        "snap": 9.046660523420206e-10
+      },
+      "driver": "population",
+      "estimator_intervals_skipped": 0.0,
+      "estimator_intervals_used": 0.0,
+      "interoception_probability": 0.0,
+      "lives": 40,
+      "mean_life_steps": 400.0,
+      "metabolic_spread": 0.0,
+      "prior_rate_error": 0.0,
+      "rate_error": 0.0,
+      "readings_per_life": 0.0,
+      "scored_ticks": 15000
+    },
+    {
+      "argmin_accuracy": {
+        "corrigible": 0.8829333333333333,
+        "individual": 1.0,
+        "oracle": 1.0,
+        "population": 0.8829333333333333,
+        "snap": 0.8829333333333333
+      },
+      "body_error": {
+        "corrigible": 0.021379623476583346,
+        "individual": 8.504920515579133e-10,
+        "oracle": 0.0,
+        "population": 0.021379623476583346,
+        "snap": 0.021379623476583346
+      },
+      "driver": "population",
+      "estimator_intervals_skipped": 0.0,
+      "estimator_intervals_used": 0.0,
+      "interoception_probability": 0.0,
+      "lives": 40,
+      "mean_life_steps": 400.0,
+      "metabolic_spread": 0.15,
+      "prior_rate_error": 0.075,
+      "rate_error": 0.0720502336644037,
+      "readings_per_life": 0.0,
+      "scored_ticks": 15000
+    },
+    {
+      "argmin_accuracy": {
+        "corrigible": 0.7800773563140395,
+        "individual": 1.0,
+        "oracle": 1.0,
+        "population": 0.7800773563140395,
+        "snap": 0.7800773563140395
+      },
+      "body_error": {
+        "corrigible": 0.04317517843510258,
+        "individual": 9.727160921424862e-10,
+        "oracle": 0.0,
+        "population": 0.04317517843510258,
+        "snap": 0.04317517843510258
+      },
+      "driver": "population",
+      "estimator_intervals_skipped": 0.0,
+      "estimator_intervals_used": 0.0,
+      "interoception_probability": 0.0,
+      "lives": 40,
+      "mean_life_steps": 393.425,
+      "metabolic_spread": 0.3,
+      "prior_rate_error": 0.15,
+      "rate_error": 0.14410046732880744,
+      "readings_per_life": 0.0,
+      "scored_ticks": 14737
+    },
+    {
+      "argmin_accuracy": {
+        "corrigible": 0.7135450421257291,
+        "individual": 1.0,
+        "oracle": 1.0,
+        "population": 0.7135450421257291,
+        "snap": 0.7135450421257291
+      },
+      "body_error": {
+        "corrigible": 0.06183584509073534,
+        "individual": 9.651543000291396e-10,
+        "oracle": 0.0,
+        "population": 0.06183584509073534,
+        "snap": 0.06183584509073534
+      },
+      "driver": "population",
+      "estimator_intervals_skipped": 0.0,
+      "estimator_intervals_used": 0.0,
+      "interoception_probability": 0.0,
+      "lives": 40,
+      "mean_life_steps": 372.175,
+      "metabolic_spread": 0.45,
+      "prior_rate_error": 0.225,
+      "rate_error": 0.21615070099321115,
+      "readings_per_life": 0.0,
+      "scored_ticks": 13887
+    },
+    {
+      "argmin_accuracy": {
+        "corrigible": 0.6595811436191074,
+        "individual": 1.0,
+        "oracle": 1.0,
+        "population": 0.6595811436191074,
+        "snap": 0.6595811436191074
+      },
+      "body_error": {
+        "corrigible": 0.08327011191021044,
+        "individual": 1.2225754645633389e-09,
+        "oracle": 0.0,
+        "population": 0.08327011191021044,
+        "snap": 0.08327011191021044
+      },
+      "driver": "population",
+      "estimator_intervals_skipped": 0.0,
+      "estimator_intervals_used": 0.0,
+      "interoception_probability": 0.0,
+      "lives": 40,
+      "mean_life_steps": 343.725,
+      "metabolic_spread": 0.6,
+      "prior_rate_error": 0.3,
+      "rate_error": 0.28820093465761487,
+      "readings_per_life": 0.0,
+      "scored_ticks": 12749
+    }
+  ],
+  "interoception_sweep": [
+    0.01,
+    0.03,
+    0.1
+  ],
+  "seed_base": 930000000,
+  "spread_sweep": [
+    0.0,
+    0.15,
+    0.3,
+    0.45,
+    0.6
+  ],
+  "tiers": [
+    "oracle",
+    "population",
+    "individual",
+    "snap",
+    "corrigible"
+  ]
+}

@@ -134,9 +134,11 @@ than reporting a null as a pass.
 **A2. Structure discovery.** **Promoted by A1's gate-2 failure**, as that
 preregistration specified. Its endpoints are belief-side, so it does not
 depend on the survival instrument A1 showed to be unreliable here.
-**Preregistered and built as probe61 on 2026-08-02; the five-seed treatment run
-is pending.** See `decisions/2026-08-02-discovered-self-structure-preregistration.md`
-and the top of `STATE.md`.
+**Preregistered and run as probe61 on 2026-08-03. Four of five locked gates
+failed; the mechanism is closed.** It did recover a responsive latent structure
+from two scalar viability signals, but it did not reliably recover dimensional
+count or survive the causal lesion/deployment gates. See
+`decisions/2026-08-02-discovered-self-structure-result.md` and `STATE.md`.
 
 Stop telling the agent it has three axes. Give it
 a latent state larger than the body (say 8 dims) plus a sparsity or rank

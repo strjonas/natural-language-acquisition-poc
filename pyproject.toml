@@ -2,11 +2,25 @@
 name = "homeostatic-social-grid"
 version = "0.1.0"
 description = "A minimal homeostatic social gridworld for grounded language and self-like agency experiments."
+readme = "README.md"
+license = "MIT"
+authors = [
+  { name = "Jonas Strabel" },
+]
 requires-python = ">=3.11"
 dependencies = [
-  "mlx",
-  "numpy",
+  "mlx>=0.32,<0.33",
+  "numpy>=2.5,<3",
 ]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=9.1,<10",
+]
+
+[project.urls]
+Documentation = "https://github.com/strjonas/homeostatic-social-grid/tree/main/docs"
+Issues = "https://github.com/strjonas/homeostatic-social-grid/issues"
 
 [project.scripts]
 homegrid-demo = "homesocial.demo:main"
@@ -36,3 +50,6 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/homesocial"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

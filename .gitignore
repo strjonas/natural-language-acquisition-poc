@@ -7,6 +7,25 @@ __pycache__/
 dist/
 build/
 *.egg-info/
-runs/
+# Experiment output is ignored by default. A small, explicitly allow-listed
+# publication bundle below keeps the headline result reproducible without
+# committing the 138 MB local run archive.
+runs/*
+!runs/README.md
+!runs/organism/
+runs/organism/*
+!runs/organism/probe52_guided_report_lexicon/
+runs/organism/probe52_guided_report_lexicon/*
+!runs/organism/probe52_guided_report_lexicon/adult/
+runs/organism/probe52_guided_report_lexicon/adult/*
+!runs/organism/probe52_guided_report_lexicon/adult/organism_report_seed1.npz
+!runs/organism/probe52_guided_report_lexicon/adult/organism_report_seed1.npz.json
+!runs/organism/probe63_individual_self/
+runs/organism/probe63_individual_self/*
+!runs/organism/probe63_individual_self/ceiling_survey.json
+!runs/organism/probe63_individual_self/closed_loop.json
+!runs/organism/probe63_individual_self/localization_rate010.json
+!runs/organism/probe63_individual_self/shuffled_clamped.json
+!runs/organism/probe63_individual_self/treatment.json
 .env
 .DS_Store

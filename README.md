@@ -1,5 +1,98 @@
 # Homeostatic Social Grid
 
+An AI-assisted independent research project asking a narrow, causal question:
+can an embodied learner acquire a model of its *own individual body*—rather
+than a generic model of bodies—and make that model useful for both regulation
+and communication?
+
+**Status:** credible intermediate result, not a finished language-developing
+agent. The repository currently demonstrates online individual-body
+calibration and causally useful three-word need reports in a small custom
+simulation. It does **not** demonstrate natural language acquisition,
+consciousness, or a general-purpose robot self-model.
+
+## Headline result
+
+In Probe63, each simulated organism is born with unknown individual metabolic
+constants and receives sparse interoceptive readings. A 21-scalar recursive
+least-squares (RLS) self-calibrator is evaluated over 5 seed blocks x 40 lives,
+with gates fixed before the treatment implementation.
+
+| condition | body-state error | correct lowest-need report |
+|---|---:|---:|
+| species-level filter | 0.0785 | 66.5% |
+| same readings, no persistent self-model (`snap`) | 0.0454 | 81.5% |
+| online individual self-model (RLS) | **0.0133** | **94.6%** |
+
+Relative to the identical-evidence `snap` control, RLS reduces body-state error
+by 70.7% and improves report accuracy by 13.2 percentage points. The recursive
+arm passes all seven locked gates, including moved-ground-truth localization,
+shuffled readings, a null world, and parameter recovery. In a separate
+closed-loop evaluation, report fidelity improves from 0.780 to 0.926; the
+survival difference (0.620 to 0.640) is directionally positive but unresolved
+at five seeds and was deliberately not a gate.
+
+The mechanism is deliberately modest: standard RLS over a hand-designed causal
+body model. The evidence supports **online identification of individual bodily
+parameters and faithful reporting**, not discovered architecture or developed
+language. See the full [result record](docs/decisions/2026-08-03-individual-self-calibration-result.md),
+[preregistration](docs/decisions/2026-08-03-individual-self-calibration-preregistration.md),
+and [current state](docs/STATE.md).
+
+## Reproduce the public result
+
+The tested environment is Python 3.13 on Apple Silicon with MLX 0.32. A small
+publication bundle is committed; the remaining 138 MB local experiment archive
+stays ignored.
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -e '.[dev]'
+.venv/bin/python scripts/summarize_probe63.py
+PYTHONPATH=src .venv/bin/python -m pytest -q
+```
+
+Re-run a one-life smoke treatment from the committed parent checkpoint:
+
+```bash
+PYTHONPATH=src .venv/bin/python -m homesocial.organism.self_calibration \
+  --lives 1 --seeds 1 --out /tmp/probe63-smoke.json
+```
+
+The complete treatment defaults to 5 x 40 lives and can be run by omitting the
+three overrides. It is much slower than the artifact-only summary.
+
+## Research direction
+
+The larger aim is a developmental, socially situated learner in which language
+is acquired because it improves prediction, coordination, and bodily
+regulation. That vision is explained—and separated from what exists today—in
+[Vision and research status](docs/VISION_AND_STATUS.md). An honest workshop
+paper route is sketched in [paper/OUTLINE.md](paper/OUTLINE.md).
+
+For public-use boundaries, see [Ethics and responsible claims](ETHICS.md) and
+[Project contributions and AI assistance](CONTRIBUTIONS.md). The code is MIT
+licensed.
+
+## Repository map
+
+| Path | Purpose |
+|---|---|
+| `src/homesocial/` | gridworld, learners, language probes, organism lifecycle, and Probe63 |
+| `tests/` | 378 unit and causal guard tests |
+| `docs/decisions/` | append-only preregistrations, results, and negative findings |
+| `docs/STATE.md` | current scientific state and exact claim boundary |
+| `runs/` | allow-listed public artifacts; all other run output remains ignored |
+| `scripts/summarize_probe63.py` | dependency-light recalculation of the headline result |
+
+---
+
+## Detailed experiment notebook
+
+The remainder of this README is the historical command notebook. It is useful
+for finding individual probes, but the documents linked above are the canonical
+public entry points.
+
 This is the first prototype for a minimal embodied/social learning environment.
 
 The goal is not to build a full agent yet. The goal is to define the smallest

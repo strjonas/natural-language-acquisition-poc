@@ -1,6 +1,17 @@
-# docs/ index
+# Documentation index
 
-Read these three, in order. Everything else in this directory is frozen.
+For a public overview, read these first:
+
+| File | What it is |
+|---|---|
+| `VISION_AND_STATUS.md` | Original vision, novelty boundary, acquisition-vs-emergence distinction, and the route to productive language. |
+| `STATE.md` | Current evidence, failures, and exact next work. Rewritten rather than appended. |
+| `decisions/2026-08-03-individual-self-calibration-result.md` | The strongest current empirical result and its claim boundary. |
+| `../paper/OUTLINE.md` | Honest vision-plus-interim-result workshop paper route. |
+| `INTERVIEW_GUIDE.md` | Short and technical explanations for a robotics interview. |
+
+For continued research, read these three in order. Most other planning files
+are frozen historical records.
 
 | File | What it is |
 |---|---|
@@ -8,18 +19,18 @@ Read these three, in order. Everything else in this directory is frozen.
 | `STATE.md` | **The rolling handover.** Where things stand right now. Rewritten, never appended. |
 | `decisions/` | **The durable evidence record.** Append-only. One preregistration and one result per experiment. |
 
-`runs/` is gitignored, so run outputs are not durable. Any number worth keeping
-belongs in a `decisions/` document.
+Most of `runs/` is gitignored. A roughly 3 MB allow-listed publication bundle
+contains Probe63's JSON records and the parent checkpoint required for a smoke
+rerun. Any other number worth keeping belongs in a `decisions/` document.
 
 ## Current position
 
-Tagged `v1-causal-bodily-self-report`. A learned bodily observer and a
-three-word signaling policy, replicated over five seeds with every causal
-control failing as required. Not yet a self-model in the sense the project is
-aiming at -- its structure is stipulated rather than discovered, it has no
-evidence-correction pathway, and it does not reflect. See
-`DIRECTION_2026-07-26.md` section 1 for the honest accounting and section 3 for
-what closes each gap.
+Tagged `v1-causal-bodily-self-report`, then extended by Probe63. The repository
+now contains a three-word signaling policy plus an online RLS body calibrator
+that learns individual bodily constants from intermittent evidence and passes
+all seven preregistered gates over five seeds. It remains far short of the grand
+vision: bodily structure is largely stipulated, the language is selected rather
+than productively generated, and there is no reflective or narrative learner.
 
 ## Frozen history
 

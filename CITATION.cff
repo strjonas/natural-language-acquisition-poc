@@ -1,0 +1,15 @@
+cff-version: 1.2.0
+message: "If you use this research prototype, please cite the repository."
+title: "Homeostatic Social Grid"
+type: software
+authors:
+  - family-names: Strabel
+    given-names: Jonas
+version: 0.1.0
+date-released: 2026-08-10
+license: MIT
+abstract: >-
+  An AI-assisted research prototype for causal experiments on homeostatic
+  self-modeling, grounded communication, and online identification of an
+  individual simulated body.
+repository-code: "https://github.com/strjonas/homeostatic-social-grid"

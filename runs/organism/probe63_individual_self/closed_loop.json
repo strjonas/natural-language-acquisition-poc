@@ -1,0 +1,237 @@
+[
+  {
+    "tier": "population",
+    "survival": 0.5349999999999999,
+    "fidelity": 0.6717639461067189,
+    "per_seed": [
+      {
+        "tier": "population",
+        "world": "metabolic",
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "survival": 0.525,
+        "report_fidelity": 0.6383797807347895
+      },
+      {
+        "tier": "population",
+        "world": "metabolic",
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "survival": 0.575,
+        "report_fidelity": 0.6738495879120879
+      },
+      {
+        "tier": "population",
+        "world": "metabolic",
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "survival": 0.525,
+        "report_fidelity": 0.6620986052546222
+      },
+      {
+        "tier": "population",
+        "world": "metabolic",
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "survival": 0.5,
+        "report_fidelity": 0.670845581877918
+      },
+      {
+        "tier": "population",
+        "world": "metabolic",
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "survival": 0.55,
+        "report_fidelity": 0.713646174754177
+      }
+    ]
+  },
+  {
+    "tier": "snap",
+    "survival": 0.62,
+    "fidelity": 0.7800776743046696,
+    "per_seed": [
+      {
+        "tier": "snap",
+        "world": "metabolic",
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "survival": 0.65,
+        "report_fidelity": 0.7574635326128033
+      },
+      {
+        "tier": "snap",
+        "world": "metabolic",
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "survival": 0.625,
+        "report_fidelity": 0.7792962613886271
+      },
+      {
+        "tier": "snap",
+        "world": "metabolic",
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "survival": 0.65,
+        "report_fidelity": 0.7870238718850557
+      },
+      {
+        "tier": "snap",
+        "world": "metabolic",
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "survival": 0.625,
+        "report_fidelity": 0.7836440431109817
+      },
+      {
+        "tier": "snap",
+        "world": "metabolic",
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "survival": 0.55,
+        "report_fidelity": 0.7929606625258799
+      }
+    ]
+  },
+  {
+    "tier": "learned",
+    "survival": 0.605,
+    "fidelity": 0.8940956821733499,
+    "per_seed": [
+      {
+        "tier": "learned",
+        "world": "metabolic",
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "survival": 0.65,
+        "report_fidelity": 0.8765767807236197
+      },
+      {
+        "tier": "learned",
+        "world": "metabolic",
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "survival": 0.6,
+        "report_fidelity": 0.8910496719775071
+      },
+      {
+        "tier": "learned",
+        "world": "metabolic",
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "survival": 0.6,
+        "report_fidelity": 0.9035832154644036
+      },
+      {
+        "tier": "learned",
+        "world": "metabolic",
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "survival": 0.625,
+        "report_fidelity": 0.9052532833020638
+      },
+      {
+        "tier": "learned",
+        "world": "metabolic",
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "survival": 0.55,
+        "report_fidelity": 0.8940154593991553
+      }
+    ]
+  },
+  {
+    "tier": "recursive",
+    "survival": 0.64,
+    "fidelity": 0.9256431518263121,
+    "per_seed": [
+      {
+        "tier": "recursive",
+        "world": "metabolic",
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "survival": 0.675,
+        "report_fidelity": 0.9170201681923048
+      },
+      {
+        "tier": "recursive",
+        "world": "metabolic",
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "survival": 0.675,
+        "report_fidelity": 0.9191376701966717
+      },
+      {
+        "tier": "recursive",
+        "world": "metabolic",
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "survival": 0.675,
+        "report_fidelity": 0.9280962702743105
+      },
+      {
+        "tier": "recursive",
+        "world": "metabolic",
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "survival": 0.625,
+        "report_fidelity": 0.9446209386281589
+      },
+      {
+        "tier": "recursive",
+        "world": "metabolic",
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "survival": 0.55,
+        "report_fidelity": 0.9193407118401147
+      }
+    ]
+  },
+  {
+    "tier": "individual",
+    "survival": 0.61,
+    "fidelity": 0.7974262902316808,
+    "per_seed": [
+      {
+        "tier": "individual",
+        "world": "metabolic",
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "survival": 0.625,
+        "report_fidelity": 0.8206675023503603
+      },
+      {
+        "tier": "individual",
+        "world": "metabolic",
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "survival": 0.65,
+        "report_fidelity": 0.817313998396852
+      },
+      {
+        "tier": "individual",
+        "world": "metabolic",
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "survival": 0.65,
+        "report_fidelity": 0.7820884146341464
+      },
+      {
+        "tier": "individual",
+        "world": "metabolic",
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "survival": 0.575,
+        "report_fidelity": 0.76793893129771
+      },
+      {
+        "tier": "individual",
+        "world": "metabolic",
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "survival": 0.55,
+        "report_fidelity": 0.799122604479335
+      }
+    ]
+  }
+]
