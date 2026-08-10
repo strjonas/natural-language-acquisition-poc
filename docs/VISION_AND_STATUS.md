@@ -2,29 +2,6 @@
 
 Date: 2026-08-10
 
-## Short verdict
-
-The original vision is scientifically meaningful, but its broad components are
-not new by themselves. Developmental robotics, joint attention, language games,
-symbol emergence, homeostatic reinforcement learning, and recurrent world
-models all have substantial prior literatures. A caregiver naming what an agent
-points at is a classic developmental setup, not a new mechanism.
-
-The potentially distinctive contribution is the *combination and test logic*:
-
-> A persistent learner must infer the hidden dynamics of its own individual
-> body; socially acquired language becomes useful because communicating those
-> self-relevant distinctions changes assistance and viability; and the same
-> internal model is tested causally across prediction, action, and report.
-
-A targeted search found close work on every pair of these ingredients, but not
-an exact implementation of this complete program. That is grounds for a
-research question—not for a “first ever” claim.
-
-The present repository has completed one early rung: online individual-body
-identification plus constrained reporting. It has **not** reached productive
-language, a unified learned world model, or the full developmental agent.
-
 ## What the original documents actually propose
 
 `HighLevelPlan.md` and `grand_architecture_roadmap.md` describe a “simple human
