@@ -29,3 +29,5 @@ runs/organism/probe63_individual_self/*
 !runs/organism/probe63_individual_self/treatment.json
 .env
 .DS_Store
+CLAUDE.md
+AGENTS.md

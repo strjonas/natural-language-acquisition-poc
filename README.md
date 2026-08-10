@@ -1,17 +1,15 @@
 # Homeostatic Social Grid
 
-An AI-assisted independent research project asking a narrow, causal question:
-can an embodied learner acquire a model of its *own individual body*—rather
-than a generic model of bodies—and make that model useful for both regulation
+An research project asking a narrow, causal question:
+can an embodied learner acquire a model of its own individual body and make that model useful for both regulation
 and communication?
 
-**Status:** credible intermediate result, not a finished language-developing
-agent. The repository currently demonstrates online individual-body
-calibration and causally useful three-word need reports in a small custom
-simulation. It does **not** demonstrate natural language acquisition,
-consciousness, or a general-purpose robot self-model.
+**Status:** In development.
+- Online individual-body calibration and causally useful three-word need reports in a small custom
+simulation. 
+- ToDo: fuller natural language acquisition
 
-## Headline result
+## Headline results
 
 In Probe63, each simulated organism is born with unknown individual metabolic
 constants and receives sparse interoceptive readings. A 21-scalar recursive

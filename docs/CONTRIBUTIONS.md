@@ -26,16 +26,3 @@ lead.
 The repository preserves preregistrations, failures, controls, and executable
 tests so that the work can be judged from evidence rather than from a claim of
 individual coding authorship.
-
-## Suggested disclosure
-
-For an application, interview, blog post, or paper:
-
-> I conceived and directed the project, including its research questions,
-> architecture, experimental priorities, and interpretation. I used AI coding
-> agents extensively for implementation and documentation, then evaluated the
-> resulting system through preregistered comparisons, causal controls, saved
-> artifacts, and an automated test suite.
-
-That description is more accurate—and more informative—than either claiming
-sole manual implementation or dismissing the project as merely generated code.
