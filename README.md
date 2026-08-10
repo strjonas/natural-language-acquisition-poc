@@ -1,15 +1,14 @@
-# Homeostatic Social Grid
+# Natural language acquisition POC
 
-An research project asking a narrow, causal question:
-can an embodied learner acquire a model of its own individual body and make that model useful for both regulation
-and communication?
+Research project: can an embodied learner acquire a self model and make that model useful for both regulation
+and communication (such that even deflationalists will concede that is uses language meaningfully ;D)? 
 
 **Status:** In development.
 - Online individual-body calibration and causally useful three-word need reports in a small custom
 simulation. 
 - ToDo: fuller natural language acquisition
 
-## Headline results
+## Current results
 
 In Probe63, each simulated organism is born with unknown individual metabolic
 constants and receives sparse interoceptive readings. A 21-scalar recursive
