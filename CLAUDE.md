@@ -6,7 +6,7 @@ An attempt to build an embodied agent with a causally grounded, persistent
 self-model that it can reflect on and communicate -- established by
 intervention, never by fluency. Read in this order:
 
-1. `docs/DIRECTION_2026-07-26.md` -- the destination and the phase ladder.
+1. `md/archive/DIRECTION_2026-07-26.md` -- the destination and the phase ladder.
 2. `docs/STATE.md` -- the rolling handover. Where things stand right now.
 3. `docs/decisions/` -- the durable evidence record, append-only.
 

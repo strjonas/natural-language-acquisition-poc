@@ -66,6 +66,19 @@ HELP_SURFACES: dict[tuple[str, bool], str] = {
 HELP_SURFACE_NEEDS = {
     surface: need for (need, _), surface in HELP_SURFACES.items()
 }
+HELP_SURFACE_LARGE = {
+    surface: large for (_, large), surface in HELP_SURFACES.items()
+}
+
+# Two words the caregiver already knows and has never had a use for. Which one
+# means "large" is a fact about the listener, not about the language: nothing
+# tells the organism, and the probe64 listener model has to find it out from
+# which surface appears. They are drawn from the existing closed vocabulary
+# because the point is to make more of it carry meaning, never to add symbols.
+SIZE_WORDS = {"more": "large", "not": "small"}
+SIZE_TO_WORD = {size: word for word, size in SIZE_WORDS.items()}
+SIZE_WORD_IDS = {TOKEN_TO_ID[word]: size for word, size in SIZE_WORDS.items()}
+PORTION_SIZES = ("small", "large")
 
 # A shock is the world acting on the body without being asked. It is
 # perceptible — a marker with a need-specific surface appears beside the agent
@@ -136,6 +149,62 @@ class ReportConfig:
     # told apart from one that finds out *what* about itself is off.
     uptake_spread: float = 0.0
     interoception_probability: float = 0.0
+    # Default-off pair for probe64. Together they give the listener a second
+    # thing it can be asked for, and make asking for too much of it cost
+    # something.
+    #
+    # ``portion_requests`` lets the caregiver hear a size word beside the need
+    # word and grant that portion class instead of drawing one. The draw is
+    # still consumed, so a world where nothing is ever asked for is
+    # bit-identical to the old one. The granted surface still names the class,
+    # so the portion stays learner-visible exactly as before.
+    #
+    # ``caregiver_store`` is the total portion mass the caregiver has for this
+    # whole life; each grant spends its own size, and a grant it cannot afford
+    # is not made. Zero means the old unlimited caregiver. Without it "large"
+    # dominates and the size word is decoration; with it the organism has to
+    # ask for as much as it will actually burn and no more -- which is a fact
+    # about how fast *this* body burns, not about where it currently is.
+    portion_requests: bool = False
+    caregiver_store: float = 0.0
+    # Default-off lever for probe65. The caregiver still grants once per
+    # ``help_period``, but what it grants is the last request it heard at or
+    # before ``help_delay`` ticks ago -- a listener that takes time to act
+    # rather than one that reads the mind of the tick it acts on.
+    #
+    # This is the one change that makes a request have to be about the *future*.
+    # A need word said now is answered when the body is somewhere else, and
+    # where it will be depends on how fast this body burns. Two organisms in
+    # identical states burning at different rates should name different needs,
+    # which is exactly the divergence `md/archive/DIRECTION_2026-07-26.md` phase
+    # C2 asks a future-tense report to show.
+    #
+    # It is deliberately *not* a change to ``help_period``: that constant is
+    # frozen by the feasibility run and `docs/STATE.md` forbids retuning it. The
+    # supply rate, the clock, and every portion stay exactly as they were; only
+    # the lag between asking and being answered moves. At zero the caregiver
+    # takes the same path it always has, byte for byte.
+    help_delay: int = 0
+    # Default-off lever for probe66. It changes nothing about what the caregiver
+    # grants and everything about whether the convention *factors*.
+    #
+    # Off, a size word means the same thing whatever is being asked for: "more"
+    # is large for food, for water and for energy. That is what makes probe64's
+    # factored listener model able to utter a combination it has never uttered.
+    # It is also *given* -- the designer chose to pool, and an organism that
+    # always pools would look identical whether or not the world rewarded it.
+    #
+    # On, the caregiver draws its own word-to-size mapping per need at birth, so
+    # "more" may be large for food and small for water. The convention is still
+    # deterministic and still learnable within a life; what changes is that it no
+    # longer factors, and an organism that pools regardless is now confidently
+    # wrong. That is the moved ground truth probe61's preregistration made
+    # binding for any discovery claim: a learner that always answers "it
+    # factors" must be told apart from one that finds out.
+    #
+    # The draw comes from its own generator, so at the default every other stream
+    # is bit-identical and the mapping is exactly ``SIZE_WORDS``.
+    tangled_size_words: bool = False
     reveal_birth_needs: bool = True
     # Default-off treatment for the preregistered substrate test: every help
     # object uses the same voluntary CONSUME response.  The legacy ecology
@@ -174,6 +243,10 @@ class ReportConfig:
             raise ValueError("interoception_probability must be in [0, 1].")
         if self.shock_size < 0.0:
             raise ValueError("shock_size must be nonnegative.")
+        if self.caregiver_store < 0.0:
+            raise ValueError("caregiver_store must be nonnegative.")
+        if self.help_delay < 0:
+            raise ValueError("help_delay must be nonnegative.")
         if not self.birth_levels:
             raise ValueError("birth_levels must be non-empty.")
         if any(not 0.0 < level <= 1.0 for level in self.birth_levels):
@@ -218,6 +291,12 @@ class ReportGrid(IslandGrid):
         # all ones is the species body and is what every organism had before
         # probe63.
         self.metabolic_scale: dict[str, float] = {need: 1.0 for need in BODY_NEEDS}
+        # What the last uptake actually did: how much arrived and how much of it
+        # fell off the top of a body that only holds 1.0. Audit-only, like
+        # ``death_need``. Measured at the moment of the add, so the same tick's
+        # metabolism is not netted off it; the resulting overestimate is under
+        # one tick of burn and is identical for every tier.
+        self.last_uptake: dict[str, float] | None = None
 
     def _make_default_world(self) -> list[WorldObject]:
         levels = self.report.birth_levels
@@ -254,6 +333,13 @@ class ReportGrid(IslandGrid):
             return "consumed_empty"
         if not obj.consumable:
             return "not_consumable"
+        self._record_uptake(
+            {
+                "food": obj.food_delta,
+                "water": obj.water_delta,
+                "energy": obj.energy_delta,
+            }
+        )
         self.needs = replace(
             self.needs,
             food=self.needs.food + obj.food_delta,
@@ -264,11 +350,28 @@ class ReportGrid(IslandGrid):
         self.objects = [item for item in self.objects if item is not obj]
         return f"consumed_{obj.kind}"
 
+    def _record_uptake(self, deltas: dict[str, float]) -> None:
+        delivered = 0.0
+        overflow = 0.0
+        for need, delta in deltas.items():
+            if delta <= 0.0:
+                continue
+            delivered += delta
+            overflow += max(0.0, getattr(self.needs, need) + delta - 1.0)
+        if delivered <= 0.0:
+            return
+        self.last_uptake = {
+            "delivered": delivered,
+            "overflow": overflow,
+            "useful": delivered - overflow,
+        }
+
     def _rest(self) -> str:
         """Rest restores only what a granted shelter provides."""
 
         obj = self.object_at(self.agent_pos) or self.object_ahead()
         if obj is not None and obj.kind == "shelter":
+            self._record_uptake({"energy": obj.energy_delta})
             self.needs = replace(
                 self.needs, energy=self.needs.energy + obj.energy_delta
             )
@@ -299,6 +402,40 @@ class ReportGrid(IslandGrid):
             safety=self.needs.safety
             - report.metabolism_of("safety") * scale["safety"],
         )
+
+
+def heard_size(tokens: tuple[int, ...] | None) -> str | None:
+    """The portion size a listener hears in an utterance, or None.
+
+    Same fixed rule as ``heard_need`` and decided at the same time: the first
+    size word names the size. An utterance that names no size leaves the
+    caregiver to choose for itself, exactly as it always has.
+    """
+
+    if tokens is None:
+        return None
+    for token in tokens:
+        size = SIZE_WORD_IDS.get(int(token))
+        if size is not None:
+            return size
+    return None
+
+
+def heard_word(tokens: tuple[int, ...] | None) -> str | None:
+    """The size *word* a listener hears, before any convention is applied.
+
+    ``heard_size`` resolves a word to a size through the species convention and
+    is kept for callers that want that. The caregiver carries the word instead,
+    because probe66's convention can depend on which need is being asked about,
+    and a size resolved at hearing time would have thrown that away.
+    """
+
+    if tokens is None:
+        return None
+    for token in tokens:
+        if int(token) in SIZE_WORD_IDS:
+            return VOCAB[int(token)]
+    return None
 
 
 def heard_need(tokens: tuple[int, ...] | None) -> str | None:
@@ -337,7 +474,12 @@ class ReportWorld(IslandWorld):
         )
         self._pad_id = TOKEN_TO_ID[PAD_TOKEN]
         self._heard_need: str | None = None
+        self._heard_size: str | None = None
         self._heard_tick = -1
+        # Requests the caregiver has heard but not yet been slow enough to act
+        # on. Only read when ``help_delay`` is positive; at zero the listener
+        # takes the single-slot path it always took.
+        self._heard_log: list[tuple[int, str, str | None]] = []
         self._last_utterance: tuple[int, ...] | None = None
         self._listener_rng = Random(0)
         self._help_rng = Random(0)
@@ -350,6 +492,11 @@ class ReportWorld(IslandWorld):
         # at their defaults every other stream is bit-identical.
         self._body_rng = Random(0)
         self._intero_rng = Random(0)
+        # This life's word-to-size convention, per need. At the default it is
+        # exactly ``SIZE_WORDS`` for every need, so the caregiver behaves as it
+        # always has.
+        self._convention_rng = Random(0)
+        self._size_convention: dict[str, dict[str, str]] = {}
         self._uptake_scale = {need: 1.0 for need in REPORT_NEEDS}
         self._shock_marker: WorldObject | None = None
         self._last_shock_silent = False
@@ -361,6 +508,13 @@ class ReportWorld(IslandWorld):
         self._grants = 0
         self._grants_by_need = {need: 0 for need in REPORT_NEEDS}
         self._silent_grants = 0
+        # Probe64 bookkeeping. All audit-only, like ``death_need``: reported in
+        # ``info`` and never in the packet, never in a belief, never in a
+        # planner input.
+        self._store_remaining = 0.0
+        self._store_spent = 0.0
+        self._refused_grants = 0
+        self._granted_sizes = {size: 0 for size in PORTION_SIZES}
 
     def _build_grid(self, max_steps: int, seed: int | None) -> IslandGrid:
         return ReportGrid(
@@ -382,17 +536,25 @@ class ReportWorld(IslandWorld):
         self._silence_rng = Random(base + 8_800_019)
         self._body_rng = Random(base + 9_900_023)
         self._intero_rng = Random(base + 1_100_027)
+        self._convention_rng = Random(base + 2_200_029)
+        self._size_convention = self._draw_size_convention()
         self.grid.metabolic_scale = self._draw_metabolic_scale()
         self._uptake_scale = self._draw_uptake_scale()
         self._shock_marker = None
         self._forced_next_help_large = None
         self._forced_next_help_need = None
         self._heard_need = None
+        self._heard_size = None
         self._heard_tick = -1
+        self._heard_log = []
         self._last_utterance = None
         self._grants = 0
         self._grants_by_need = {need: 0 for need in REPORT_NEEDS}
         self._silent_grants = 0
+        self._store_remaining = self.report.caregiver_store
+        self._store_spent = 0.0
+        self._refused_grants = 0
+        self._granted_sizes = {size: 0 for size in PORTION_SIZES}
         return packet
 
     def hear(self, tokens: tuple[int, ...] | None) -> None:
@@ -413,12 +575,32 @@ class ReportWorld(IslandWorld):
                 int(token) != self._pad_id for token in tokens
             ):
                 self._heard_need = self._listener_rng.choice(REPORT_NEEDS)
+                self._heard_size = None
                 self._heard_tick = self.grid.step_count
+                self._log_request()
             return
         need = heard_need(self._last_utterance)
         if need is not None:
             self._heard_need = need
+            # The size is bound to the request that carried it. A size word
+            # said in an utterance that names no need is not a request for
+            # anything, and a stale size never survives into the next request.
+            self._heard_size = heard_word(self._last_utterance)
             self._heard_tick = self.grid.step_count
+            self._log_request()
+
+    def _log_request(self) -> None:
+        """Remember a request a slow caregiver has not reached yet.
+
+        Only consulted when ``help_delay`` is positive; at zero the list is
+        cleared at every grant and never read, so the listener's behaviour is
+        bit-identical to the caregiver of every earlier probe.
+        """
+
+        assert self._heard_need is not None
+        self._heard_log.append(
+            (self._heard_tick, self._heard_need, self._heard_size)
+        )
 
     def step(
         self, action: Action | str
@@ -426,6 +608,7 @@ class ReportWorld(IslandWorld):
         action = Action(action)
         needs_before = self.grid.needs
         self._clear_shock_marker()
+        self.grid.last_uptake = None
         observation, reward, terminated, truncated, info = self.grid.step(action)
 
         self._last_shock_silent = False
@@ -464,6 +647,12 @@ class ReportWorld(IslandWorld):
                 "granted_need": granted_need,
                 "granted_large": granted_large,
                 "grant_source_tick": grant_source_tick,
+                # Audit-only, like death_need. The organism perceives a grant
+                # through the surface that appears beside it, never through
+                # these.
+                "uptake": self.grid.last_uptake,
+                "store_remaining": self._store_remaining,
+                "store_spent": self._store_spent,
                 "shock_need": shock_need,
                 # Audit-only, like death_need: whether that shock left a marker.
                 # Never reaches a belief, a listener, a planner, or a policy.
@@ -481,6 +670,39 @@ class ReportWorld(IslandWorld):
         return packet, reward, terminated, truncated, info
 
     # -- this life's own body ------------------------------------------------
+
+    def _draw_size_convention(self) -> dict[str, dict[str, str]]:
+        """Which word means "large", per need, for this life.
+
+        At the default every need shares the species convention and this is
+        exactly ``SIZE_WORDS``. Tangled, each need draws its own orientation, so
+        the convention is still one deterministic fact per life and simply does
+        not factor. The draws happen unconditionally so that the generator's
+        stream does not depend on the setting.
+        """
+
+        convention = {}
+        for need in REPORT_NEEDS:
+            flipped = self._convention_rng.random() < 0.5
+            if self.report.tangled_size_words and flipped:
+                convention[need] = {
+                    word: ("small" if size == "large" else "large")
+                    for word, size in SIZE_WORDS.items()
+                }
+            else:
+                convention[need] = dict(SIZE_WORDS)
+        return convention
+
+    @property
+    def size_convention(self) -> dict[str, dict[str, str]]:
+        """What each word does, per need. Audit-only, like ``metabolic_scale``.
+
+        Reading this is knowing the answer. It is what a ceiling listener is
+        allowed and what any learner must instead infer from which surface
+        appears beside it.
+        """
+
+        return {need: dict(words) for need, words in self._size_convention.items()}
 
     def _draw_metabolic_scale(self) -> dict[str, float]:
         """One multiplier per bodily axis, fixed for this life.
@@ -617,6 +839,41 @@ class ReportWorld(IslandWorld):
             raise ValueError(f"Unknown need to force: {need}.")
         self._forced_next_help_need = need
 
+    def _take_request(self) -> tuple[str | None, str | None, int]:
+        """The request this grant answers, and the tick it was made on.
+
+        With no delay the caregiver answers the last thing it heard and forgets
+        everything else -- the single slot every earlier probe used, reproduced
+        here exactly. With a delay it answers the most recent request that is
+        already at least ``help_delay`` ticks old, and keeps anything newer for
+        the grants still to come. Requests older than the one it acts on are
+        dropped, so nothing is ever answered twice and a request cannot be
+        hoarded past its turn.
+        """
+
+        if self.report.help_delay <= 0:
+            need, size, tick = self._heard_need, self._heard_size, self._heard_tick
+            self._heard_need = None
+            self._heard_size = None
+            self._heard_tick = -1
+            self._heard_log.clear()
+            return need, size, tick
+
+        deadline = self.grid.step_count - self.report.help_delay
+        position = -1
+        for index, entry in enumerate(self._heard_log):
+            if entry[0] > deadline:
+                break
+            position = index
+        if position < 0:
+            # Nothing said long enough ago to have been acted on yet. Early in
+            # a life this is simply the lag, and it costs every organism the
+            # same grants.
+            return None, None, -1
+        tick, need, size = self._heard_log[position]
+        del self._heard_log[: position + 1]
+        return need, size, tick
+
     def _grant_help(self) -> tuple[str | None, bool | None, int]:
         """Deliver one help for the last thing heard, spoiling anything unused.
 
@@ -632,7 +889,7 @@ class ReportWorld(IslandWorld):
         self.grid.objects = [
             obj for obj in self.grid.objects if obj is self._shock_marker
         ]
-        need = self._heard_need
+        need, size, heard_tick = self._take_request()
         if self._forced_next_help_need is not None:
             need = self._forced_next_help_need
             self._forced_next_help_need = None
@@ -640,19 +897,39 @@ class ReportWorld(IslandWorld):
         # the organism said before help came, which happened not to be a
         # request. That moment is what gets the credit for the silence.
         source_tick = (
-            self._heard_tick if need is not None else self.grid.step_count - 1
+            heard_tick if need is not None else self.grid.step_count - 1
         )
-        self._heard_need = None
-        self._heard_tick = -1
         self._grants += 1
         if need is None:
             self._silent_grants += 1
             return None, None, source_tick
-        if self._forced_next_help_large is None:
-            large = self._help_rng.random() < self.report.large_portion_probability
-        else:
+        # Drawn unconditionally, so a world in which the organism never asks
+        # for a size keeps a bit-identical help stream at any setting of
+        # ``portion_requests``.
+        drawn_large = self._help_rng.random() < self.report.large_portion_probability
+        large = drawn_large
+        if self.report.portion_requests and size is not None:
+            # ``size`` is the word that was said; what it does is this life's
+            # convention for *this* need, which at the default is the species
+            # one for every need.
+            large = self._size_convention[need][size] == "large"
+        if self._forced_next_help_large is not None:
             large = self._forced_next_help_large
             self._forced_next_help_large = None
+
+        # A caregiver with a basket rather than a spring. It cannot give what it
+        # no longer has, and a large portion empties the basket three times as
+        # fast as a small one -- which is the whole reason a size word is worth
+        # saying rather than merely sayable.
+        cost = self.report.portion_large if large else self.report.portion_small
+        if self.report.caregiver_store > 0.0:
+            if cost > self._store_remaining + 1e-12:
+                self._refused_grants += 1
+                return None, None, source_tick
+            self._store_remaining -= cost
+        # Counted whether or not there is a basket to count it against, so that
+        # what a grant costs is a comparable number in both ecologies.
+        self._store_spent += cost
         # The surface still names the portion class the caregiver granted; how
         # much of it this body takes up is private to this body.
         portion = (
@@ -674,6 +951,7 @@ class ReportWorld(IslandWorld):
             )
         self.grid.objects = [*self.grid.objects, obj]
         self._grants_by_need[need] += 1
+        self._granted_sizes["large" if large else "small"] += 1
         return need, large, source_tick
 
     # -- read-only accessors used by audits ---------------------------------
@@ -705,7 +983,20 @@ class ReportWorld(IslandWorld):
         counts = dict(self._grants_by_need)
         counts["none"] = self._silent_grants
         counts["total"] = self._grants
+        counts["refused"] = self._refused_grants
+        for size in PORTION_SIZES:
+            counts[f"granted_{size}"] = self._granted_sizes[size]
         return counts
+
+    @property
+    def store_remaining(self) -> float:
+        """What the caregiver has left. Audit-only; nothing perceives it."""
+
+        return self._store_remaining
+
+    @property
+    def store_spent(self) -> float:
+        return self._store_spent
 
     # -- perception ---------------------------------------------------------
 

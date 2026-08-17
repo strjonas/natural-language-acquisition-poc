@@ -225,6 +225,20 @@ class SelfCalibration:
             )
         return scale
 
+    def recovered_uptake(self) -> dict[str, float]:
+        """Its own answer to "how much good does a portion do me".
+
+        The two portion classes are separate parameters of the model, so a body
+        that absorbs badly shows up as a correction to both. Their mean is the
+        multiplier a planner needs, and at zero correction it is exactly one --
+        the species body the organism starts out assuming it has.
+        """
+
+        uptake = {}
+        for index, need in enumerate(REPORT_NEEDS):
+            uptake[need] = float(np.exp(self._m[index, _UPTAKE_INDEX]).mean())
+        return uptake
+
 
 class RecursiveSelfCalibration(SelfCalibration):
     """The same self-model, attributing by accumulated evidence rather than greedily.

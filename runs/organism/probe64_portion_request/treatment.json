@@ -1,0 +1,1443 @@
+{
+  "gates": {
+    "G1_self_model_over_evidence": {
+      "pass": true,
+      "passing": 5,
+      "per_seed": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "required": 4
+    },
+    "G2_rate_over_perfect_state": {
+      "pass": true,
+      "passing": 4,
+      "per_seed": [
+        true,
+        true,
+        false,
+        true,
+        true
+      ],
+      "required": 4
+    },
+    "G3_rate_headroom_exists": {
+      "pass": true,
+      "passing": 5,
+      "per_seed": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "required": 4
+    },
+    "G4_no_false_discovery": {
+      "pass": true,
+      "passing": 5,
+      "per_seed": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "required": 4
+    },
+    "G5_shuffled_readings": {
+      "pass": true,
+      "passing": 5,
+      "per_seed": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "required": 4
+    },
+    "G6_first_use_composition": {
+      "pass": true,
+      "passing": 5,
+      "per_seed": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "required": 4
+    },
+    "G7_the_size_word_pays_rent": {
+      "pass": true,
+      "passing": 5,
+      "per_seed": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "required": 4
+    },
+    "all_pass": true
+  },
+  "rows": {
+    "behaviour": [
+      {
+        "seed": 0,
+        "speakers": [
+          {
+            "caregiver_store": 30.0,
+            "control": null,
+            "delivered": 22.670000000000805,
+            "grants": 58.425,
+            "large_share_granted": 0.47026101839965767,
+            "listener_mode": "factored",
+            "lives": 40,
+            "mean_life_steps": 356.225,
+            "need_driver": "oracle",
+            "overflow": 6.835009079797793,
+            "refused_grants": 0.325,
+            "report_fidelity": 1.0,
+            "store_spent": 22.675,
+            "survival": 0.55,
+            "tier": "recursive",
+            "uptake_efficiency": 0.698499820035397,
+            "useful_per_store": 0.698345795819317,
+            "world": "metabolic"
+          },
+          {
+            "caregiver_store": 30.0,
+            "control": "always_large",
+            "delivered": 28.140000000000317,
+            "grants": 47.575,
+            "large_share_granted": 0.9795060430898581,
+            "listener_mode": "factored",
+            "lives": 40,
+            "mean_life_steps": 328.45,
+            "need_driver": "oracle",
+            "overflow": 15.129897513262256,
+            "refused_grants": 6.65,
+            "report_fidelity": 1.0,
+            "store_spent": 28.155000000000037,
+            "survival": 0.0,
+            "tier": "recursive",
+            "uptake_efficiency": 0.46233484316765866,
+            "useful_per_store": 0.46208852732154304,
+            "world": "metabolic"
+          },
+          {
+            "caregiver_store": 30.0,
+            "control": "always_small",
+            "delivered": 5.714999999999899,
+            "grants": 26.75,
+            "large_share_granted": 0.037383177570093455,
+            "listener_mode": "factored",
+            "lives": 40,
+            "mean_life_steps": 164.175,
+            "need_driver": "oracle",
+            "overflow": 0.04711643957005014,
+            "refused_grants": 0.0,
+            "report_fidelity": 1.0,
+            "store_spent": 5.75,
+            "survival": 0.1,
+            "tier": "recursive",
+            "uptake_efficiency": 0.9917556536185388,
+            "useful_per_store": 0.9857188800747563,
+            "world": "metabolic"
+          },
+          {
+            "caregiver_store": 30.0,
+            "control": "random_size",
+            "delivered": 24.41500000000099,
+            "grants": 60.225,
+            "large_share_granted": 0.5143212951432129,
+            "listener_mode": "factored",
+            "lives": 40,
+            "mean_life_steps": 365.0,
+            "need_driver": "oracle",
+            "overflow": 7.974604688442279,
+            "refused_grants": 0.0,
+            "report_fidelity": 1.0,
+            "store_spent": 24.435000000000002,
+            "survival": 0.6,
+            "tier": "recursive",
+            "uptake_efficiency": 0.6733727344484147,
+            "useful_per_store": 0.6728215801742873,
+            "world": "metabolic"
+          },
+          {
+            "caregiver_store": 30.0,
+            "control": "no_size",
+            "delivered": 23.58500000000091,
+            "grants": 58.85,
+            "large_share_granted": 0.5021240441801189,
+            "listener_mode": "factored",
+            "lives": 40,
+            "mean_life_steps": 356.725,
+            "need_driver": "oracle",
+            "overflow": 7.644455621010787,
+            "refused_grants": 0.0,
+            "report_fidelity": 1.0,
+            "store_spent": 23.589999999999996,
+            "survival": 0.575,
+            "tier": "recursive",
+            "uptake_efficiency": 0.6758763781636425,
+            "useful_per_store": 0.6757331233145454,
+            "world": "metabolic"
+          }
+        ]
+      },
+      {
+        "seed": 1,
+        "speakers": [
+          {
+            "caregiver_store": 30.0,
+            "control": null,
+            "delivered": 21.930000000001023,
+            "grants": 60.825,
+            "large_share_granted": 0.4015618577887382,
+            "listener_mode": "factored",
+            "lives": 40,
+            "mean_life_steps": 371.025,
+            "need_driver": "oracle",
+            "overflow": 6.2608813065725615,
+            "refused_grants": 0.325,
+            "report_fidelity": 1.0,
+            "store_spent": 21.934999999999995,
+            "survival": 0.725,
+            "tier": "recursive",
+            "uptake_efficiency": 0.7145060963715335,
+            "useful_per_store": 0.7143432274186671,
+            "world": "metabolic"
+          },
+          {
+            "caregiver_store": 30.0,
+            "control": "always_large",
+            "delivered": 28.17000000000031,
+            "grants": 47.6,
+            "large_share_granted": 0.979516806722689,
+            "listener_mode": "factored",
+            "lives": 40,
+            "mean_life_steps": 331.4,
+            "need_driver": "oracle",
+            "overflow": 15.738941278806076,
+            "refused_grants": 7.05,
+            "report_fidelity": 1.0,
+            "store_spent": 28.170000000000034,
+            "survival": 0.0,
+            "tier": "recursive",
+            "uptake_efficiency": 0.44128713955250615,
+            "useful_per_store": 0.44128713955251053,
+            "world": "metabolic"
+          },
+          {
+            "caregiver_store": 30.0,
+            "control": "always_small",
+            "delivered": 6.624999999999846,
+            "grants": 31.3,
+            "large_share_granted": 0.031150159744408944,
+            "listener_mode": "factored",
+            "lives": 40,
+            "mean_life_steps": 191.7,
+            "need_driver": "oracle",
+            "overflow": 0.15966835336871937,
+            "refused_grants": 0.0,
+            "report_fidelity": 1.0,
+            "store_spent": 6.649999999999999,
+            "survival": 0.225,
+            "tier": "recursive",
+            "uptake_efficiency": 0.9758991164726455,
+            "useful_per_store": 0.9722303228016734,
+            "world": "metabolic"
+          },
+          {
+            "caregiver_store": 30.0,
+            "control": "random_size",
+            "delivered": 24.475000000000996,
+            "grants": 61.125,
+            "large_share_granted": 0.5010224948875256,
+            "listener_mode": "factored",
+            "lives": 40,
+            "mean_life_steps": 370.9,
+            "need_driver": "oracle",
+            "overflow": 8.660384066777734,
+            "refused_grants": 0.0,
+            "report_fidelity": 1.0,
+            "store_spent": 24.474999999999994,
+            "survival": 0.725,
+            "tier": "recursive",
+            "uptake_efficiency": 0.6461538685688507,
+            "useful_per_store": 0.6461538685688771,
+            "world": "metabolic"
+          },
+          {
+            "caregiver_store": 30.0,
+            "control": "no_size",
+            "delivered": 24.770000000001016,
+            "grants": 61.25,
+            "large_share_granted": 0.5122448979591837,
+            "listener_mode": "factored",
+            "lives": 40,
+            "mean_life_steps": 371.55,
+            "need_driver": "oracle",
+            "overflow": 8.862630682718102,
+            "refused_grants": 0.0,
+            "report_fidelity": 1.0,
+            "store_spent": 24.799999999999997,
+            "survival": 0.75,
+            "tier": "recursive",
+            "uptake_efficiency": 0.6422030406654122,
+            "useful_per_store": 0.6414261821485047,
+            "world": "metabolic"
+          }
+        ]
+      },
+      {
+        "seed": 2,
+        "speakers": [
+          {
+            "caregiver_store": 30.0,
+            "control": null,
+            "delivered": 22.650000000000933,
+            "grants": 62.075,
+            "large_share_granted": 0.41280708819975837,
+            "listener_mode": "factored",
+            "lives": 40,
+            "mean_life_steps": 379.8,
+            "need_driver": "oracle",
+            "overflow": 6.3648620156865325,
+            "refused_grants": 0.575,
+            "report_fidelity": 1.0,
+            "store_spent": 22.665,
+            "survival": 0.55,
+            "tier": "recursive",
+            "uptake_efficiency": 0.7189906394840498,
+            "useful_per_store": 0.7185148018669492,
+            "world": "metabolic"
+          },
+          {
+            "caregiver_store": 30.0,
+            "control": "always_large",
+            "delivered": 29.600000000000097,
+            "grants": 50.0,
+            "large_share_granted": 0.98,
+            "listener_mode": "factored",
+            "lives": 40,
+            "mean_life_steps": 348.4,
+            "need_driver": "oracle",
+            "overflow": 16.266971912259283,
+            "refused_grants": 7.45,
+            "report_fidelity": 1.0,
+            "store_spent": 29.60000000000004,
+            "survival": 0.0,
+            "tier": "recursive",
+            "uptake_efficiency": 0.45044013809935035,
+            "useful_per_store": 0.45044013809935124,
+            "world": "metabolic"
+          },
+          {
+            "caregiver_store": 30.0,
+            "control": "always_small",
+            "delivered": 7.414999999999812,
+            "grants": 35.125,
+            "large_share_granted": 0.028469750889679714,
+            "listener_mode": "factored",
+            "lives": 40,
+            "mean_life_steps": 214.775,
+            "need_driver": "oracle",
+            "overflow": 0.08779329194920693,
+            "refused_grants": 0.0,
+            "report_fidelity": 1.0,
+            "store_spent": 7.424999999999997,
+            "survival": 0.2,
+            "tier": "recursive",
+            "uptake_efficiency": 0.988160041544274,
+            "useful_per_store": 0.986829186269442,
+            "world": "metabolic"
+          },
+          {
+            "caregiver_store": 30.0,
+            "control": "random_size",
+            "delivered": 24.750000000001013,
+            "grants": 61.6,
+            "large_share_granted": 0.5044642857142857,
+            "listener_mode": "factored",
+            "lives": 40,
+            "mean_life_steps": 373.65,
+            "need_driver": "oracle",
+            "overflow": 8.552406303973465,
+            "refused_grants": 0.0,
+            "report_fidelity": 1.0,
+            "store_spent": 24.75,
+            "survival": 0.625,
+            "tier": "recursive",
+            "uptake_efficiency": 0.6544482301425004,
+            "useful_per_store": 0.6544482301425272,
+            "world": "metabolic"
+          },
+          {
+            "caregiver_store": 30.0,
+            "control": "no_size",
+            "delivered": 24.555000000000994,
+            "grants": 61.0,
+            "large_share_granted": 0.5069672131147541,
+            "listener_mode": "factored",
+            "lives": 40,
+            "mean_life_steps": 370.025,
+            "need_driver": "oracle",
+            "overflow": 8.655254061016329,
+            "refused_grants": 0.0,
+            "report_fidelity": 1.0,
+            "store_spent": 24.570000000000004,
+            "survival": 0.6,
+            "tier": "recursive",
+            "uptake_efficiency": 0.6475156155155374,
+            "useful_per_store": 0.6471203068369826,
+            "world": "metabolic"
+          }
+        ]
+      },
+      {
+        "seed": 3,
+        "speakers": [
+          {
+            "caregiver_store": 30.0,
+            "control": null,
+            "delivered": 22.870000000000967,
+            "grants": 61.45,
+            "large_share_granted": 0.4304312449145647,
+            "listener_mode": "factored",
+            "lives": 40,
+            "mean_life_steps": 375.9,
+            "need_driver": "oracle",
+            "overflow": 6.781645454669187,
+            "refused_grants": 0.55,
+            "report_fidelity": 1.0,
+            "store_spent": 22.869999999999997,
+            "survival": 0.675,
+            "tier": "recursive",
+            "uptake_efficiency": 0.7034698095903411,
+            "useful_per_store": 0.703469809590371,
+            "world": "metabolic"
+          },
+          {
+            "caregiver_store": 30.0,
+            "control": "always_large",
+            "delivered": 28.84500000000021,
+            "grants": 48.775,
+            "large_share_granted": 0.9800102511532548,
+            "listener_mode": "factored",
+            "lives": 40,
+            "mean_life_steps": 335.15,
+            "need_driver": "oracle",
+            "overflow": 15.957854852522235,
+            "refused_grants": 6.525,
+            "report_fidelity": 1.0,
+            "store_spent": 28.875000000000036,
+            "survival": 0.0,
+            "tier": "recursive",
+            "uptake_efficiency": 0.4467722360020066,
+            "useful_per_store": 0.44630805705551374,
+            "world": "metabolic"
+          },
+          {
+            "caregiver_store": 30.0,
+            "control": "always_small",
+            "delivered": 6.434999999999856,
+            "grants": 30.175,
+            "large_share_granted": 0.033140016570008285,
+            "listener_mode": "factored",
+            "lives": 40,
+            "mean_life_steps": 185.325,
+            "need_driver": "oracle",
+            "overflow": 0.17161282460382088,
+            "refused_grants": 0.0,
+            "report_fidelity": 1.0,
+            "store_spent": 6.434999999999998,
+            "survival": 0.125,
+            "tier": "recursive",
+            "uptake_efficiency": 0.973331340387906,
+            "useful_per_store": 0.9733313403878845,
+            "world": "metabolic"
+          },
+          {
+            "caregiver_store": 30.0,
+            "control": "random_size",
+            "delivered": 24.985000000001055,
+            "grants": 62.0,
+            "large_share_granted": 0.5076612903225807,
+            "listener_mode": "factored",
+            "lives": 40,
+            "mean_life_steps": 376.2,
+            "need_driver": "oracle",
+            "overflow": 8.630279910047442,
+            "refused_grants": 0.05,
+            "report_fidelity": 1.0,
+            "store_spent": 24.990000000000002,
+            "survival": 0.725,
+            "tier": "recursive",
+            "uptake_efficiency": 0.6545815525296346,
+            "useful_per_store": 0.654450583831677,
+            "world": "metabolic"
+          },
+          {
+            "caregiver_store": 30.0,
+            "control": "no_size",
+            "delivered": 24.050000000001003,
+            "grants": 60.6,
+            "large_share_granted": 0.49216171617161714,
+            "listener_mode": "factored",
+            "lives": 40,
+            "mean_life_steps": 367.725,
+            "need_driver": "oracle",
+            "overflow": 8.158449847183203,
+            "refused_grants": 0.025,
+            "report_fidelity": 1.0,
+            "store_spent": 24.049999999999997,
+            "survival": 0.7,
+            "tier": "recursive",
+            "uptake_efficiency": 0.6607713161254527,
+            "useful_per_store": 0.6607713161254803,
+            "world": "metabolic"
+          }
+        ]
+      },
+      {
+        "seed": 4,
+        "speakers": [
+          {
+            "caregiver_store": 30.0,
+            "control": null,
+            "delivered": 21.3950000000009,
+            "grants": 58.3,
+            "large_share_granted": 0.4180960548885077,
+            "listener_mode": "factored",
+            "lives": 40,
+            "mean_life_steps": 356.2,
+            "need_driver": "oracle",
+            "overflow": 6.331333683306177,
+            "refused_grants": 0.4,
+            "report_fidelity": 1.0,
+            "store_spent": 21.40999999999999,
+            "survival": 0.525,
+            "tier": "recursive",
+            "uptake_efficiency": 0.70407414427175,
+            "useful_per_store": 0.7035808648619678,
+            "world": "metabolic"
+          },
+          {
+            "caregiver_store": 30.0,
+            "control": "always_large",
+            "delivered": 28.185000000000308,
+            "grants": 47.625,
+            "large_share_granted": 0.9795275590551181,
+            "listener_mode": "factored",
+            "lives": 40,
+            "mean_life_steps": 330.6,
+            "need_driver": "oracle",
+            "overflow": 15.694874416091201,
+            "refused_grants": 6.85,
+            "report_fidelity": 1.0,
+            "store_spent": 28.18500000000003,
+            "survival": 0.025,
+            "tier": "recursive",
+            "uptake_efficiency": 0.44314797175479764,
+            "useful_per_store": 0.443147971754802,
+            "world": "metabolic"
+          },
+          {
+            "caregiver_store": 30.0,
+            "control": "always_small",
+            "delivered": 6.239999999999865,
+            "grants": 29.225,
+            "large_share_granted": 0.03421727972626176,
+            "listener_mode": "factored",
+            "lives": 40,
+            "mean_life_steps": 179.8,
+            "need_driver": "oracle",
+            "overflow": 0.15619226891139087,
+            "refused_grants": 0.0,
+            "report_fidelity": 1.0,
+            "store_spent": 6.244999999999999,
+            "survival": 0.075,
+            "tier": "recursive",
+            "uptake_efficiency": 0.9749691876744561,
+            "useful_per_store": 0.9741885878444317,
+            "world": "metabolic"
+          },
+          {
+            "caregiver_store": 30.0,
+            "control": "random_size",
+            "delivered": 23.715000000000934,
+            "grants": 59.325,
+            "large_share_granted": 0.4993678887484197,
+            "listener_mode": "factored",
+            "lives": 40,
+            "mean_life_steps": 360.0,
+            "need_driver": "oracle",
+            "overflow": 8.304172309526544,
+            "refused_grants": 0.0,
+            "report_fidelity": 1.0,
+            "store_spent": 23.714999999999996,
+            "survival": 0.525,
+            "tier": "recursive",
+            "uptake_efficiency": 0.6498346063872563,
+            "useful_per_store": 0.649834606387282,
+            "world": "metabolic"
+          },
+          {
+            "caregiver_store": 30.0,
+            "control": "no_size",
+            "delivered": 23.40000000000092,
+            "grants": 58.6,
+            "large_share_granted": 0.49872013651877134,
+            "listener_mode": "factored",
+            "lives": 40,
+            "mean_life_steps": 355.9,
+            "need_driver": "oracle",
+            "overflow": 8.20876763022455,
+            "refused_grants": 0.05,
+            "report_fidelity": 1.0,
+            "store_spent": 23.409999999999993,
+            "survival": 0.525,
+            "tier": "recursive",
+            "uptake_efficiency": 0.6491979645203321,
+            "useful_per_store": 0.6489206480041166,
+            "world": "metabolic"
+          }
+        ]
+      }
+    ],
+    "both": [
+      {
+        "body_error": {
+          "individual": 0.057412901739463125,
+          "oracle": 0.0,
+          "population": 0.10744901604742221,
+          "recursive": 0.029408589529319934,
+          "snap": 0.058212259881699376,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 30.0,
+        "discriminating_share": 0.26596320346320346,
+        "interoception_probability": 0.03,
+        "large_share": {
+          "individual": 0.37729978354978355,
+          "oracle": 0.38244047619047616,
+          "population": 0.40137987012987014,
+          "recursive": 0.3989448051948052,
+          "snap": 0.42167207792207795,
+          "state_oracle": 0.41774891774891776
+        },
+        "lives": 40,
+        "prior_rate_error": 0.3,
+        "rate_error": 0.7230415742097761,
+        "readings_per_life": 6.25,
+        "scored_ticks": 7392,
+        "seed_base": 970000000,
+        "shuffled_readings": false,
+        "size_accuracy": {
+          "individual": 0.9940476190476191,
+          "oracle": 1.0,
+          "population": 0.7340367965367965,
+          "recursive": 0.8628246753246753,
+          "snap": 0.7740800865800865,
+          "state_oracle": 0.8207521645021645
+        },
+        "world": "both"
+      },
+      {
+        "body_error": {
+          "individual": 0.06881017916454531,
+          "oracle": 0.0,
+          "population": 0.11177347403923156,
+          "recursive": 0.031851390552914374,
+          "snap": 0.054811517402584234,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 30.0,
+        "discriminating_share": 0.2818407960199005,
+        "interoception_probability": 0.03,
+        "large_share": {
+          "individual": 0.3222636815920398,
+          "oracle": 0.3322139303482587,
+          "population": 0.4148009950248756,
+          "recursive": 0.376865671641791,
+          "snap": 0.4134328358208955,
+          "state_oracle": 0.38930348258706465
+        },
+        "lives": 40,
+        "prior_rate_error": 0.3,
+        "rate_error": 0.34824273694772584,
+        "readings_per_life": 7.25,
+        "scored_ticks": 8040,
+        "seed_base": 972000000,
+        "shuffled_readings": false,
+        "size_accuracy": {
+          "individual": 0.9900497512437811,
+          "oracle": 1.0,
+          "population": 0.7181592039800995,
+          "recursive": 0.8705223880597015,
+          "snap": 0.7518656716417911,
+          "state_oracle": 0.8036069651741293
+        },
+        "world": "both"
+      },
+      {
+        "body_error": {
+          "individual": 0.05506332903194253,
+          "oracle": 0.0,
+          "population": 0.10701284407723125,
+          "recursive": 0.03400527112338101,
+          "snap": 0.057942278724320125,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 30.0,
+        "discriminating_share": 0.3052575107296137,
+        "interoception_probability": 0.03,
+        "large_share": {
+          "individual": 0.37703862660944204,
+          "oracle": 0.3899141630901288,
+          "population": 0.415343347639485,
+          "recursive": 0.3958154506437768,
+          "snap": 0.43004291845493564,
+          "state_oracle": 0.392381974248927
+        },
+        "lives": 40,
+        "prior_rate_error": 0.3,
+        "rate_error": 0.2236010002291248,
+        "readings_per_life": 7.65,
+        "scored_ticks": 9320,
+        "seed_base": 974000000,
+        "shuffled_readings": false,
+        "size_accuracy": {
+          "individual": 0.9871244635193133,
+          "oracle": 1.0,
+          "population": 0.6947424892703863,
+          "recursive": 0.8378755364806867,
+          "snap": 0.7465665236051502,
+          "state_oracle": 0.8013948497854078
+        },
+        "world": "both"
+      },
+      {
+        "body_error": {
+          "individual": 0.06221627530751808,
+          "oracle": 0.0,
+          "population": 0.11839577115585619,
+          "recursive": 0.03544806975059267,
+          "snap": 0.06363654734923756,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 30.0,
+        "discriminating_share": 0.3004646945483396,
+        "interoception_probability": 0.03,
+        "large_share": {
+          "individual": 0.35237447580188147,
+          "oracle": 0.36064830556500055,
+          "population": 0.4156182704295591,
+          "recursive": 0.3972571687634591,
+          "snap": 0.4255922021987986,
+          "state_oracle": 0.40122407344440664
+        },
+        "lives": 40,
+        "prior_rate_error": 0.3,
+        "rate_error": 0.25951108113304494,
+        "readings_per_life": 7.3,
+        "scored_ticks": 8823,
+        "seed_base": 976000000,
+        "shuffled_readings": false,
+        "size_accuracy": {
+          "individual": 0.9917261702368809,
+          "oracle": 1.0,
+          "population": 0.6995353054516604,
+          "recursive": 0.8722656692734897,
+          "snap": 0.7412444746684801,
+          "state_oracle": 0.808681854244588
+        },
+        "world": "both"
+      },
+      {
+        "body_error": {
+          "individual": 0.050786931410242826,
+          "oracle": 0.0,
+          "population": 0.09639031071670799,
+          "recursive": 0.02354028904255457,
+          "snap": 0.04591329591688903,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 30.0,
+        "discriminating_share": 0.2730496453900709,
+        "interoception_probability": 0.03,
+        "large_share": {
+          "individual": 0.3351063829787234,
+          "oracle": 0.3443262411347518,
+          "population": 0.4119385342789598,
+          "recursive": 0.374822695035461,
+          "snap": 0.40721040189125296,
+          "state_oracle": 0.3607565011820331
+        },
+        "lives": 40,
+        "prior_rate_error": 0.3,
+        "rate_error": 0.2100763567377769,
+        "readings_per_life": 7.675,
+        "scored_ticks": 8460,
+        "seed_base": 978000000,
+        "shuffled_readings": false,
+        "size_accuracy": {
+          "individual": 0.9907801418439717,
+          "oracle": 1.0,
+          "population": 0.7269503546099291,
+          "recursive": 0.8591016548463357,
+          "snap": 0.7702127659574468,
+          "state_oracle": 0.7979905437352246
+        },
+        "world": "both"
+      }
+    ],
+    "holdout": [
+      {
+        "caregiver_store": 30.0,
+        "first_use_accuracy": {
+          "factored": 0.9875,
+          "tabular": 0.5
+        },
+        "had_any_evidence": {
+          "factored": 0.975,
+          "tabular": 0.0
+        },
+        "held_out_need": "energy",
+        "lives": 40,
+        "sizeless_requests_per_life": 129.6,
+        "world": "metabolic"
+      },
+      {
+        "caregiver_store": 30.0,
+        "first_use_accuracy": {
+          "factored": 0.975,
+          "tabular": 0.5
+        },
+        "had_any_evidence": {
+          "factored": 0.975,
+          "tabular": 0.0
+        },
+        "held_out_need": "energy",
+        "lives": 40,
+        "sizeless_requests_per_life": 141.55,
+        "world": "metabolic"
+      },
+      {
+        "caregiver_store": 30.0,
+        "first_use_accuracy": {
+          "factored": 1.0,
+          "tabular": 0.5
+        },
+        "had_any_evidence": {
+          "factored": 1.0,
+          "tabular": 0.0
+        },
+        "held_out_need": "energy",
+        "lives": 40,
+        "sizeless_requests_per_life": 132.075,
+        "world": "metabolic"
+      },
+      {
+        "caregiver_store": 30.0,
+        "first_use_accuracy": {
+          "factored": 0.9875,
+          "tabular": 0.5
+        },
+        "had_any_evidence": {
+          "factored": 1.0,
+          "tabular": 0.0
+        },
+        "held_out_need": "energy",
+        "lives": 40,
+        "sizeless_requests_per_life": 135.125,
+        "world": "metabolic"
+      },
+      {
+        "caregiver_store": 30.0,
+        "first_use_accuracy": {
+          "factored": 0.975,
+          "tabular": 0.5
+        },
+        "had_any_evidence": {
+          "factored": 0.95,
+          "tabular": 0.0
+        },
+        "held_out_need": "energy",
+        "lives": 40,
+        "sizeless_requests_per_life": 124.175,
+        "world": "metabolic"
+      }
+    ],
+    "metabolic": [
+      {
+        "body_error": {
+          "individual": 0.04098529229809575,
+          "oracle": 0.0,
+          "population": 0.08864711306790814,
+          "recursive": 0.015449611001438362,
+          "snap": 0.04294817914389943,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 30.0,
+        "discriminating_share": 0.2379216816409561,
+        "interoception_probability": 0.03,
+        "large_share": {
+          "individual": 0.419054076962197,
+          "oracle": 0.4242244448211561,
+          "population": 0.401932530937447,
+          "recursive": 0.44338023393795556,
+          "snap": 0.4199016782505509,
+          "state_oracle": 0.4314290557721648
+        },
+        "lives": 40,
+        "prior_rate_error": 0.3,
+        "rate_error": 0.11054183909084536,
+        "readings_per_life": 9.575,
+        "scored_ticks": 11798,
+        "seed_base": 970000000,
+        "shuffled_readings": false,
+        "size_accuracy": {
+          "individual": 0.9948296321410408,
+          "oracle": 1.0,
+          "population": 0.7620783183590439,
+          "recursive": 0.962536023054755,
+          "snap": 0.8190371249364299,
+          "state_oracle": 0.9485506017969147
+        },
+        "world": "metabolic"
+      },
+      {
+        "body_error": {
+          "individual": 0.039745459373087204,
+          "oracle": 0.0,
+          "population": 0.09177044749595988,
+          "recursive": 0.01436137923807042,
+          "snap": 0.043884390688093806,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 30.0,
+        "discriminating_share": 0.2756015438942268,
+        "interoception_probability": 0.03,
+        "large_share": {
+          "individual": 0.37521557033752156,
+          "oracle": 0.3843311160384331,
+          "population": 0.41258109550792477,
+          "recursive": 0.37521557033752156,
+          "snap": 0.41414141414141414,
+          "state_oracle": 0.3938572719060524
+        },
+        "lives": 40,
+        "prior_rate_error": 0.3,
+        "rate_error": 0.10899291210054325,
+        "readings_per_life": 10.075,
+        "scored_ticks": 12177,
+        "seed_base": 972000000,
+        "shuffled_readings": false,
+        "size_accuracy": {
+          "individual": 0.9908844542990884,
+          "oracle": 1.0,
+          "population": 0.7243984561057731,
+          "recursive": 0.9641126714297445,
+          "snap": 0.7854151268785415,
+          "state_oracle": 0.9201773835920177
+        },
+        "world": "metabolic"
+      },
+      {
+        "body_error": {
+          "individual": 0.05088264748162935,
+          "oracle": 0.0,
+          "population": 0.10401391106585661,
+          "recursive": 0.01850427719055323,
+          "snap": 0.04277347046391858,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 30.0,
+        "discriminating_share": 0.3041311143026105,
+        "interoception_probability": 0.03,
+        "large_share": {
+          "individual": 0.3625073920756949,
+          "oracle": 0.3684210526315789,
+          "population": 0.41150629382444875,
+          "recursive": 0.36968826560783985,
+          "snap": 0.40973219565768354,
+          "state_oracle": 0.37171580636985724
+        },
+        "lives": 40,
+        "prior_rate_error": 0.3,
+        "rate_error": 0.119584508675982,
+        "readings_per_life": 9.4,
+        "scored_ticks": 11837,
+        "seed_base": 974000000,
+        "shuffled_readings": false,
+        "size_accuracy": {
+          "individual": 0.994086339444116,
+          "oracle": 1.0,
+          "population": 0.6958688856973896,
+          "recursive": 0.9063107206217792,
+          "snap": 0.7561037425023233,
+          "state_oracle": 0.8995522514150545
+        },
+        "world": "metabolic"
+      },
+      {
+        "body_error": {
+          "individual": 0.042420534043027903,
+          "oracle": 0.0,
+          "population": 0.09697113240302886,
+          "recursive": 0.013126077938472674,
+          "snap": 0.04381444556714712,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 30.0,
+        "discriminating_share": 0.2665577154653363,
+        "interoception_probability": 0.03,
+        "large_share": {
+          "individual": 0.37441940478238434,
+          "oracle": 0.3805264063306382,
+          "population": 0.41054532943402716,
+          "recursive": 0.3880096335799071,
+          "snap": 0.4146740065370721,
+          "state_oracle": 0.39127816961981765
+        },
+        "lives": 40,
+        "prior_rate_error": 0.3,
+        "rate_error": 0.08094398424898994,
+        "readings_per_life": 9.5,
+        "scored_ticks": 11626,
+        "seed_base": 976000000,
+        "shuffled_readings": false,
+        "size_accuracy": {
+          "individual": 0.9938929984517461,
+          "oracle": 1.0,
+          "population": 0.7334422845346636,
+          "recursive": 0.9756580079132978,
+          "snap": 0.7955444692929641,
+          "state_oracle": 0.9293824187166695
+        },
+        "world": "metabolic"
+      },
+      {
+        "body_error": {
+          "individual": 0.03482391127569933,
+          "oracle": 0.0,
+          "population": 0.08419911936522215,
+          "recursive": 0.007869961267976783,
+          "snap": 0.034923052445745124,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 30.0,
+        "discriminating_share": 0.29847594564818214,
+        "interoception_probability": 0.03,
+        "large_share": {
+          "individual": 0.3733015056922512,
+          "oracle": 0.38174807197943444,
+          "population": 0.4055269922879177,
+          "recursive": 0.3591626882115314,
+          "snap": 0.4022218141755417,
+          "state_oracle": 0.36320235034887993
+        },
+        "lives": 40,
+        "prior_rate_error": 0.3,
+        "rate_error": 0.05172224600692414,
+        "readings_per_life": 9.6,
+        "scored_ticks": 10892,
+        "seed_base": 978000000,
+        "shuffled_readings": false,
+        "size_accuracy": {
+          "individual": 0.9915534337128168,
+          "oracle": 1.0,
+          "population": 0.7015240543518179,
+          "recursive": 0.9553800954829232,
+          "snap": 0.7634043334557473,
+          "state_oracle": 0.8911127432978333
+        },
+        "world": "metabolic"
+      }
+    ],
+    "null": [
+      {
+        "body_error": {
+          "individual": 1.3575916378323779e-09,
+          "oracle": 0.0,
+          "population": 1.3575916378323779e-09,
+          "recursive": 4.932466769670734e-09,
+          "snap": 2.191777810810876e-10,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 30.0,
+        "discriminating_share": 7.017543859649122e-05,
+        "interoception_probability": 0.03,
+        "large_share": {
+          "individual": 0.4011929824561403,
+          "oracle": 0.4011228070175439,
+          "population": 0.4011929824561403,
+          "recursive": 0.4014035087719298,
+          "snap": 0.4011929824561403,
+          "state_oracle": 0.4011228070175439
+        },
+        "lives": 40,
+        "prior_rate_error": 0.0,
+        "rate_error": 3.7930644186667814e-08,
+        "readings_per_life": 11.35,
+        "scored_ticks": 14250,
+        "seed_base": 970000000,
+        "shuffled_readings": false,
+        "size_accuracy": {
+          "individual": 0.9999298245614036,
+          "oracle": 1.0,
+          "population": 0.9999298245614036,
+          "recursive": 0.999719298245614,
+          "snap": 0.9999298245614036,
+          "state_oracle": 1.0
+        },
+        "world": "null"
+      },
+      {
+        "body_error": {
+          "individual": 1.2597772837451436e-09,
+          "oracle": 0.0,
+          "population": 1.2597772837451436e-09,
+          "recursive": 7.61331259293899e-09,
+          "snap": 1.284811233700132e-10,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 30.0,
+        "discriminating_share": 0.0,
+        "interoception_probability": 0.03,
+        "large_share": {
+          "individual": 0.4099333333333333,
+          "oracle": 0.4099333333333333,
+          "population": 0.4099333333333333,
+          "recursive": 0.4106666666666667,
+          "snap": 0.4099333333333333,
+          "state_oracle": 0.4099333333333333
+        },
+        "lives": 40,
+        "prior_rate_error": 0.0,
+        "rate_error": 4.20575723312592e-08,
+        "readings_per_life": 12.175,
+        "scored_ticks": 15000,
+        "seed_base": 972000000,
+        "shuffled_readings": false,
+        "size_accuracy": {
+          "individual": 1.0,
+          "oracle": 1.0,
+          "population": 1.0,
+          "recursive": 0.9992666666666666,
+          "snap": 1.0,
+          "state_oracle": 1.0
+        },
+        "world": "null"
+      },
+      {
+        "body_error": {
+          "individual": 1.0427925989375993e-09,
+          "oracle": 0.0,
+          "population": 1.0427925989375993e-09,
+          "recursive": 4.936513295266414e-09,
+          "snap": 3.1422345997985534e-10,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 30.0,
+        "discriminating_share": 0.0,
+        "interoception_probability": 0.03,
+        "large_share": {
+          "individual": 0.40273504273504274,
+          "oracle": 0.40273504273504274,
+          "population": 0.40273504273504274,
+          "recursive": 0.40273504273504274,
+          "snap": 0.40273504273504274,
+          "state_oracle": 0.40273504273504274
+        },
+        "lives": 40,
+        "prior_rate_error": 0.0,
+        "rate_error": 2.8275696980125292e-08,
+        "readings_per_life": 11.475,
+        "scored_ticks": 14625,
+        "seed_base": 974000000,
+        "shuffled_readings": false,
+        "size_accuracy": {
+          "individual": 1.0,
+          "oracle": 1.0,
+          "population": 1.0,
+          "recursive": 1.0,
+          "snap": 1.0,
+          "state_oracle": 1.0
+        },
+        "world": "null"
+      },
+      {
+        "body_error": {
+          "individual": 1.343886057299655e-09,
+          "oracle": 0.0,
+          "population": 1.343886057299655e-09,
+          "recursive": 3.052693189766436e-09,
+          "snap": 1.447730594245696e-10,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 30.0,
+        "discriminating_share": 0.0,
+        "interoception_probability": 0.03,
+        "large_share": {
+          "individual": 0.4054,
+          "oracle": 0.4054,
+          "population": 0.4054,
+          "recursive": 0.40573333333333333,
+          "snap": 0.4054,
+          "state_oracle": 0.4054
+        },
+        "lives": 40,
+        "prior_rate_error": 0.0,
+        "rate_error": 2.680524232763955e-08,
+        "readings_per_life": 11.975,
+        "scored_ticks": 15000,
+        "seed_base": 976000000,
+        "shuffled_readings": false,
+        "size_accuracy": {
+          "individual": 1.0,
+          "oracle": 1.0,
+          "population": 1.0,
+          "recursive": 0.9996666666666667,
+          "snap": 1.0,
+          "state_oracle": 1.0
+        },
+        "world": "null"
+      },
+      {
+        "body_error": {
+          "individual": 1.4423376615165921e-09,
+          "oracle": 0.0,
+          "population": 1.4423376615165921e-09,
+          "recursive": 3.0701774365713285e-09,
+          "snap": 2.0608712915816758e-10,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 30.0,
+        "discriminating_share": 0.0,
+        "interoception_probability": 0.03,
+        "large_share": {
+          "individual": 0.4073718827075911,
+          "oracle": 0.4073718827075911,
+          "population": 0.4073718827075911,
+          "recursive": 0.4074403946286654,
+          "snap": 0.4073718827075911,
+          "state_oracle": 0.4073718827075911
+        },
+        "lives": 40,
+        "prior_rate_error": 0.0,
+        "rate_error": 3.220019147894456e-08,
+        "readings_per_life": 12.3,
+        "scored_ticks": 14596,
+        "seed_base": 978000000,
+        "shuffled_readings": false,
+        "size_accuracy": {
+          "individual": 1.0,
+          "oracle": 1.0,
+          "population": 1.0,
+          "recursive": 0.9999314880789257,
+          "snap": 1.0,
+          "state_oracle": 1.0
+        },
+        "world": "null"
+      }
+    ],
+    "shuffled": [
+      {
+        "body_error": {
+          "individual": 0.04098529229809575,
+          "oracle": 0.0,
+          "population": 0.08864711306790814,
+          "recursive": 0.3002582152547089,
+          "snap": 0.2061335576046195,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 30.0,
+        "discriminating_share": 0.2379216816409561,
+        "interoception_probability": 0.03,
+        "large_share": {
+          "individual": 0.419054076962197,
+          "oracle": 0.4242244448211561,
+          "population": 0.401932530937447,
+          "recursive": 0.6696897779284624,
+          "snap": 0.5439057467367351,
+          "state_oracle": 0.4314290557721648
+        },
+        "lives": 40,
+        "prior_rate_error": 0.3,
+        "rate_error": 1.2257950551288006,
+        "readings_per_life": 9.575,
+        "scored_ticks": 11798,
+        "seed_base": 970000000,
+        "shuffled_readings": true,
+        "size_accuracy": {
+          "individual": 0.9948296321410408,
+          "oracle": 1.0,
+          "population": 0.7620783183590439,
+          "recursive": 0.5609425326326496,
+          "snap": 0.7536870656043397,
+          "state_oracle": 0.9485506017969147
+        },
+        "world": "metabolic"
+      },
+      {
+        "body_error": {
+          "individual": 0.039745459373087204,
+          "oracle": 0.0,
+          "population": 0.09177044749595988,
+          "recursive": 0.3246743956643857,
+          "snap": 0.2195143343057916,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 30.0,
+        "discriminating_share": 0.2756015438942268,
+        "interoception_probability": 0.03,
+        "large_share": {
+          "individual": 0.37521557033752156,
+          "oracle": 0.3843311160384331,
+          "population": 0.41258109550792477,
+          "recursive": 0.6125482466945882,
+          "snap": 0.5627822944896116,
+          "state_oracle": 0.3938572719060524
+        },
+        "lives": 40,
+        "prior_rate_error": 0.3,
+        "rate_error": 1.1847244526739238,
+        "readings_per_life": 10.075,
+        "scored_ticks": 12177,
+        "seed_base": 972000000,
+        "shuffled_readings": true,
+        "size_accuracy": {
+          "individual": 0.9908844542990884,
+          "oracle": 1.0,
+          "population": 0.7243984561057731,
+          "recursive": 0.5751827215241849,
+          "snap": 0.6857189784019052,
+          "state_oracle": 0.9201773835920177
+        },
+        "world": "metabolic"
+      },
+      {
+        "body_error": {
+          "individual": 0.05088264748162935,
+          "oracle": 0.0,
+          "population": 0.10401391106585661,
+          "recursive": 0.3012619535489319,
+          "snap": 0.20790085964790797,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 30.0,
+        "discriminating_share": 0.3041311143026105,
+        "interoception_probability": 0.03,
+        "large_share": {
+          "individual": 0.3625073920756949,
+          "oracle": 0.3684210526315789,
+          "population": 0.41150629382444875,
+          "recursive": 0.674917631156543,
+          "snap": 0.5668666047140323,
+          "state_oracle": 0.37171580636985724
+        },
+        "lives": 40,
+        "prior_rate_error": 0.3,
+        "rate_error": 1.1354495163784017,
+        "readings_per_life": 9.4,
+        "scored_ticks": 11837,
+        "seed_base": 974000000,
+        "shuffled_readings": true,
+        "size_accuracy": {
+          "individual": 0.994086339444116,
+          "oracle": 1.0,
+          "population": 0.6958688856973896,
+          "recursive": 0.4838219143364028,
+          "snap": 0.6570921686238067,
+          "state_oracle": 0.8995522514150545
+        },
+        "world": "metabolic"
+      },
+      {
+        "body_error": {
+          "individual": 0.042420534043027903,
+          "oracle": 0.0,
+          "population": 0.09697113240302886,
+          "recursive": 0.2815950533309061,
+          "snap": 0.19520980196491552,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 30.0,
+        "discriminating_share": 0.2665577154653363,
+        "interoception_probability": 0.03,
+        "large_share": {
+          "individual": 0.37441940478238434,
+          "oracle": 0.3805264063306382,
+          "population": 0.41054532943402716,
+          "recursive": 0.6180113538620333,
+          "snap": 0.5512644073628075,
+          "state_oracle": 0.39127816961981765
+        },
+        "lives": 40,
+        "prior_rate_error": 0.3,
+        "rate_error": 0.8740336675773717,
+        "readings_per_life": 9.5,
+        "scored_ticks": 11626,
+        "seed_base": 976000000,
+        "shuffled_readings": true,
+        "size_accuracy": {
+          "individual": 0.9938929984517461,
+          "oracle": 1.0,
+          "population": 0.7334422845346636,
+          "recursive": 0.5885945295028384,
+          "snap": 0.6993806984345433,
+          "state_oracle": 0.9293824187166695
+        },
+        "world": "metabolic"
+      },
+      {
+        "body_error": {
+          "individual": 0.03482391127569933,
+          "oracle": 0.0,
+          "population": 0.08419911936522215,
+          "recursive": 0.317575230483342,
+          "snap": 0.2168852236861503,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 30.0,
+        "discriminating_share": 0.29847594564818214,
+        "interoception_probability": 0.03,
+        "large_share": {
+          "individual": 0.3733015056922512,
+          "oracle": 0.38174807197943444,
+          "population": 0.4055269922879177,
+          "recursive": 0.6298200514138818,
+          "snap": 0.5612376055820786,
+          "state_oracle": 0.36320235034887993
+        },
+        "lives": 40,
+        "prior_rate_error": 0.3,
+        "rate_error": 1.125504751435867,
+        "readings_per_life": 9.6,
+        "scored_ticks": 10892,
+        "seed_base": 978000000,
+        "shuffled_readings": true,
+        "size_accuracy": {
+          "individual": 0.9915534337128168,
+          "oracle": 1.0,
+          "population": 0.7015240543518179,
+          "recursive": 0.5828130738156445,
+          "snap": 0.647172236503856,
+          "state_oracle": 0.8911127432978333
+        },
+        "world": "metabolic"
+      }
+    ]
+  }
+}

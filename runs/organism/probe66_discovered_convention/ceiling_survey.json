@@ -1,0 +1,373 @@
+{
+  "gates": {
+    "G1_generalizes_where_it_is_licensed": {
+      "pass": true,
+      "passing": 5,
+      "per_seed": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "required": 4
+    },
+    "G2_declines_where_it_is_not": {
+      "pass": true,
+      "passing": 5,
+      "per_seed": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "required": 4
+    },
+    "G3_less_often_confidently_wrong": {
+      "pass": true,
+      "passing": 5,
+      "per_seed": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "required": 4
+    },
+    "G4_the_recovered_structure_tracks_the_world": {
+      "pass": true,
+      "passing": 5,
+      "per_seed": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "required": 4
+    },
+    "G5_the_given_factorization_fails": {
+      "pass": true,
+      "passing": 5,
+      "per_seed": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "required": 4
+    },
+    "G6_the_tabular_control_is_chance": {
+      "pass": true,
+      "passing": 5,
+      "per_seed": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "required": 4
+    },
+    "all_pass": true
+  },
+  "rows": {
+    "factoring": [
+      {
+        "accuracy_when_spoken": {
+          "discovered": 0.9875,
+          "factored": 0.9875,
+          "tabular": 0.5
+        },
+        "confidently_wrong": {
+          "discovered": 0.0125,
+          "factored": 0.0125,
+          "tabular": 0.5
+        },
+        "first_use_accuracy": {
+          "discovered": 0.9875,
+          "factored": 0.9875,
+          "tabular": 0.5
+        },
+        "held_out_need": "energy",
+        "lives": 40,
+        "probability_factors": 0.6864014011437489,
+        "questions": 80,
+        "sizeless_requests_per_life": 132.875,
+        "spoke": {
+          "discovered": 1.0,
+          "factored": 1.0,
+          "tabular": 1.0
+        },
+        "tangled_size_words": false,
+        "world": "factoring"
+      },
+      {
+        "accuracy_when_spoken": {
+          "discovered": 1.0,
+          "factored": 0.975,
+          "tabular": 0.5
+        },
+        "confidently_wrong": {
+          "discovered": 0.0,
+          "factored": 0.025,
+          "tabular": 0.5
+        },
+        "first_use_accuracy": {
+          "discovered": 1.0,
+          "factored": 0.975,
+          "tabular": 0.5
+        },
+        "held_out_need": "energy",
+        "lives": 40,
+        "probability_factors": 0.6551672226479741,
+        "questions": 80,
+        "sizeless_requests_per_life": 132.25,
+        "spoke": {
+          "discovered": 1.0,
+          "factored": 1.0,
+          "tabular": 1.0
+        },
+        "tangled_size_words": false,
+        "world": "factoring"
+      },
+      {
+        "accuracy_when_spoken": {
+          "discovered": 1.0,
+          "factored": 1.0,
+          "tabular": 0.5
+        },
+        "confidently_wrong": {
+          "discovered": 0.0,
+          "factored": 0.0,
+          "tabular": 0.5
+        },
+        "first_use_accuracy": {
+          "discovered": 1.0,
+          "factored": 1.0,
+          "tabular": 0.5
+        },
+        "held_out_need": "energy",
+        "lives": 40,
+        "probability_factors": 0.6910488627248785,
+        "questions": 80,
+        "sizeless_requests_per_life": 132.8,
+        "spoke": {
+          "discovered": 1.0,
+          "factored": 1.0,
+          "tabular": 1.0
+        },
+        "tangled_size_words": false,
+        "world": "factoring"
+      },
+      {
+        "accuracy_when_spoken": {
+          "discovered": 1.0,
+          "factored": 1.0,
+          "tabular": 0.5
+        },
+        "confidently_wrong": {
+          "discovered": 0.0,
+          "factored": 0.0,
+          "tabular": 0.5
+        },
+        "first_use_accuracy": {
+          "discovered": 1.0,
+          "factored": 1.0,
+          "tabular": 0.5
+        },
+        "held_out_need": "energy",
+        "lives": 40,
+        "probability_factors": 0.689564544386275,
+        "questions": 80,
+        "sizeless_requests_per_life": 128.375,
+        "spoke": {
+          "discovered": 1.0,
+          "factored": 1.0,
+          "tabular": 1.0
+        },
+        "tangled_size_words": false,
+        "world": "factoring"
+      },
+      {
+        "accuracy_when_spoken": {
+          "discovered": 0.975,
+          "factored": 0.9625,
+          "tabular": 0.5
+        },
+        "confidently_wrong": {
+          "discovered": 0.025,
+          "factored": 0.0375,
+          "tabular": 0.5
+        },
+        "first_use_accuracy": {
+          "discovered": 0.975,
+          "factored": 0.9625,
+          "tabular": 0.5
+        },
+        "held_out_need": "energy",
+        "lives": 40,
+        "probability_factors": 0.6711977504534181,
+        "questions": 80,
+        "sizeless_requests_per_life": 127.975,
+        "spoke": {
+          "discovered": 1.0,
+          "factored": 1.0,
+          "tabular": 1.0
+        },
+        "tangled_size_words": false,
+        "world": "factoring"
+      }
+    ],
+    "tangled": [
+      {
+        "accuracy_when_spoken": {
+          "discovered": 0.29545454545454547,
+          "factored": 0.425,
+          "tabular": 0.5
+        },
+        "confidently_wrong": {
+          "discovered": 0.3875,
+          "factored": 0.575,
+          "tabular": 0.5
+        },
+        "first_use_accuracy": {
+          "discovered": 0.1625,
+          "factored": 0.425,
+          "tabular": 0.5
+        },
+        "held_out_need": "energy",
+        "lives": 40,
+        "probability_factors": 0.45651266080321423,
+        "questions": 80,
+        "sizeless_requests_per_life": 132.675,
+        "spoke": {
+          "discovered": 0.55,
+          "factored": 1.0,
+          "tabular": 1.0
+        },
+        "tangled_size_words": true,
+        "world": "tangled"
+      },
+      {
+        "accuracy_when_spoken": {
+          "discovered": 0.4473684210526316,
+          "factored": 0.5375,
+          "tabular": 0.5
+        },
+        "confidently_wrong": {
+          "discovered": 0.2625,
+          "factored": 0.4625,
+          "tabular": 0.5
+        },
+        "first_use_accuracy": {
+          "discovered": 0.2125,
+          "factored": 0.5375,
+          "tabular": 0.5
+        },
+        "held_out_need": "energy",
+        "lives": 40,
+        "probability_factors": 0.4027516934161534,
+        "questions": 80,
+        "sizeless_requests_per_life": 129.75,
+        "spoke": {
+          "discovered": 0.475,
+          "factored": 1.0,
+          "tabular": 1.0
+        },
+        "tangled_size_words": true,
+        "world": "tangled"
+      },
+      {
+        "accuracy_when_spoken": {
+          "discovered": 0.42105263157894735,
+          "factored": 0.5,
+          "tabular": 0.5
+        },
+        "confidently_wrong": {
+          "discovered": 0.275,
+          "factored": 0.5,
+          "tabular": 0.5
+        },
+        "first_use_accuracy": {
+          "discovered": 0.2,
+          "factored": 0.5,
+          "tabular": 0.5
+        },
+        "held_out_need": "energy",
+        "lives": 40,
+        "probability_factors": 0.4218440506171957,
+        "questions": 80,
+        "sizeless_requests_per_life": 132.35,
+        "spoke": {
+          "discovered": 0.475,
+          "factored": 1.0,
+          "tabular": 1.0
+        },
+        "tangled_size_words": true,
+        "world": "tangled"
+      },
+      {
+        "accuracy_when_spoken": {
+          "discovered": 0.47368421052631576,
+          "factored": 0.4125,
+          "tabular": 0.5
+        },
+        "confidently_wrong": {
+          "discovered": 0.25,
+          "factored": 0.5875,
+          "tabular": 0.5
+        },
+        "first_use_accuracy": {
+          "discovered": 0.225,
+          "factored": 0.4125,
+          "tabular": 0.5
+        },
+        "held_out_need": "energy",
+        "lives": 40,
+        "probability_factors": 0.4007622557153051,
+        "questions": 80,
+        "sizeless_requests_per_life": 129.175,
+        "spoke": {
+          "discovered": 0.475,
+          "factored": 1.0,
+          "tabular": 1.0
+        },
+        "tangled_size_words": true,
+        "world": "tangled"
+      },
+      {
+        "accuracy_when_spoken": {
+          "discovered": 0.5652173913043478,
+          "factored": 0.55,
+          "tabular": 0.5
+        },
+        "confidently_wrong": {
+          "discovered": 0.25,
+          "factored": 0.45,
+          "tabular": 0.5
+        },
+        "first_use_accuracy": {
+          "discovered": 0.325,
+          "factored": 0.55,
+          "tabular": 0.5
+        },
+        "held_out_need": "energy",
+        "lives": 40,
+        "probability_factors": 0.4433122542847781,
+        "questions": 80,
+        "sizeless_requests_per_life": 128.35,
+        "spoke": {
+          "discovered": 0.575,
+          "factored": 1.0,
+          "tabular": 1.0
+        },
+        "tangled_size_words": true,
+        "world": "tangled"
+      }
+    ]
+  }
+}

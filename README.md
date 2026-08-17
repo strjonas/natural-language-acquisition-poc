@@ -6,6 +6,8 @@ and communication (such that even deflationalists will concede that is uses lang
 **Status:** In development.
 - Online individual-body calibration and causally useful three-word need reports in a small custom
 simulation. 
+- A rationed caregiver that can be asked for a portion size, where the right
+request depends on a fact about the self that perfect state knowledge cannot supply.
 - ToDo: fuller natural language acquisition
 
 ## Current results
@@ -36,6 +38,42 @@ language. See the full [result record](docs/decisions/2026-08-03-individual-self
 [preregistration](docs/decisions/2026-08-03-individual-self-calibration-preregistration.md),
 and [current state](docs/STATE.md).
 
+In Probe64 the caregiver gains a second thing it can be asked for -- a large or a
+small portion -- and a finite basket, so asking for more than you will burn costs
+something. The right size is `rate x 18 ticks`, a fact about how fast *this* body
+burns rather than about where it currently is. Same 5 seed blocks x 40 lives,
+gates locked before the run.
+
+| speaker | knows | correct portion request |
+|---|---|---:|
+| species-level filter | species rates, filtered state | 0.7235 |
+| same readings, no self-model (`snap`) | species rates, corrected state | 0.7839 |
+| **reads the true body every tick**, species rates | perfect state, no self-knowledge | 0.9178 |
+| online individual self-model (RLS) | learned rates | **0.9528** |
+| born knowing its own rates, never reads its body | true rates, no state readings | 0.9930 |
+
+The third row is the control this probe exists for. An organism that knows *what
+it is* and is unsure *where it is* chooses better than one that reads its own
+body perfectly and believes it is typical: +0.0350 [+0.0053, +0.0648] for the
+learned self-model over perfect state knowledge, +0.0753 at the ceiling, paired
+across seeds. Species and truth disagree on 27.7% of ticks; perfect state
+knowledge recovers 19.4 of those points, knowing your own rates while blind to
+your state recovers a further 7.5, and the last 0.7 need both.
+
+Asked for a size word combination it has **never once uttered**, a listener model
+factored into need and size answers correctly 0.9850 of the time; an unfactored
+table with identical evidence scores exactly chance, 0.5000 on every seed.
+
+The honest other half: **the world cannot hear the difference.** Under the
+ration, a speaker saying a *random* size word survives 0.640 against the informed
+speaker's 0.605. The informed speaker really is better at the physical thing --
+0.708 useful uptake per unit of basket against 0.656, 23% less overflow -- but a
+need re-served every 18 ticks recovers before a mis-sized portion can kill it.
+All seven locked gates pass; survival was preregistered as not gated for exactly
+this reason. [Result](docs/decisions/2026-08-14-portion-request-result.md),
+[preregistration](docs/decisions/2026-08-14-portion-request-preregistration.md),
+[ceiling survey](docs/decisions/2026-08-14-portion-request-ceiling-survey.md).
+
 ## Reproduce the public result
 
 The tested environment is Python 3.13 on Apple Silicon with MLX 0.32. A small
@@ -46,6 +84,8 @@ stays ignored.
 python3 -m venv .venv
 .venv/bin/pip install -e '.[dev]'
 .venv/bin/python scripts/summarize_probe63.py
+.venv/bin/python scripts/summarize_probe64.py
+.venv/bin/python scripts/summarize_probe65.py
 PYTHONPATH=src .venv/bin/python -m pytest -q
 ```
 
@@ -76,11 +116,13 @@ licensed.
 | Path | Purpose |
 |---|---|
 | `src/homesocial/` | gridworld, learners, language probes, organism lifecycle, and Probe63 |
-| `tests/` | 378 unit and causal guard tests |
+| `tests/` | 428 unit and causal guard tests |
 | `docs/decisions/` | append-only preregistrations, results, and negative findings |
 | `docs/STATE.md` | current scientific state and exact claim boundary |
 | `runs/` | allow-listed public artifacts; all other run output remains ignored |
-| `scripts/summarize_probe63.py` | dependency-light recalculation of the headline result |
+| `scripts/summarize_probe63.py` | dependency-light recalculation of the Probe63 headline |
+| `scripts/summarize_probe64.py` | the same for Probe64, including its behavioural negative |
+| `scripts/summarize_probe65.py` | the same for Probe65: the horizon crossover and its divergence control |
 
 ---
 
@@ -666,6 +708,136 @@ model rather than about its body -- then attributes each interoceptive residual
 across its own parameters. Preregistration:
 `docs/decisions/2026-08-03-individual-self-calibration-preregistration.md`.
 Feasibility: `docs/decisions/2026-08-03-individual-self-ceiling-survey.md`.
+
+### Probe64: making the self-model pay rent in speech
+
+Probe63's organism knew something no listener could hear -- how fast it burns.
+Two default-inert levers give the caregiver something to hear it with:
+`portion_requests` lets it be asked for a large or a small portion, and
+`caregiver_store` gives it a basket rather than a spring, so a large portion
+empties it three times as fast. The right size is then `rate * 18 ticks`, which
+is a fact about this body's metabolism rather than about where it currently is.
+Survey the ecology before locking anything:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.organism.portion_request --lives 40 --closed-loop-lives 40 --seed-base 950000000
+```
+
+The control this probe turns on is `state_oracle`: a speaker that **reads the
+true body every tick** and believes the species rates. Then the preregistered
+five-seed treatment against locked gates:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.organism.portion_request --treatment --lives 40 --seeds 5
+```
+
+Preregistration: `docs/decisions/2026-08-14-portion-request-preregistration.md`.
+Ceiling survey: `docs/decisions/2026-08-14-portion-request-ceiling-survey.md`.
+
+### Probe65: a request about a body the organism is not in yet
+
+Probe64's self-model changed what the organism said and bought no survival,
+because the consequence horizon was shorter than the correction interval. One
+default-inert lever changes that without touching the caregiver's clock, its
+supply or its portions: `help_delay` makes the grant at each boundary answer the
+request heard `help_delay` ticks earlier. Every word is then a prediction, and
+where the body will be is `level - rate * horizon` -- in which an error about
+*where you are* enters once and an error about *what you are* enters multiplied
+by the horizon. Sweep the horizon before locking anything:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.organism.future_request --lives 40 --closed-loop-lives 40 --seed-base 1000000000
+```
+
+The controls this probe turns on are `myopic` -- the organism this repository
+already had, whose planner looked one grant ahead, dropped into a world whose
+caregiver became slow without telling it -- and probe64's `state_oracle`. Then
+the preregistered five-seed treatment against locked gates:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.organism.future_request --treatment --lives 40 --seeds 5
+```
+
+Preregistration: `docs/decisions/2026-08-16-future-request-preregistration.md`.
+Ceiling survey: `docs/decisions/2026-08-16-future-request-ceiling-survey.md`.
+
+### Probe66: finding out that a word means the same thing whatever you ask for
+
+Probe64's listener model pooled one belief per size word across needs, and that
+pooling is what let it utter a combination it had never uttered -- but the
+designer chose to pool. `tangled_size_words` (default off) lets the caregiver
+draw its word-to-size orientation *per need*, so "more" may be large for food and
+small for water, and asks whether the organism can tell. Before generalizing, it
+asks whether the needs it has already used the word for agree with each other --
+two exact Beta-Binomial marginal likelihoods, no free parameters -- and where they
+do not, it **declines** rather than guessing.
+
+```bash
+PYTHONPATH=src python3 -m homesocial.organism.discovered_convention --lives 40 --seeds 5 --seed-base 1040000000
+PYTHONPATH=src python3 -m homesocial.organism.discovered_convention --treatment --lives 40 --seeds 5
+```
+
+Preregistration: `docs/decisions/2026-08-16-discovered-convention-preregistration.md`.
+Ceiling survey: `docs/decisions/2026-08-16-discovered-factorization-ceiling-survey.md`.
+
+### Probe67 -- a self-model that knows how unsure it is, and cannot use it
+
+**A negative, and the most reusable thing in the recent record.** Probe63's RLS has
+carried a covariance over its own rate constants since August and no probe had
+ever read it. Probe67 reads it: probe60's `E[min(next body)]` takes its
+expectation over that posterior as well as over the caregiver's portion draw. No
+free parameters, and bit-identical to probe65 at zero width.
+
+The belief is good -- better calibrated than probe62's state posterior on
+probe62's own instrument. Acting on it is worthless: the ceiling arm, handed the
+magnitude of its own error, *loses* to the point rule at every horizon, and an
+eleven-point change in what the organism says produces zero change in survival
+over 400 lives an arm.
+
+```bash
+PYTHONPATH=src python3 -m homesocial.organism.uncertain_horizon --lives 30 --closed-loop-lives 80 --seeds 5 --delays 0,18,24,30
+PYTHONPATH=src python3 scripts/diagnose_probe67.py --lives 10 --delays 0,18,24,30
+```
+
+The second command measures whether a mechanism's effect on the decision variable
+can reach a decision this ecology treats as worth making. **Probe68 supersedes its
+headline number with a formula** -- see below -- so run `diagnose_probe68.py`
+instead when planning new work.
+
+Survey: `docs/decisions/2026-08-16-uncertain-horizon-ceiling-survey.md`.
+
+### Probe68: the grain of the decision surface
+
+The margin between the best word and the next best is
+`E_grant[min(grant * uptake, gap between the two emptiest axes)]`, reproduced with
+MAE 0.000000 at two of four lags. Probe67's 0.12 is its saturated branch. Halving
+the *quantum* of help while holding the *rate* of help exactly fixed more than
+doubles the value of knowing what kind of body you are, and leaves the value of
+knowing where it is unmoved.
+
+Run the granularity check before building anything, in place of probe67's constant:
+
+```bash
+PYTHONPATH=src python3 scripts/diagnose_probe68.py --lives 8 --delays 0,18,24,30
+PYTHONPATH=src python3 scripts/diagnose_probe68.py --quantum --lives 28 --delays 18
+```
+
+Then the two viability surveys, which found that this ecology has no headroom
+beneath its grant -- oracle survival 0.000 at half the portion:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.organism.decision_granularity --ceiling --lives 30
+PYTHONPATH=src python3 -m homesocial.organism.decision_granularity --quantum --lives 25
+```
+
+And the preregistered treatment, roughly ninety minutes on an M-series Mac:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.organism.decision_granularity --treatment --lives 30 --seeds 8 --out runs/organism/probe68_granularity/treatment.json
+```
+
+Four of five locked gates pass; G5 fails and is not rewritten. Records:
+`docs/decisions/2026-08-17-decision-granularity-{preregistration,ceiling-survey,result}.md`.
 
 Train a fresh option-world model per seed, then test whether option mediation
 still works on those independently trained world-model heads:

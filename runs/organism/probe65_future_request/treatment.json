@@ -1,0 +1,4341 @@
+{
+  "gates": {
+    "G1_the_task_is_about_the_future": {
+      "pass": true,
+      "passing": 5,
+      "per_seed": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "required": 4
+    },
+    "G2_self_model_over_perfect_state": {
+      "pass": true,
+      "passing": 5,
+      "per_seed": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "required": 4
+    },
+    "G3_rate_headroom_exists": {
+      "pass": true,
+      "passing": 5,
+      "per_seed": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "required": 4
+    },
+    "G4_the_horizon_is_what_bought_it": {
+      "pass": true,
+      "passing": 5,
+      "per_seed": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "required": 4
+    },
+    "G5_no_false_discovery": {
+      "pass": true,
+      "passing": 5,
+      "per_seed": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "required": 4
+    },
+    "G6_shuffled_readings": {
+      "pass": true,
+      "passing": 5,
+      "per_seed": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "required": 4
+    },
+    "G7_identical_present_divergent_future": {
+      "pass": true,
+      "passing": 5,
+      "per_seed": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "required": 4
+    },
+    "G8_looking_ahead_is_load_bearing": {
+      "pass": true,
+      "passing": 5,
+      "per_seed": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "required": 4
+    },
+    "G9_the_advantage_grows_with_the_horizon": {
+      "pass": true,
+      "passing": 5,
+      "per_seed": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "required": 4
+    },
+    "all_pass": true
+  },
+  "operating_delay": 18,
+  "operating_store": 0.0,
+  "rows": {
+    "behaviour": [
+      {
+        "arms": [
+          {
+            "arm": "population",
+            "caregiver_store": 0.0,
+            "deaths_by_need": {
+              "energy": 15,
+              "food": 3,
+              "safety": 7,
+              "water": 7
+            },
+            "future_fidelity": 0.6741770299926847,
+            "grants": 29.75,
+            "help_delay": 18,
+            "lives": 40,
+            "mean_life_steps": 194.5,
+            "report_fidelity": 0.6105340160936357,
+            "silent_grants": 2.0,
+            "survival": 0.2,
+            "world": "metabolic"
+          },
+          {
+            "arm": "snap",
+            "caregiver_store": 0.0,
+            "deaths_by_need": {
+              "energy": 14,
+              "food": 2,
+              "safety": 9,
+              "water": 5
+            },
+            "future_fidelity": 0.7117892870710396,
+            "grants": 34.2,
+            "help_delay": 18,
+            "lives": 40,
+            "mean_life_steps": 221.05,
+            "report_fidelity": 0.610738255033557,
+            "silent_grants": 2.0,
+            "survival": 0.25,
+            "world": "metabolic"
+          },
+          {
+            "arm": "myopic",
+            "caregiver_store": 0.0,
+            "deaths_by_need": {
+              "energy": 22,
+              "food": 2,
+              "safety": 1,
+              "water": 10
+            },
+            "future_fidelity": 0.3010485651214128,
+            "grants": 16.3,
+            "help_delay": 18,
+            "lives": 40,
+            "mean_life_steps": 114.025,
+            "report_fidelity": 0.9953090507726269,
+            "silent_grants": 2.0,
+            "survival": 0.125,
+            "world": "metabolic"
+          },
+          {
+            "arm": "state_oracle",
+            "caregiver_store": 0.0,
+            "deaths_by_need": {
+              "energy": 11,
+              "food": 3,
+              "safety": 9,
+              "water": 4
+            },
+            "future_fidelity": 0.8358956024311762,
+            "grants": 36.225,
+            "help_delay": 18,
+            "lives": 40,
+            "mean_life_steps": 233.4,
+            "report_fidelity": 0.6546299606721487,
+            "silent_grants": 2.0,
+            "survival": 0.325,
+            "world": "metabolic"
+          },
+          {
+            "arm": "recursive",
+            "caregiver_store": 0.0,
+            "deaths_by_need": {
+              "energy": 11,
+              "food": 3,
+              "safety": 8,
+              "water": 6
+            },
+            "future_fidelity": 0.9439170622033475,
+            "grants": 34.65,
+            "help_delay": 18,
+            "lives": 40,
+            "mean_life_steps": 223.775,
+            "report_fidelity": 0.5866849862603047,
+            "silent_grants": 2.0,
+            "survival": 0.3,
+            "world": "metabolic"
+          },
+          {
+            "arm": "individual",
+            "caregiver_store": 0.0,
+            "deaths_by_need": {
+              "energy": 10,
+              "food": 2,
+              "safety": 9,
+              "water": 5
+            },
+            "future_fidelity": 0.9436394751853965,
+            "grants": 37.8,
+            "help_delay": 18,
+            "lives": 40,
+            "mean_life_steps": 242.75,
+            "report_fidelity": 0.5736451796919566,
+            "silent_grants": 2.0,
+            "survival": 0.35,
+            "world": "metabolic"
+          },
+          {
+            "arm": "oracle",
+            "caregiver_store": 0.0,
+            "deaths_by_need": {
+              "energy": 9,
+              "food": 3,
+              "safety": 9,
+              "water": 5
+            },
+            "future_fidelity": 1.0,
+            "grants": 37.975,
+            "help_delay": 18,
+            "lives": 40,
+            "mean_life_steps": 243.8,
+            "report_fidelity": 0.5824912001816737,
+            "silent_grants": 2.0,
+            "survival": 0.35,
+            "world": "metabolic"
+          }
+        ],
+        "seed": 0
+      },
+      {
+        "arms": [
+          {
+            "arm": "population",
+            "caregiver_store": 0.0,
+            "deaths_by_need": {
+              "energy": 11,
+              "food": 1,
+              "safety": 5,
+              "water": 11
+            },
+            "future_fidelity": 0.6385002037766608,
+            "grants": 31.8,
+            "help_delay": 18,
+            "lives": 40,
+            "mean_life_steps": 206.15,
+            "report_fidelity": 0.5641896481456324,
+            "silent_grants": 1.875,
+            "survival": 0.3,
+            "world": "metabolic"
+          },
+          {
+            "arm": "snap",
+            "caregiver_store": 0.0,
+            "deaths_by_need": {
+              "energy": 11,
+              "food": 1,
+              "safety": 5,
+              "water": 11
+            },
+            "future_fidelity": 0.7136867730592372,
+            "grants": 31.95,
+            "help_delay": 18,
+            "lives": 40,
+            "mean_life_steps": 206.975,
+            "report_fidelity": 0.6232080064917501,
+            "silent_grants": 1.875,
+            "survival": 0.3,
+            "world": "metabolic"
+          },
+          {
+            "arm": "myopic",
+            "caregiver_store": 0.0,
+            "deaths_by_need": {
+              "energy": 17,
+              "food": 4,
+              "safety": 1,
+              "water": 12
+            },
+            "future_fidelity": 0.2790172267720983,
+            "grants": 15.9,
+            "help_delay": 18,
+            "lives": 40,
+            "mean_life_steps": 110.425,
+            "report_fidelity": 0.9920926292007908,
+            "silent_grants": 1.875,
+            "survival": 0.15,
+            "world": "metabolic"
+          },
+          {
+            "arm": "state_oracle",
+            "caregiver_store": 0.0,
+            "deaths_by_need": {
+              "energy": 10,
+              "food": 1,
+              "safety": 7,
+              "water": 8
+            },
+            "future_fidelity": 0.8659357089459258,
+            "grants": 34.575,
+            "help_delay": 18,
+            "lives": 40,
+            "mean_life_steps": 222.775,
+            "report_fidelity": 0.6410416147520558,
+            "silent_grants": 1.875,
+            "survival": 0.35,
+            "world": "metabolic"
+          },
+          {
+            "arm": "recursive",
+            "caregiver_store": 0.0,
+            "deaths_by_need": {
+              "energy": 11,
+              "food": 1,
+              "safety": 7,
+              "water": 7
+            },
+            "future_fidelity": 0.9296985246953176,
+            "grants": 33.65,
+            "help_delay": 18,
+            "lives": 40,
+            "mean_life_steps": 217.0,
+            "report_fidelity": 0.5916613213598461,
+            "silent_grants": 1.875,
+            "survival": 0.35,
+            "world": "metabolic"
+          },
+          {
+            "arm": "individual",
+            "caregiver_store": 0.0,
+            "deaths_by_need": {
+              "energy": 10,
+              "food": 1,
+              "safety": 6,
+              "water": 7
+            },
+            "future_fidelity": 0.9401219512195121,
+            "grants": 35.35,
+            "help_delay": 18,
+            "lives": 40,
+            "mean_life_steps": 227.15,
+            "report_fidelity": 0.5382926829268293,
+            "silent_grants": 1.875,
+            "survival": 0.4,
+            "world": "metabolic"
+          },
+          {
+            "arm": "oracle",
+            "caregiver_store": 0.0,
+            "deaths_by_need": {
+              "energy": 11,
+              "food": 1,
+              "safety": 5,
+              "water": 7
+            },
+            "future_fidelity": 1.0,
+            "grants": 35.325,
+            "help_delay": 18,
+            "lives": 40,
+            "mean_life_steps": 226.875,
+            "report_fidelity": 0.5652704847966785,
+            "silent_grants": 1.875,
+            "survival": 0.4,
+            "world": "metabolic"
+          }
+        ],
+        "seed": 1
+      },
+      {
+        "arms": [
+          {
+            "arm": "population",
+            "caregiver_store": 0.0,
+            "deaths_by_need": {
+              "energy": 15,
+              "food": 7,
+              "safety": 4,
+              "water": 6
+            },
+            "future_fidelity": 0.666049953746531,
+            "grants": 23.8,
+            "help_delay": 18,
+            "lives": 40,
+            "mean_life_steps": 158.275,
+            "report_fidelity": 0.6160962072155411,
+            "silent_grants": 2.0,
+            "survival": 0.2,
+            "world": "metabolic"
+          },
+          {
+            "arm": "snap",
+            "caregiver_store": 0.0,
+            "deaths_by_need": {
+              "energy": 13,
+              "food": 6,
+              "safety": 5,
+              "water": 6
+            },
+            "future_fidelity": 0.6976978659048899,
+            "grants": 26.1,
+            "help_delay": 18,
+            "lives": 40,
+            "mean_life_steps": 171.925,
+            "report_fidelity": 0.6333389346328349,
+            "silent_grants": 2.0,
+            "survival": 0.25,
+            "world": "metabolic"
+          },
+          {
+            "arm": "myopic",
+            "caregiver_store": 0.0,
+            "deaths_by_need": {
+              "energy": 24,
+              "food": 6,
+              "safety": 2,
+              "water": 8
+            },
+            "future_fidelity": 0.3533716675378986,
+            "grants": 9.225,
+            "help_delay": 18,
+            "lives": 40,
+            "mean_life_steps": 71.125,
+            "report_fidelity": 0.9958180867746994,
+            "silent_grants": 2.0,
+            "survival": 0.0,
+            "world": "metabolic"
+          },
+          {
+            "arm": "state_oracle",
+            "caregiver_store": 0.0,
+            "deaths_by_need": {
+              "energy": 13,
+              "food": 6,
+              "safety": 5,
+              "water": 6
+            },
+            "future_fidelity": 0.8369070825211176,
+            "grants": 27.0,
+            "help_delay": 18,
+            "lives": 40,
+            "mean_life_steps": 177.05,
+            "report_fidelity": 0.6799870045484081,
+            "silent_grants": 2.0,
+            "survival": 0.25,
+            "world": "metabolic"
+          },
+          {
+            "arm": "recursive",
+            "caregiver_store": 0.0,
+            "deaths_by_need": {
+              "energy": 12,
+              "food": 4,
+              "safety": 6,
+              "water": 6
+            },
+            "future_fidelity": 0.9255018587360595,
+            "grants": 29.35,
+            "help_delay": 18,
+            "lives": 40,
+            "mean_life_steps": 191.275,
+            "report_fidelity": 0.5854275092936803,
+            "silent_grants": 2.0,
+            "survival": 0.3,
+            "world": "metabolic"
+          },
+          {
+            "arm": "individual",
+            "caregiver_store": 0.0,
+            "deaths_by_need": {
+              "energy": 11,
+              "food": 5,
+              "safety": 7,
+              "water": 5
+            },
+            "future_fidelity": 0.9390612132857535,
+            "grants": 31.675,
+            "help_delay": 18,
+            "lives": 40,
+            "mean_life_steps": 205.45,
+            "report_fidelity": 0.5608015371946198,
+            "silent_grants": 2.0,
+            "survival": 0.3,
+            "world": "metabolic"
+          },
+          {
+            "arm": "oracle",
+            "caregiver_store": 0.0,
+            "deaths_by_need": {
+              "energy": 12,
+              "food": 5,
+              "safety": 7,
+              "water": 5
+            },
+            "future_fidelity": 1.0,
+            "grants": 30.675,
+            "help_delay": 18,
+            "lives": 40,
+            "mean_life_steps": 199.45,
+            "report_fidelity": 0.5793357933579336,
+            "silent_grants": 2.0,
+            "survival": 0.275,
+            "world": "metabolic"
+          }
+        ],
+        "seed": 2
+      },
+      {
+        "arms": [
+          {
+            "arm": "population",
+            "caregiver_store": 0.0,
+            "deaths_by_need": {
+              "energy": 14,
+              "food": 2,
+              "safety": 1,
+              "water": 14
+            },
+            "future_fidelity": 0.6517315593817257,
+            "grants": 22.575,
+            "help_delay": 18,
+            "lives": 40,
+            "mean_life_steps": 151.05,
+            "report_fidelity": 0.5973390725885346,
+            "silent_grants": 1.95,
+            "survival": 0.225,
+            "world": "metabolic"
+          },
+          {
+            "arm": "snap",
+            "caregiver_store": 0.0,
+            "deaths_by_need": {
+              "energy": 11,
+              "food": 4,
+              "safety": 1,
+              "water": 11
+            },
+            "future_fidelity": 0.7237738419618529,
+            "grants": 25.75,
+            "help_delay": 18,
+            "lives": 40,
+            "mean_life_steps": 170.075,
+            "report_fidelity": 0.6295980926430518,
+            "silent_grants": 1.95,
+            "survival": 0.325,
+            "world": "metabolic"
+          },
+          {
+            "arm": "myopic",
+            "caregiver_store": 0.0,
+            "deaths_by_need": {
+              "energy": 23,
+              "food": 2,
+              "water": 10
+            },
+            "future_fidelity": 0.3212145425489413,
+            "grants": 11.75,
+            "help_delay": 18,
+            "lives": 40,
+            "mean_life_steps": 85.775,
+            "report_fidelity": 0.9920095884938074,
+            "silent_grants": 1.95,
+            "survival": 0.125,
+            "world": "metabolic"
+          },
+          {
+            "arm": "state_oracle",
+            "caregiver_store": 0.0,
+            "deaths_by_need": {
+              "energy": 10,
+              "food": 4,
+              "safety": 2,
+              "water": 9
+            },
+            "future_fidelity": 0.837953091684435,
+            "grants": 30.6,
+            "help_delay": 18,
+            "lives": 40,
+            "mean_life_steps": 199.15,
+            "report_fidelity": 0.6466240227434257,
+            "silent_grants": 1.95,
+            "survival": 0.375,
+            "world": "metabolic"
+          },
+          {
+            "arm": "recursive",
+            "caregiver_store": 0.0,
+            "deaths_by_need": {
+              "energy": 9,
+              "food": 2,
+              "safety": 1,
+              "water": 10
+            },
+            "future_fidelity": 0.9666530556689805,
+            "grants": 31.9,
+            "help_delay": 18,
+            "lives": 40,
+            "mean_life_steps": 206.95,
+            "report_fidelity": 0.5971144684905404,
+            "silent_grants": 1.95,
+            "survival": 0.45,
+            "world": "metabolic"
+          },
+          {
+            "arm": "individual",
+            "caregiver_store": 0.0,
+            "deaths_by_need": {
+              "energy": 13,
+              "food": 4,
+              "safety": 2,
+              "water": 8
+            },
+            "future_fidelity": 0.9360231474039543,
+            "grants": 27.175,
+            "help_delay": 18,
+            "lives": 40,
+            "mean_life_steps": 178.775,
+            "report_fidelity": 0.5568236617907089,
+            "silent_grants": 1.95,
+            "survival": 0.325,
+            "world": "metabolic"
+          },
+          {
+            "arm": "oracle",
+            "caregiver_store": 0.0,
+            "deaths_by_need": {
+              "energy": 12,
+              "food": 4,
+              "safety": 2,
+              "water": 7
+            },
+            "future_fidelity": 1.0,
+            "grants": 28.625,
+            "help_delay": 18,
+            "lives": 40,
+            "mean_life_steps": 187.45,
+            "report_fidelity": 0.5841961023142509,
+            "silent_grants": 1.95,
+            "survival": 0.375,
+            "world": "metabolic"
+          }
+        ],
+        "seed": 3
+      },
+      {
+        "arms": [
+          {
+            "arm": "population",
+            "caregiver_store": 0.0,
+            "deaths_by_need": {
+              "energy": 15,
+              "food": 4,
+              "safety": 2,
+              "water": 11
+            },
+            "future_fidelity": 0.6190377004790668,
+            "grants": 21.075,
+            "help_delay": 18,
+            "lives": 40,
+            "mean_life_steps": 142.175,
+            "report_fidelity": 0.580712351593418,
+            "silent_grants": 2.0,
+            "survival": 0.2,
+            "world": "metabolic"
+          },
+          {
+            "arm": "snap",
+            "caregiver_store": 0.0,
+            "deaths_by_need": {
+              "energy": 12,
+              "food": 5,
+              "safety": 3,
+              "water": 8
+            },
+            "future_fidelity": 0.676514276283215,
+            "grants": 26.325,
+            "help_delay": 18,
+            "lives": 40,
+            "mean_life_steps": 173.625,
+            "report_fidelity": 0.6010892886614952,
+            "silent_grants": 2.0,
+            "survival": 0.3,
+            "world": "metabolic"
+          },
+          {
+            "arm": "myopic",
+            "caregiver_store": 0.0,
+            "deaths_by_need": {
+              "energy": 20,
+              "food": 5,
+              "water": 13
+            },
+            "future_fidelity": 0.2825698988697204,
+            "grants": 8.1,
+            "help_delay": 18,
+            "lives": 40,
+            "mean_life_steps": 64.325,
+            "report_fidelity": 0.9976204640095181,
+            "silent_grants": 2.0,
+            "survival": 0.05,
+            "world": "metabolic"
+          },
+          {
+            "arm": "state_oracle",
+            "caregiver_store": 0.0,
+            "deaths_by_need": {
+              "energy": 11,
+              "food": 5,
+              "safety": 4,
+              "water": 9
+            },
+            "future_fidelity": 0.8251842936663156,
+            "grants": 28.75,
+            "help_delay": 18,
+            "lives": 40,
+            "mean_life_steps": 188.325,
+            "report_fidelity": 0.6633067549270347,
+            "silent_grants": 2.0,
+            "survival": 0.275,
+            "world": "metabolic"
+          },
+          {
+            "arm": "recursive",
+            "caregiver_store": 0.0,
+            "deaths_by_need": {
+              "energy": 11,
+              "food": 4,
+              "safety": 4,
+              "water": 8
+            },
+            "future_fidelity": 0.9516176907094093,
+            "grants": 29.15,
+            "help_delay": 18,
+            "lives": 40,
+            "mean_life_steps": 190.6,
+            "report_fidelity": 0.6070050460077174,
+            "silent_grants": 2.0,
+            "survival": 0.325,
+            "world": "metabolic"
+          },
+          {
+            "arm": "individual",
+            "caregiver_store": 0.0,
+            "deaths_by_need": {
+              "energy": 9,
+              "food": 5,
+              "safety": 4,
+              "water": 7
+            },
+            "future_fidelity": 0.9485069674850697,
+            "grants": 32.475,
+            "help_delay": 18,
+            "lives": 40,
+            "mean_life_steps": 210.725,
+            "report_fidelity": 0.5664233576642336,
+            "silent_grants": 2.0,
+            "survival": 0.375,
+            "world": "metabolic"
+          },
+          {
+            "arm": "oracle",
+            "caregiver_store": 0.0,
+            "deaths_by_need": {
+              "energy": 9,
+              "food": 5,
+              "safety": 4,
+              "water": 7
+            },
+            "future_fidelity": 1.0,
+            "grants": 32.475,
+            "help_delay": 18,
+            "lives": 40,
+            "mean_life_steps": 210.725,
+            "report_fidelity": 0.5863304578633046,
+            "silent_grants": 2.0,
+            "survival": 0.375,
+            "world": "metabolic"
+          }
+        ],
+        "seed": 4
+      }
+    ],
+    "both": [
+      {
+        "body_error": {
+          "individual": 0.03816884149395006,
+          "myopic": 0.0,
+          "oracle": 0.0,
+          "population": 0.10370755051346008,
+          "recursive": 0.042596323657157785,
+          "snap": 0.05926216612963172,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 0.0,
+        "consequential_accuracy": {
+          "individual": 0.8870615630912531,
+          "myopic": 0.6204337068840052,
+          "oracle": 1.0,
+          "population": 0.5815747343909183,
+          "recursive": 0.8180759714743123,
+          "snap": 0.676175229224276,
+          "state_oracle": 0.7681560180468636
+        },
+        "consequential_share": 0.8189511323003575,
+        "discriminating_share": 0.47485101311084627,
+        "future_moved_share": 0.4376638855780691,
+        "help_delay": 18,
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "need_accuracy": {
+          "individual": 0.8901072705601907,
+          "myopic": 0.5657926102502979,
+          "oracle": 1.0,
+          "population": 0.5251489868891538,
+          "recursive": 0.7974970202622169,
+          "snap": 0.6152562574493444,
+          "state_oracle": 0.7240762812872468
+        },
+        "prior_rate_error": 0.3,
+        "rate_error": 0.17892367123795583,
+        "readings_per_life": 6.525,
+        "regret": {
+          "individual": 0.008019971210261694,
+          "myopic": 0.0396098014683347,
+          "oracle": 0.0,
+          "population": 0.03904920990701879,
+          "recursive": 0.015047876736261321,
+          "snap": 0.027234209251551015,
+          "state_oracle": 0.0156400939906011
+        },
+        "scored_ticks": 8390,
+        "seed_base": 1020000000,
+        "shuffled_readings": false,
+        "world": "both"
+      },
+      {
+        "body_error": {
+          "individual": 0.0476439934493968,
+          "myopic": 0.0,
+          "oracle": 0.0,
+          "population": 0.1283766942954784,
+          "recursive": 0.03570549736898056,
+          "snap": 0.0676102121004912,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 0.0,
+        "consequential_accuracy": {
+          "individual": 0.8715492957746479,
+          "myopic": 0.6024413145539906,
+          "oracle": 1.0,
+          "population": 0.5695774647887324,
+          "recursive": 0.819718309859155,
+          "snap": 0.6852582159624413,
+          "state_oracle": 0.8043192488262911
+        },
+        "consequential_share": 0.7258724100327154,
+        "discriminating_share": 0.5323064340239912,
+        "future_moved_share": 0.48691384950926936,
+        "help_delay": 18,
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "need_accuracy": {
+          "individual": 0.8938113413304253,
+          "myopic": 0.5109051254089422,
+          "oracle": 1.0,
+          "population": 0.46769356597600875,
+          "recursive": 0.7993456924754635,
+          "snap": 0.5902399127589967,
+          "state_oracle": 0.7494547437295529
+        },
+        "prior_rate_error": 0.3,
+        "rate_error": 0.1784100613453276,
+        "readings_per_life": 5.65,
+        "regret": {
+          "individual": 0.010195660515314196,
+          "myopic": 0.03977968108659732,
+          "oracle": 0.0,
+          "population": 0.04043006361216642,
+          "recursive": 0.013304317373369668,
+          "snap": 0.02669501701071741,
+          "state_oracle": 0.013264644117531029
+        },
+        "scored_ticks": 7336,
+        "seed_base": 1022000000,
+        "shuffled_readings": false,
+        "world": "both"
+      },
+      {
+        "body_error": {
+          "individual": 0.07391774437581676,
+          "myopic": 0.0,
+          "oracle": 0.0,
+          "population": 0.1562605619063814,
+          "recursive": 0.04944141265955218,
+          "snap": 0.08105600246094073,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 0.0,
+        "consequential_accuracy": {
+          "individual": 0.8002050931464707,
+          "myopic": 0.5781917620919501,
+          "oracle": 1.0,
+          "population": 0.5228166125448641,
+          "recursive": 0.8007178260126474,
+          "snap": 0.6161339941890275,
+          "state_oracle": 0.7222696974876089
+        },
+        "consequential_share": 0.8315804434337691,
+        "discriminating_share": 0.5254405912450256,
+        "future_moved_share": 0.4724275156338829,
+        "help_delay": 18,
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "need_accuracy": {
+          "individual": 0.8172256964184196,
+          "myopic": 0.5275724843661171,
+          "oracle": 1.0,
+          "population": 0.47455940875497443,
+          "recursive": 0.7836839113132462,
+          "snap": 0.5648095508811825,
+          "state_oracle": 0.6857589539511085
+        },
+        "prior_rate_error": 0.3,
+        "rate_error": 0.18725635978511315,
+        "readings_per_life": 5.9,
+        "regret": {
+          "individual": 0.018413579836426348,
+          "myopic": 0.04755227876212108,
+          "oracle": 0.0,
+          "population": 0.052996557867927535,
+          "recursive": 0.017747360278248397,
+          "snap": 0.03920942079968545,
+          "state_oracle": 0.023678080019900048
+        },
+        "scored_ticks": 7036,
+        "seed_base": 1024000000,
+        "shuffled_readings": false,
+        "world": "both"
+      },
+      {
+        "body_error": {
+          "individual": 0.05592548691423238,
+          "myopic": 0.0,
+          "oracle": 0.0,
+          "population": 0.13095088453329956,
+          "recursive": 0.04454099550611978,
+          "snap": 0.07271008623691108,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 0.0,
+        "consequential_accuracy": {
+          "individual": 0.8677754677754678,
+          "myopic": 0.5858627858627858,
+          "oracle": 1.0,
+          "population": 0.574012474012474,
+          "recursive": 0.7723492723492723,
+          "snap": 0.6407484407484407,
+          "state_oracle": 0.7494802494802495
+        },
+        "consequential_share": 0.8412032179083596,
+        "discriminating_share": 0.48565932144106333,
+        "future_moved_share": 0.46117523609653727,
+        "help_delay": 18,
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "need_accuracy": {
+          "individual": 0.8697096887023434,
+          "myopic": 0.540048968170689,
+          "oracle": 1.0,
+          "population": 0.5143406785589367,
+          "recursive": 0.7646030080447709,
+          "snap": 0.5923399790136411,
+          "state_oracle": 0.7308499475341028
+        },
+        "prior_rate_error": 0.3,
+        "rate_error": 0.18294409158578323,
+        "readings_per_life": 5.65,
+        "regret": {
+          "individual": 0.012208153737405985,
+          "myopic": 0.04486751130840101,
+          "oracle": 0.0,
+          "population": 0.04189105079366779,
+          "recursive": 0.019645823076201434,
+          "snap": 0.03171095671903946,
+          "state_oracle": 0.01820467316633107
+        },
+        "scored_ticks": 5718,
+        "seed_base": 1026000000,
+        "shuffled_readings": false,
+        "world": "both"
+      },
+      {
+        "body_error": {
+          "individual": 0.05805566053763723,
+          "myopic": 0.0,
+          "oracle": 0.0,
+          "population": 0.1354455493417066,
+          "recursive": 0.04405976931805061,
+          "snap": 0.07248089239988935,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 0.0,
+        "consequential_accuracy": {
+          "individual": 0.8618157543391188,
+          "myopic": 0.6192701379617267,
+          "oracle": 1.0,
+          "population": 0.5287049399198932,
+          "recursive": 0.7970627503337784,
+          "snap": 0.6270582999554962,
+          "state_oracle": 0.739652870493992
+        },
+        "consequential_share": 0.830991124260355,
+        "discriminating_share": 0.5220044378698225,
+        "future_moved_share": 0.4356508875739645,
+        "help_delay": 18,
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "need_accuracy": {
+          "individual": 0.8759245562130178,
+          "myopic": 0.5619452662721893,
+          "oracle": 1.0,
+          "population": 0.4779955621301775,
+          "recursive": 0.7825443786982249,
+          "snap": 0.5726701183431953,
+          "state_oracle": 0.7009985207100592
+        },
+        "prior_rate_error": 0.3,
+        "rate_error": 0.20598379862487964,
+        "readings_per_life": 4.925,
+        "regret": {
+          "individual": 0.014516884999020402,
+          "myopic": 0.04647432256247428,
+          "oracle": 0.0,
+          "population": 0.0545184369670075,
+          "recursive": 0.02061412423933744,
+          "snap": 0.03945189555104047,
+          "state_oracle": 0.024128956887217723
+        },
+        "scored_ticks": 5408,
+        "seed_base": 1028000000,
+        "shuffled_readings": false,
+        "world": "both"
+      }
+    ],
+    "divergence": [
+      {
+        "body_error": {
+          "individual": 0.024463508583499164,
+          "myopic": 0.0,
+          "oracle": 0.0,
+          "population": 0.10374685726870343,
+          "recursive": 0.014824000554270123,
+          "snap": 0.05405129211951432,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 0.0,
+        "consequential_accuracy": {
+          "individual": 0.930316129368262,
+          "myopic": 0.6502786313212854,
+          "oracle": 1.0,
+          "population": 0.6460601010364043,
+          "recursive": 0.9330243216499141,
+          "snap": 0.7442320712462892,
+          "state_oracle": 0.8717254309671372
+        },
+        "consequential_share": 0.7979802177707589,
+        "discriminating_share": 0.43313107804837503,
+        "divergence": {
+          "cell": 0.01,
+          "correct_divergence": {
+            "individual": 0.8620689655172413,
+            "myopic": 0.0,
+            "oracle": 1.0,
+            "population": 0.0028735632183908046,
+            "recursive": 0.7586206896551724,
+            "snap": 0.004310344827586207,
+            "state_oracle": 0.01293103448275862
+          },
+          "divergence": {
+            "individual": 0.9195402298850575,
+            "myopic": 0.011494252873563218,
+            "oracle": 1.0,
+            "population": 0.47844827586206895,
+            "recursive": 0.7887931034482759,
+            "snap": 0.3879310344827586,
+            "state_oracle": 0.034482758620689655
+          },
+          "pairs": 696,
+          "records": 24062
+        },
+        "future_moved_share": 0.4049954284764359,
+        "help_delay": 18,
+        "interoception_probability": 0.03,
+        "lives": 120,
+        "need_accuracy": {
+          "individual": 0.9301803673842574,
+          "myopic": 0.5925941318261159,
+          "oracle": 1.0,
+          "population": 0.566868921951625,
+          "recursive": 0.9185853212534286,
+          "snap": 0.6651566785803341,
+          "state_oracle": 0.8220846147452414
+        },
+        "prior_rate_error": 0.3,
+        "rate_error": 0.0949629768593217,
+        "readings_per_life": 6.375,
+        "regret": {
+          "individual": 0.005031774549665736,
+          "myopic": 0.03983316905034233,
+          "oracle": 0.0,
+          "population": 0.03610896385520729,
+          "recursive": 0.005362534218975855,
+          "snap": 0.02213016273567753,
+          "state_oracle": 0.006810944302275697
+        },
+        "scored_ticks": 24062,
+        "seed_base": 1020000000,
+        "shuffled_readings": false,
+        "world": "metabolic"
+      },
+      {
+        "body_error": {
+          "individual": 0.022532126164790615,
+          "myopic": 0.0,
+          "oracle": 0.0,
+          "population": 0.10422265649960767,
+          "recursive": 0.014071839459376696,
+          "snap": 0.05235166104649643,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 0.0,
+        "consequential_accuracy": {
+          "individual": 0.9410016122531237,
+          "myopic": 0.6328093510681176,
+          "oracle": 1.0,
+          "population": 0.6289298669891172,
+          "recursive": 0.9411527609834744,
+          "snap": 0.7375554212011286,
+          "state_oracle": 0.8743954050785974
+        },
+        "consequential_share": 0.7936977646259048,
+        "discriminating_share": 0.4440756588155316,
+        "divergence": {
+          "cell": 0.01,
+          "correct_divergence": {
+            "individual": 0.8995568685376661,
+            "myopic": 0.0,
+            "oracle": 1.0,
+            "population": 0.0,
+            "recursive": 0.757754800590842,
+            "snap": 0.0,
+            "state_oracle": 0.0103397341211226
+          },
+          "divergence": {
+            "individual": 0.9394387001477105,
+            "myopic": 0.011816838995568686,
+            "oracle": 1.0,
+            "population": 0.48005908419497784,
+            "recursive": 0.7858197932053176,
+            "snap": 0.310192023633678,
+            "state_oracle": 0.026587887740029542
+          },
+          "pairs": 677,
+          "records": 25007
+        },
+        "future_moved_share": 0.4214419962410525,
+        "help_delay": 18,
+        "interoception_probability": 0.03,
+        "lives": 120,
+        "need_accuracy": {
+          "individual": 0.9426160675010997,
+          "myopic": 0.5739592913984084,
+          "oracle": 1.0,
+          "population": 0.5559243411844683,
+          "recursive": 0.9292198184508338,
+          "snap": 0.6603351061702724,
+          "state_oracle": 0.8269684488343264
+        },
+        "prior_rate_error": 0.3,
+        "rate_error": 0.10308839236960991,
+        "readings_per_life": 6.475,
+        "regret": {
+          "individual": 0.004053486244024841,
+          "myopic": 0.0407549923273269,
+          "oracle": 0.0,
+          "population": 0.03842336472274594,
+          "recursive": 0.004256567095859735,
+          "snap": 0.02286008987212756,
+          "state_oracle": 0.006428165105573153
+        },
+        "scored_ticks": 25007,
+        "seed_base": 1022000000,
+        "shuffled_readings": false,
+        "world": "metabolic"
+      },
+      {
+        "body_error": {
+          "individual": 0.02578095848615482,
+          "myopic": 0.0,
+          "oracle": 0.0,
+          "population": 0.10257751565725563,
+          "recursive": 0.015116444266812648,
+          "snap": 0.051350927464648595,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 0.0,
+        "consequential_accuracy": {
+          "individual": 0.9340635853593374,
+          "myopic": 0.6255410098851188,
+          "oracle": 1.0,
+          "population": 0.652364413572001,
+          "recursive": 0.9412770504942559,
+          "snap": 0.7551696500133582,
+          "state_oracle": 0.8831952978893935
+        },
+        "consequential_share": 0.8210493989646398,
+        "discriminating_share": 0.41962797227340526,
+        "divergence": {
+          "cell": 0.01,
+          "correct_divergence": {
+            "individual": 0.8194774346793349,
+            "myopic": 0.0,
+            "oracle": 1.0,
+            "population": 0.0,
+            "recursive": 0.66270783847981,
+            "snap": 0.0,
+            "state_oracle": 0.0023752969121140144
+          },
+          "divergence": {
+            "individual": 0.9073634204275535,
+            "myopic": 0.026128266033254157,
+            "oracle": 1.0,
+            "population": 0.5344418052256532,
+            "recursive": 0.7078384798099763,
+            "snap": 0.3824228028503563,
+            "state_oracle": 0.0332541567695962
+          },
+          "pairs": 421,
+          "records": 22794
+        },
+        "future_moved_share": 0.42506800035096953,
+        "help_delay": 18,
+        "interoception_probability": 0.03,
+        "lives": 120,
+        "need_accuracy": {
+          "individual": 0.932745459331403,
+          "myopic": 0.5701500394840747,
+          "oracle": 1.0,
+          "population": 0.5803720277265947,
+          "recursive": 0.927173817671317,
+          "snap": 0.6839957883653593,
+          "state_oracle": 0.8336404316925506
+        },
+        "prior_rate_error": 0.3,
+        "rate_error": 0.09120344571725088,
+        "readings_per_life": 6.4,
+        "regret": {
+          "individual": 0.0052854806583418875,
+          "myopic": 0.04484902005135363,
+          "oracle": 0.0,
+          "population": 0.03809729078249781,
+          "recursive": 0.0048229012113478464,
+          "snap": 0.022945692414394425,
+          "state_oracle": 0.006519144475926015
+        },
+        "scored_ticks": 22794,
+        "seed_base": 1024000000,
+        "shuffled_readings": false,
+        "world": "metabolic"
+      },
+      {
+        "body_error": {
+          "individual": 0.025763384248919254,
+          "myopic": 0.0,
+          "oracle": 0.0,
+          "population": 0.10588168573243438,
+          "recursive": 0.012108677066071986,
+          "snap": 0.05150225992818122,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 0.0,
+        "consequential_accuracy": {
+          "individual": 0.9335500180570603,
+          "myopic": 0.6501573543827065,
+          "oracle": 1.0,
+          "population": 0.6368983129546509,
+          "recursive": 0.95439302481556,
+          "snap": 0.747355930454522,
+          "state_oracle": 0.8723623794046329
+        },
+        "consequential_share": 0.7782774543264405,
+        "discriminating_share": 0.4546476611122265,
+        "divergence": {
+          "cell": 0.01,
+          "correct_divergence": {
+            "individual": 0.8601398601398601,
+            "myopic": 0.0,
+            "oracle": 1.0,
+            "population": 0.0,
+            "recursive": 0.7258741258741259,
+            "snap": 0.0,
+            "state_oracle": 0.004195804195804196
+          },
+          "divergence": {
+            "individual": 0.9090909090909091,
+            "myopic": 0.006993006993006993,
+            "oracle": 1.0,
+            "population": 0.4937062937062937,
+            "recursive": 0.7594405594405594,
+            "snap": 0.36923076923076925,
+            "state_oracle": 0.03496503496503497
+          },
+          "pairs": 715,
+          "records": 24905
+        },
+        "future_moved_share": 0.4050592250552098,
+        "help_delay": 18,
+        "interoception_probability": 0.03,
+        "lives": 120,
+        "need_accuracy": {
+          "individual": 0.9339891588034531,
+          "myopic": 0.5874723951013853,
+          "oracle": 1.0,
+          "population": 0.5453523388877736,
+          "recursive": 0.937964264203975,
+          "snap": 0.6589038345713712,
+          "state_oracle": 0.8235695643445091
+        },
+        "prior_rate_error": 0.3,
+        "rate_error": 0.07552454965327479,
+        "readings_per_life": 7.408333333333333,
+        "regret": {
+          "individual": 0.005269555747531819,
+          "myopic": 0.038409407710525346,
+          "oracle": 0.0,
+          "population": 0.03600403076345501,
+          "recursive": 0.0031912941081897106,
+          "snap": 0.0209455618819697,
+          "state_oracle": 0.0068300706650368135
+        },
+        "scored_ticks": 24905,
+        "seed_base": 1026000000,
+        "shuffled_readings": false,
+        "world": "metabolic"
+      },
+      {
+        "body_error": {
+          "individual": 0.02407867125617284,
+          "myopic": 0.0,
+          "oracle": 0.0,
+          "population": 0.0993921030849199,
+          "recursive": 0.010951678016851492,
+          "snap": 0.04845396846134303,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 0.0,
+        "consequential_accuracy": {
+          "individual": 0.9339832392680006,
+          "myopic": 0.6611937745852574,
+          "oracle": 1.0,
+          "population": 0.627957357049199,
+          "recursive": 0.9529673336753891,
+          "snap": 0.7407787469357505,
+          "state_oracle": 0.8706459152841913
+        },
+        "consequential_share": 0.7925986173241155,
+        "discriminating_share": 0.44828521079029415,
+        "divergence": {
+          "cell": 0.01,
+          "correct_divergence": {
+            "individual": 0.8914405010438413,
+            "myopic": 0.0,
+            "oracle": 1.0,
+            "population": 0.0,
+            "recursive": 0.8058455114822547,
+            "snap": 0.0,
+            "state_oracle": 0.0020876826722338203
+          },
+          "divergence": {
+            "individual": 0.9290187891440501,
+            "myopic": 0.0020876826722338203,
+            "oracle": 1.0,
+            "population": 0.47390396659707723,
+            "recursive": 0.8622129436325678,
+            "snap": 0.33611691022964507,
+            "state_oracle": 0.04592901878914405
+          },
+          "pairs": 479,
+          "records": 22131
+        },
+        "future_moved_share": 0.40472640187971626,
+        "help_delay": 18,
+        "interoception_probability": 0.03,
+        "lives": 120,
+        "need_accuracy": {
+          "individual": 0.9379151416564999,
+          "myopic": 0.5930595092856175,
+          "oracle": 1.0,
+          "population": 0.5517147892097058,
+          "recursive": 0.9370114319280647,
+          "snap": 0.6623740454565994,
+          "state_oracle": 0.8207491753648728
+        },
+        "prior_rate_error": 0.3,
+        "rate_error": 0.09810297127996462,
+        "readings_per_life": 6.325,
+        "regret": {
+          "individual": 0.00498827997871597,
+          "myopic": 0.03902936375697059,
+          "oracle": 0.0,
+          "population": 0.03932349337103166,
+          "recursive": 0.003740084294162902,
+          "snap": 0.02280464809093387,
+          "state_oracle": 0.00701197168213695
+        },
+        "scored_ticks": 22131,
+        "seed_base": 1028000000,
+        "shuffled_readings": false,
+        "world": "metabolic"
+      }
+    ],
+    "horizon": [
+      {
+        "delays": [
+          {
+            "body_error": {
+              "individual": 0.028453728197827568,
+              "myopic": 0.0,
+              "oracle": 0.0,
+              "population": 0.10737386881695081,
+              "recursive": 0.013243449236128612,
+              "snap": 0.05119724035751004,
+              "state_oracle": 0.0
+            },
+            "caregiver_store": 0.0,
+            "consequential_accuracy": {
+              "individual": 0.8571862194566702,
+              "myopic": 0.9993929276066171,
+              "oracle": 1.0,
+              "population": 0.5617696160267112,
+              "recursive": 0.9400516011534376,
+              "snap": 0.7458643193200789,
+              "state_oracle": 0.9993929276066171
+            },
+            "consequential_share": 0.9226999019745133,
+            "discriminating_share": 0.44797647388320966,
+            "future_moved_share": 0.0,
+            "help_delay": 0,
+            "interoception_probability": 0.03,
+            "lives": 40,
+            "need_accuracy": {
+              "individual": 0.8461700042010922,
+              "myopic": 0.9801148298557625,
+              "oracle": 1.0,
+              "population": 0.5520235261167904,
+              "recursive": 0.9238902114549783,
+              "snap": 0.7260887830836017,
+              "state_oracle": 0.9801148298557625
+            },
+            "prior_rate_error": 0.3,
+            "rate_error": 0.03607519317564011,
+            "readings_per_life": 10.675,
+            "regret": {
+              "individual": 0.010460667336254649,
+              "myopic": 6.835491037670974e-05,
+              "oracle": 0.0,
+              "population": 0.036799611781214346,
+              "recursive": 0.003261237182920814,
+              "snap": 0.017221421613412457,
+              "state_oracle": 6.835491037670974e-05
+            },
+            "scored_ticks": 14282,
+            "seed_base": 1020000000,
+            "shuffled_readings": false,
+            "world": "metabolic"
+          },
+          {
+            "body_error": {
+              "individual": 0.02521132097669007,
+              "myopic": 0.0,
+              "oracle": 0.0,
+              "population": 0.10392508979317693,
+              "recursive": 0.012845100837821545,
+              "snap": 0.050606977456134725,
+              "state_oracle": 0.0
+            },
+            "caregiver_store": 0.0,
+            "consequential_accuracy": {
+              "individual": 0.8696682464454977,
+              "myopic": 0.6706925546552515,
+              "oracle": 1.0,
+              "population": 0.5778932884879988,
+              "recursive": 0.9409111756612138,
+              "snap": 0.7412475156703868,
+              "state_oracle": 0.9732456810885186
+            },
+            "consequential_share": 0.9246536612948827,
+            "discriminating_share": 0.42988408255583827,
+            "future_moved_share": 0.3473282442748092,
+            "help_delay": 3,
+            "interoception_probability": 0.03,
+            "lives": 40,
+            "need_accuracy": {
+              "individual": 0.8602629346904156,
+              "myopic": 0.6460983884648007,
+              "oracle": 1.0,
+              "population": 0.5701159174441617,
+              "recursive": 0.9254311563471869,
+              "snap": 0.7246253887475261,
+              "state_oracle": 0.9486853265479219
+            },
+            "prior_rate_error": 0.3,
+            "rate_error": 0.03567782191915013,
+            "readings_per_life": 10.525,
+            "regret": {
+              "individual": 0.009174613006963322,
+              "myopic": 0.026382459088079485,
+              "oracle": 0.0,
+              "population": 0.03571776543152535,
+              "recursive": 0.0032313865142618503,
+              "snap": 0.01757130255863422,
+              "state_oracle": 0.0005992775413943364
+            },
+            "scored_ticks": 14148,
+            "seed_base": 1020000000,
+            "shuffled_readings": false,
+            "world": "metabolic"
+          },
+          {
+            "body_error": {
+              "individual": 0.03151413089149982,
+              "myopic": 0.0,
+              "oracle": 0.0,
+              "population": 0.117481529578174,
+              "recursive": 0.014140215440986344,
+              "snap": 0.05583034007057395,
+              "state_oracle": 0.0
+            },
+            "caregiver_store": 0.0,
+            "consequential_accuracy": {
+              "individual": 0.8869772802107343,
+              "myopic": 0.5402535396773132,
+              "oracle": 1.0,
+              "population": 0.678218636812644,
+              "recursive": 0.9625452749423773,
+              "snap": 0.8194764570299637,
+              "state_oracle": 0.9578531445505433
+            },
+            "consequential_share": 0.9572137735403041,
+            "discriminating_share": 0.33062800409739185,
+            "future_moved_share": 0.4677330391616106,
+            "help_delay": 6,
+            "interoception_probability": 0.03,
+            "lives": 40,
+            "need_accuracy": {
+              "individual": 0.8838547001812308,
+              "myopic": 0.5310850208809392,
+              "oracle": 1.0,
+              "population": 0.6693719959026081,
+              "recursive": 0.953746749665117,
+              "snap": 0.8062406429753368,
+              "state_oracle": 0.9420061460877788
+            },
+            "prior_rate_error": 0.3,
+            "rate_error": 0.051307445129523566,
+            "readings_per_life": 9.375,
+            "regret": {
+              "individual": 0.011693733209581498,
+              "myopic": 0.054591079819767546,
+              "oracle": 0.0,
+              "population": 0.03580770307216726,
+              "recursive": 0.0034443940610862805,
+              "snap": 0.015298619796113744,
+              "state_oracle": 0.001260311367145671
+            },
+            "scored_ticks": 12691,
+            "seed_base": 1020000000,
+            "shuffled_readings": false,
+            "world": "metabolic"
+          },
+          {
+            "body_error": {
+              "individual": 0.030169387496058877,
+              "myopic": 0.0,
+              "oracle": 0.0,
+              "population": 0.10847762511702327,
+              "recursive": 0.014308548865298178,
+              "snap": 0.05207102266508487,
+              "state_oracle": 0.0
+            },
+            "caregiver_store": 0.0,
+            "consequential_accuracy": {
+              "individual": 0.9049743843992728,
+              "myopic": 0.32424392662369855,
+              "oracle": 1.0,
+              "population": 0.6495620558585358,
+              "recursive": 0.9528177160799868,
+              "snap": 0.7859031565030573,
+              "state_oracle": 0.9212526855065278
+            },
+            "consequential_share": 0.9536643026004729,
+            "discriminating_share": 0.36028368794326243,
+            "future_moved_share": 0.6850275807722617,
+            "help_delay": 9,
+            "interoception_probability": 0.03,
+            "lives": 40,
+            "need_accuracy": {
+              "individual": 0.8990543735224586,
+              "myopic": 0.31843971631205675,
+              "oracle": 1.0,
+              "population": 0.6397163120567376,
+              "recursive": 0.9401891252955082,
+              "snap": 0.7714736012608353,
+              "state_oracle": 0.9024428684003152
+            },
+            "prior_rate_error": 0.3,
+            "rate_error": 0.046757280328077536,
+            "readings_per_life": 9.6,
+            "regret": {
+              "individual": 0.008955921151864282,
+              "myopic": 0.07122919592652636,
+              "oracle": 0.0,
+              "population": 0.03715761415206404,
+              "recursive": 0.00362993538354053,
+              "snap": 0.017632106829819104,
+              "state_oracle": 0.003077266052672839
+            },
+            "scored_ticks": 12690,
+            "seed_base": 1020000000,
+            "shuffled_readings": false,
+            "world": "metabolic"
+          },
+          {
+            "body_error": {
+              "individual": 0.028084674920042862,
+              "myopic": 0.0,
+              "oracle": 0.0,
+              "population": 0.10503611606468033,
+              "recursive": 0.01538230973304704,
+              "snap": 0.05446847896182081,
+              "state_oracle": 0.0
+            },
+            "caregiver_store": 0.0,
+            "consequential_accuracy": {
+              "individual": 0.9347098747729663,
+              "myopic": 0.46018545072172834,
+              "oracle": 1.0,
+              "population": 0.71647070069783,
+              "recursive": 0.947806137080585,
+              "snap": 0.8224835101806711,
+              "state_oracle": 0.9324156390402447
+            },
+            "consequential_share": 0.9719409086685868,
+            "discriminating_share": 0.2902536467527641,
+            "future_moved_share": 0.5439003995168633,
+            "help_delay": 12,
+            "interoception_probability": 0.03,
+            "lives": 40,
+            "need_accuracy": {
+              "individual": 0.9306884697575025,
+              "myopic": 0.45860819474124315,
+              "oracle": 1.0,
+              "population": 0.7097463532472359,
+              "recursive": 0.94062993589148,
+              "snap": 0.8136207377125336,
+              "state_oracle": 0.9210257363188702
+            },
+            "prior_rate_error": 0.3,
+            "rate_error": 0.06759423659805311,
+            "readings_per_life": 8.125,
+            "regret": {
+              "individual": 0.0076227791179177065,
+              "myopic": 0.073200235424669,
+              "oracle": 0.0,
+              "population": 0.03478726649843867,
+              "recursive": 0.0050406618243108445,
+              "snap": 0.01776942060215135,
+              "state_oracle": 0.003357370246815509
+            },
+            "scored_ticks": 10763,
+            "seed_base": 1020000000,
+            "shuffled_readings": false,
+            "world": "metabolic"
+          },
+          {
+            "body_error": {
+              "individual": 0.019128418986464137,
+              "myopic": 0.0,
+              "oracle": 0.0,
+              "population": 0.09693384647607367,
+              "recursive": 0.01261638545813305,
+              "snap": 0.04906603090248409,
+              "state_oracle": 0.0
+            },
+            "caregiver_store": 0.0,
+            "consequential_accuracy": {
+              "individual": 0.9461640017603051,
+              "myopic": 0.6451518263165615,
+              "oracle": 1.0,
+              "population": 0.6919466040780402,
+              "recursive": 0.950271380372598,
+              "snap": 0.7883233093736247,
+              "state_oracle": 0.8857268593222826
+            },
+            "consequential_share": 0.7740433745883956,
+            "discriminating_share": 0.3980924264789372,
+            "future_moved_share": 0.4186442602475304,
+            "help_delay": 18,
+            "interoception_probability": 0.03,
+            "lives": 40,
+            "need_accuracy": {
+              "individual": 0.9492449188145793,
+              "myopic": 0.5810151016237084,
+              "oracle": 1.0,
+              "population": 0.6019075735210628,
+              "recursive": 0.9298285454751902,
+              "snap": 0.6949017826728738,
+              "state_oracle": 0.8215056205291246
+            },
+            "prior_rate_error": 0.3,
+            "rate_error": 0.0696947994672486,
+            "readings_per_life": 6.825,
+            "regret": {
+              "individual": 0.003579288953839856,
+              "myopic": 0.03930857559917094,
+              "oracle": 0.0,
+              "population": 0.028455781476938984,
+              "recursive": 0.0038911167210445552,
+              "snap": 0.016128852273307227,
+              "state_oracle": 0.005561179412125992
+            },
+            "scored_ticks": 8807,
+            "seed_base": 1020000000,
+            "shuffled_readings": false,
+            "world": "metabolic"
+          },
+          {
+            "body_error": {
+              "individual": 0.02623012948675368,
+              "myopic": 0.0,
+              "oracle": 0.0,
+              "population": 0.1139960176163984,
+              "recursive": 0.019704440879562347,
+              "snap": 0.0556516626019515,
+              "state_oracle": 0.0
+            },
+            "caregiver_store": 0.0,
+            "consequential_accuracy": {
+              "individual": 0.9329752452125175,
+              "myopic": 0.64549276039234,
+              "oracle": 1.0,
+              "population": 0.6676786548341896,
+              "recursive": 0.9234002802428771,
+              "snap": 0.7573563755254554,
+              "state_oracle": 0.8601120971508641
+            },
+            "consequential_share": 0.629520729197295,
+            "discriminating_share": 0.4979417818288739,
+            "future_moved_share": 0.4930902675683623,
+            "help_delay": 24,
+            "interoception_probability": 0.03,
+            "lives": 40,
+            "need_accuracy": {
+              "individual": 0.9316377536018818,
+              "myopic": 0.5067627168479859,
+              "oracle": 1.0,
+              "population": 0.5020582181711262,
+              "recursive": 0.8894442810937959,
+              "snap": 0.5749779476624522,
+              "state_oracle": 0.6795060276389298
+            },
+            "prior_rate_error": 0.3,
+            "rate_error": 0.09022054431289712,
+            "readings_per_life": 5.325,
+            "regret": {
+              "individual": 0.003875243180194716,
+              "myopic": 0.029717262393082727,
+              "oracle": 0.0,
+              "population": 0.02418629510212114,
+              "recursive": 0.004998638086795602,
+              "snap": 0.015312878008611924,
+              "state_oracle": 0.005932838386813496
+            },
+            "scored_ticks": 6802,
+            "seed_base": 1020000000,
+            "shuffled_readings": false,
+            "world": "metabolic"
+          }
+        ],
+        "seed": 0
+      },
+      {
+        "delays": [
+          {
+            "body_error": {
+              "individual": 0.022100639621115935,
+              "myopic": 0.0,
+              "oracle": 0.0,
+              "population": 0.08983382070071386,
+              "recursive": 0.015094565937739406,
+              "snap": 0.04880994596527023,
+              "state_oracle": 0.0
+            },
+            "caregiver_store": 0.0,
+            "consequential_accuracy": {
+              "individual": 0.8782324880743159,
+              "myopic": 0.9995815549418361,
+              "oracle": 1.0,
+              "population": 0.6109297849192401,
+              "recursive": 0.929701230228471,
+              "snap": 0.769604150974977,
+              "state_oracle": 0.9995815549418361
+            },
+            "consequential_share": 0.9122070387052447,
+            "discriminating_share": 0.39888541110008396,
+            "future_moved_share": 0.0,
+            "help_delay": 0,
+            "interoception_probability": 0.03,
+            "lives": 40,
+            "need_accuracy": {
+              "individual": 0.8661729903046034,
+              "myopic": 0.9811435987479961,
+              "oracle": 1.0,
+              "population": 0.601114588899916,
+              "recursive": 0.9118253301778761,
+              "snap": 0.7495992060462631,
+              "state_oracle": 0.9811435987479961
+            },
+            "prior_rate_error": 0.3,
+            "rate_error": 0.06638974514396426,
+            "readings_per_life": 9.675,
+            "regret": {
+              "individual": 0.008259906137371126,
+              "myopic": 6.131510778176034e-05,
+              "oracle": 0.0,
+              "population": 0.03194425239879509,
+              "recursive": 0.004098926664024259,
+              "snap": 0.015590632530398732,
+              "state_oracle": 6.131510778176034e-05
+            },
+            "scored_ticks": 13099,
+            "seed_base": 1022000000,
+            "shuffled_readings": false,
+            "world": "metabolic"
+          },
+          {
+            "body_error": {
+              "individual": 0.02082166875096835,
+              "myopic": 0.0,
+              "oracle": 0.0,
+              "population": 0.08950006712904629,
+              "recursive": 0.015434050772282305,
+              "snap": 0.04828272563434203,
+              "state_oracle": 0.0
+            },
+            "caregiver_store": 0.0,
+            "consequential_accuracy": {
+              "individual": 0.8815470720908863,
+              "myopic": 0.6705371314008854,
+              "oracle": 1.0,
+              "population": 0.6196641884554339,
+              "recursive": 0.9213933673043188,
+              "snap": 0.7577478907359452,
+              "state_oracle": 0.9797844791579651
+            },
+            "consequential_share": 0.9138167938931298,
+            "discriminating_share": 0.39274809160305346,
+            "future_moved_share": 0.3516793893129771,
+            "help_delay": 3,
+            "interoception_probability": 0.03,
+            "lives": 40,
+            "need_accuracy": {
+              "individual": 0.8723664122137404,
+              "myopic": 0.6435114503816793,
+              "oracle": 1.0,
+              "population": 0.6072519083969465,
+              "recursive": 0.9030534351145039,
+              "snap": 0.7377099236641221,
+              "state_oracle": 0.9483206106870229
+            },
+            "prior_rate_error": 0.3,
+            "rate_error": 0.07874587536275107,
+            "readings_per_life": 9.675,
+            "regret": {
+              "individual": 0.007666883466254756,
+              "myopic": 0.026211832436617268,
+              "oracle": 0.0,
+              "population": 0.031057344331069933,
+              "recursive": 0.00475222834556462,
+              "snap": 0.016449933481656086,
+              "state_oracle": 0.00047529715572022546
+            },
+            "scored_ticks": 13100,
+            "seed_base": 1022000000,
+            "shuffled_readings": false,
+            "world": "metabolic"
+          },
+          {
+            "body_error": {
+              "individual": 0.021697622039689918,
+              "myopic": 0.0,
+              "oracle": 0.0,
+              "population": 0.09906773002334116,
+              "recursive": 0.011494630507104977,
+              "snap": 0.053837246317314916,
+              "state_oracle": 0.0
+            },
+            "caregiver_store": 0.0,
+            "consequential_accuracy": {
+              "individual": 0.9154083733699382,
+              "myopic": 0.549159231297186,
+              "oracle": 1.0,
+              "population": 0.723318462594372,
+              "recursive": 0.9601063829787234,
+              "snap": 0.818891557995882,
+              "state_oracle": 0.9583905284831846
+            },
+            "consequential_share": 0.9551749569777923,
+            "discriminating_share": 0.28697861181676637,
+            "future_moved_share": 0.45882160124559535,
+            "help_delay": 6,
+            "interoception_probability": 0.03,
+            "lives": 40,
+            "need_accuracy": {
+              "individual": 0.9114971728263542,
+              "myopic": 0.5399491928214374,
+              "oracle": 1.0,
+              "population": 0.7130213881832337,
+              "recursive": 0.9514873391788904,
+              "snap": 0.8063590920265509,
+              "state_oracle": 0.9420634270261411
+            },
+            "prior_rate_error": 0.3,
+            "rate_error": 0.051633812578692,
+            "readings_per_life": 8.825,
+            "regret": {
+              "individual": 0.007506495827785168,
+              "myopic": 0.05189454633782723,
+              "oracle": 0.0,
+              "population": 0.02768701936782787,
+              "recursive": 0.0030806582234569235,
+              "snap": 0.014761477914035575,
+              "state_oracle": 0.0011464875232363061
+            },
+            "scored_ticks": 12203,
+            "seed_base": 1022000000,
+            "shuffled_readings": false,
+            "world": "metabolic"
+          },
+          {
+            "body_error": {
+              "individual": 0.021501645658344084,
+              "myopic": 0.0,
+              "oracle": 0.0,
+              "population": 0.09029206207597443,
+              "recursive": 0.014576519429098272,
+              "snap": 0.04904873787761174,
+              "state_oracle": 0.0
+            },
+            "caregiver_store": 0.0,
+            "consequential_accuracy": {
+              "individual": 0.925686591276252,
+              "myopic": 0.32390953150242324,
+              "oracle": 1.0,
+              "population": 0.7104200323101777,
+              "recursive": 0.9491114701130856,
+              "snap": 0.8093699515347335,
+              "state_oracle": 0.9301292407108239
+            },
+            "consequential_share": 0.9519415609381008,
+            "discriminating_share": 0.30074971164936565,
+            "future_moved_share": 0.6881968473663975,
+            "help_delay": 9,
+            "interoception_probability": 0.03,
+            "lives": 40,
+            "need_accuracy": {
+              "individual": 0.9167627835447905,
+              "myopic": 0.3164167627835448,
+              "oracle": 1.0,
+              "population": 0.6992502883506344,
+              "recursive": 0.9359861591695502,
+              "snap": 0.7946943483275664,
+              "state_oracle": 0.9121491733948481
+            },
+            "prior_rate_error": 0.3,
+            "rate_error": 0.08949597215563711,
+            "readings_per_life": 7.575,
+            "regret": {
+              "individual": 0.005183043283716204,
+              "myopic": 0.07064768768705511,
+              "oracle": 0.0,
+              "population": 0.02814255652546665,
+              "recursive": 0.003575771422317049,
+              "snap": 0.014793660112391483,
+              "state_oracle": 0.00263447018507367
+            },
+            "scored_ticks": 10404,
+            "seed_base": 1022000000,
+            "shuffled_readings": false,
+            "world": "metabolic"
+          },
+          {
+            "body_error": {
+              "individual": 0.023490717227088745,
+              "myopic": 0.0,
+              "oracle": 0.0,
+              "population": 0.09949823388427076,
+              "recursive": 0.013216358530758147,
+              "snap": 0.05267007718100754,
+              "state_oracle": 0.0
+            },
+            "caregiver_store": 0.0,
+            "consequential_accuracy": {
+              "individual": 0.9537673099989096,
+              "myopic": 0.4638534510958456,
+              "oracle": 1.0,
+              "population": 0.7321993239559481,
+              "recursive": 0.9439537673099989,
+              "snap": 0.8285901210336931,
+              "state_oracle": 0.9382837204230727
+            },
+            "consequential_share": 0.9737736249734551,
+            "discriminating_share": 0.2750053089827989,
+            "future_moved_share": 0.540985347207475,
+            "help_delay": 12,
+            "interoception_probability": 0.03,
+            "lives": 40,
+            "need_accuracy": {
+              "individual": 0.9507326396262477,
+              "myopic": 0.4616691441919728,
+              "oracle": 1.0,
+              "population": 0.7249946910172012,
+              "recursive": 0.9368231046931408,
+              "snap": 0.8200254831174347,
+              "state_oracle": 0.9281163729029518
+            },
+            "prior_rate_error": 0.3,
+            "rate_error": 0.08466195361939961,
+            "readings_per_life": 6.9,
+            "regret": {
+              "individual": 0.005123166645145679,
+              "myopic": 0.07287238605431509,
+              "oracle": 0.0,
+              "population": 0.03186641435323344,
+              "recursive": 0.005466003761150667,
+              "snap": 0.01724908532055658,
+              "state_oracle": 0.0028759163394256335
+            },
+            "scored_ticks": 9418,
+            "seed_base": 1022000000,
+            "shuffled_readings": false,
+            "world": "metabolic"
+          },
+          {
+            "body_error": {
+              "individual": 0.018602084424086104,
+              "myopic": 0.0,
+              "oracle": 0.0,
+              "population": 0.09244276707618777,
+              "recursive": 0.013554025526766078,
+              "snap": 0.04942973745969925,
+              "state_oracle": 0.0
+            },
+            "caregiver_store": 0.0,
+            "consequential_accuracy": {
+              "individual": 0.9503853564547207,
+              "myopic": 0.6432241490044959,
+              "oracle": 1.0,
+              "population": 0.6907514450867052,
+              "recursive": 0.9372190109184328,
+              "snap": 0.7756904303147077,
+              "state_oracle": 0.8985228002569043
+            },
+            "consequential_share": 0.7605324215410917,
+            "discriminating_share": 0.40542190743680545,
+            "future_moved_share": 0.4314324093295885,
+            "help_delay": 18,
+            "interoception_probability": 0.03,
+            "lives": 40,
+            "need_accuracy": {
+              "individual": 0.9511539870558066,
+              "myopic": 0.5664916351202833,
+              "oracle": 1.0,
+              "population": 0.5945780925631945,
+              "recursive": 0.9239223348394188,
+              "snap": 0.6826230308951032,
+              "state_oracle": 0.8436927585785811
+            },
+            "prior_rate_error": 0.3,
+            "rate_error": 0.1093200455357964,
+            "readings_per_life": 6.0,
+            "regret": {
+              "individual": 0.002663674068749644,
+              "myopic": 0.036076054455087395,
+              "oracle": 0.0,
+              "population": 0.028733254995960782,
+              "recursive": 0.0040989069329568925,
+              "snap": 0.018133727050685517,
+              "state_oracle": 0.00462141920121091
+            },
+            "scored_ticks": 8189,
+            "seed_base": 1022000000,
+            "shuffled_readings": false,
+            "world": "metabolic"
+          },
+          {
+            "body_error": {
+              "individual": 0.027269922868094765,
+              "myopic": 0.0,
+              "oracle": 0.0,
+              "population": 0.10913010929616795,
+              "recursive": 0.011231507191698324,
+              "snap": 0.05551175546049313,
+              "state_oracle": 0.0
+            },
+            "caregiver_store": 0.0,
+            "consequential_accuracy": {
+              "individual": 0.928626642617882,
+              "myopic": 0.6209739757794382,
+              "oracle": 1.0,
+              "population": 0.6593661427467148,
+              "recursive": 0.943828910074723,
+              "snap": 0.7413037876835867,
+              "state_oracle": 0.8461736665807782
+            },
+            "consequential_share": 0.6122416784981858,
+            "discriminating_share": 0.53746647736236,
+            "future_moved_share": 0.5410948099069254,
+            "help_delay": 24,
+            "interoception_probability": 0.03,
+            "lives": 40,
+            "need_accuracy": {
+              "individual": 0.9220697270862912,
+              "myopic": 0.4568543934374507,
+              "oracle": 1.0,
+              "population": 0.46253352263764,
+              "recursive": 0.9233317557974444,
+              "snap": 0.53746647736236,
+              "state_oracle": 0.6633538412998896
+            },
+            "prior_rate_error": 0.3,
+            "rate_error": 0.12842916219248646,
+            "readings_per_life": 4.925,
+            "regret": {
+              "individual": 0.003981073347495351,
+              "myopic": 0.03140158159765289,
+              "oracle": 0.0,
+              "population": 0.0258369994256017,
+              "recursive": 0.0028460196637914593,
+              "snap": 0.01675588824675934,
+              "state_oracle": 0.00714516225994074
+            },
+            "scored_ticks": 6339,
+            "seed_base": 1022000000,
+            "shuffled_readings": false,
+            "world": "metabolic"
+          }
+        ],
+        "seed": 1
+      },
+      {
+        "delays": [
+          {
+            "body_error": {
+              "individual": 0.025623890909045637,
+              "myopic": 0.0,
+              "oracle": 0.0,
+              "population": 0.10445940261526568,
+              "recursive": 0.015722957538542453,
+              "snap": 0.05193783931161735,
+              "state_oracle": 0.0
+            },
+            "caregiver_store": 0.0,
+            "consequential_accuracy": {
+              "individual": 0.8650019508388607,
+              "myopic": 0.9986734295747172,
+              "oracle": 1.0,
+              "population": 0.5492001560671088,
+              "recursive": 0.9289894654701522,
+              "snap": 0.727975029262583,
+              "state_oracle": 0.9986734295747172
+            },
+            "consequential_share": 0.9290271132376395,
+            "discriminating_share": 0.45940263882847615,
+            "future_moved_share": 0.0,
+            "help_delay": 0,
+            "interoception_probability": 0.03,
+            "lives": 40,
+            "need_accuracy": {
+              "individual": 0.8556618819776715,
+              "myopic": 0.9802812817166884,
+              "oracle": 1.0,
+              "population": 0.5405973611715239,
+              "recursive": 0.913295635783674,
+              "snap": 0.7115412498187618,
+              "state_oracle": 0.9802812817166884
+            },
+            "prior_rate_error": 0.3,
+            "rate_error": 0.0678108288254885,
+            "readings_per_life": 10.575,
+            "regret": {
+              "individual": 0.010159820964420996,
+              "myopic": 8.709819421548587e-05,
+              "oracle": 0.0,
+              "population": 0.03845290686573074,
+              "recursive": 0.004365954074727094,
+              "snap": 0.018376137399356725,
+              "state_oracle": 8.709819421548587e-05
+            },
+            "scored_ticks": 13794,
+            "seed_base": 1024000000,
+            "shuffled_readings": false,
+            "world": "metabolic"
+          },
+          {
+            "body_error": {
+              "individual": 0.027393066633800874,
+              "myopic": 0.0,
+              "oracle": 0.0,
+              "population": 0.1040024033348289,
+              "recursive": 0.014397133806268713,
+              "snap": 0.05095356804521602,
+              "state_oracle": 0.0
+            },
+            "caregiver_store": 0.0,
+            "consequential_accuracy": {
+              "individual": 0.8630937680085617,
+              "myopic": 0.6715238330451964,
+              "oracle": 1.0,
+              "population": 0.556433687330205,
+              "recursive": 0.9326582695315716,
+              "snap": 0.7163085535523175,
+              "state_oracle": 0.96764633242776
+            },
+            "consequential_share": 0.927110364829797,
+            "discriminating_share": 0.45596092199664173,
+            "future_moved_share": 0.3469699282552282,
+            "help_delay": 3,
+            "interoception_probability": 0.03,
+            "lives": 40,
+            "need_accuracy": {
+              "individual": 0.8549076476873759,
+              "myopic": 0.6458555945657152,
+              "oracle": 1.0,
+              "population": 0.5440390780033583,
+              "recursive": 0.917646160891467,
+              "snap": 0.6971454739734392,
+              "state_oracle": 0.9377957563730728
+            },
+            "prior_rate_error": 0.3,
+            "rate_error": 0.06421377142064227,
+            "readings_per_life": 9.975,
+            "regret": {
+              "individual": 0.009576002501046664,
+              "myopic": 0.02688127199213864,
+              "oracle": 0.0,
+              "population": 0.03775955205710737,
+              "recursive": 0.004136745454506854,
+              "snap": 0.019588412918501944,
+              "state_oracle": 0.0007730779629589552
+            },
+            "scored_ticks": 13102,
+            "seed_base": 1024000000,
+            "shuffled_readings": false,
+            "world": "metabolic"
+          },
+          {
+            "body_error": {
+              "individual": 0.027871031301084676,
+              "myopic": 0.0,
+              "oracle": 0.0,
+              "population": 0.11314275445338362,
+              "recursive": 0.012029601262179028,
+              "snap": 0.05788830045183431,
+              "state_oracle": 0.0
+            },
+            "caregiver_store": 0.0,
+            "consequential_accuracy": {
+              "individual": 0.8936343115124153,
+              "myopic": 0.5523250564334086,
+              "oracle": 1.0,
+              "population": 0.6381038374717833,
+              "recursive": 0.9539503386004514,
+              "snap": 0.7797742663656885,
+              "state_oracle": 0.9473589164785553
+            },
+            "consequential_share": 0.9579621140039789,
+            "discriminating_share": 0.3715076550471412,
+            "future_moved_share": 0.4553239339157512,
+            "help_delay": 6,
+            "interoception_probability": 0.03,
+            "lives": 40,
+            "need_accuracy": {
+              "individual": 0.8906668973272208,
+              "myopic": 0.5428596142202232,
+              "oracle": 1.0,
+              "population": 0.6284923449528588,
+              "recursive": 0.9461119280339071,
+              "snap": 0.7667156820344261,
+              "state_oracle": 0.9294178704264336
+            },
+            "prior_rate_error": 0.3,
+            "rate_error": 0.04544646449327702,
+            "readings_per_life": 8.9,
+            "regret": {
+              "individual": 0.010870156055663825,
+              "myopic": 0.05312727875212979,
+              "oracle": 0.0,
+              "population": 0.04074209078825995,
+              "recursive": 0.003540727318638039,
+              "snap": 0.019636441601758762,
+              "state_oracle": 0.0016218291329412311
+            },
+            "scored_ticks": 11561,
+            "seed_base": 1024000000,
+            "shuffled_readings": false,
+            "world": "metabolic"
+          },
+          {
+            "body_error": {
+              "individual": 0.031173892431004338,
+              "myopic": 0.0,
+              "oracle": 0.0,
+              "population": 0.10963046385310747,
+              "recursive": 0.02061829425736768,
+              "snap": 0.05190019202378203,
+              "state_oracle": 0.0
+            },
+            "caregiver_store": 0.0,
+            "consequential_accuracy": {
+              "individual": 0.8896577175016145,
+              "myopic": 0.33324107389980623,
+              "oracle": 1.0,
+              "population": 0.6295783743887813,
+              "recursive": 0.9018359627271888,
+              "snap": 0.7675062275117631,
+              "state_oracle": 0.9130916136174924
+            },
+            "consequential_share": 0.9548938419522509,
+            "discriminating_share": 0.37635450621090655,
+            "future_moved_share": 0.6767685666461105,
+            "help_delay": 9,
+            "interoception_probability": 0.03,
+            "lives": 40,
+            "need_accuracy": {
+              "individual": 0.8835344903532728,
+              "myopic": 0.32895780107479516,
+              "oracle": 1.0,
+              "population": 0.6236454937890935,
+              "recursive": 0.8902299356884856,
+              "snap": 0.7562329310192935,
+              "state_oracle": 0.8956920095145802
+            },
+            "prior_rate_error": 0.3,
+            "rate_error": 0.13606404034826353,
+            "readings_per_life": 8.675,
+            "regret": {
+              "individual": 0.009258306283292335,
+              "myopic": 0.07049072383982607,
+              "oracle": 0.0,
+              "population": 0.04159010306747066,
+              "recursive": 0.008349111360158158,
+              "snap": 0.020924032011558204,
+              "state_oracle": 0.003598940333268086
+            },
+            "scored_ticks": 11351,
+            "seed_base": 1024000000,
+            "shuffled_readings": false,
+            "world": "metabolic"
+          },
+          {
+            "body_error": {
+              "individual": 0.0354161900867249,
+              "myopic": 0.0,
+              "oracle": 0.0,
+              "population": 0.11448540184170261,
+              "recursive": 0.01952081545168795,
+              "snap": 0.05532629235998556,
+              "state_oracle": 0.0
+            },
+            "caregiver_store": 0.0,
+            "consequential_accuracy": {
+              "individual": 0.9060098522167488,
+              "myopic": 0.4531034482758621,
+              "oracle": 1.0,
+              "population": 0.692216748768473,
+              "recursive": 0.9183251231527093,
+              "snap": 0.7952709359605912,
+              "state_oracle": 0.9198029556650247
+            },
+            "consequential_share": 0.9706416754327245,
+            "discriminating_share": 0.3143348952854547,
+            "future_moved_share": 0.5496796404322464,
+            "help_delay": 12,
+            "interoception_probability": 0.03,
+            "lives": 40,
+            "need_accuracy": {
+              "individual": 0.9023620541264225,
+              "myopic": 0.4520416945586688,
+              "oracle": 1.0,
+              "population": 0.6856651047145452,
+              "recursive": 0.9105862101941283,
+              "snap": 0.7868413502916707,
+              "state_oracle": 0.9084823563163431
+            },
+            "prior_rate_error": 0.3,
+            "rate_error": 0.09173343029056935,
+            "readings_per_life": 8.175,
+            "regret": {
+              "individual": 0.010210639140147177,
+              "myopic": 0.07374834954453802,
+              "oracle": 0.0,
+              "population": 0.03929269959452424,
+              "recursive": 0.0075822316797848855,
+              "snap": 0.02109327936152287,
+              "state_oracle": 0.004240082110765385
+            },
+            "scored_ticks": 10457,
+            "seed_base": 1024000000,
+            "shuffled_readings": false,
+            "world": "metabolic"
+          },
+          {
+            "body_error": {
+              "individual": 0.031110733478624687,
+              "myopic": 0.0,
+              "oracle": 0.0,
+              "population": 0.11199125609517262,
+              "recursive": 0.01801850990836848,
+              "snap": 0.05328639770645293,
+              "state_oracle": 0.0
+            },
+            "caregiver_store": 0.0,
+            "consequential_accuracy": {
+              "individual": 0.9271117166212534,
+              "myopic": 0.6336852861035422,
+              "oracle": 1.0,
+              "population": 0.6040531335149864,
+              "recursive": 0.9291553133514986,
+              "snap": 0.732799727520436,
+              "state_oracle": 0.8768732970027248
+            },
+            "consequential_share": 0.8333806414987227,
+            "discriminating_share": 0.4642350269656543,
+            "future_moved_share": 0.41555492478001704,
+            "help_delay": 18,
+            "interoception_probability": 0.03,
+            "lives": 40,
+            "need_accuracy": {
+              "individual": 0.9173999432302016,
+              "myopic": 0.5783423218847573,
+              "oracle": 1.0,
+              "population": 0.5357649730343458,
+              "recursive": 0.9124325858643202,
+              "snap": 0.661793925631564,
+              "state_oracle": 0.8296906045983536
+            },
+            "prior_rate_error": 0.3,
+            "rate_error": 0.08665549156077361,
+            "readings_per_life": 5.725,
+            "regret": {
+              "individual": 0.006330308687921731,
+              "myopic": 0.044333079874605046,
+              "oracle": 0.0,
+              "population": 0.044416324664450495,
+              "recursive": 0.0059619642820043384,
+              "snap": 0.025477749713305325,
+              "state_oracle": 0.006814770326932459
+            },
+            "scored_ticks": 7046,
+            "seed_base": 1024000000,
+            "shuffled_readings": false,
+            "world": "metabolic"
+          },
+          {
+            "body_error": {
+              "individual": 0.04574113076593777,
+              "myopic": 0.0,
+              "oracle": 0.0,
+              "population": 0.13389668771383975,
+              "recursive": 0.021436309972024486,
+              "snap": 0.060765886970038555,
+              "state_oracle": 0.0
+            },
+            "caregiver_store": 0.0,
+            "consequential_accuracy": {
+              "individual": 0.8489308525409608,
+              "myopic": 0.6239933351846709,
+              "oracle": 1.0,
+              "population": 0.592057761732852,
+              "recursive": 0.883921133018606,
+              "snap": 0.7000833101916134,
+              "state_oracle": 0.8106081643987781
+            },
+            "consequential_share": 0.6558004006556183,
+            "discriminating_share": 0.5585503551265707,
+            "future_moved_share": 0.48679657621562555,
+            "help_delay": 24,
+            "interoception_probability": 0.03,
+            "lives": 40,
+            "need_accuracy": {
+              "individual": 0.8484793298124204,
+              "myopic": 0.509378983791659,
+              "oracle": 1.0,
+              "population": 0.44144964487342925,
+              "recursive": 0.8637770897832817,
+              "snap": 0.5445274084866144,
+              "state_oracle": 0.6854853396466946
+            },
+            "prior_rate_error": 0.3,
+            "rate_error": 0.1235913717075617,
+            "readings_per_life": 4.775,
+            "regret": {
+              "individual": 0.009600913243198301,
+              "myopic": 0.03767595077507007,
+              "oracle": 0.0,
+              "population": 0.038856376575882534,
+              "recursive": 0.007790183848888744,
+              "snap": 0.023871929593275196,
+              "state_oracle": 0.011194481017834972
+            },
+            "scored_ticks": 5491,
+            "seed_base": 1024000000,
+            "shuffled_readings": false,
+            "world": "metabolic"
+          }
+        ],
+        "seed": 2
+      },
+      {
+        "delays": [
+          {
+            "body_error": {
+              "individual": 0.02485941824605596,
+              "myopic": 0.0,
+              "oracle": 0.0,
+              "population": 0.09744567519784672,
+              "recursive": 0.013462504727697186,
+              "snap": 0.0519266260966417,
+              "state_oracle": 0.0
+            },
+            "caregiver_store": 0.0,
+            "consequential_accuracy": {
+              "individual": 0.8686995967741935,
+              "myopic": 0.999075940860215,
+              "oracle": 1.0,
+              "population": 0.6121471774193549,
+              "recursive": 0.9401881720430108,
+              "snap": 0.7562163978494624,
+              "state_oracle": 0.999075940860215
+            },
+            "consequential_share": 0.925229286491528,
+            "discriminating_share": 0.4033887766205503,
+            "future_moved_share": 0.0,
+            "help_delay": 0,
+            "interoception_probability": 0.03,
+            "lives": 40,
+            "need_accuracy": {
+              "individual": 0.8591636872376807,
+              "myopic": 0.9794808021140992,
+              "oracle": 1.0,
+              "population": 0.5966112233794497,
+              "recursive": 0.9270169438831027,
+              "snap": 0.7335613244209545,
+              "state_oracle": 0.9794808021140992
+            },
+            "prior_rate_error": 0.3,
+            "rate_error": 0.05366519807996491,
+            "readings_per_life": 10.9,
+            "regret": {
+              "individual": 0.009312092226658571,
+              "myopic": 7.959715684156976e-05,
+              "oracle": 0.0,
+              "population": 0.0301186350372012,
+              "recursive": 0.0032563218992635585,
+              "snap": 0.016033008700265833,
+              "state_oracle": 7.959715684156976e-05
+            },
+            "scored_ticks": 12866,
+            "seed_base": 1026000000,
+            "shuffled_readings": false,
+            "world": "metabolic"
+          },
+          {
+            "body_error": {
+              "individual": 0.021902516196107197,
+              "myopic": 0.0,
+              "oracle": 0.0,
+              "population": 0.09448948090107315,
+              "recursive": 0.013027653617715408,
+              "snap": 0.051652158145967166,
+              "state_oracle": 0.0
+            },
+            "caregiver_store": 0.0,
+            "consequential_accuracy": {
+              "individual": 0.885030343897505,
+              "myopic": 0.6685772083614295,
+              "oracle": 1.0,
+              "population": 0.6383175994605529,
+              "recursive": 0.9400708024275118,
+              "snap": 0.7612946729602158,
+              "state_oracle": 0.9749662845583277
+            },
+            "consequential_share": 0.9273096764108175,
+            "discriminating_share": 0.3772862279193372,
+            "future_moved_share": 0.34555260278255434,
+            "help_delay": 3,
+            "interoception_probability": 0.03,
+            "lives": 40,
+            "need_accuracy": {
+              "individual": 0.876270126621854,
+              "myopic": 0.6493668907300297,
+              "oracle": 1.0,
+              "population": 0.6227137720806628,
+              "recursive": 0.9253556354541191,
+              "snap": 0.7395654212912303,
+              "state_oracle": 0.9468500859778021
+            },
+            "prior_rate_error": 0.3,
+            "rate_error": 0.05603964405040799,
+            "readings_per_life": 10.775,
+            "regret": {
+              "individual": 0.007879302554771664,
+              "myopic": 0.02962851950379519,
+              "oracle": 0.0,
+              "population": 0.02911893801591307,
+              "recursive": 0.0032578697313280594,
+              "snap": 0.016343725945432718,
+              "state_oracle": 0.0005934288495989344
+            },
+            "scored_ticks": 12794,
+            "seed_base": 1026000000,
+            "shuffled_readings": false,
+            "world": "metabolic"
+          },
+          {
+            "body_error": {
+              "individual": 0.02087451125485716,
+              "myopic": 0.0,
+              "oracle": 0.0,
+              "population": 0.09867534538441904,
+              "recursive": 0.009826835785751525,
+              "snap": 0.050893398119040846,
+              "state_oracle": 0.0
+            },
+            "caregiver_store": 0.0,
+            "consequential_accuracy": {
+              "individual": 0.9177777777777778,
+              "myopic": 0.5460869565217391,
+              "oracle": 1.0,
+              "population": 0.7176811594202899,
+              "recursive": 0.9690821256038648,
+              "snap": 0.8247342995169082,
+              "state_oracle": 0.9542995169082126
+            },
+            "consequential_share": 0.9623430962343096,
+            "discriminating_share": 0.2920502092050209,
+            "future_moved_share": 0.4601580660158066,
+            "help_delay": 6,
+            "interoception_probability": 0.03,
+            "lives": 40,
+            "need_accuracy": {
+              "individual": 0.9149232914923291,
+              "myopic": 0.5399349139934914,
+              "oracle": 1.0,
+              "population": 0.7079497907949791,
+              "recursive": 0.9624360762436076,
+              "snap": 0.8129242212924221,
+              "state_oracle": 0.9393770339377034
+            },
+            "prior_rate_error": 0.3,
+            "rate_error": 0.06340355916701332,
+            "readings_per_life": 9.225,
+            "regret": {
+              "individual": 0.0073338501028585405,
+              "myopic": 0.05378086193932757,
+              "oracle": 0.0,
+              "population": 0.028442867505834822,
+              "recursive": 0.0021749590559614397,
+              "snap": 0.013966752130642402,
+              "state_oracle": 0.0013545090148763272
+            },
+            "scored_ticks": 10755,
+            "seed_base": 1026000000,
+            "shuffled_readings": false,
+            "world": "metabolic"
+          },
+          {
+            "body_error": {
+              "individual": 0.024169509867765507,
+              "myopic": 0.0,
+              "oracle": 0.0,
+              "population": 0.09486065117067254,
+              "recursive": 0.013634767703217148,
+              "snap": 0.05037762379207348,
+              "state_oracle": 0.0
+            },
+            "caregiver_store": 0.0,
+            "consequential_accuracy": {
+              "individual": 0.9183692166743014,
+              "myopic": 0.33660100778744845,
+              "oracle": 1.0,
+              "population": 0.6994044892349978,
+              "recursive": 0.9389830508474576,
+              "snap": 0.8042143838754008,
+              "state_oracle": 0.9142464498396702
+            },
+            "consequential_share": 0.9537749038797623,
+            "discriminating_share": 0.30985669346382383,
+            "future_moved_share": 0.6741523942677385,
+            "help_delay": 9,
+            "interoception_probability": 0.03,
+            "lives": 40,
+            "need_accuracy": {
+              "individual": 0.9131422579517651,
+              "myopic": 0.32864383082838167,
+              "oracle": 1.0,
+              "population": 0.6901433065361762,
+              "recursive": 0.9289584061516952,
+              "snap": 0.7915938483047885,
+              "state_oracle": 0.8983746941628801
+            },
+            "prior_rate_error": 0.3,
+            "rate_error": 0.09167404128846528,
+            "readings_per_life": 9.95,
+            "regret": {
+              "individual": 0.0063670327210540514,
+              "myopic": 0.07226150026924907,
+              "oracle": 0.0,
+              "population": 0.030177517864503647,
+              "recursive": 0.00376665837836132,
+              "snap": 0.015467946567754274,
+              "state_oracle": 0.00316562307639872
+            },
+            "scored_ticks": 11444,
+            "seed_base": 1026000000,
+            "shuffled_readings": false,
+            "world": "metabolic"
+          },
+          {
+            "body_error": {
+              "individual": 0.019665535635879465,
+              "myopic": 0.0,
+              "oracle": 0.0,
+              "population": 0.09787673559093837,
+              "recursive": 0.0129163393400155,
+              "snap": 0.052390921365127935,
+              "state_oracle": 0.0
+            },
+            "caregiver_store": 0.0,
+            "consequential_accuracy": {
+              "individual": 0.9477867314273098,
+              "myopic": 0.4645104316149685,
+              "oracle": 1.0,
+              "population": 0.7393752069764875,
+              "recursive": 0.9504360304669389,
+              "snap": 0.8196268903852523,
+              "state_oracle": 0.9316701622695662
+            },
+            "consequential_share": 0.9686698032506416,
+            "discriminating_share": 0.26956800684345594,
+            "future_moved_share": 0.536142001710864,
+            "help_delay": 12,
+            "interoception_probability": 0.03,
+            "lives": 40,
+            "need_accuracy": {
+              "individual": 0.9430068434559452,
+              "myopic": 0.464606501283148,
+              "oracle": 1.0,
+              "population": 0.7304319931565441,
+              "recursive": 0.941830624465355,
+              "snap": 0.8097733105218136,
+              "state_oracle": 0.919803250641574
+            },
+            "prior_rate_error": 0.3,
+            "rate_error": 0.07259967742227058,
+            "readings_per_life": 8.25,
+            "regret": {
+              "individual": 0.004386735559442856,
+              "myopic": 0.07185909831594559,
+              "oracle": 0.0,
+              "population": 0.029725819228727284,
+              "recursive": 0.004392098574415738,
+              "snap": 0.01772173382802207,
+              "state_oracle": 0.0035970268727000165
+            },
+            "scored_ticks": 9352,
+            "seed_base": 1026000000,
+            "shuffled_readings": false,
+            "world": "metabolic"
+          },
+          {
+            "body_error": {
+              "individual": 0.02983185278991324,
+              "myopic": 0.0,
+              "oracle": 0.0,
+              "population": 0.11199075281695557,
+              "recursive": 0.008979435991507601,
+              "snap": 0.04842753438649415,
+              "state_oracle": 0.0
+            },
+            "caregiver_store": 0.0,
+            "consequential_accuracy": {
+              "individual": 0.9215611249282571,
+              "myopic": 0.6424335182705184,
+              "oracle": 1.0,
+              "population": 0.665008609144825,
+              "recursive": 0.9764683374784772,
+              "snap": 0.7847713793763152,
+              "state_oracle": 0.8995599770422804
+            },
+            "consequential_share": 0.7958282582216809,
+            "discriminating_share": 0.4299634591961023,
+            "future_moved_share": 0.4159561510353228,
+            "help_delay": 18,
+            "interoception_probability": 0.03,
+            "lives": 40,
+            "need_accuracy": {
+              "individual": 0.9190012180267966,
+              "myopic": 0.5761266747868453,
+              "oracle": 1.0,
+              "population": 0.5700365408038977,
+              "recursive": 0.9567600487210719,
+              "snap": 0.6907734470158343,
+              "state_oracle": 0.8506394640682094
+            },
+            "prior_rate_error": 0.3,
+            "rate_error": 0.07948711130020915,
+            "readings_per_life": 6.35,
+            "regret": {
+              "individual": 0.007045884598763859,
+              "myopic": 0.040374488002370104,
+              "oracle": 0.0,
+              "population": 0.034406684429850294,
+              "recursive": 0.0014082213415686578,
+              "snap": 0.018287789628485346,
+              "state_oracle": 0.00523516368841022
+            },
+            "scored_ticks": 6568,
+            "seed_base": 1026000000,
+            "shuffled_readings": false,
+            "world": "metabolic"
+          },
+          {
+            "body_error": {
+              "individual": 0.02319419285078495,
+              "myopic": 0.0,
+              "oracle": 0.0,
+              "population": 0.11252898362635552,
+              "recursive": 0.009146225246215237,
+              "snap": 0.05218687502257504,
+              "state_oracle": 0.0
+            },
+            "caregiver_store": 0.0,
+            "consequential_accuracy": {
+              "individual": 0.9312913907284768,
+              "myopic": 0.6051324503311258,
+              "oracle": 1.0,
+              "population": 0.6586644591611479,
+              "recursive": 0.9558498896247241,
+              "snap": 0.7596578366445916,
+              "state_oracle": 0.8454746136865342
+            },
+            "consequential_share": 0.6818438381937911,
+            "discriminating_share": 0.51552210724365,
+            "future_moved_share": 0.5029162746942615,
+            "help_delay": 24,
+            "interoception_probability": 0.03,
+            "lives": 40,
+            "need_accuracy": {
+              "individual": 0.9349012229539041,
+              "myopic": 0.48955785512699906,
+              "oracle": 1.0,
+              "population": 0.48447789275634995,
+              "recursive": 0.9128880526810913,
+              "snap": 0.5657572906867356,
+              "state_oracle": 0.6609595484477893
+            },
+            "prior_rate_error": 0.3,
+            "rate_error": 0.07659803149369566,
+            "readings_per_life": 5.4,
+            "regret": {
+              "individual": 0.0035814635937131277,
+              "myopic": 0.03831029834583511,
+              "oracle": 0.0,
+              "population": 0.028067115896364767,
+              "recursive": 0.0018338764370053283,
+              "snap": 0.016490065905553172,
+              "state_oracle": 0.00827483145353123
+            },
+            "scored_ticks": 5315,
+            "seed_base": 1026000000,
+            "shuffled_readings": false,
+            "world": "metabolic"
+          }
+        ],
+        "seed": 3
+      },
+      {
+        "delays": [
+          {
+            "body_error": {
+              "individual": 0.026917543175497594,
+              "myopic": 0.0,
+              "oracle": 0.0,
+              "population": 0.09823968847657091,
+              "recursive": 0.011792372389246452,
+              "snap": 0.04701111639639799,
+              "state_oracle": 0.0
+            },
+            "caregiver_store": 0.0,
+            "consequential_accuracy": {
+              "individual": 0.8762562814070352,
+              "myopic": 0.9992933417085427,
+              "oracle": 1.0,
+              "population": 0.5794597989949749,
+              "recursive": 0.940640703517588,
+              "snap": 0.7510207286432161,
+              "state_oracle": 0.9992933417085427
+            },
+            "consequential_share": 0.9286860142919644,
+            "discriminating_share": 0.42832142336298673,
+            "future_moved_share": 0.0,
+            "help_delay": 0,
+            "interoception_probability": 0.03,
+            "lives": 40,
+            "need_accuracy": {
+              "individual": 0.8677993291526906,
+              "myopic": 0.9840309173107773,
+              "oracle": 1.0,
+              "population": 0.5716785766370133,
+              "recursive": 0.9294151961499197,
+              "snap": 0.7364736765349278,
+              "state_oracle": 0.9840309173107773
+            },
+            "prior_rate_error": 0.3,
+            "rate_error": 0.051246633794866804,
+            "readings_per_life": 12.0,
+            "regret": {
+              "individual": 0.00822500202705034,
+              "myopic": 5.462621487602361e-05,
+              "oracle": 0.0,
+              "population": 0.0350297888939918,
+              "recursive": 0.0037776153537410163,
+              "snap": 0.016866463893154833,
+              "state_oracle": 5.462621487602361e-05
+            },
+            "scored_ticks": 13714,
+            "seed_base": 1028000000,
+            "shuffled_readings": false,
+            "world": "metabolic"
+          },
+          {
+            "body_error": {
+              "individual": 0.026723401562789326,
+              "myopic": 0.0,
+              "oracle": 0.0,
+              "population": 0.09649808045860142,
+              "recursive": 0.011070985109954079,
+              "snap": 0.045970377471985326,
+              "state_oracle": 0.0
+            },
+            "caregiver_store": 0.0,
+            "consequential_accuracy": {
+              "individual": 0.8720371556694426,
+              "myopic": 0.6706438180653427,
+              "oracle": 1.0,
+              "population": 0.6004964766175529,
+              "recursive": 0.9484304932735426,
+              "snap": 0.7510409993593851,
+              "state_oracle": 0.9722133247918001
+            },
+            "consequential_share": 0.9279928661663075,
+            "discriminating_share": 0.40982388348071636,
+            "future_moved_share": 0.34383592182507244,
+            "help_delay": 3,
+            "interoception_probability": 0.03,
+            "lives": 40,
+            "need_accuracy": {
+              "individual": 0.8647544029129821,
+              "myopic": 0.6531916474697184,
+              "oracle": 1.0,
+              "population": 0.5901761165192836,
+              "recursive": 0.9329716875975329,
+              "snap": 0.7342646949542989,
+              "state_oracle": 0.945307275024151
+            },
+            "prior_rate_error": 0.3,
+            "rate_error": 0.05062609334969033,
+            "readings_per_life": 11.8,
+            "regret": {
+              "individual": 0.008829698021290853,
+              "myopic": 0.028214359232313083,
+              "oracle": 0.0,
+              "population": 0.03310097890497268,
+              "recursive": 0.003096380346874419,
+              "snap": 0.016636984611715186,
+              "state_oracle": 0.000621817589732808
+            },
+            "scored_ticks": 13457,
+            "seed_base": 1028000000,
+            "shuffled_readings": false,
+            "world": "metabolic"
+          },
+          {
+            "body_error": {
+              "individual": 0.02516731816231728,
+              "myopic": 0.0,
+              "oracle": 0.0,
+              "population": 0.10449968840500914,
+              "recursive": 0.0119186373141446,
+              "snap": 0.050051583857327546,
+              "state_oracle": 0.0
+            },
+            "caregiver_store": 0.0,
+            "consequential_accuracy": {
+              "individual": 0.9073890813128814,
+              "myopic": 0.5442850074220683,
+              "oracle": 1.0,
+              "population": 0.689922480620155,
+              "recursive": 0.9598383638462807,
+              "snap": 0.8078508988949366,
+              "state_oracle": 0.9523338281378856
+            },
+            "consequential_share": 0.9568373707882901,
+            "discriminating_share": 0.3193403298350825,
+            "future_moved_share": 0.46216365501459794,
+            "help_delay": 6,
+            "interoception_probability": 0.03,
+            "lives": 40,
+            "need_accuracy": {
+              "individual": 0.9034956206107473,
+              "myopic": 0.5377574370709383,
+              "oracle": 1.0,
+              "population": 0.6806596701649176,
+              "recursive": 0.9531286988084905,
+              "snap": 0.7957074094531682,
+              "state_oracle": 0.9360056813698414
+            },
+            "prior_rate_error": 0.3,
+            "rate_error": 0.03393962641731202,
+            "readings_per_life": 11.1,
+            "regret": {
+              "individual": 0.008709250895177028,
+              "myopic": 0.05546020679721305,
+              "oracle": 0.0,
+              "population": 0.03448150647730948,
+              "recursive": 0.003400027220365771,
+              "snap": 0.01695096358575101,
+              "state_oracle": 0.0013891445733602544
+            },
+            "scored_ticks": 12673,
+            "seed_base": 1028000000,
+            "shuffled_readings": false,
+            "world": "metabolic"
+          },
+          {
+            "body_error": {
+              "individual": 0.03131713944730868,
+              "myopic": 0.0,
+              "oracle": 0.0,
+              "population": 0.10383159125136882,
+              "recursive": 0.015168867119130451,
+              "snap": 0.04735596273479911,
+              "state_oracle": 0.0
+            },
+            "caregiver_store": 0.0,
+            "consequential_accuracy": {
+              "individual": 0.9029970995810506,
+              "myopic": 0.32073799548823717,
+              "oracle": 1.0,
+              "population": 0.6581533999355462,
+              "recursive": 0.9366741862713504,
+              "snap": 0.7966484047695779,
+              "state_oracle": 0.9242668385433451
+            },
+            "consequential_share": 0.9608298498219539,
+            "discriminating_share": 0.35005418795479176,
+            "future_moved_share": 0.6856324508437839,
+            "help_delay": 9,
+            "interoception_probability": 0.03,
+            "lives": 40,
+            "need_accuracy": {
+              "individual": 0.8966558290757083,
+              "myopic": 0.31599318779996904,
+              "oracle": 1.0,
+              "population": 0.6499458120452082,
+              "recursive": 0.9282396655829076,
+              "snap": 0.7840222944728286,
+              "state_oracle": 0.9075708313980493
+            },
+            "prior_rate_error": 0.3,
+            "rate_error": 0.06857268833326441,
+            "readings_per_life": 11.4,
+            "regret": {
+              "individual": 0.009541795565118904,
+              "myopic": 0.07468067955683749,
+              "oracle": 0.0,
+              "population": 0.03930132895390314,
+              "recursive": 0.005890314063320988,
+              "snap": 0.018043203368635522,
+              "state_oracle": 0.0029048918624407106
+            },
+            "scored_ticks": 12918,
+            "seed_base": 1028000000,
+            "shuffled_readings": false,
+            "world": "metabolic"
+          },
+          {
+            "body_error": {
+              "individual": 0.03287290331557795,
+              "myopic": 0.0,
+              "oracle": 0.0,
+              "population": 0.10123747044829161,
+              "recursive": 0.012271438982241666,
+              "snap": 0.0460751217907199,
+              "state_oracle": 0.0
+            },
+            "caregiver_store": 0.0,
+            "consequential_accuracy": {
+              "individual": 0.9125762680994445,
+              "myopic": 0.45478553865768145,
+              "oracle": 1.0,
+              "population": 0.694745469447227,
+              "recursive": 0.9546489390765869,
+              "snap": 0.8016574082506147,
+              "state_oracle": 0.9150350605591476
+            },
+            "consequential_share": 0.9693679378531074,
+            "discriminating_share": 0.3125,
+            "future_moved_share": 0.5470515536723164,
+            "help_delay": 12,
+            "interoception_probability": 0.03,
+            "lives": 40,
+            "need_accuracy": {
+              "individual": 0.9081920903954802,
+              "myopic": 0.4550670903954802,
+              "oracle": 1.0,
+              "population": 0.6875,
+              "recursive": 0.9460628531073446,
+              "snap": 0.7920197740112994,
+              "state_oracle": 0.9029837570621468
+            },
+            "prior_rate_error": 0.3,
+            "rate_error": 0.06665987537237245,
+            "readings_per_life": 9.975,
+            "regret": {
+              "individual": 0.01010120340345586,
+              "myopic": 0.07623997946010463,
+              "oracle": 0.0,
+              "population": 0.037697717723828364,
+              "recursive": 0.003943335371872238,
+              "snap": 0.01930285765289995,
+              "state_oracle": 0.0043101501422694935
+            },
+            "scored_ticks": 11328,
+            "seed_base": 1028000000,
+            "shuffled_readings": false,
+            "world": "metabolic"
+          },
+          {
+            "body_error": {
+              "individual": 0.022362177235323372,
+              "myopic": 0.0,
+              "oracle": 0.0,
+              "population": 0.10193090118027798,
+              "recursive": 0.010766431045030306,
+              "snap": 0.04715193155952685,
+              "state_oracle": 0.0
+            },
+            "caregiver_store": 0.0,
+            "consequential_accuracy": {
+              "individual": 0.938474025974026,
+              "myopic": 0.6516233766233767,
+              "oracle": 1.0,
+              "population": 0.6053571428571428,
+              "recursive": 0.9535714285714286,
+              "snap": 0.7334415584415584,
+              "state_oracle": 0.8636363636363636
+            },
+            "consequential_share": 0.8175182481751825,
+            "discriminating_share": 0.46449900464499005,
+            "future_moved_share": 0.41300597213005974,
+            "help_delay": 18,
+            "interoception_probability": 0.03,
+            "lives": 40,
+            "need_accuracy": {
+              "individual": 0.9426675514266755,
+              "myopic": 0.5873921698739217,
+              "oracle": 1.0,
+              "population": 0.53550099535501,
+              "recursive": 0.9413404114134041,
+              "snap": 0.6605175846051758,
+              "state_oracle": 0.8104844061048441
+            },
+            "prior_rate_error": 0.3,
+            "rate_error": 0.11483820252161034,
+            "readings_per_life": 6.575,
+            "regret": {
+              "individual": 0.004823481423362938,
+              "myopic": 0.04163549417074996,
+              "oracle": 0.0,
+              "population": 0.04438970539928828,
+              "recursive": 0.0037752533320202213,
+              "snap": 0.024614169467682433,
+              "state_oracle": 0.007869496473744296
+            },
+            "scored_ticks": 7535,
+            "seed_base": 1028000000,
+            "shuffled_readings": false,
+            "world": "metabolic"
+          },
+          {
+            "body_error": {
+              "individual": 0.021567356991959937,
+              "myopic": 0.0,
+              "oracle": 0.0,
+              "population": 0.09366386028851033,
+              "recursive": 0.00844649941833511,
+              "snap": 0.04292187130577051,
+              "state_oracle": 0.0
+            },
+            "caregiver_store": 0.0,
+            "consequential_accuracy": {
+              "individual": 0.9423264907135875,
+              "myopic": 0.6136363636363636,
+              "oracle": 1.0,
+              "population": 0.6715542521994134,
+              "recursive": 0.9667644183773216,
+              "snap": 0.7710166177908113,
+              "state_oracle": 0.853128054740958
+            },
+            "consequential_share": 0.7739738982409684,
+            "discriminating_share": 0.4234915831284282,
+            "future_moved_share": 0.4454321921694723,
+            "help_delay": 24,
+            "interoception_probability": 0.03,
+            "lives": 40,
+            "need_accuracy": {
+              "individual": 0.945905050122943,
+              "myopic": 0.5505958010213732,
+              "oracle": 1.0,
+              "population": 0.5765084168715717,
+              "recursive": 0.9485530546623794,
+              "snap": 0.6674862871193493,
+              "state_oracle": 0.7529790051068659
+            },
+            "prior_rate_error": 0.3,
+            "rate_error": 0.12545407881903098,
+            "readings_per_life": 5.2,
+            "regret": {
+              "individual": 0.0038273755159759096,
+              "myopic": 0.039079492646127284,
+              "oracle": 0.0,
+              "population": 0.03251955974821778,
+              "recursive": 0.0018463744865903407,
+              "snap": 0.01743766478767803,
+              "state_oracle": 0.008308031158544175
+            },
+            "scored_ticks": 5287,
+            "seed_base": 1028000000,
+            "shuffled_readings": false,
+            "world": "metabolic"
+          }
+        ],
+        "seed": 4
+      }
+    ],
+    "null": [
+      {
+        "body_error": {
+          "individual": 1.8474522852578113e-09,
+          "myopic": 0.0,
+          "oracle": 0.0,
+          "population": 1.8474522852578113e-09,
+          "recursive": 6.318731266203243e-09,
+          "snap": 4.2134876669178787e-10,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 0.0,
+        "consequential_accuracy": {
+          "individual": 1.0,
+          "myopic": 0.6946401879137305,
+          "oracle": 1.0,
+          "population": 1.0,
+          "recursive": 1.0,
+          "snap": 1.0,
+          "state_oracle": 1.0
+        },
+        "consequential_share": 0.8987621149601766,
+        "discriminating_share": 0.0,
+        "future_moved_share": 0.3272238748680549,
+        "help_delay": 18,
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "need_accuracy": {
+          "individual": 1.0,
+          "myopic": 0.6727761251319451,
+          "oracle": 1.0,
+          "population": 1.0,
+          "recursive": 0.9990403991939353,
+          "snap": 1.0,
+          "state_oracle": 1.0
+        },
+        "prior_rate_error": 0.0,
+        "rate_error": 3.223642576211105e-08,
+        "readings_per_life": 7.775,
+        "regret": {
+          "individual": 0.0,
+          "myopic": 0.037956368930363076,
+          "oracle": 0.0,
+          "population": 0.0,
+          "recursive": 3.3026498189597785e-19,
+          "snap": 0.0,
+          "state_oracle": 0.0
+        },
+        "scored_ticks": 10421,
+        "seed_base": 1020000000,
+        "shuffled_readings": false,
+        "world": "null"
+      },
+      {
+        "body_error": {
+          "individual": 1.4959151031699882e-09,
+          "myopic": 0.0,
+          "oracle": 0.0,
+          "population": 1.4959151031699882e-09,
+          "recursive": 6.571283874488931e-09,
+          "snap": 4.262254008570058e-10,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 0.0,
+        "consequential_accuracy": {
+          "individual": 1.0,
+          "myopic": 0.7093272750220876,
+          "oracle": 1.0,
+          "population": 1.0,
+          "recursive": 1.0,
+          "snap": 1.0,
+          "state_oracle": 1.0
+        },
+        "consequential_share": 0.8894252357431522,
+        "discriminating_share": 0.0001122586439155815,
+        "future_moved_share": 0.3203861697350696,
+        "help_delay": 18,
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "need_accuracy": {
+          "individual": 0.9998877413560844,
+          "myopic": 0.6796138302649304,
+          "oracle": 1.0,
+          "population": 0.9998877413560844,
+          "recursive": 0.9992141894925909,
+          "snap": 1.0,
+          "state_oracle": 1.0
+        },
+        "prior_rate_error": 0.0,
+        "rate_error": 7.358800783544934e-08,
+        "readings_per_life": 6.75,
+        "regret": {
+          "individual": 1.2463213118827531e-20,
+          "myopic": 0.03554042145985979,
+          "oracle": 0.0,
+          "population": 1.2463213118827531e-20,
+          "recursive": 1.994114099012405e-19,
+          "snap": 0.0,
+          "state_oracle": 0.0
+        },
+        "scored_ticks": 8908,
+        "seed_base": 1022000000,
+        "shuffled_readings": false,
+        "world": "null"
+      },
+      {
+        "body_error": {
+          "individual": 1.934947795516576e-09,
+          "myopic": 0.0,
+          "oracle": 0.0,
+          "population": 1.934947795516576e-09,
+          "recursive": 3.8569886823520106e-09,
+          "snap": 5.007580053063517e-10,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 0.0,
+        "consequential_accuracy": {
+          "individual": 1.0,
+          "myopic": 0.7077382929259383,
+          "oracle": 1.0,
+          "population": 1.0,
+          "recursive": 1.0,
+          "snap": 1.0,
+          "state_oracle": 1.0
+        },
+        "consequential_share": 0.8933392671710428,
+        "discriminating_share": 0.0001483459427384661,
+        "future_moved_share": 0.31968550660139444,
+        "help_delay": 18,
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "need_accuracy": {
+          "individual": 0.9998516540572615,
+          "myopic": 0.6803144933986055,
+          "oracle": 1.0,
+          "population": 0.9998516540572615,
+          "recursive": 0.9989615784008308,
+          "snap": 1.0,
+          "state_oracle": 1.0
+        },
+        "prior_rate_error": 0.0,
+        "rate_error": 6.308417071868948e-08,
+        "readings_per_life": 5.775,
+        "regret": {
+          "individual": 1.646970812379701e-20,
+          "myopic": 0.03516801838235986,
+          "oracle": 0.0,
+          "population": 1.646970812379701e-20,
+          "recursive": 3.293941624759402e-19,
+          "snap": 0.0,
+          "state_oracle": 0.0
+        },
+        "scored_ticks": 6741,
+        "seed_base": 1024000000,
+        "shuffled_readings": false,
+        "world": "null"
+      },
+      {
+        "body_error": {
+          "individual": 1.9755559092968542e-09,
+          "myopic": 0.0,
+          "oracle": 0.0,
+          "population": 1.9755559092968542e-09,
+          "recursive": 1.5689400014763084e-08,
+          "snap": 2.97566773921002e-10,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 0.0,
+        "consequential_accuracy": {
+          "individual": 1.0,
+          "myopic": 0.6953584658967096,
+          "oracle": 1.0,
+          "population": 1.0,
+          "recursive": 1.0,
+          "snap": 1.0,
+          "state_oracle": 1.0
+        },
+        "consequential_share": 0.8972529083976928,
+        "discriminating_share": 9.776126698602014e-05,
+        "future_moved_share": 0.3266203930002933,
+        "help_delay": 18,
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "need_accuracy": {
+          "individual": 0.999902238733014,
+          "myopic": 0.6733796069997067,
+          "oracle": 1.0,
+          "population": 0.999902238733014,
+          "recursive": 0.9992179098641119,
+          "snap": 1.0,
+          "state_oracle": 1.0
+        },
+        "prior_rate_error": 0.0,
+        "rate_error": 8.708703283140849e-08,
+        "readings_per_life": 9.05,
+        "regret": {
+          "individual": 8.682944761952539e-20,
+          "myopic": 0.03720448155235803,
+          "oracle": 0.0,
+          "population": 8.682944761952539e-20,
+          "recursive": 2.3878098095369484e-19,
+          "snap": 0.0,
+          "state_oracle": 0.0
+        },
+        "scored_ticks": 10229,
+        "seed_base": 1026000000,
+        "shuffled_readings": false,
+        "world": "null"
+      },
+      {
+        "body_error": {
+          "individual": 2.2253132645570816e-09,
+          "myopic": 0.0,
+          "oracle": 0.0,
+          "population": 2.2253132645570816e-09,
+          "recursive": 5.9095684195933074e-09,
+          "snap": 3.9240334420859993e-10,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 0.0,
+        "consequential_accuracy": {
+          "individual": 1.0,
+          "myopic": 0.6973882762623331,
+          "oracle": 1.0,
+          "population": 1.0,
+          "recursive": 1.0,
+          "snap": 1.0,
+          "state_oracle": 1.0
+        },
+        "consequential_share": 0.881600491199345,
+        "discriminating_share": 0.00010233319688907081,
+        "future_moved_share": 0.33391322144903807,
+        "help_delay": 18,
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "need_accuracy": {
+          "individual": 0.9998976668031109,
+          "myopic": 0.6660867785509619,
+          "oracle": 1.0,
+          "population": 0.9998976668031109,
+          "recursive": 0.9991813344248874,
+          "snap": 0.9998976668031109,
+          "state_oracle": 1.0
+        },
+        "prior_rate_error": 0.0,
+        "rate_error": 3.509409974104353e-08,
+        "readings_per_life": 8.6,
+        "regret": {
+          "individual": 2.2722534273949172e-20,
+          "myopic": 0.0372564906021275,
+          "oracle": 0.0,
+          "population": 2.2722534273949172e-20,
+          "recursive": 2.1586407560251714e-19,
+          "snap": 2.2722534273949172e-20,
+          "state_oracle": 0.0
+        },
+        "scored_ticks": 9772,
+        "seed_base": 1028000000,
+        "shuffled_readings": false,
+        "world": "null"
+      }
+    ],
+    "prompt": [
+      {
+        "body_error": {
+          "individual": 0.028453728197827568,
+          "myopic": 0.0,
+          "oracle": 0.0,
+          "population": 0.10737386881695081,
+          "recursive": 0.013243449236128612,
+          "snap": 0.05119724035751004,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 0.0,
+        "consequential_accuracy": {
+          "individual": 0.8571862194566702,
+          "myopic": 0.9993929276066171,
+          "oracle": 1.0,
+          "population": 0.5617696160267112,
+          "recursive": 0.9400516011534376,
+          "snap": 0.7458643193200789,
+          "state_oracle": 0.9993929276066171
+        },
+        "consequential_share": 0.9226999019745133,
+        "discriminating_share": 0.44797647388320966,
+        "future_moved_share": 0.0,
+        "help_delay": 0,
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "need_accuracy": {
+          "individual": 0.8461700042010922,
+          "myopic": 0.9801148298557625,
+          "oracle": 1.0,
+          "population": 0.5520235261167904,
+          "recursive": 0.9238902114549783,
+          "snap": 0.7260887830836017,
+          "state_oracle": 0.9801148298557625
+        },
+        "prior_rate_error": 0.3,
+        "rate_error": 0.03607519317564011,
+        "readings_per_life": 10.675,
+        "regret": {
+          "individual": 0.010460667336254649,
+          "myopic": 6.835491037670974e-05,
+          "oracle": 0.0,
+          "population": 0.036799611781214346,
+          "recursive": 0.003261237182920814,
+          "snap": 0.017221421613412457,
+          "state_oracle": 6.835491037670974e-05
+        },
+        "scored_ticks": 14282,
+        "seed_base": 1020000000,
+        "shuffled_readings": false,
+        "world": "metabolic"
+      },
+      {
+        "body_error": {
+          "individual": 0.022100639621115935,
+          "myopic": 0.0,
+          "oracle": 0.0,
+          "population": 0.08983382070071386,
+          "recursive": 0.015094565937739406,
+          "snap": 0.04880994596527023,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 0.0,
+        "consequential_accuracy": {
+          "individual": 0.8782324880743159,
+          "myopic": 0.9995815549418361,
+          "oracle": 1.0,
+          "population": 0.6109297849192401,
+          "recursive": 0.929701230228471,
+          "snap": 0.769604150974977,
+          "state_oracle": 0.9995815549418361
+        },
+        "consequential_share": 0.9122070387052447,
+        "discriminating_share": 0.39888541110008396,
+        "future_moved_share": 0.0,
+        "help_delay": 0,
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "need_accuracy": {
+          "individual": 0.8661729903046034,
+          "myopic": 0.9811435987479961,
+          "oracle": 1.0,
+          "population": 0.601114588899916,
+          "recursive": 0.9118253301778761,
+          "snap": 0.7495992060462631,
+          "state_oracle": 0.9811435987479961
+        },
+        "prior_rate_error": 0.3,
+        "rate_error": 0.06638974514396426,
+        "readings_per_life": 9.675,
+        "regret": {
+          "individual": 0.008259906137371126,
+          "myopic": 6.131510778176034e-05,
+          "oracle": 0.0,
+          "population": 0.03194425239879509,
+          "recursive": 0.004098926664024259,
+          "snap": 0.015590632530398732,
+          "state_oracle": 6.131510778176034e-05
+        },
+        "scored_ticks": 13099,
+        "seed_base": 1022000000,
+        "shuffled_readings": false,
+        "world": "metabolic"
+      },
+      {
+        "body_error": {
+          "individual": 0.025623890909045637,
+          "myopic": 0.0,
+          "oracle": 0.0,
+          "population": 0.10445940261526568,
+          "recursive": 0.015722957538542453,
+          "snap": 0.05193783931161735,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 0.0,
+        "consequential_accuracy": {
+          "individual": 0.8650019508388607,
+          "myopic": 0.9986734295747172,
+          "oracle": 1.0,
+          "population": 0.5492001560671088,
+          "recursive": 0.9289894654701522,
+          "snap": 0.727975029262583,
+          "state_oracle": 0.9986734295747172
+        },
+        "consequential_share": 0.9290271132376395,
+        "discriminating_share": 0.45940263882847615,
+        "future_moved_share": 0.0,
+        "help_delay": 0,
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "need_accuracy": {
+          "individual": 0.8556618819776715,
+          "myopic": 0.9802812817166884,
+          "oracle": 1.0,
+          "population": 0.5405973611715239,
+          "recursive": 0.913295635783674,
+          "snap": 0.7115412498187618,
+          "state_oracle": 0.9802812817166884
+        },
+        "prior_rate_error": 0.3,
+        "rate_error": 0.0678108288254885,
+        "readings_per_life": 10.575,
+        "regret": {
+          "individual": 0.010159820964420996,
+          "myopic": 8.709819421548587e-05,
+          "oracle": 0.0,
+          "population": 0.03845290686573074,
+          "recursive": 0.004365954074727094,
+          "snap": 0.018376137399356725,
+          "state_oracle": 8.709819421548587e-05
+        },
+        "scored_ticks": 13794,
+        "seed_base": 1024000000,
+        "shuffled_readings": false,
+        "world": "metabolic"
+      },
+      {
+        "body_error": {
+          "individual": 0.02485941824605596,
+          "myopic": 0.0,
+          "oracle": 0.0,
+          "population": 0.09744567519784672,
+          "recursive": 0.013462504727697186,
+          "snap": 0.0519266260966417,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 0.0,
+        "consequential_accuracy": {
+          "individual": 0.8686995967741935,
+          "myopic": 0.999075940860215,
+          "oracle": 1.0,
+          "population": 0.6121471774193549,
+          "recursive": 0.9401881720430108,
+          "snap": 0.7562163978494624,
+          "state_oracle": 0.999075940860215
+        },
+        "consequential_share": 0.925229286491528,
+        "discriminating_share": 0.4033887766205503,
+        "future_moved_share": 0.0,
+        "help_delay": 0,
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "need_accuracy": {
+          "individual": 0.8591636872376807,
+          "myopic": 0.9794808021140992,
+          "oracle": 1.0,
+          "population": 0.5966112233794497,
+          "recursive": 0.9270169438831027,
+          "snap": 0.7335613244209545,
+          "state_oracle": 0.9794808021140992
+        },
+        "prior_rate_error": 0.3,
+        "rate_error": 0.05366519807996491,
+        "readings_per_life": 10.9,
+        "regret": {
+          "individual": 0.009312092226658571,
+          "myopic": 7.959715684156976e-05,
+          "oracle": 0.0,
+          "population": 0.0301186350372012,
+          "recursive": 0.0032563218992635585,
+          "snap": 0.016033008700265833,
+          "state_oracle": 7.959715684156976e-05
+        },
+        "scored_ticks": 12866,
+        "seed_base": 1026000000,
+        "shuffled_readings": false,
+        "world": "metabolic"
+      },
+      {
+        "body_error": {
+          "individual": 0.026917543175497594,
+          "myopic": 0.0,
+          "oracle": 0.0,
+          "population": 0.09823968847657091,
+          "recursive": 0.011792372389246452,
+          "snap": 0.04701111639639799,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 0.0,
+        "consequential_accuracy": {
+          "individual": 0.8762562814070352,
+          "myopic": 0.9992933417085427,
+          "oracle": 1.0,
+          "population": 0.5794597989949749,
+          "recursive": 0.940640703517588,
+          "snap": 0.7510207286432161,
+          "state_oracle": 0.9992933417085427
+        },
+        "consequential_share": 0.9286860142919644,
+        "discriminating_share": 0.42832142336298673,
+        "future_moved_share": 0.0,
+        "help_delay": 0,
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "need_accuracy": {
+          "individual": 0.8677993291526906,
+          "myopic": 0.9840309173107773,
+          "oracle": 1.0,
+          "population": 0.5716785766370133,
+          "recursive": 0.9294151961499197,
+          "snap": 0.7364736765349278,
+          "state_oracle": 0.9840309173107773
+        },
+        "prior_rate_error": 0.3,
+        "rate_error": 0.051246633794866804,
+        "readings_per_life": 12.0,
+        "regret": {
+          "individual": 0.00822500202705034,
+          "myopic": 5.462621487602361e-05,
+          "oracle": 0.0,
+          "population": 0.0350297888939918,
+          "recursive": 0.0037776153537410163,
+          "snap": 0.016866463893154833,
+          "state_oracle": 5.462621487602361e-05
+        },
+        "scored_ticks": 13714,
+        "seed_base": 1028000000,
+        "shuffled_readings": false,
+        "world": "metabolic"
+      }
+    ],
+    "shuffled": [
+      {
+        "body_error": {
+          "individual": 0.019128418986464137,
+          "myopic": 0.0,
+          "oracle": 0.0,
+          "population": 0.09693384647607367,
+          "recursive": 0.3037775592871029,
+          "snap": 0.2218773847766895,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 0.0,
+        "consequential_accuracy": {
+          "individual": 0.9461640017603051,
+          "myopic": 0.6451518263165615,
+          "oracle": 1.0,
+          "population": 0.6919466040780402,
+          "recursive": 0.5637377145371865,
+          "snap": 0.6422179844506382,
+          "state_oracle": 0.8857268593222826
+        },
+        "consequential_share": 0.7740433745883956,
+        "discriminating_share": 0.3980924264789372,
+        "future_moved_share": 0.4186442602475304,
+        "help_delay": 18,
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "need_accuracy": {
+          "individual": 0.9492449188145793,
+          "myopic": 0.5810151016237084,
+          "oracle": 1.0,
+          "population": 0.6019075735210628,
+          "recursive": 0.4918814579311911,
+          "snap": 0.5451345520608607,
+          "state_oracle": 0.8215056205291246
+        },
+        "prior_rate_error": 0.3,
+        "rate_error": 0.8858732527564671,
+        "readings_per_life": 6.825,
+        "regret": {
+          "individual": 0.003579288953839856,
+          "myopic": 0.03930857559917094,
+          "oracle": 0.0,
+          "population": 0.028455781476938984,
+          "recursive": 0.04794643097958754,
+          "snap": 0.03544795657743657,
+          "state_oracle": 0.005561179412125992
+        },
+        "scored_ticks": 8807,
+        "seed_base": 1020000000,
+        "shuffled_readings": true,
+        "world": "metabolic"
+      },
+      {
+        "body_error": {
+          "individual": 0.018602084424086104,
+          "myopic": 0.0,
+          "oracle": 0.0,
+          "population": 0.09244276707618777,
+          "recursive": 0.28838248915359477,
+          "snap": 0.2038467891079557,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 0.0,
+        "consequential_accuracy": {
+          "individual": 0.9503853564547207,
+          "myopic": 0.6432241490044959,
+          "oracle": 1.0,
+          "population": 0.6907514450867052,
+          "recursive": 0.5228002569043031,
+          "snap": 0.6234746307000643,
+          "state_oracle": 0.8985228002569043
+        },
+        "consequential_share": 0.7605324215410917,
+        "discriminating_share": 0.40542190743680545,
+        "future_moved_share": 0.4314324093295885,
+        "help_delay": 18,
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "need_accuracy": {
+          "individual": 0.9511539870558066,
+          "myopic": 0.5664916351202833,
+          "oracle": 1.0,
+          "population": 0.5945780925631945,
+          "recursive": 0.4738063255586763,
+          "snap": 0.5193552326291366,
+          "state_oracle": 0.8436927585785811
+        },
+        "prior_rate_error": 0.3,
+        "rate_error": 1.2088560787330669,
+        "readings_per_life": 6.0,
+        "regret": {
+          "individual": 0.002663674068749644,
+          "myopic": 0.036076054455087395,
+          "oracle": 0.0,
+          "population": 0.028733254995960782,
+          "recursive": 0.052156732980132035,
+          "snap": 0.03705449206620448,
+          "state_oracle": 0.00462141920121091
+        },
+        "scored_ticks": 8189,
+        "seed_base": 1022000000,
+        "shuffled_readings": true,
+        "world": "metabolic"
+      },
+      {
+        "body_error": {
+          "individual": 0.031110733478624687,
+          "myopic": 0.0,
+          "oracle": 0.0,
+          "population": 0.11199125609517262,
+          "recursive": 0.2782887629424432,
+          "snap": 0.20501576885185235,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 0.0,
+        "consequential_accuracy": {
+          "individual": 0.9271117166212534,
+          "myopic": 0.6336852861035422,
+          "oracle": 1.0,
+          "population": 0.6040531335149864,
+          "recursive": 0.538658038147139,
+          "snap": 0.5987738419618529,
+          "state_oracle": 0.8768732970027248
+        },
+        "consequential_share": 0.8333806414987227,
+        "discriminating_share": 0.4642350269656543,
+        "future_moved_share": 0.41555492478001704,
+        "help_delay": 18,
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "need_accuracy": {
+          "individual": 0.9173999432302016,
+          "myopic": 0.5783423218847573,
+          "oracle": 1.0,
+          "population": 0.5357649730343458,
+          "recursive": 0.5272495032642635,
+          "snap": 0.5391711609423786,
+          "state_oracle": 0.8296906045983536
+        },
+        "prior_rate_error": 0.3,
+        "rate_error": 1.160941369696109,
+        "readings_per_life": 5.725,
+        "regret": {
+          "individual": 0.006330308687921731,
+          "myopic": 0.044333079874605046,
+          "oracle": 0.0,
+          "population": 0.044416324664450495,
+          "recursive": 0.05643768824107766,
+          "snap": 0.044356568212750455,
+          "state_oracle": 0.006814770326932459
+        },
+        "scored_ticks": 7046,
+        "seed_base": 1024000000,
+        "shuffled_readings": true,
+        "world": "metabolic"
+      },
+      {
+        "body_error": {
+          "individual": 0.02983185278991324,
+          "myopic": 0.0,
+          "oracle": 0.0,
+          "population": 0.11199075281695557,
+          "recursive": 0.31657477570045073,
+          "snap": 0.2513657898223616,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 0.0,
+        "consequential_accuracy": {
+          "individual": 0.9215611249282571,
+          "myopic": 0.6424335182705184,
+          "oracle": 1.0,
+          "population": 0.665008609144825,
+          "recursive": 0.5016261718002678,
+          "snap": 0.5884828773675148,
+          "state_oracle": 0.8995599770422804
+        },
+        "consequential_share": 0.7958282582216809,
+        "discriminating_share": 0.4299634591961023,
+        "future_moved_share": 0.4159561510353228,
+        "help_delay": 18,
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "need_accuracy": {
+          "individual": 0.9190012180267966,
+          "myopic": 0.5761266747868453,
+          "oracle": 1.0,
+          "population": 0.5700365408038977,
+          "recursive": 0.46208891595615104,
+          "snap": 0.5030450669914738,
+          "state_oracle": 0.8506394640682094
+        },
+        "prior_rate_error": 0.3,
+        "rate_error": 1.7302805126488754,
+        "readings_per_life": 6.35,
+        "regret": {
+          "individual": 0.007045884598763859,
+          "myopic": 0.040374488002370104,
+          "oracle": 0.0,
+          "population": 0.034406684429850294,
+          "recursive": 0.06252513883384482,
+          "snap": 0.04672873610213038,
+          "state_oracle": 0.00523516368841022
+        },
+        "scored_ticks": 6568,
+        "seed_base": 1026000000,
+        "shuffled_readings": true,
+        "world": "metabolic"
+      },
+      {
+        "body_error": {
+          "individual": 0.022362177235323372,
+          "myopic": 0.0,
+          "oracle": 0.0,
+          "population": 0.10193090118027798,
+          "recursive": 0.30132910020348447,
+          "snap": 0.2250718240146363,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 0.0,
+        "consequential_accuracy": {
+          "individual": 0.938474025974026,
+          "myopic": 0.6516233766233767,
+          "oracle": 1.0,
+          "population": 0.6053571428571428,
+          "recursive": 0.5310064935064935,
+          "snap": 0.6311688311688312,
+          "state_oracle": 0.8636363636363636
+        },
+        "consequential_share": 0.8175182481751825,
+        "discriminating_share": 0.46449900464499005,
+        "future_moved_share": 0.41300597213005974,
+        "help_delay": 18,
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "need_accuracy": {
+          "individual": 0.9426675514266755,
+          "myopic": 0.5873921698739217,
+          "oracle": 1.0,
+          "population": 0.53550099535501,
+          "recursive": 0.48573324485733244,
+          "snap": 0.5475779694757797,
+          "state_oracle": 0.8104844061048441
+        },
+        "prior_rate_error": 0.3,
+        "rate_error": 0.7219360089650857,
+        "readings_per_life": 6.575,
+        "regret": {
+          "individual": 0.004823481423362938,
+          "myopic": 0.04163549417074996,
+          "oracle": 0.0,
+          "population": 0.04438970539928828,
+          "recursive": 0.06165126989870777,
+          "snap": 0.04247678568004047,
+          "state_oracle": 0.007869496473744296
+        },
+        "scored_ticks": 7535,
+        "seed_base": 1028000000,
+        "shuffled_readings": true,
+        "world": "metabolic"
+      }
+    ],
+    "treatment": [
+      {
+        "body_error": {
+          "individual": 0.019128418986464137,
+          "myopic": 0.0,
+          "oracle": 0.0,
+          "population": 0.09693384647607367,
+          "recursive": 0.01261638545813305,
+          "snap": 0.04906603090248409,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 0.0,
+        "consequential_accuracy": {
+          "individual": 0.9461640017603051,
+          "myopic": 0.6451518263165615,
+          "oracle": 1.0,
+          "population": 0.6919466040780402,
+          "recursive": 0.950271380372598,
+          "snap": 0.7883233093736247,
+          "state_oracle": 0.8857268593222826
+        },
+        "consequential_share": 0.7740433745883956,
+        "discriminating_share": 0.3980924264789372,
+        "future_moved_share": 0.4186442602475304,
+        "help_delay": 18,
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "need_accuracy": {
+          "individual": 0.9492449188145793,
+          "myopic": 0.5810151016237084,
+          "oracle": 1.0,
+          "population": 0.6019075735210628,
+          "recursive": 0.9298285454751902,
+          "snap": 0.6949017826728738,
+          "state_oracle": 0.8215056205291246
+        },
+        "prior_rate_error": 0.3,
+        "rate_error": 0.0696947994672486,
+        "readings_per_life": 6.825,
+        "regret": {
+          "individual": 0.003579288953839856,
+          "myopic": 0.03930857559917094,
+          "oracle": 0.0,
+          "population": 0.028455781476938984,
+          "recursive": 0.0038911167210445552,
+          "snap": 0.016128852273307227,
+          "state_oracle": 0.005561179412125992
+        },
+        "scored_ticks": 8807,
+        "seed_base": 1020000000,
+        "shuffled_readings": false,
+        "world": "metabolic"
+      },
+      {
+        "body_error": {
+          "individual": 0.018602084424086104,
+          "myopic": 0.0,
+          "oracle": 0.0,
+          "population": 0.09244276707618777,
+          "recursive": 0.013554025526766078,
+          "snap": 0.04942973745969925,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 0.0,
+        "consequential_accuracy": {
+          "individual": 0.9503853564547207,
+          "myopic": 0.6432241490044959,
+          "oracle": 1.0,
+          "population": 0.6907514450867052,
+          "recursive": 0.9372190109184328,
+          "snap": 0.7756904303147077,
+          "state_oracle": 0.8985228002569043
+        },
+        "consequential_share": 0.7605324215410917,
+        "discriminating_share": 0.40542190743680545,
+        "future_moved_share": 0.4314324093295885,
+        "help_delay": 18,
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "need_accuracy": {
+          "individual": 0.9511539870558066,
+          "myopic": 0.5664916351202833,
+          "oracle": 1.0,
+          "population": 0.5945780925631945,
+          "recursive": 0.9239223348394188,
+          "snap": 0.6826230308951032,
+          "state_oracle": 0.8436927585785811
+        },
+        "prior_rate_error": 0.3,
+        "rate_error": 0.1093200455357964,
+        "readings_per_life": 6.0,
+        "regret": {
+          "individual": 0.002663674068749644,
+          "myopic": 0.036076054455087395,
+          "oracle": 0.0,
+          "population": 0.028733254995960782,
+          "recursive": 0.0040989069329568925,
+          "snap": 0.018133727050685517,
+          "state_oracle": 0.00462141920121091
+        },
+        "scored_ticks": 8189,
+        "seed_base": 1022000000,
+        "shuffled_readings": false,
+        "world": "metabolic"
+      },
+      {
+        "body_error": {
+          "individual": 0.031110733478624687,
+          "myopic": 0.0,
+          "oracle": 0.0,
+          "population": 0.11199125609517262,
+          "recursive": 0.01801850990836848,
+          "snap": 0.05328639770645293,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 0.0,
+        "consequential_accuracy": {
+          "individual": 0.9271117166212534,
+          "myopic": 0.6336852861035422,
+          "oracle": 1.0,
+          "population": 0.6040531335149864,
+          "recursive": 0.9291553133514986,
+          "snap": 0.732799727520436,
+          "state_oracle": 0.8768732970027248
+        },
+        "consequential_share": 0.8333806414987227,
+        "discriminating_share": 0.4642350269656543,
+        "future_moved_share": 0.41555492478001704,
+        "help_delay": 18,
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "need_accuracy": {
+          "individual": 0.9173999432302016,
+          "myopic": 0.5783423218847573,
+          "oracle": 1.0,
+          "population": 0.5357649730343458,
+          "recursive": 0.9124325858643202,
+          "snap": 0.661793925631564,
+          "state_oracle": 0.8296906045983536
+        },
+        "prior_rate_error": 0.3,
+        "rate_error": 0.08665549156077361,
+        "readings_per_life": 5.725,
+        "regret": {
+          "individual": 0.006330308687921731,
+          "myopic": 0.044333079874605046,
+          "oracle": 0.0,
+          "population": 0.044416324664450495,
+          "recursive": 0.0059619642820043384,
+          "snap": 0.025477749713305325,
+          "state_oracle": 0.006814770326932459
+        },
+        "scored_ticks": 7046,
+        "seed_base": 1024000000,
+        "shuffled_readings": false,
+        "world": "metabolic"
+      },
+      {
+        "body_error": {
+          "individual": 0.02983185278991324,
+          "myopic": 0.0,
+          "oracle": 0.0,
+          "population": 0.11199075281695557,
+          "recursive": 0.008979435991507601,
+          "snap": 0.04842753438649415,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 0.0,
+        "consequential_accuracy": {
+          "individual": 0.9215611249282571,
+          "myopic": 0.6424335182705184,
+          "oracle": 1.0,
+          "population": 0.665008609144825,
+          "recursive": 0.9764683374784772,
+          "snap": 0.7847713793763152,
+          "state_oracle": 0.8995599770422804
+        },
+        "consequential_share": 0.7958282582216809,
+        "discriminating_share": 0.4299634591961023,
+        "future_moved_share": 0.4159561510353228,
+        "help_delay": 18,
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "need_accuracy": {
+          "individual": 0.9190012180267966,
+          "myopic": 0.5761266747868453,
+          "oracle": 1.0,
+          "population": 0.5700365408038977,
+          "recursive": 0.9567600487210719,
+          "snap": 0.6907734470158343,
+          "state_oracle": 0.8506394640682094
+        },
+        "prior_rate_error": 0.3,
+        "rate_error": 0.07948711130020915,
+        "readings_per_life": 6.35,
+        "regret": {
+          "individual": 0.007045884598763859,
+          "myopic": 0.040374488002370104,
+          "oracle": 0.0,
+          "population": 0.034406684429850294,
+          "recursive": 0.0014082213415686578,
+          "snap": 0.018287789628485346,
+          "state_oracle": 0.00523516368841022
+        },
+        "scored_ticks": 6568,
+        "seed_base": 1026000000,
+        "shuffled_readings": false,
+        "world": "metabolic"
+      },
+      {
+        "body_error": {
+          "individual": 0.022362177235323372,
+          "myopic": 0.0,
+          "oracle": 0.0,
+          "population": 0.10193090118027798,
+          "recursive": 0.010766431045030306,
+          "snap": 0.04715193155952685,
+          "state_oracle": 0.0
+        },
+        "caregiver_store": 0.0,
+        "consequential_accuracy": {
+          "individual": 0.938474025974026,
+          "myopic": 0.6516233766233767,
+          "oracle": 1.0,
+          "population": 0.6053571428571428,
+          "recursive": 0.9535714285714286,
+          "snap": 0.7334415584415584,
+          "state_oracle": 0.8636363636363636
+        },
+        "consequential_share": 0.8175182481751825,
+        "discriminating_share": 0.46449900464499005,
+        "future_moved_share": 0.41300597213005974,
+        "help_delay": 18,
+        "interoception_probability": 0.03,
+        "lives": 40,
+        "need_accuracy": {
+          "individual": 0.9426675514266755,
+          "myopic": 0.5873921698739217,
+          "oracle": 1.0,
+          "population": 0.53550099535501,
+          "recursive": 0.9413404114134041,
+          "snap": 0.6605175846051758,
+          "state_oracle": 0.8104844061048441
+        },
+        "prior_rate_error": 0.3,
+        "rate_error": 0.11483820252161034,
+        "readings_per_life": 6.575,
+        "regret": {
+          "individual": 0.004823481423362938,
+          "myopic": 0.04163549417074996,
+          "oracle": 0.0,
+          "population": 0.04438970539928828,
+          "recursive": 0.0037752533320202213,
+          "snap": 0.024614169467682433,
+          "state_oracle": 0.007869496473744296
+        },
+        "scored_ticks": 7535,
+        "seed_base": 1028000000,
+        "shuffled_readings": false,
+        "world": "metabolic"
+      }
+    ]
+  }
+}

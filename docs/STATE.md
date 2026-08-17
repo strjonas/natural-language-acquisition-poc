@@ -1,293 +1,346 @@
 # STATE
 
-Last rewritten: 2026-08-03. Rewrite this file, never append.
+Last rewritten: 2026-08-17. Rewrite this file, never append.
 
 ## Where the next agent should start
 
-**The repository's oldest open obstacle is closed.** Probe63 is a full treatment
-result, preregistered, five seeds, all seven locked gates passed by the recursive
-arm. Read `docs/decisions/2026-08-03-individual-self-calibration-result.md`
-first, then the ceiling survey it rests on.
+One result landed on 2026-08-17, and it changes how a probe should be *chosen*
+rather than adding another mechanism to the pile.
 
-The next work is in "Exact next work" at the bottom. **Do not reopen probes 61 or
-62**; both are closed and probe63 does not reopen either.
+1. `docs/decisions/2026-08-17-decision-granularity-result.md` (probe68, **4 of 5
+   locked gates pass; G5 fails and is not rewritten**).
+2. `docs/decisions/2026-08-17-decision-granularity-ceiling-survey.md` -- the
+   survey, which contains two findings about the ecology that stand independently
+   of the treatment and are arguably worth more than it.
 
-## Probe63: the standing obstacle, and why it was never about the mechanisms
+**Read the survey first.** It replaces the number `STATE.md` has been carrying
+since probe67 with a formula, and then finds that the formula's own lever is
+pinned.
 
-Every previous probe here tried to make a *learned* self-model beat probe53's
-hand-written filter, and none could. `docs/STATE.md` carried the obstacle for
-five probes:
+### The bias probe68 was built to correct
 
-> The hand-coded probe53 filter is still better (99.96%, zero error). ... Nothing
-> yet shows the learned model doing what the analytic filter cannot.
+Since probe59 **every probe has held the ecology fixed and varied the mechanism.**
+Five found the same negative -- 59, 60, 62, 64, 67: the belief improves and the
+behaviour does not hear it. The two that succeeded, **63 and 65, succeeded by
+changing the ecology.** The repository had been optimizing the numerator of a
+ratio whose denominator it controls and had measured once, as a constant.
 
-The reason was one level below any mechanism. **Every organism in this ecology
-burned fuel at exactly the species rate.** `food_metabolism` was 0.008 for all of
-them, in every life, forever. So what was being called a self-model was a model
-of *bodies in general* -- a physics whose constants the designer knows in closed
-form. That is why the hand-written filter was exact, and it means no learner
-could ever have beaten it. **There was nothing individual to learn.** The
-organism was also blind to itself: the body is masked on every tick after birth,
-so it got one reading and then flew 400 ticks on dead reckoning.
+## Probe68: the grain of the decision surface, and what it decides
 
-Probe63 changes both, with three default-inert levers guarded over full lives
-(`tests/test_individual_self.py`): `metabolic_spread` (this body's own burn
-rates), `uptake_spread` (its own absorption), `interoception_probability` (the
-only channel through which either could be found out; readings are delivered in
-`info`, never in the packet, so the motor path is bit-identical at any rate).
+### The floor is a formula, not a constant
 
-### The result
+Read straight off `need_scores`, with `g` the gap between the two emptiest
+projected axes:
 
-Treatment world `metabolic_spread` 0.60, reading rate 0.03, 5 seeds x 40 lives,
-every tier on **one shared history**.
+    margin  =  E_grant [ min( grant * uptake, g ) ]
 
-| tier | body error | named-need accuracy |
-|---|---:|---:|
-| `population` -- species filter, *the old repository* | 0.0785 +/- 0.0093 | 0.6649 +/- 0.0172 |
-| `snap` -- corrected to truth at every reading | 0.0454 +/- 0.0045 | 0.8148 +/- 0.0127 |
-| `learned` -- NLMS self-calibration | 0.0191 +/- 0.0040 | 0.9353 +/- 0.0080 |
-| `recursive` -- RLS self-calibration | **0.0133 +/- 0.0023** | **0.9464 +/- 0.0059** |
-| `individual` -- born knowing its rates, no readings | 0.0171 +/- 0.0031 | 0.9327 +/- 0.0111 |
+Reproduced against the realised margin with MAE **0.000000** at lags 24 and 30 and
+<= 0.001 elsewhere. Probe67's 0.123--0.166 is its **saturated branch**: expected
+grant 0.40 against a median axis gap of 0.078--0.182, about three times past the
+knee. Doubling the grant changes the granularity by **exactly zero** at three of
+four lags.
 
-- Against the hand-written filter: **83% less body error, +28.2 points** on
-  naming the truly lowest need.
-- Against **identical evidence with no self-model** (`snap`, the control phase B1
-  demands because its first gate is "satisfiable by clipping"): **70.7% less
-  error, +13.2 points**.
-- `recursive` **beats `individual`** on all five seeds. Being able to see
-  yourself occasionally and having to work out what you are beats being born
-  knowing your own constants and then blinded. The model is what carries the
-  evidence between readings.
+**The binding check is no longer "is my effect bigger than 0.12".** It is *what is
+the margin of the ecology I am proposing, and is my effect bigger than that.*
+`scripts/diagnose_probe68.py` computes it in minutes for any config.
 
-Closed loop (context, never gated), 5 seeds x 40 lives: survival `population`
-0.535 -> `recursive` **0.640**, fidelity 0.672 -> **0.926**. Survival separates
-the species filter from everything else and then saturates -- `snap` 0.620,
-`individual` 0.610, `learned` 0.605, `recursive` 0.640 -- exactly as the survey
-predicted, which is why it was not gated. Fidelity separates cleanly (+14.6
-points for `recursive` over `snap`).
+### And the grain is pinned from below by viability
 
-| gate | NLMS | RLS |
-|---|---|---|
-| G1 corrigibility | pass 5/5 | pass 5/5 |
-| G2 report | pass 5/5 | pass 5/5 |
-| G3 localization, metabolism world | pass 5/5 | pass 4/5 |
-| G3 localization, absorption world | **fail 0/5** | pass 5/5 |
-| G4 no false discovery | pass 5/5 | pass 5/5 |
-| G5 shuffled readings | pass 4/5 | pass 5/5 |
-| G6 rate recovery | pass 4/5 | pass 5/5 |
+| grant scale | oracle survival | verdict |
+|---|---:|---|
+| 0.25 | **0.000** | collapsed |
+| 0.5 | **0.000** | collapsed |
+| 1.0 | 0.267 | usable |
+| 2.0 | 0.333 | usable |
 
-### The two findings worth carrying forward
+**Even a model that knows everything starves when the grant is halved.**
 
-1. **Prediction and attribution come apart.** The greedy arm is corrigible and
-   confidently wrong about *what* it is: it answers "metabolism" at 0.877 mass
-   when that is true and 0.765 when the truth is absorption. Its accuracy gives
-   no signal that its self-attribution is wrong -- and in the absorption world
-   that misattribution makes it *worse* than having no self-model (0.0590 against
-   `snap`'s 0.0428). A self-model can be well calibrated about its own state
-   while being confidently wrong about its own nature.
-   NLMS's *higher* metabolic share is not better localization; an estimator that
-   always answers "metabolism" scores well in the world its bias matches. Only
-   the pair of worlds separates them, which is why the ground truth had to move.
-2. **A self-model can only localize a fact its own parameter set can express, and
-   when it cannot it does not fail loudly -- it produces a confident wrong
-   answer.** The first version gave the organism one absorption parameter for its
-   whole body, matching `ReportConfig`'s single `portion_small`. In an absorption
-   world it then blamed metabolism at 0.703. Giving it per-need parameters fixed
-   it without touching the world.
+> Probe65's operating point has no headroom beneath it. The grain of a decision
+> surface is **downstream of how much help a body needs to stay alive** -- so a
+> world whose help must be large to keep anything alive is coarse *by necessity*,
+> and no refinement of belief can reach past it.
 
-### The reflexive quantity
+That is one structural account of five separate negatives. It is the most portable
+thing in this result, because it is a statement about **ecology design** rather
+than about this organism.
 
-The organism keeps one copy of its body filter per constant it could be wrong
-about, each with exactly that constant perturbed, and reads off
-`J[need, parameter] = d(predicted body)/d(log parameter)`. That is not a fact
-about where its body is; it is a fact about how its own *model* would respond if
-a particular belief about itself were wrong. `test_the_self_jacobian_is_the_real_derivative`
-checks it against a filter genuinely rebuilt with the scaled constant, to
-**1e-12**, for all seven parameters over full lives.
+### The lever that does exist, and the treatment
 
-### A methodological correction, now binding
+Move the **quantum** and hold the **rate** of help fixed: smaller portions,
+proportionally more often, `grant / help_period` identical to the last decimal.
+`answer_horizon` reads the lag and never the period, so the horizon stays 18.
 
-Probe60 made it binding to check the oracle ceiling before locking a gate.
-Probe63 adds: **check it at the operating point the gate will be scored at**, and
-**check the ceiling instrument is not undersampled**. G3's thresholds came from a
-ceiling measured at reading rate 0.10 while the treatment ran at 0.03;
-remeasuring at 0.03 put the locked gate *above* its own apparent ceiling. That
-turned out to be an artifact -- the ceiling instrument discards lives with too
-few usable rows and had discarded five of eight -- and the online arm beat it.
-An undersampled ceiling is its own trap: it can close a mechanism that works.
+8 seeds x 30 lives, band 1,400,000,000:
 
-## Probe62: the uncertainty mechanism, closed
+| quantum | help_period | grant/tick | margin | **rate value** | **state value** |
+|---|---:|---:|---:|---|---|
+| 1 | 6 | 0.0667 | 0.1749 | **+0.1272** [+0.1038, +0.1506] | +0.2271 [+0.1934, +0.2607] |
+| 1/2 | 3 | 0.0667 | 0.0878 | **+0.2127** [+0.1846, +0.2409] | +0.2371 [+0.2152, +0.2590] |
+| 1/3 | 2 | 0.0667 | 0.0669 | **+0.2775** [+0.2404, +0.3145] | +0.2293 [+0.2091, +0.2495] |
 
-Full record: `docs/decisions/2026-08-03-self-uncertainty-ceiling-survey.md`.
-Module: `src/homesocial/organism/uncertain_self.py`.
+    rate value  = oracle - state_oracle       differ only in whose rates
+    state value = state_oracle - population   differ only in read vs filtered body
 
-The `silent_shock_probability` lever opens a 26.6-point gap at `q=1.0` on naming
-the lowest need, and **none of it is recoverable**: `posterior_vote` is the
-Bayes-optimal rule on the observable history and ties the biased point filter at
-every silence rate. The posterior is genuinely calibrated (coverage 0.92--0.94
-against nominal 0.90) but uncertainty-timed inspection beats rate-matched random
-by only +0.0 to +2.7 points, at budgets consuming half of all help.
+**G6 passes.** Paired per seed, `quantum_half` against `nutrition_1x`: rate step
+**+0.0855 [+0.0753, +0.0956]** on **8/8** seeds against a state step of **+0.0101
+[-0.0088, +0.0289]** on 5/8, interval containing zero. **8.5x, with the lesion
+holding.**
 
-Why: the body is bounded in [0,1] and the filter saturates on ~9.7% of ticks, so
-its bias equilibrates at +0.051 instead of accumulating. **Do not preregister
-uncertainty communication in that ecology.** The lever is kept.
+> Halving the grain of the help, with the amount of help held exactly fixed, more
+> than doubles the value of knowing what kind of body you are, and leaves the value
+> of knowing where that body is where it was.
 
-Note that probe63's ecology is *not* that ecology -- being wrong about your own
-rate compounds with elapsed time and is not erased by saturation, which is why
-the same homeostatic bound no longer caps the error at 0.05. Probe62's closure
-was explicitly scoped to its own ecology; a self-uncertainty rung over probe63's
-individuality is not foreclosed by it, and is named below.
+State error enters `level - rate * H` once; rate error enters multiplied by `H`. At
+`H = 18` the rate error is a large quantity and the coarse margin was **swallowing**
+it. Probe65 showed the horizon puts it into the decision variable; probe68 shows
+the grain decides whether the decision variable can express it.
 
-## Probe61: closed, and what is still undone
+**G4 passes and is the sharper half.** Reach was measured *before* the treatment at
+0.4407 / 0.7600 / 0.7972 -- steep then flat -- and the response follows it: first
+step +0.0335, second **+0.0166**. A value linear in the quantum passes G3 and fails
+G4.
 
-Result: `docs/decisions/2026-08-02-discovered-self-structure-result.md`. Four of
-five locked gates fail; the mechanism is closed by the preregistered failure
-rule. Do not rescue it by raising `L`, changing the sparsity family, re-tuning
-per world, or shrinking the sweep -- the preregistration forbids each by name.
+### Four hundredfold, from two ecology parameters
 
-Worth carrying: mean `d_eff` is strictly increasing in `K`, so the count is
-genuinely responsive to a moving body; G1 fails on accuracy, not responsiveness.
-The seed-0 K3 warning does not replicate. The split-by-world execution was
-verified bit-identical.
+| ecology | rate value |
+|---|---|
+| lag 0, grant 0.40 | **+0.0007** [+0.0005, +0.0010] |
+| lag 0, grant 0.80 | +0.0009 [+0.0003, +0.0015] |
+| lag 18, quantum 1/3 | **+0.2775** [+0.2404, +0.3145] |
 
-**Still undone:** probe61's preregistered controls (shuffled feelings,
-mean-channel-only, minimum-channel-only, labeled three-dimensional reference)
-were never run. They void a positive result, so they do not change a verdict
-negative on four gates -- but **F0 and G2 remain uncontrolled and must not be
-cited as standalone positives until they are run.**
+At lag 0 `state_oracle` scores **0.9995**: a body read perfectly and believed
+typical is essentially never wrong, so a self-model has nothing to add. Same
+self-model object, same arithmetic, same frozen parent.
+
+### What must be read honestly
+
+- **G2 passes and is not a null.** +0.0186 [+0.0109, +0.0264] -- inside the locked
+  +/-0.02 band, but the interval excludes zero on 8/8 seeds. "+0.019, smaller than
+  the band" and not "nothing happened". And the cell is confounded as
+  preregistered: doubling the grant collapses state value +0.2271 -> +0.0857 and the
+  consequential share 0.753 -> 0.229, because it moves the axis gap even while the
+  grant term stays saturated. **G2 is a weak null; G6 is a strong positive. Do not
+  read them as equal evidence.**
+- **G5 fails, +0.1072 against a +/-0.02 band, and is not rewritten.** It was the one
+  gate left on the *mixed* contrast `individual - state_oracle`, which at lag 0
+  contains no rate signal and is therefore pure state value -- a quantity the grant
+  moves a great deal. The prediction G5 was written for passed to four decimals
+  (+0.0007). A locked gate failed and the thing it aimed at is true; that measures
+  the gate's construction, not the world.
+- **Two designs were killed by their own surveys before any gate existed**, both
+  recorded in the preregistration rather than deleted: an uncompensated grant sweep
+  (collapsed), and the mixed contrast (confounded, and a single-seed reading of it
+  pointed the wrong way).
+- **A derived clause was refuted by measurement.** `need_scores` is
+  shift-equivariant on paper, so only *differential* belief error should reach a
+  word -- which would have retrodicted probes 59 and 60. Matched injection says no:
+  the homeostatic cap binds on **82.6%** of lag-18 ticks against 0.0% at lag 0 and
+  converts common-mode error into differential. Where the cap does not bind,
+  equivariance is exact (1.11e-16). **Probes 59 and 60 remain unretrodicted**, and
+  probe65's operating point sits almost entirely inside the clipped regime -- which
+  no probe had recorded. Third time the homeostatic bound has turned out to be an
+  active part of a result rather than a backdrop.
 
 ## Where the five properties now stand
 
-From `docs/DIRECTION_2026-07-26.md` section 2.
+From `md/archive/DIRECTION_2026-07-26.md` section 2.
 
-1. **Discovered** -- *partial*. Probe63 discovers the **values** of its own
-   causal constants and **which** of them differ from its species, by
-   intervention across worlds whose ground truth moves. It does **not** discover
-   its state variables; probe61 tried that and is closed.
-2. **Corrigible** -- **yes**, and this is phase B1. Evidence updates the model,
-   the improvement survives the `snap` clipping control by 70.7% of error, and
-   shuffled readings destroy it.
-3. **Load-bearing across uses** -- *partial*, unchanged. The model drives the
-   report; survival is reported as context and was never gated.
-4. **Productive under novel demand** -- **no**. Untouched.
-5. **Reflexive** -- *partial*. The organism computes and acts on
-   `d(its own prediction)/d(its own parameter)`, which is a representation of its
-   model rather than of its state. It does not yet *report* any of that.
-
-## Executive handover (probe57--60, unchanged)
-
-The v1 result stands and is independently verified and replicated:
-
-> A parameter-persistent embodied organism learns a public word lexicon, a
-> persistent causal belief over its own hidden food/water/energy state, and a
-> full-vocabulary model of how its words change caregiver help. It composes those
-> models to communicate its inferred need with 94.99% fidelity and 92% survival
-> on held-out lives, while matched causal controls fail.
-
-Five-seed replication: balanced accuracy 0.9181 +/- 0.0066, grounded survival
-0.9060 +/- 0.0182, fidelity 0.9471 +/- 0.0034, belief fork 1.0000, scrambled
-listener 0.0420, zero belief 0.0000, full promotion gate 5/5. Full audit:
-`docs/decisions/2026-07-26-causal-self-report-independent-verification.md`.
-
-- **Probe59**: online adaptation after a body-rule change. Recalibration works
-  (body error 0.0879 -> 0.0164, 5/5) and buys no survival; the legacy planner is
-  the bottleneck. `docs/decisions/2026-07-26-online-adaptation-result.md`
-- **Probe60**: outcome-aware planner `E[min(next body)]` raises adapted survival
-  0.500 -> 0.904 (5/5), but frozen belief reaches 0.890 and stale analytic 0.904,
-  so G3 fails. The planner repair is real; continual recalibration is not
-  behaviourally load-bearing *in that ecology*.
-  `docs/decisions/2026-07-30-outcome-aware-self-planner-result.md`
-
-Binding on all later phases: state a **belief-side endpoint** alongside any
-behavioural one, and **check the oracle ceiling before locking a gate** -- now
-extended by probe63's clause above.
+1. **Discovered** -- *partial*, **unchanged since 2026-08-03**. Still the
+   longest-stalled leg, and DIRECTION calls it "the single largest step toward 'not
+   parroted'". See "Exact next work" item 1: probe68 makes the construction it
+   needs also serve two other stalled lines.
+2. **Corrigible** -- **yes**, unchanged.
+3. **Load-bearing across uses** -- *partial*, and probe68 says *how much* it is
+   load-bearing is an ecology parameter rather than a property of the model.
+4. **Productive under novel demand** -- *partial*, unchanged since probe66. What
+   keeps it short of yes is the hypothesis space.
+5. **Reflexive** -- *partial*, unchanged since probe67. Probe68 does **not** advance
+   it, and slightly reframes probe67's blocker: acting on the *width* failed at a
+   margin of 0.12--0.17, and probe68 can now make the margin 0.067. That is a live
+   question and item 5 below states its cost.
 
 ## Evidence ladder and closed lines
 
 | Probe | Mechanism | Result |
 |---|---|---|
-| 48 | consequence-only neural mouth | report fail |
-| 49 | unified help uptake | report fail; latent body decodable 64.04% |
-| 50 | COMA token critic | report fail |
-| 51 | tied lexicon, voluntary inspection | comprehension fail |
-| 52 | need-independent guided joint attention | lexical pass; neural report fail |
-| 53 | exact visible-history epistemic filter | feasibility pass, not learning |
-| 54 | recurrent continuous self-belief | one identity gate fail |
-| 55 | ranked continuous belief | identity fail |
-| 56 | separate neural urgency head | identity fail; recurrent line closed |
+| 48--56 | neural mouths, COMA critics, recurrent self-belief, ranked belief | all **fail**; recurrent line closed |
 | 57 | structured learned causal self + social planner | **all local gates pass** |
-| 58 | causal-stage replication, 5 seeds | **5/5 gates pass**, sd <= 0.009 |
+| 58 | causal-stage replication, 5 seeds | **5/5 pass**, sd <= 0.009 |
 | 59 | online adaptation after a body-rule change | recalibration 5/5; survival gates **fail** |
 | 60 | outcome-aware realized-consequence planner | planner repair passes; load-bearing gate **fails** |
-| 61 | discovered bodily structure from two sensations | **4 of 5 gates fail**; closed |
-| 62 | self-uncertainty ceiling survey | calibrated posterior **ties** the point filter; closed, lever kept |
-| 63 | individual body + online self-calibration | **RLS passes 7/7 locked gates**; NLMS corrigible but fails localization. Standing obstacle closed |
+| 61 | discovered bodily structure from two sensations | **4 of 5 fail**; closed |
+| 62 | self-uncertainty ceiling survey | posterior **ties** the point filter; closed in its ecology |
+| 63 | individual body + online self-calibration | **7/7 pass**; standing obstacle closed |
+| 64 | portion requests under a rationed caregiver | **7/7 pass**; **survival hears none of it** |
+| 65 | a caregiver that answers eighteen ticks late | **9/9 pass**; ordering *reverses* with the horizon; **a belief reaches survival** |
+| 66 | a caregiver whose size words do not mean one thing | **6/6 pass**; factorization **found rather than given** |
+| 67 | acting on the width of the rate belief | **survey, no**; ceiling arm loses to baseline; a 0.12 floor |
+| 68 | the grain of the decision surface | **4/5 pass, G5 fails**; the 0.12 is a **formula**, the grain is **pinned by viability**, and finer grain doubles the value of a rate self-model at fixed nutrition |
 
 Do not reopen without contrary evidence:
 
-- report entropy, head width, vocabulary size, replay, sparse-return loss
-  weights, horizons, or counterfactual token-credit variants;
+- report entropy, head width, vocabulary size, replay, sparse-return loss weights,
+  horizons as a tuning knob, counterfactual token-credit variants;
 - more guided lexical exposure after comprehension reaches ceiling;
 - black-box recurrent self-belief width/loss/head variants;
 - a larger legacy neural mouth on the same state;
-- compute scale as a substitute for causal structure; and
-- probe61's structure discovery and probe62's uncertainty communication.
+- compute scale as a substitute for causal structure;
+- probe61's structure discovery **mechanism** (a sparsity-penalized latent);
+- stacking probe64's `caregiver_store` onto probe65's lag;
+- acting on the rate posterior through probe60's objective, at any horizon;
+- **lowering the grant without compensating the period** -- probe68 measured oracle
+  survival 0.000 at half the grant; the ecology has no headroom beneath it;
+- **the mixed `individual - state_oracle` contrast as a gate.** Use `rate value` and
+  `state value`. The mixed one confounds a rate advantage with a state
+  disadvantage and cost probe68 one gate and two designs.
+
+`help_period` is no longer categorically frozen: probe68 moves it **pinned** to the
+portion so that `grant / help_period` cannot change. Moving it *freely* remains
+closed.
 
 ## Exact next work
 
-1. **Make the self-model pay rent in speech.** Probe63's organism knows something
-   no listener can hear: *how fast it burns*. The vocabulary has 60 tokens and 3
-   carry meaning, because the listener can only grant three things. A listener
-   that could grant a **large or small** portion on request, or grant **early**,
-   would make "I burn fast" worth saying -- and it is a fact about the self, not
-   about the state, so it is the first genuine candidate for property 4
-   (productive under novel demand). Preregister; ceiling-survey it first at the
-   operating point, per probe63's clause.
-2. **Self-uncertainty, reopened only here.** Probe62 closed uncertainty in *its*
-   ecology because the bounded body made error equilibrate. In probe63's ecology
-   a newborn is genuinely lost about itself and converges as readings arrive --
-   the "bursty" uncertainty probe62 said was required. Run the ceiling survey
-   before building anything, and do not treat probe62's closure as either
-   permission or prohibition; it was scoped to its ecology.
-3. **Run probe61's missing controls** if F0 or G2 are ever to be cited. Small
-   driver, cheap, already specified in that preregistration.
-4. **Cross-life self-knowledge.** Probe63 learns within one life from the species
-   prior. Whether an organism should carry a prior about *itself* across
-   regime changes, and whether that helps or produces catastrophic interference,
-   is untested. Alternate body regimes and measure parameter/belief recovery,
-   not survival alone.
-5. **Replicate the full probe52 childhood-to-adult pipeline**; all causal-stage
-   replications still share one lexical/motor parent.
-6. **Make the learner neural if and only if a task demands it.** Probe63's rules
-   are 21 scalars in numpy. That is a feature, not a gap -- the claim is about
-   what an online self-model recovers. Do not swap in a network for its own sake.
+Every item carries the granularity check, which is now `diagnose_probe68.py`
+rather than a comparison against 0.12.
 
-Do not request an external corpus or generated data for these steps. Larger
-compute becomes reasonable only after multi-seed local replication shows the same
-architecture, thresholds, and causal controls survive.
+1. **Build the body with more axes, and get three stalled lines for one
+   construction.** This is the axis-gap term of probe68's formula -- the one lever
+   never moved, and the one the formula says is *binding* here (the grant term is
+   saturated). It is also, independently:
+   - the world **probe61's own claim boundary asks for**: "a world with true `K = 5`
+     would discriminate the two readings and this ecology does not contain one".
+     Aiming probe66's mechanism (exact Bayesian model comparison, no free
+     parameters, moved ground truth) at bodily structure is a **new mechanism for a
+     failed phase, not a rescue of a failed one** -- state that in the
+     preregistration, because it is the first thing a reviewer will challenge;
+   - what **probe66 itself asks for**: "with three needs the design is at the edge of
+     identifiability, so this wants more needs before more model";
+   - the only route to property 1, the longest-stalled leg.
+
+   **Cost, honestly:** `REPORT_NEEDS` and `BODY_NEEDS` are in `island/report.py` and
+   the body is in `env.py`, and the frozen probe52 parent checkpoint was trained on
+   the current axes. Adding axes means retraining that parent, which no probe since
+   57 has had to do. This is the most expensive item on this list and the only one
+   that unblocks three things at once.
+
+2. **Re-run probe67's width mechanism at quantum 1/3.** Probe67 closed acting on the
+   rate posterior and scoped the closure to a margin of 0.12--0.17. Its largest
+   correction was 0.017 against a median decision of 0.123 -- "seven to
+   twenty-eight times too small". Probe68 can make the median decision **0.0669**,
+   which moves the ratio from ~0.14 to ~0.25. **That is still under 1**, so the
+   honest expectation is that it stays closed; the value is that the closure would
+   then be stated against a *swept* margin rather than a single one. Cheap
+   (`uncertain_horizon.py` needs only the two new kwargs). Run the granularity check
+   first and do not run it if the ratio has not crossed.
+
+3. **Give probe68 a survival endpoint.** Every probe68 number is open-loop. Probe65
+   is still the only place a belief has reached survival, and probe68's claim is
+   about what is *said*. The closed-loop runner exists (`run_closed_loop`, already
+   takes both new kwargs); what it needs is N -- probe65's own diagnosis puts
+   ~700 lives per arm on resolving a 0.03 survival difference.
+
+4. **Push past the regret crossover and gate survival on the rate** (was item 2).
+   Lag 24 or beyond, fresh seed band, ~700 lives per arm. Now cheaper to justify:
+   probe68 raises the rate's decision-side effect by 8.5x its own state-side
+   control, so the effect being chased is larger than probe65's was.
+
+5. **Cross-life self-knowledge** (was item 3). `individual` beats `recursive` at
+   every lag from 12 up, and the gap is the part of each life spent still finding
+   out what it is. A prior about itself carried across lives closes it. Measure
+   parameter and belief recovery, not survival alone.
+
+6. **Score probe66's declining against survival.** `discovered_convention.py` has no
+   closed-loop runner and no survival endpoint; the loop has to be written, as
+   probes 64, 65, 67 and 68 each did.
+
+7. **Uncertainty as something *said*, or as a reason to *look*.** Unchanged from
+   probe67's list. Both need the frozen motor policy or the caregiver to gain a
+   response.
+
+8. **Run probe61's missing controls** if F0 or G2 are ever to be cited.
+
+9. **Replicate the full probe52 childhood-to-adult pipeline.** All causal-stage
+   replications still share one lexical/motor parent -- and item 1 forces a new
+   parent anyway, so these two should be planned together.
+
+Do not request an external corpus or generated data for these steps.
+
+## On `docs/VISION_AND_STATUS.md`
+
+That document (2026-08-10) recommends freezing this line and building a clean
+neural v2. Probes 64--68 were all run after it.
+
+Its diagnosis is right about one thing this repository should stop arguing with:
+**the mouth is `argmax` over three scores and that does not become language by
+growing.** Where it is wrong is the *order*. The v2 environment cannot be specified
+without knowing what grain it needs, and probe68 is the first measurement of that.
+The sequence is: grain law (done) -> more bodily axes (item 1) -> how many words can
+pay rent as a function of grain -> then a generative learner at the grain the law
+says supports it. Reversing it builds a bigger version of a solved toy, which is
+what DIRECTION section 4 already forbids.
+
+Revisit when property 1 moves.
+
+## Executive handover (probes 57--60, unchanged)
+
+> A parameter-persistent embodied organism learns a public word lexicon, a
+> persistent causal belief over its own hidden food/water/energy state, and a
+> full-vocabulary model of how its words change caregiver help. It composes those
+> models to communicate its inferred need with 94.99% fidelity and 92% survival on
+> held-out lives, while matched causal controls fail.
+
+Five-seed replication: balanced accuracy 0.9181 +/- 0.0066, grounded survival
+0.9060 +/- 0.0182, fidelity 0.9471 +/- 0.0034, belief fork 1.0000, scrambled
+listener 0.0420, zero belief 0.0000, full promotion gate 5/5.
+
+Binding on all later phases: state a **belief-side endpoint** alongside any
+behavioural one; **check the oracle ceiling before locking a gate**; **run the
+survey on a seed band disjoint from the treatment**; **state the endpoint in the
+currency the world is denominated in**; **measure the margin of the ecology you are
+proposing and compare your effect with it** (probe68 supersedes probe67's constant
+here); and **do not gate on a contrast that mixes two belief errors** (probe68).
+
+## Standing findings
+
+- **Prediction and attribution come apart** (probe63).
+- **A self-model can only localize a fact its own parameter set can express**
+  (probe63).
+- **Accuracy and regret come apart** (probe65).
+- **A belief's point and its width live on different scales relative to the
+  decision**, and only the first reaches one (probe67).
+- **A belief error reaches a word only if it exceeds the grain, and the grain is
+  pinned from below by viability** (probe68).
+- **The homeostatic bound is an active part of the decision surface, not a
+  backdrop** -- probe62, probe63/67, probe68.
 
 ## Artifacts and records
 
-- `runs/organism/probe63_individual_self/` -- `ceiling_survey.json`,
-  `treatment.json`, `localization_rate010.json`, `closed_loop.json`,
-  `shuffled_clamped.json`
-- `runs/organism/probe62_uncertain_self/`, `probe61_discovered_self/full/`
-- `runs/organism/probe57_structured_causal_self/`, `probe58_causal_stage_replication/`,
-  `probe59_online_adaptation/`, `probe60_outcome_aware_self_planner/`
-- `docs/decisions/2026-08-03-individual-self-ceiling-survey.md`
-- `docs/decisions/2026-08-03-individual-self-calibration-preregistration.md`
+- `runs/organism/probe68_granularity/` -- `treatment.json`, `ceiling_survey.json`,
+  `quantum_survey.json`, `quantum_margin.json`, `diagnostic.json`
+- `runs/organism/probe67_uncertain_horizon/`, `probe65_future_request/`,
+  `probe66_discovered_convention/`, `probe64_portion_request/`,
+  `probe63_individual_self/`, `probe62_uncertain_self/`,
+  `probe61_discovered_self/full/`, `probe57_structured_causal_self/`,
+  `probe58_causal_stage_replication/`, `probe59_online_adaptation/`,
+  `probe60_outcome_aware_self_planner/`
+- `docs/decisions/2026-08-17-decision-granularity-{preregistration,ceiling-survey,result}.md`
+- `docs/decisions/2026-08-16-uncertain-horizon-ceiling-survey.md`
+- `docs/decisions/2026-08-16-{future-request,discovered-convention}-result.md`
+- `docs/decisions/2026-08-14-portion-request-result.md`
 - `docs/decisions/2026-08-03-individual-self-calibration-result.md`
-- `docs/decisions/2026-08-03-self-uncertainty-ceiling-survey.md`
 - `docs/decisions/2026-08-02-discovered-self-structure-result.md`
 - `docs/decisions/2026-07-30-outcome-aware-self-planner-result.md`
 - `docs/decisions/2026-07-26-causal-self-report-independent-verification.md`
-- `docs/decisions/2026-07-26-online-adaptation-result.md`
 
-Latest verification: **378 tests passed**. All new behavior is default off; the
-null world confirms the three probe63 levers are inert at their defaults.
-Simulator event/kind metadata remains audit-only and never enters causal belief,
-listener learning, utterance planning, policy, or replay. Interoceptive readings
-are delivered in `info` and never in the packet, so no policy input changed.
+Latest verification: **464 tests passed**. All new behavior is default off.
+`tests/test_decision_granularity.py` checks that `portion_scale` is inert at 1.0,
+that the margin formula holds in closed form on both branches, that doubling a
+saturated grant changes the margin by exactly zero while halving an unsaturated one
+halves it, that an equivalence gate reads UNRESOLVED rather than pass when its
+interval is wider than the band, that the dissociation gate fails when the state
+lesion moves with the rate, and that the seed bands cannot overlap. Simulator
+event/kind metadata remains audit-only and never enters causal belief, listener
+learning, utterance planning, policy, or replay.
 
 ## Research basis
 

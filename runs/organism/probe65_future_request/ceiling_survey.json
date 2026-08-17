@@ -1,0 +1,1767 @@
+{
+  "arms": [
+    "population",
+    "snap",
+    "myopic",
+    "state_oracle",
+    "recursive",
+    "individual",
+    "oracle"
+  ],
+  "closed_loop": [
+    {
+      "arm": "population",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {
+        "energy": 1
+      },
+      "future_fidelity": 0.6492281303602059,
+      "grants": 52.0,
+      "help_delay": 0,
+      "lives": 4,
+      "mean_life_steps": 316.5,
+      "report_fidelity": 0.6552315608919382,
+      "silent_grants": 0.0,
+      "survival": 0.75,
+      "world": "metabolic"
+    },
+    {
+      "arm": "snap",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {},
+      "future_fidelity": 0.734,
+      "grants": 66.0,
+      "help_delay": 0,
+      "lives": 4,
+      "mean_life_steps": 400.0,
+      "report_fidelity": 0.7473333333333333,
+      "silent_grants": 0.0,
+      "survival": 1.0,
+      "world": "metabolic"
+    },
+    {
+      "arm": "myopic",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {},
+      "future_fidelity": 0.9746666666666667,
+      "grants": 66.0,
+      "help_delay": 0,
+      "lives": 4,
+      "mean_life_steps": 400.0,
+      "report_fidelity": 0.9686666666666667,
+      "silent_grants": 0.0,
+      "survival": 1.0,
+      "world": "metabolic"
+    },
+    {
+      "arm": "state_oracle",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {},
+      "future_fidelity": 0.9746666666666667,
+      "grants": 66.0,
+      "help_delay": 0,
+      "lives": 4,
+      "mean_life_steps": 400.0,
+      "report_fidelity": 0.9686666666666667,
+      "silent_grants": 0.0,
+      "survival": 1.0,
+      "world": "metabolic"
+    },
+    {
+      "arm": "recursive",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {},
+      "future_fidelity": 0.9233333333333333,
+      "grants": 66.0,
+      "help_delay": 0,
+      "lives": 4,
+      "mean_life_steps": 400.0,
+      "report_fidelity": 0.9133333333333333,
+      "silent_grants": 0.0,
+      "survival": 1.0,
+      "world": "metabolic"
+    },
+    {
+      "arm": "individual",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {},
+      "future_fidelity": 0.6946666666666667,
+      "grants": 66.0,
+      "help_delay": 0,
+      "lives": 4,
+      "mean_life_steps": 400.0,
+      "report_fidelity": 0.6766666666666666,
+      "silent_grants": 0.0,
+      "survival": 1.0,
+      "world": "metabolic"
+    },
+    {
+      "arm": "oracle",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {},
+      "future_fidelity": 1.0,
+      "grants": 66.0,
+      "help_delay": 0,
+      "lives": 4,
+      "mean_life_steps": 400.0,
+      "report_fidelity": 0.9626666666666667,
+      "silent_grants": 0.0,
+      "survival": 1.0,
+      "world": "metabolic"
+    },
+    {
+      "arm": "population",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {
+        "energy": 1,
+        "water": 1
+      },
+      "future_fidelity": 0.697136563876652,
+      "grants": 41.25,
+      "help_delay": 3,
+      "lives": 4,
+      "mean_life_steps": 252.0,
+      "report_fidelity": 0.5649779735682819,
+      "silent_grants": 0.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    },
+    {
+      "arm": "snap",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {},
+      "future_fidelity": 0.734,
+      "grants": 66.0,
+      "help_delay": 3,
+      "lives": 4,
+      "mean_life_steps": 400.0,
+      "report_fidelity": 0.5986666666666667,
+      "silent_grants": 0.0,
+      "survival": 1.0,
+      "world": "metabolic"
+    },
+    {
+      "arm": "myopic",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {},
+      "future_fidelity": 0.6506666666666666,
+      "grants": 66.0,
+      "help_delay": 3,
+      "lives": 4,
+      "mean_life_steps": 400.0,
+      "report_fidelity": 0.9746666666666667,
+      "silent_grants": 0.0,
+      "survival": 1.0,
+      "world": "metabolic"
+    },
+    {
+      "arm": "state_oracle",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {},
+      "future_fidelity": 0.942,
+      "grants": 66.0,
+      "help_delay": 3,
+      "lives": 4,
+      "mean_life_steps": 400.0,
+      "report_fidelity": 0.6466666666666666,
+      "silent_grants": 0.0,
+      "survival": 1.0,
+      "world": "metabolic"
+    },
+    {
+      "arm": "recursive",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {},
+      "future_fidelity": 0.922,
+      "grants": 66.0,
+      "help_delay": 3,
+      "lives": 4,
+      "mean_life_steps": 400.0,
+      "report_fidelity": 0.634,
+      "silent_grants": 0.0,
+      "survival": 1.0,
+      "world": "metabolic"
+    },
+    {
+      "arm": "individual",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {},
+      "future_fidelity": 0.6446666666666667,
+      "grants": 66.0,
+      "help_delay": 3,
+      "lives": 4,
+      "mean_life_steps": 400.0,
+      "report_fidelity": 0.5,
+      "silent_grants": 0.0,
+      "survival": 1.0,
+      "world": "metabolic"
+    },
+    {
+      "arm": "oracle",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {},
+      "future_fidelity": 1.0,
+      "grants": 66.0,
+      "help_delay": 3,
+      "lives": 4,
+      "mean_life_steps": 400.0,
+      "report_fidelity": 0.628,
+      "silent_grants": 0.0,
+      "survival": 1.0,
+      "world": "metabolic"
+    },
+    {
+      "arm": "population",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {
+        "energy": 1
+      },
+      "future_fidelity": 0.697754749568221,
+      "grants": 51.75,
+      "help_delay": 6,
+      "lives": 4,
+      "mean_life_steps": 314.5,
+      "report_fidelity": 0.5483592400690847,
+      "silent_grants": 0.0,
+      "survival": 0.75,
+      "world": "metabolic"
+    },
+    {
+      "arm": "snap",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {
+        "energy": 1
+      },
+      "future_fidelity": 0.8212435233160622,
+      "grants": 51.75,
+      "help_delay": 6,
+      "lives": 4,
+      "mean_life_steps": 314.5,
+      "report_fidelity": 0.5293609671848014,
+      "silent_grants": 0.0,
+      "survival": 0.75,
+      "world": "metabolic"
+    },
+    {
+      "arm": "myopic",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {
+        "water": 1
+      },
+      "future_fidelity": 0.5228182546036829,
+      "grants": 55.5,
+      "help_delay": 6,
+      "lives": 4,
+      "mean_life_steps": 337.25,
+      "report_fidelity": 0.9831865492393915,
+      "silent_grants": 0.0,
+      "survival": 0.75,
+      "world": "metabolic"
+    },
+    {
+      "arm": "state_oracle",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {
+        "water": 1
+      },
+      "future_fidelity": 0.910328262610088,
+      "grants": 55.5,
+      "help_delay": 6,
+      "lives": 4,
+      "mean_life_steps": 337.25,
+      "report_fidelity": 0.5308246597277823,
+      "silent_grants": 0.0,
+      "survival": 0.75,
+      "world": "metabolic"
+    },
+    {
+      "arm": "recursive",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {
+        "water": 1
+      },
+      "future_fidelity": 0.9607686148919136,
+      "grants": 55.5,
+      "help_delay": 6,
+      "lives": 4,
+      "mean_life_steps": 337.25,
+      "report_fidelity": 0.5396317053642914,
+      "silent_grants": 0.0,
+      "survival": 0.75,
+      "world": "metabolic"
+    },
+    {
+      "arm": "individual",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {},
+      "future_fidelity": 0.7493333333333333,
+      "grants": 66.0,
+      "help_delay": 6,
+      "lives": 4,
+      "mean_life_steps": 400.0,
+      "report_fidelity": 0.49733333333333335,
+      "silent_grants": 0.0,
+      "survival": 1.0,
+      "world": "metabolic"
+    },
+    {
+      "arm": "oracle",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {
+        "water": 1
+      },
+      "future_fidelity": 1.0,
+      "grants": 55.5,
+      "help_delay": 6,
+      "lives": 4,
+      "mean_life_steps": 337.25,
+      "report_fidelity": 0.5236188951160928,
+      "silent_grants": 0.0,
+      "survival": 0.75,
+      "world": "metabolic"
+    },
+    {
+      "arm": "population",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {
+        "energy": 1,
+        "water": 1
+      },
+      "future_fidelity": 0.8026634382566586,
+      "grants": 37.0,
+      "help_delay": 9,
+      "lives": 4,
+      "mean_life_steps": 231.5,
+      "report_fidelity": 0.2929782082324455,
+      "silent_grants": 1.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    },
+    {
+      "arm": "snap",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {
+        "energy": 1,
+        "water": 1
+      },
+      "future_fidelity": 0.8444180522565321,
+      "grants": 37.5,
+      "help_delay": 9,
+      "lives": 4,
+      "mean_life_steps": 235.5,
+      "report_fidelity": 0.30403800475059384,
+      "silent_grants": 1.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    },
+    {
+      "arm": "myopic",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {
+        "energy": 1,
+        "water": 1
+      },
+      "future_fidelity": 0.2595505617977528,
+      "grants": 39.75,
+      "help_delay": 9,
+      "lives": 4,
+      "mean_life_steps": 247.5,
+      "report_fidelity": 0.9752808988764045,
+      "silent_grants": 1.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    },
+    {
+      "arm": "state_oracle",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {},
+      "future_fidelity": 0.9053333333333333,
+      "grants": 65.0,
+      "help_delay": 9,
+      "lives": 4,
+      "mean_life_steps": 400.0,
+      "report_fidelity": 0.314,
+      "silent_grants": 1.0,
+      "survival": 1.0,
+      "world": "metabolic"
+    },
+    {
+      "arm": "recursive",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {},
+      "future_fidelity": 0.926,
+      "grants": 65.0,
+      "help_delay": 9,
+      "lives": 4,
+      "mean_life_steps": 400.0,
+      "report_fidelity": 0.304,
+      "silent_grants": 1.0,
+      "survival": 1.0,
+      "world": "metabolic"
+    },
+    {
+      "arm": "individual",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {},
+      "future_fidelity": 0.7706666666666667,
+      "grants": 65.0,
+      "help_delay": 9,
+      "lives": 4,
+      "mean_life_steps": 400.0,
+      "report_fidelity": 0.36133333333333334,
+      "silent_grants": 1.0,
+      "survival": 1.0,
+      "world": "metabolic"
+    },
+    {
+      "arm": "oracle",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {},
+      "future_fidelity": 1.0,
+      "grants": 65.0,
+      "help_delay": 9,
+      "lives": 4,
+      "mean_life_steps": 400.0,
+      "report_fidelity": 0.326,
+      "silent_grants": 1.0,
+      "survival": 1.0,
+      "world": "metabolic"
+    },
+    {
+      "arm": "population",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {
+        "food": 1,
+        "water": 1
+      },
+      "future_fidelity": 0.8367609254498715,
+      "grants": 35.0,
+      "help_delay": 12,
+      "lives": 4,
+      "mean_life_steps": 219.5,
+      "report_fidelity": 0.45629820051413883,
+      "silent_grants": 1.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    },
+    {
+      "arm": "snap",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {
+        "food": 1,
+        "water": 1
+      },
+      "future_fidelity": 0.8933161953727506,
+      "grants": 35.0,
+      "help_delay": 12,
+      "lives": 4,
+      "mean_life_steps": 219.5,
+      "report_fidelity": 0.480719794344473,
+      "silent_grants": 1.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    },
+    {
+      "arm": "myopic",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {
+        "energy": 1,
+        "water": 1
+      },
+      "future_fidelity": 0.30445544554455445,
+      "grants": 36.25,
+      "help_delay": 12,
+      "lives": 4,
+      "mean_life_steps": 227.0,
+      "report_fidelity": 0.9863861386138614,
+      "silent_grants": 1.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    },
+    {
+      "arm": "state_oracle",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {
+        "energy": 1,
+        "water": 1
+      },
+      "future_fidelity": 0.9681818181818181,
+      "grants": 39.25,
+      "help_delay": 12,
+      "lives": 4,
+      "mean_life_steps": 245.0,
+      "report_fidelity": 0.37727272727272726,
+      "silent_grants": 1.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    },
+    {
+      "arm": "recursive",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {
+        "food": 1,
+        "water": 1
+      },
+      "future_fidelity": 0.9897172236503856,
+      "grants": 35.0,
+      "help_delay": 12,
+      "lives": 4,
+      "mean_life_steps": 219.5,
+      "report_fidelity": 0.42287917737789205,
+      "silent_grants": 1.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    },
+    {
+      "arm": "individual",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {
+        "energy": 1,
+        "water": 1
+      },
+      "future_fidelity": 0.9579326923076923,
+      "grants": 37.25,
+      "help_delay": 12,
+      "lives": 4,
+      "mean_life_steps": 233.0,
+      "report_fidelity": 0.4362980769230769,
+      "silent_grants": 1.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    },
+    {
+      "arm": "oracle",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {
+        "water": 1
+      },
+      "future_fidelity": 1.0,
+      "grants": 49.75,
+      "help_delay": 12,
+      "lives": 4,
+      "mean_life_steps": 307.75,
+      "report_fidelity": 0.38726790450928383,
+      "silent_grants": 1.0,
+      "survival": 0.75,
+      "world": "metabolic"
+    },
+    {
+      "arm": "population",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {
+        "energy": 1,
+        "food": 1
+      },
+      "future_fidelity": 0.5770750988142292,
+      "grants": 33.0,
+      "help_delay": 18,
+      "lives": 4,
+      "mean_life_steps": 213.25,
+      "report_fidelity": 0.6587615283267457,
+      "silent_grants": 2.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    },
+    {
+      "arm": "snap",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {
+        "energy": 1,
+        "food": 1
+      },
+      "future_fidelity": 0.6469038208168643,
+      "grants": 33.0,
+      "help_delay": 18,
+      "lives": 4,
+      "mean_life_steps": 213.25,
+      "report_fidelity": 0.7391304347826086,
+      "silent_grants": 2.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    },
+    {
+      "arm": "myopic",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {
+        "food": 2
+      },
+      "future_fidelity": 0.25647668393782386,
+      "grants": 33.5,
+      "help_delay": 18,
+      "lives": 4,
+      "mean_life_steps": 216.5,
+      "report_fidelity": 0.9961139896373057,
+      "silent_grants": 2.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    },
+    {
+      "arm": "state_oracle",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {
+        "food": 2
+      },
+      "future_fidelity": 0.8069948186528497,
+      "grants": 33.5,
+      "help_delay": 18,
+      "lives": 4,
+      "mean_life_steps": 216.5,
+      "report_fidelity": 0.6528497409326425,
+      "silent_grants": 2.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    },
+    {
+      "arm": "recursive",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {
+        "energy": 1,
+        "food": 1
+      },
+      "future_fidelity": 0.9407114624505929,
+      "grants": 33.0,
+      "help_delay": 18,
+      "lives": 4,
+      "mean_life_steps": 213.25,
+      "report_fidelity": 0.5718050065876152,
+      "silent_grants": 2.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    },
+    {
+      "arm": "individual",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {
+        "food": 2
+      },
+      "future_fidelity": 0.9702072538860104,
+      "grants": 33.5,
+      "help_delay": 18,
+      "lives": 4,
+      "mean_life_steps": 216.5,
+      "report_fidelity": 0.4417098445595855,
+      "silent_grants": 2.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    },
+    {
+      "arm": "oracle",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {
+        "food": 2
+      },
+      "future_fidelity": 1.0,
+      "grants": 33.5,
+      "help_delay": 18,
+      "lives": 4,
+      "mean_life_steps": 216.5,
+      "report_fidelity": 0.47150259067357514,
+      "silent_grants": 2.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    },
+    {
+      "arm": "population",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {
+        "energy": 1,
+        "food": 1
+      },
+      "future_fidelity": 0.6086956521739131,
+      "grants": 32.0,
+      "help_delay": 24,
+      "lives": 4,
+      "mean_life_steps": 213.25,
+      "report_fidelity": 0.5862977602108037,
+      "silent_grants": 3.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    },
+    {
+      "arm": "snap",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {
+        "energy": 1,
+        "food": 1
+      },
+      "future_fidelity": 0.6521739130434783,
+      "grants": 32.0,
+      "help_delay": 24,
+      "lives": 4,
+      "mean_life_steps": 213.25,
+      "report_fidelity": 0.5586297760210803,
+      "silent_grants": 3.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    },
+    {
+      "arm": "myopic",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {
+        "energy": 1,
+        "food": 1,
+        "water": 1
+      },
+      "future_fidelity": 0.24750830564784054,
+      "grants": 25.5,
+      "help_delay": 24,
+      "lives": 4,
+      "mean_life_steps": 174.0,
+      "report_fidelity": 0.9983388704318937,
+      "silent_grants": 3.0,
+      "survival": 0.25,
+      "world": "metabolic"
+    },
+    {
+      "arm": "state_oracle",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {
+        "energy": 1,
+        "food": 1
+      },
+      "future_fidelity": 0.83399209486166,
+      "grants": 32.0,
+      "help_delay": 24,
+      "lives": 4,
+      "mean_life_steps": 213.25,
+      "report_fidelity": 0.5138339920948617,
+      "silent_grants": 3.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    },
+    {
+      "arm": "recursive",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {
+        "energy": 1,
+        "food": 1
+      },
+      "future_fidelity": 0.9130434782608695,
+      "grants": 32.0,
+      "help_delay": 24,
+      "lives": 4,
+      "mean_life_steps": 213.25,
+      "report_fidelity": 0.47299077733860345,
+      "silent_grants": 3.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    },
+    {
+      "arm": "individual",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {
+        "energy": 1,
+        "food": 1
+      },
+      "future_fidelity": 0.9009126466753585,
+      "grants": 32.25,
+      "help_delay": 24,
+      "lives": 4,
+      "mean_life_steps": 215.25,
+      "report_fidelity": 0.409387222946545,
+      "silent_grants": 3.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    },
+    {
+      "arm": "oracle",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {
+        "energy": 1,
+        "food": 1
+      },
+      "future_fidelity": 1.0,
+      "grants": 32.25,
+      "help_delay": 24,
+      "lives": 4,
+      "mean_life_steps": 215.25,
+      "report_fidelity": 0.46284224250325945,
+      "silent_grants": 3.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    }
+  ],
+  "delay_sweep": [
+    0,
+    3,
+    6,
+    9,
+    12,
+    18,
+    24
+  ],
+  "divergence": {
+    "body_error": {
+      "individual": 0.06496900720093209,
+      "myopic": 0.0,
+      "oracle": 0.0,
+      "population": 0.146257962784965,
+      "recursive": 0.022907057464851457,
+      "snap": 0.05825742277382967,
+      "state_oracle": 0.0
+    },
+    "caregiver_store": 0.0,
+    "consequential_accuracy": {
+      "individual": 0.7729805013927576,
+      "myopic": 0.5654596100278552,
+      "oracle": 1.0,
+      "population": 0.5069637883008357,
+      "recursive": 0.9011142061281338,
+      "snap": 0.6810584958217271,
+      "state_oracle": 0.8036211699164345
+    },
+    "consequential_share": 0.9573333333333334,
+    "discriminating_share": 0.488,
+    "divergence": {
+      "cell": 0.01,
+      "correct_divergence": {
+        "individual": 0.0,
+        "myopic": 0.0,
+        "oracle": 0.0,
+        "population": 0.0,
+        "recursive": 0.0,
+        "snap": 0.0,
+        "state_oracle": 0.0
+      },
+      "divergence": {
+        "individual": 0.0,
+        "myopic": 0.0,
+        "oracle": 0.0,
+        "population": 0.0,
+        "recursive": 0.0,
+        "snap": 0.0,
+        "state_oracle": 0.0
+      },
+      "pairs": 0,
+      "records": 750
+    },
+    "future_moved_share": 0.42933333333333334,
+    "help_delay": 18,
+    "interoception_probability": 0.03,
+    "lives": 4,
+    "need_accuracy": {
+      "individual": 0.7746666666666666,
+      "myopic": 0.5666666666666667,
+      "oracle": 1.0,
+      "population": 0.512,
+      "recursive": 0.8946666666666667,
+      "snap": 0.6786666666666666,
+      "state_oracle": 0.7973333333333333
+    },
+    "prior_rate_error": 0.3,
+    "rate_error": 0.02937558849419288,
+    "readings_per_life": 6.75,
+    "regret": {
+      "individual": 0.02427285148978753,
+      "myopic": 0.05892404869657237,
+      "oracle": 0.0,
+      "population": 0.06984171985668222,
+      "recursive": 0.009201578003587644,
+      "snap": 0.03616280752830102,
+      "state_oracle": 0.014252923455410654
+    },
+    "scored_ticks": 750,
+    "seed_base": 1000000000,
+    "shuffled_readings": false,
+    "world": "metabolic"
+  },
+  "horizon": [
+    {
+      "body_error": {
+        "individual": 0.04426722155648438,
+        "myopic": 0.0,
+        "oracle": 0.0,
+        "population": 0.13661944269631948,
+        "recursive": 0.01879398670959783,
+        "snap": 0.05895963943894678,
+        "state_oracle": 0.0
+      },
+      "caregiver_store": 0.0,
+      "consequential_accuracy": {
+        "individual": 0.8082788671023965,
+        "myopic": 1.0,
+        "oracle": 1.0,
+        "population": 0.4923747276688453,
+        "recursive": 0.9179375453885258,
+        "snap": 0.7480029048656499,
+        "state_oracle": 1.0
+      },
+      "consequential_share": 0.9348268839103869,
+      "discriminating_share": 0.5159538357094365,
+      "future_moved_share": 0.0,
+      "help_delay": 0,
+      "interoception_probability": 0.03,
+      "lives": 4,
+      "need_accuracy": {
+        "individual": 0.8038017651052274,
+        "myopic": 0.9837067209775967,
+        "oracle": 1.0,
+        "population": 0.48404616429056346,
+        "recursive": 0.9015614392396469,
+        "snap": 0.7325186693822132,
+        "state_oracle": 0.9837067209775967
+      },
+      "prior_rate_error": 0.3,
+      "rate_error": 0.07497291103685512,
+      "readings_per_life": 11.5,
+      "regret": {
+        "individual": 0.014798834201323269,
+        "myopic": 4.513715761740546e-05,
+        "oracle": 0.0,
+        "population": 0.05012534801957604,
+        "recursive": 0.005114707274412948,
+        "snap": 0.019350674773890606,
+        "state_oracle": 4.513715761740546e-05
+      },
+      "scored_ticks": 1473,
+      "seed_base": 1000000000,
+      "shuffled_readings": false,
+      "world": "metabolic"
+    },
+    {
+      "body_error": {
+        "individual": 0.026389243373299332,
+        "myopic": 0.0,
+        "oracle": 0.0,
+        "population": 0.1138995606471839,
+        "recursive": 0.01928613373018289,
+        "snap": 0.059063250369014504,
+        "state_oracle": 0.0
+      },
+      "caregiver_store": 0.0,
+      "consequential_accuracy": {
+        "individual": 0.8784773060029283,
+        "myopic": 0.657393850658858,
+        "oracle": 1.0,
+        "population": 0.575402635431918,
+        "recursive": 0.9158125915080527,
+        "snap": 0.7423133235724744,
+        "state_oracle": 0.972181551976574
+      },
+      "consequential_share": 0.9273591310251188,
+      "discriminating_share": 0.4304141208418194,
+      "future_moved_share": 0.3448744059742023,
+      "help_delay": 3,
+      "interoception_probability": 0.03,
+      "lives": 4,
+      "need_accuracy": {
+        "individual": 0.8710115410726409,
+        "myopic": 0.6415478615071283,
+        "oracle": 1.0,
+        "population": 0.5695858791581806,
+        "recursive": 0.8920570264765784,
+        "snap": 0.7284453496266123,
+        "state_oracle": 0.9477257298031229
+      },
+      "prior_rate_error": 0.3,
+      "rate_error": 0.06857472538470998,
+      "readings_per_life": 11.5,
+      "regret": {
+        "individual": 0.009145235312346876,
+        "myopic": 0.0337609803411611,
+        "oracle": 0.0,
+        "population": 0.03973888998397737,
+        "recursive": 0.00568926330887966,
+        "snap": 0.020691535159940093,
+        "state_oracle": 0.0006097310004026549
+      },
+      "scored_ticks": 1473,
+      "seed_base": 1000000000,
+      "shuffled_readings": false,
+      "world": "metabolic"
+    },
+    {
+      "body_error": {
+        "individual": 0.01705329832628484,
+        "myopic": 0.0,
+        "oracle": 0.0,
+        "population": 0.10866926888452562,
+        "recursive": 0.014500120354827572,
+        "snap": 0.043793264488718384,
+        "state_oracle": 0.0
+      },
+      "caregiver_store": 0.0,
+      "consequential_accuracy": {
+        "individual": 0.9337121212121212,
+        "myopic": 0.5208333333333334,
+        "oracle": 1.0,
+        "population": 0.5435606060606061,
+        "recursive": 0.946969696969697,
+        "snap": 0.7916666666666666,
+        "state_oracle": 0.9431818181818182
+      },
+      "consequential_share": 0.9445438282647585,
+      "discriminating_share": 0.4561717352415027,
+      "future_moved_share": 0.4776386404293381,
+      "help_delay": 6,
+      "interoception_probability": 0.03,
+      "lives": 4,
+      "need_accuracy": {
+        "individual": 0.9266547406082289,
+        "myopic": 0.5080500894454383,
+        "oracle": 1.0,
+        "population": 0.5438282647584973,
+        "recursive": 0.9427549194991055,
+        "snap": 0.776386404293381,
+        "state_oracle": 0.9230769230769231
+      },
+      "prior_rate_error": 0.3,
+      "rate_error": 0.018686354583140764,
+      "readings_per_life": 5.5,
+      "regret": {
+        "individual": 0.006932784064632425,
+        "myopic": 0.053592730781722275,
+        "oracle": 0.0,
+        "population": 0.0578910186328121,
+        "recursive": 0.0025762005361376038,
+        "snap": 0.016555430525083563,
+        "state_oracle": 0.0015534852847729544
+      },
+      "scored_ticks": 559,
+      "seed_base": 1000000000,
+      "shuffled_readings": false,
+      "world": "metabolic"
+    },
+    {
+      "body_error": {
+        "individual": 0.06941380766565254,
+        "myopic": 0.0,
+        "oracle": 0.0,
+        "population": 0.1836721815529767,
+        "recursive": 0.03790612506658738,
+        "snap": 0.05862906247360596,
+        "state_oracle": 0.0
+      },
+      "caregiver_store": 0.0,
+      "consequential_accuracy": {
+        "individual": 0.7826704545454546,
+        "myopic": 0.3877840909090909,
+        "oracle": 1.0,
+        "population": 0.3877840909090909,
+        "recursive": 0.8849431818181818,
+        "snap": 0.7258522727272727,
+        "state_oracle": 0.8991477272727273
+      },
+      "consequential_share": 0.9386666666666666,
+      "discriminating_share": 0.6093333333333333,
+      "future_moved_share": 0.6253333333333333,
+      "help_delay": 9,
+      "interoception_probability": 0.03,
+      "lives": 4,
+      "need_accuracy": {
+        "individual": 0.7706666666666667,
+        "myopic": 0.37466666666666665,
+        "oracle": 1.0,
+        "population": 0.39066666666666666,
+        "recursive": 0.8573333333333333,
+        "snap": 0.712,
+        "state_oracle": 0.8746666666666667
+      },
+      "prior_rate_error": 0.3,
+      "rate_error": 0.05299601095430015,
+      "readings_per_life": 6.75,
+      "regret": {
+        "individual": 0.024699639145980584,
+        "myopic": 0.06985056426350103,
+        "oracle": 0.0,
+        "population": 0.08125607462562798,
+        "recursive": 0.008776358559455008,
+        "snap": 0.024903159712440684,
+        "state_oracle": 0.004608857049186076
+      },
+      "scored_ticks": 750,
+      "seed_base": 1000000000,
+      "shuffled_readings": false,
+      "world": "metabolic"
+    },
+    {
+      "body_error": {
+        "individual": 0.0530234207779203,
+        "myopic": 0.0,
+        "oracle": 0.0,
+        "population": 0.14593804118670167,
+        "recursive": 0.020199816819288945,
+        "snap": 0.06513067587247363,
+        "state_oracle": 0.0
+      },
+      "caregiver_store": 0.0,
+      "consequential_accuracy": {
+        "individual": 0.8955223880597015,
+        "myopic": 0.4871099050203528,
+        "oracle": 1.0,
+        "population": 0.582089552238806,
+        "recursive": 0.9416553595658074,
+        "snap": 0.7639077340569878,
+        "state_oracle": 0.9443690637720489
+      },
+      "consequential_share": 0.9826666666666667,
+      "discriminating_share": 0.42133333333333334,
+      "future_moved_share": 0.5146666666666667,
+      "help_delay": 12,
+      "interoception_probability": 0.03,
+      "lives": 4,
+      "need_accuracy": {
+        "individual": 0.8933333333333333,
+        "myopic": 0.4866666666666667,
+        "oracle": 1.0,
+        "population": 0.5786666666666667,
+        "recursive": 0.9346666666666666,
+        "snap": 0.7586666666666667,
+        "state_oracle": 0.936
+      },
+      "prior_rate_error": 0.3,
+      "rate_error": 0.024266428384459075,
+      "readings_per_life": 6.75,
+      "regret": {
+        "individual": 0.015263283765791977,
+        "myopic": 0.07675797693052093,
+        "oracle": 0.0,
+        "population": 0.07076597528726444,
+        "recursive": 0.006772829895997313,
+        "snap": 0.03384878315626355,
+        "state_oracle": 0.003767034898126045
+      },
+      "scored_ticks": 750,
+      "seed_base": 1000000000,
+      "shuffled_readings": false,
+      "world": "metabolic"
+    },
+    {
+      "body_error": {
+        "individual": 0.06496900720093209,
+        "myopic": 0.0,
+        "oracle": 0.0,
+        "population": 0.146257962784965,
+        "recursive": 0.022907057464851457,
+        "snap": 0.05825742277382967,
+        "state_oracle": 0.0
+      },
+      "caregiver_store": 0.0,
+      "consequential_accuracy": {
+        "individual": 0.7729805013927576,
+        "myopic": 0.5654596100278552,
+        "oracle": 1.0,
+        "population": 0.5069637883008357,
+        "recursive": 0.9011142061281338,
+        "snap": 0.6810584958217271,
+        "state_oracle": 0.8036211699164345
+      },
+      "consequential_share": 0.9573333333333334,
+      "discriminating_share": 0.488,
+      "future_moved_share": 0.42933333333333334,
+      "help_delay": 18,
+      "interoception_probability": 0.03,
+      "lives": 4,
+      "need_accuracy": {
+        "individual": 0.7746666666666666,
+        "myopic": 0.5666666666666667,
+        "oracle": 1.0,
+        "population": 0.512,
+        "recursive": 0.8946666666666667,
+        "snap": 0.6786666666666666,
+        "state_oracle": 0.7973333333333333
+      },
+      "prior_rate_error": 0.3,
+      "rate_error": 0.02937558849419288,
+      "readings_per_life": 6.75,
+      "regret": {
+        "individual": 0.02427285148978753,
+        "myopic": 0.05892404869657237,
+        "oracle": 0.0,
+        "population": 0.06984171985668222,
+        "recursive": 0.009201578003587644,
+        "snap": 0.03616280752830102,
+        "state_oracle": 0.014252923455410654
+      },
+      "scored_ticks": 750,
+      "seed_base": 1000000000,
+      "shuffled_readings": false,
+      "world": "metabolic"
+    },
+    {
+      "body_error": {
+        "individual": 7.947387301193631e-09,
+        "myopic": 0.0,
+        "oracle": 0.0,
+        "population": 0.17642951053954728,
+        "recursive": 0.166414791840539,
+        "snap": 0.166414791840539,
+        "state_oracle": 0.0
+      },
+      "caregiver_store": 0.0,
+      "consequential_accuracy": {
+        "individual": 1.0,
+        "myopic": 0.9565217391304348,
+        "oracle": 1.0,
+        "population": 0.08695652173913043,
+        "recursive": 0.13043478260869565,
+        "snap": 0.13043478260869565,
+        "state_oracle": 0.5652173913043478
+      },
+      "consequential_share": 1.0,
+      "discriminating_share": 0.9130434782608695,
+      "future_moved_share": 0.043478260869565216,
+      "help_delay": 24,
+      "interoception_probability": 0.03,
+      "lives": 4,
+      "need_accuracy": {
+        "individual": 1.0,
+        "myopic": 0.9565217391304348,
+        "oracle": 1.0,
+        "population": 0.08695652173913043,
+        "recursive": 0.13043478260869565,
+        "snap": 0.13043478260869565,
+        "state_oracle": 0.5652173913043478
+      },
+      "prior_rate_error": 0.3,
+      "rate_error": 0.09764397414131504,
+      "readings_per_life": 1.0,
+      "regret": {
+        "individual": 0.0,
+        "myopic": 0.010477719447975363,
+        "oracle": 0.0,
+        "population": 0.19231393026143556,
+        "recursive": 0.1768941261914841,
+        "snap": 0.1768941261914841,
+        "state_oracle": 0.07010434124173091
+      },
+      "scored_ticks": 23,
+      "seed_base": 1000000000,
+      "shuffled_readings": false,
+      "world": "metabolic"
+    }
+  ],
+  "null": {
+    "body_error": {
+      "individual": 1.1797304450864315e-09,
+      "myopic": 0.0,
+      "oracle": 0.0,
+      "population": 1.1797304450864315e-09,
+      "recursive": 1.820915920946199e-09,
+      "snap": 4.432819477081561e-10,
+      "state_oracle": 0.0
+    },
+    "caregiver_store": 0.0,
+    "consequential_accuracy": {
+      "individual": 1.0,
+      "myopic": 0.719885277246654,
+      "oracle": 1.0,
+      "population": 1.0,
+      "recursive": 1.0,
+      "snap": 1.0,
+      "state_oracle": 1.0
+    },
+    "consequential_share": 0.9297777777777778,
+    "discriminating_share": 0.0,
+    "future_moved_share": 0.296,
+    "help_delay": 18,
+    "interoception_probability": 0.03,
+    "lives": 4,
+    "need_accuracy": {
+      "individual": 1.0,
+      "myopic": 0.704,
+      "oracle": 1.0,
+      "population": 1.0,
+      "recursive": 0.9982222222222222,
+      "snap": 1.0,
+      "state_oracle": 1.0
+    },
+    "prior_rate_error": 0.0,
+    "rate_error": 1.0433326850615524e-08,
+    "readings_per_life": 9.0,
+    "regret": {
+      "individual": 0.0,
+      "myopic": 0.035879187945809396,
+      "oracle": 0.0,
+      "population": 0.0,
+      "recursive": 5.921189464667501e-19,
+      "snap": 0.0,
+      "state_oracle": 0.0
+    },
+    "scored_ticks": 1125,
+    "seed_base": 1000000000,
+    "shuffled_readings": false,
+    "world": "null"
+  },
+  "operating_delay": 18,
+  "seed_base": 1000000000,
+  "store": [
+    {
+      "arm": "population",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {
+        "energy": 1,
+        "food": 1
+      },
+      "future_fidelity": 0.5770750988142292,
+      "grants": 33.0,
+      "help_delay": 18,
+      "lives": 4,
+      "mean_life_steps": 213.25,
+      "report_fidelity": 0.6587615283267457,
+      "silent_grants": 2.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    },
+    {
+      "arm": "snap",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {
+        "energy": 1,
+        "food": 1
+      },
+      "future_fidelity": 0.6469038208168643,
+      "grants": 33.0,
+      "help_delay": 18,
+      "lives": 4,
+      "mean_life_steps": 213.25,
+      "report_fidelity": 0.7391304347826086,
+      "silent_grants": 2.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    },
+    {
+      "arm": "myopic",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {
+        "food": 2
+      },
+      "future_fidelity": 0.25647668393782386,
+      "grants": 33.5,
+      "help_delay": 18,
+      "lives": 4,
+      "mean_life_steps": 216.5,
+      "report_fidelity": 0.9961139896373057,
+      "silent_grants": 2.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    },
+    {
+      "arm": "state_oracle",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {
+        "food": 2
+      },
+      "future_fidelity": 0.8069948186528497,
+      "grants": 33.5,
+      "help_delay": 18,
+      "lives": 4,
+      "mean_life_steps": 216.5,
+      "report_fidelity": 0.6528497409326425,
+      "silent_grants": 2.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    },
+    {
+      "arm": "recursive",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {
+        "energy": 1,
+        "food": 1
+      },
+      "future_fidelity": 0.9407114624505929,
+      "grants": 33.0,
+      "help_delay": 18,
+      "lives": 4,
+      "mean_life_steps": 213.25,
+      "report_fidelity": 0.5718050065876152,
+      "silent_grants": 2.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    },
+    {
+      "arm": "individual",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {
+        "food": 2
+      },
+      "future_fidelity": 0.9702072538860104,
+      "grants": 33.5,
+      "help_delay": 18,
+      "lives": 4,
+      "mean_life_steps": 216.5,
+      "report_fidelity": 0.4417098445595855,
+      "silent_grants": 2.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    },
+    {
+      "arm": "oracle",
+      "caregiver_store": 0.0,
+      "deaths_by_need": {
+        "food": 2
+      },
+      "future_fidelity": 1.0,
+      "grants": 33.5,
+      "help_delay": 18,
+      "lives": 4,
+      "mean_life_steps": 216.5,
+      "report_fidelity": 0.47150259067357514,
+      "silent_grants": 2.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    },
+    {
+      "arm": "population",
+      "caregiver_store": 30.0,
+      "deaths_by_need": {
+        "energy": 1,
+        "food": 1
+      },
+      "future_fidelity": 0.5770750988142292,
+      "grants": 33.0,
+      "help_delay": 18,
+      "lives": 4,
+      "mean_life_steps": 213.25,
+      "report_fidelity": 0.6587615283267457,
+      "silent_grants": 2.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    },
+    {
+      "arm": "snap",
+      "caregiver_store": 30.0,
+      "deaths_by_need": {
+        "energy": 1,
+        "food": 1
+      },
+      "future_fidelity": 0.6469038208168643,
+      "grants": 33.0,
+      "help_delay": 18,
+      "lives": 4,
+      "mean_life_steps": 213.25,
+      "report_fidelity": 0.7391304347826086,
+      "silent_grants": 2.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    },
+    {
+      "arm": "myopic",
+      "caregiver_store": 30.0,
+      "deaths_by_need": {
+        "food": 2
+      },
+      "future_fidelity": 0.25647668393782386,
+      "grants": 33.5,
+      "help_delay": 18,
+      "lives": 4,
+      "mean_life_steps": 216.5,
+      "report_fidelity": 0.9961139896373057,
+      "silent_grants": 2.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    },
+    {
+      "arm": "state_oracle",
+      "caregiver_store": 30.0,
+      "deaths_by_need": {
+        "food": 2
+      },
+      "future_fidelity": 0.8069948186528497,
+      "grants": 33.5,
+      "help_delay": 18,
+      "lives": 4,
+      "mean_life_steps": 216.5,
+      "report_fidelity": 0.6528497409326425,
+      "silent_grants": 2.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    },
+    {
+      "arm": "recursive",
+      "caregiver_store": 30.0,
+      "deaths_by_need": {
+        "energy": 1,
+        "food": 1
+      },
+      "future_fidelity": 0.9407114624505929,
+      "grants": 33.0,
+      "help_delay": 18,
+      "lives": 4,
+      "mean_life_steps": 213.25,
+      "report_fidelity": 0.5718050065876152,
+      "silent_grants": 2.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    },
+    {
+      "arm": "individual",
+      "caregiver_store": 30.0,
+      "deaths_by_need": {
+        "food": 2
+      },
+      "future_fidelity": 0.9702072538860104,
+      "grants": 33.5,
+      "help_delay": 18,
+      "lives": 4,
+      "mean_life_steps": 216.5,
+      "report_fidelity": 0.4417098445595855,
+      "silent_grants": 2.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    },
+    {
+      "arm": "oracle",
+      "caregiver_store": 30.0,
+      "deaths_by_need": {
+        "food": 2
+      },
+      "future_fidelity": 1.0,
+      "grants": 33.5,
+      "help_delay": 18,
+      "lives": 4,
+      "mean_life_steps": 216.5,
+      "report_fidelity": 0.47150259067357514,
+      "silent_grants": 2.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    },
+    {
+      "arm": "population",
+      "caregiver_store": 24.0,
+      "deaths_by_need": {
+        "energy": 1,
+        "food": 1
+      },
+      "future_fidelity": 0.5810276679841897,
+      "grants": 33.0,
+      "help_delay": 18,
+      "lives": 4,
+      "mean_life_steps": 213.25,
+      "report_fidelity": 0.6561264822134387,
+      "silent_grants": 2.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    },
+    {
+      "arm": "snap",
+      "caregiver_store": 24.0,
+      "deaths_by_need": {
+        "energy": 1,
+        "food": 1
+      },
+      "future_fidelity": 0.6271409749670619,
+      "grants": 33.0,
+      "help_delay": 18,
+      "lives": 4,
+      "mean_life_steps": 213.25,
+      "report_fidelity": 0.7088274044795784,
+      "silent_grants": 2.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    },
+    {
+      "arm": "myopic",
+      "caregiver_store": 24.0,
+      "deaths_by_need": {
+        "food": 2
+      },
+      "future_fidelity": 0.23316062176165803,
+      "grants": 33.5,
+      "help_delay": 18,
+      "lives": 4,
+      "mean_life_steps": 216.5,
+      "report_fidelity": 0.9961139896373057,
+      "silent_grants": 2.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    },
+    {
+      "arm": "state_oracle",
+      "caregiver_store": 24.0,
+      "deaths_by_need": {
+        "food": 2
+      },
+      "future_fidelity": 0.7901554404145078,
+      "grants": 33.5,
+      "help_delay": 18,
+      "lives": 4,
+      "mean_life_steps": 216.5,
+      "report_fidelity": 0.6269430051813472,
+      "silent_grants": 2.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    },
+    {
+      "arm": "recursive",
+      "caregiver_store": 24.0,
+      "deaths_by_need": {
+        "energy": 1,
+        "food": 1
+      },
+      "future_fidelity": 0.9407114624505929,
+      "grants": 33.0,
+      "help_delay": 18,
+      "lives": 4,
+      "mean_life_steps": 213.25,
+      "report_fidelity": 0.5797101449275363,
+      "silent_grants": 2.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    },
+    {
+      "arm": "individual",
+      "caregiver_store": 24.0,
+      "deaths_by_need": {
+        "food": 2
+      },
+      "future_fidelity": 0.9702072538860104,
+      "grants": 33.5,
+      "help_delay": 18,
+      "lives": 4,
+      "mean_life_steps": 216.5,
+      "report_fidelity": 0.4430051813471503,
+      "silent_grants": 2.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    },
+    {
+      "arm": "oracle",
+      "caregiver_store": 24.0,
+      "deaths_by_need": {
+        "food": 2
+      },
+      "future_fidelity": 1.0,
+      "grants": 33.5,
+      "help_delay": 18,
+      "lives": 4,
+      "mean_life_steps": 216.5,
+      "report_fidelity": 0.4727979274611399,
+      "silent_grants": 2.0,
+      "survival": 0.5,
+      "world": "metabolic"
+    },
+    {
+      "arm": "population",
+      "caregiver_store": 18.0,
+      "deaths_by_need": {
+        "energy": 2,
+        "food": 1,
+        "water": 1
+      },
+      "future_fidelity": 0.5339652448657188,
+      "grants": 27.75,
+      "help_delay": 18,
+      "lives": 4,
+      "mean_life_steps": 181.75,
+      "report_fidelity": 0.5892575039494471,
+      "silent_grants": 2.0,
+      "survival": 0.0,
+      "world": "metabolic"
+    },
+    {
+      "arm": "snap",
+      "caregiver_store": 18.0,
+      "deaths_by_need": {
+        "energy": 2,
+        "food": 1,
+        "water": 1
+      },
+      "future_fidelity": 0.6208530805687204,
+      "grants": 27.75,
+      "help_delay": 18,
+      "lives": 4,
+      "mean_life_steps": 181.75,
+      "report_fidelity": 0.6587677725118484,
+      "silent_grants": 2.0,
+      "survival": 0.0,
+      "world": "metabolic"
+    },
+    {
+      "arm": "myopic",
+      "caregiver_store": 18.0,
+      "deaths_by_need": {
+        "energy": 1,
+        "food": 2,
+        "water": 1
+      },
+      "future_fidelity": 0.23370429252782193,
+      "grants": 27.75,
+      "help_delay": 18,
+      "lives": 4,
+      "mean_life_steps": 180.75,
+      "report_fidelity": 0.9920508744038156,
+      "silent_grants": 2.0,
+      "survival": 0.0,
+      "world": "metabolic"
+    },
+    {
+      "arm": "state_oracle",
+      "caregiver_store": 18.0,
+      "deaths_by_need": {
+        "energy": 1,
+        "food": 2,
+        "water": 1
+      },
+      "future_fidelity": 0.8219814241486069,
+      "grants": 28.25,
+      "help_delay": 18,
+      "lives": 4,
+      "mean_life_steps": 185.0,
+      "report_fidelity": 0.6625386996904025,
+      "silent_grants": 2.0,
+      "survival": 0.0,
+      "world": "metabolic"
+    },
+    {
+      "arm": "recursive",
+      "caregiver_store": 18.0,
+      "deaths_by_need": {
+        "energy": 2,
+        "food": 1,
+        "water": 1
+      },
+      "future_fidelity": 0.9067930489731437,
+      "grants": 27.75,
+      "help_delay": 18,
+      "lives": 4,
+      "mean_life_steps": 181.75,
+      "report_fidelity": 0.5829383886255924,
+      "silent_grants": 2.0,
+      "survival": 0.0,
+      "world": "metabolic"
+    },
+    {
+      "arm": "individual",
+      "caregiver_store": 18.0,
+      "deaths_by_need": {
+        "energy": 1,
+        "food": 2,
+        "water": 1
+      },
+      "future_fidelity": 0.9659442724458205,
+      "grants": 28.25,
+      "help_delay": 18,
+      "lives": 4,
+      "mean_life_steps": 185.0,
+      "report_fidelity": 0.4628482972136223,
+      "silent_grants": 2.0,
+      "survival": 0.0,
+      "world": "metabolic"
+    },
+    {
+      "arm": "oracle",
+      "caregiver_store": 18.0,
+      "deaths_by_need": {
+        "energy": 1,
+        "food": 2,
+        "water": 1
+      },
+      "future_fidelity": 1.0,
+      "grants": 28.25,
+      "help_delay": 18,
+      "lives": 4,
+      "mean_life_steps": 185.0,
+      "report_fidelity": 0.48297213622291024,
+      "silent_grants": 2.0,
+      "survival": 0.0,
+      "world": "metabolic"
+    }
+  ],
+  "store_sweep": [
+    0.0,
+    30.0,
+    24.0,
+    18.0
+  ]
+}
