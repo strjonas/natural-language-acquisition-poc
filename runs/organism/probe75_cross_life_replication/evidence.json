@@ -1,0 +1,2550 @@
+{
+  "blocks": [
+    {
+      "birth_identity_mae_difference_sum": 0.32461510704502383,
+      "birth_mae_sums": {
+        "persistent_rate": 0.11235048014601724,
+        "reset_rate": 0.6542768492234012,
+        "swapped_rate": 0.43696558719104106,
+        "true_rate": 0.0
+      },
+      "birth_rate_mae_difference_sum": 0.541926369077384,
+      "cell": "reset_rate",
+      "deaths_by_need": {
+        "energy": 41,
+        "food": 11,
+        "safety": 16,
+        "water": 34
+      },
+      "episode_survivors": [
+        7,
+        8,
+        5,
+        10,
+        8
+      ],
+      "evidence_ticks_sum": 24102,
+      "final_evidence_ticks_sum": 28691,
+      "final_readings_sum": 824,
+      "identities": 28,
+      "life_steps_sum": 24242,
+      "matched_regret_sum": 39.6341671520593,
+      "means": {
+        "birth_identity_mae_value": 0.0023186793360358846,
+        "birth_mae_persistent_rate": 0.0008025034296144089,
+        "birth_mae_reset_rate": 0.004673406065881437,
+        "birth_mae_swapped_rate": 0.0031211827656502933,
+        "birth_mae_true_rate": 0.0,
+        "birth_rate_mae_value": 0.0038709026362670285,
+        "matched_regret_value": 0.0018868920329473602,
+        "mean_final_evidence_ticks": 1024.6785714285713,
+        "mean_final_readings": 29.428571428571427,
+        "mean_life_steps": 173.15714285714284,
+        "mean_readings": 4.992857142857143,
+        "rate_mae_persistent_rate": 0.00035866988635365984,
+        "rate_mae_reset_rate": 0.0007042648902486137,
+        "rate_mae_swapped_rate": 0.001555928730176342,
+        "rate_mae_true_rate": 0.0,
+        "regret_persistent_rate": 0.0033644902902815366,
+        "regret_reset_rate": 0.005251382323228897,
+        "regret_swapped_rate": 0.007855268644421041,
+        "regret_true_rate": 0.0030482068056282285,
+        "survival": 0.2714285714285714,
+        "word_difference_share": 0.042370864079980954
+      },
+      "rate_mae_sums": {
+        "persistent_rate": 7.533860962858625,
+        "reset_rate": 14.793084019672131,
+        "swapped_rate": 32.68228297735406,
+        "true_rate": 0.0
+      },
+      "readings_sum": 699,
+      "regret_sums": {
+        "persistent_rate": 70.67111854736368,
+        "reset_rate": 110.30528569942298,
+        "swapped_rate": 164.99991787606396,
+        "true_rate": 64.02758395222094
+      },
+      "scored_ticks": 21005,
+      "seed_index": 0,
+      "survivors": 38,
+      "test_episodes": 140,
+      "word_differences": {
+        "reset": 890,
+        "swapped": 2328
+      }
+    },
+    {
+      "birth_identity_mae_difference_sum": 0.3127806262395504,
+      "birth_mae_sums": {
+        "persistent_rate": 0.13815510833180006,
+        "reset_rate": 0.728604171119108,
+        "swapped_rate": 0.45093573457135044,
+        "true_rate": 0.0
+      },
+      "birth_rate_mae_difference_sum": 0.5904490627873079,
+      "cell": "reset_rate",
+      "deaths_by_need": {
+        "energy": 47,
+        "food": 26,
+        "safety": 10,
+        "water": 40
+      },
+      "episode_survivors": [
+        5,
+        2,
+        4,
+        4,
+        2
+      ],
+      "evidence_ticks_sum": 14259,
+      "final_evidence_ticks_sum": 16525,
+      "final_readings_sum": 489,
+      "identities": 28,
+      "life_steps_sum": 14399,
+      "matched_regret_sum": 25.920059504581737,
+      "means": {
+        "birth_identity_mae_value": 0.002234147330282503,
+        "birth_mae_persistent_rate": 0.0009868222023700004,
+        "birth_mae_reset_rate": 0.005204315507993629,
+        "birth_mae_swapped_rate": 0.003220969532652503,
+        "birth_mae_true_rate": 0.0,
+        "birth_rate_mae_value": 0.004217493305623628,
+        "matched_regret_value": 0.0022934046632969154,
+        "mean_final_evidence_ticks": 590.1785714285714,
+        "mean_final_readings": 17.464285714285715,
+        "mean_life_steps": 102.85,
+        "mean_readings": 3.092857142857143,
+        "rate_mae_persistent_rate": 0.00034343378629475904,
+        "rate_mae_reset_rate": 0.0006088673581285553,
+        "rate_mae_swapped_rate": 0.0018300419017954603,
+        "rate_mae_true_rate": 0.0,
+        "regret_persistent_rate": 0.0074069433518030425,
+        "regret_reset_rate": 0.009700348015099959,
+        "regret_swapped_rate": 0.01373916571136557,
+        "regret_true_rate": 0.007348711311766986,
+        "survival": 0.12142857142857143,
+        "word_difference_share": 0.04291275880375155
+      },
+      "rate_mae_sums": {
+        "persistent_rate": 3.8814886527033665,
+        "reset_rate": 6.881418881568932,
+        "swapped_rate": 20.68313357409229,
+        "true_rate": 0.0
+      },
+      "readings_sum": 433,
+      "regret_sums": {
+        "persistent_rate": 83.71327376207799,
+        "reset_rate": 109.63333326665973,
+        "swapped_rate": 155.28005086985368,
+        "true_rate": 83.05513524559048
+      },
+      "scored_ticks": 11302,
+      "seed_index": 1,
+      "survivors": 17,
+      "test_episodes": 140,
+      "word_differences": {
+        "reset": 485,
+        "swapped": 1401
+      }
+    },
+    {
+      "birth_identity_mae_difference_sum": 0.3975561841030712,
+      "birth_mae_sums": {
+        "persistent_rate": 0.15564490606793796,
+        "reset_rate": 0.683867738224936,
+        "swapped_rate": 0.5532010901710092,
+        "true_rate": 0.0
+      },
+      "birth_rate_mae_difference_sum": 0.528222832156998,
+      "cell": "reset_rate",
+      "deaths_by_need": {
+        "energy": 43,
+        "food": 11,
+        "safety": 8,
+        "water": 39
+      },
+      "episode_survivors": [
+        8,
+        9,
+        5,
+        8,
+        9
+      ],
+      "evidence_ticks_sum": 21437,
+      "final_evidence_ticks_sum": 26531,
+      "final_readings_sum": 820,
+      "identities": 28,
+      "life_steps_sum": 21577,
+      "matched_regret_sum": 40.423301686457705,
+      "means": {
+        "birth_identity_mae_value": 0.0028396870293076514,
+        "birth_mae_persistent_rate": 0.0011117493290566996,
+        "birth_mae_reset_rate": 0.004884769558749543,
+        "birth_mae_swapped_rate": 0.003951436358364351,
+        "birth_mae_true_rate": 0.0,
+        "birth_rate_mae_value": 0.0037730202296928426,
+        "matched_regret_value": 0.0021891850358222425,
+        "mean_final_evidence_ticks": 947.5357142857143,
+        "mean_final_readings": 29.285714285714285,
+        "mean_life_steps": 154.12142857142857,
+        "mean_readings": 4.5928571428571425,
+        "rate_mae_persistent_rate": 0.00040414078013989,
+        "rate_mae_reset_rate": 0.0006440203013122002,
+        "rate_mae_swapped_rate": 0.0018531646567225423,
+        "rate_mae_true_rate": 0.0,
+        "regret_persistent_rate": 0.0030426843591554215,
+        "regret_reset_rate": 0.0052318693949776635,
+        "regret_swapped_rate": 0.006830780323157633,
+        "regret_true_rate": 0.0023816730551405995,
+        "survival": 0.2785714285714286,
+        "word_difference_share": 0.059301380991064176
+      },
+      "rate_mae_sums": {
+        "persistent_rate": 7.46245950528307,
+        "reset_rate": 11.891834863729775,
+        "swapped_rate": 34.21868538638174,
+        "true_rate": 0.0
+      },
+      "readings_sum": 643,
+      "regret_sums": {
+        "persistent_rate": 56.18316669180486,
+        "reset_rate": 96.60646837826256,
+        "swapped_rate": 126.1303586671057,
+        "true_rate": 43.97759296317117
+      },
+      "scored_ticks": 18465,
+      "seed_index": 2,
+      "survivors": 39,
+      "test_episodes": 140,
+      "word_differences": {
+        "reset": 1095,
+        "swapped": 2817
+      }
+    },
+    {
+      "birth_identity_mae_difference_sum": 0.3629146873654893,
+      "birth_mae_sums": {
+        "persistent_rate": 0.1734749001980729,
+        "reset_rate": 0.627551196649985,
+        "swapped_rate": 0.5363895875635623,
+        "true_rate": 0.0
+      },
+      "birth_rate_mae_difference_sum": 0.45407629645191216,
+      "cell": "reset_rate",
+      "deaths_by_need": {
+        "energy": 49,
+        "food": 23,
+        "safety": 10,
+        "water": 34
+      },
+      "episode_survivors": [
+        8,
+        4,
+        5,
+        4,
+        3
+      ],
+      "evidence_ticks_sum": 17485,
+      "final_evidence_ticks_sum": 20784,
+      "final_readings_sum": 657,
+      "identities": 28,
+      "life_steps_sum": 17625,
+      "matched_regret_sum": 28.53430052622217,
+      "means": {
+        "birth_identity_mae_value": 0.002592247766896352,
+        "birth_mae_persistent_rate": 0.001239106429986235,
+        "birth_mae_reset_rate": 0.004482508547499893,
+        "birth_mae_swapped_rate": 0.0038313541968825874,
+        "birth_mae_true_rate": 0.0,
+        "birth_rate_mae_value": 0.0032434021175136584,
+        "matched_regret_value": 0.0019630091171038916,
+        "mean_final_evidence_ticks": 742.2857142857143,
+        "mean_final_readings": 23.464285714285715,
+        "mean_life_steps": 125.89285714285714,
+        "mean_readings": 3.9642857142857144,
+        "rate_mae_persistent_rate": 0.0004000966484616425,
+        "rate_mae_reset_rate": 0.0008997844813263172,
+        "rate_mae_swapped_rate": 0.0017991624343372753,
+        "rate_mae_true_rate": 0.0,
+        "regret_persistent_rate": 0.004399345101652629,
+        "regret_reset_rate": 0.006362354218756521,
+        "regret_swapped_rate": 0.01071782902577903,
+        "regret_true_rate": 0.002601804086064724,
+        "survival": 0.17142857142857143,
+        "word_difference_share": 0.040520088057237204
+      },
+      "rate_mae_sums": {
+        "persistent_rate": 5.815804882038436,
+        "reset_rate": 13.079267220559347,
+        "swapped_rate": 26.152625145526635,
+        "true_rate": 0.0
+      },
+      "readings_sum": 555,
+      "regret_sums": {
+        "persistent_rate": 63.94888039762262,
+        "reset_rate": 92.4831809238448,
+        "swapped_rate": 155.794362718724,
+        "true_rate": 37.81982419503683
+      },
+      "scored_ticks": 14536,
+      "seed_index": 3,
+      "survivors": 24,
+      "test_episodes": 140,
+      "word_differences": {
+        "reset": 589,
+        "swapped": 1309
+      }
+    },
+    {
+      "birth_identity_mae_difference_sum": 0.37899510636027905,
+      "birth_mae_sums": {
+        "persistent_rate": 0.16311307658193344,
+        "reset_rate": 0.8002791291132118,
+        "swapped_rate": 0.5421081829422125,
+        "true_rate": 0.0
+      },
+      "birth_rate_mae_difference_sum": 0.6371660525312783,
+      "cell": "reset_rate",
+      "deaths_by_need": {
+        "energy": 54,
+        "food": 24,
+        "safety": 6,
+        "water": 27
+      },
+      "episode_survivors": [
+        5,
+        10,
+        3,
+        5,
+        6
+      ],
+      "evidence_ticks_sum": 17258,
+      "final_evidence_ticks_sum": 21198,
+      "final_readings_sum": 622,
+      "identities": 28,
+      "life_steps_sum": 17398,
+      "matched_regret_sum": 56.48554227441617,
+      "means": {
+        "birth_identity_mae_value": 0.0027071079025734216,
+        "birth_mae_persistent_rate": 0.0011650934041566674,
+        "birth_mae_reset_rate": 0.005716279493665798,
+        "birth_mae_swapped_rate": 0.0038722013067300893,
+        "birth_mae_true_rate": 0.0,
+        "birth_rate_mae_value": 0.004551186089509131,
+        "matched_regret_value": 0.003948381257823023,
+        "mean_final_evidence_ticks": 757.0714285714286,
+        "mean_final_readings": 22.214285714285715,
+        "mean_life_steps": 124.27142857142857,
+        "mean_readings": 3.65,
+        "rate_mae_persistent_rate": 0.0004258237758595613,
+        "rate_mae_reset_rate": 0.0008516294928631517,
+        "rate_mae_swapped_rate": 0.0011208737203015238,
+        "rate_mae_true_rate": 0.0,
+        "regret_persistent_rate": 0.004900280775136194,
+        "regret_reset_rate": 0.008848662032959217,
+        "regret_swapped_rate": 0.008194394755489465,
+        "regret_true_rate": 0.004606690800679316,
+        "survival": 0.20714285714285716,
+        "word_difference_share": 0.07598210541031734
+      },
+      "rate_mae_sums": {
+        "persistent_rate": 6.091834937446884,
+        "reset_rate": 12.183411524900247,
+        "swapped_rate": 16.0352194426336,
+        "true_rate": 0.0
+      },
+      "readings_sum": 511,
+      "regret_sums": {
+        "persistent_rate": 70.10341676909839,
+        "reset_rate": 126.58895904351455,
+        "swapped_rate": 117.22901137203229,
+        "true_rate": 65.9033185945183
+      },
+      "scored_ticks": 14306,
+      "seed_index": 4,
+      "survivors": 29,
+      "test_episodes": 140,
+      "word_differences": {
+        "reset": 1087,
+        "swapped": 1593
+      }
+    },
+    {
+      "birth_identity_mae_difference_sum": 0.30014036613333556,
+      "birth_mae_sums": {
+        "persistent_rate": 0.11426342287345927,
+        "reset_rate": 0.6542768492234012,
+        "swapped_rate": 0.4144037890067948,
+        "true_rate": 0.0
+      },
+      "birth_rate_mae_difference_sum": 0.540013426349942,
+      "cell": "persistent_rate",
+      "deaths_by_need": {
+        "energy": 45,
+        "food": 9,
+        "safety": 15,
+        "water": 28
+      },
+      "episode_survivors": [
+        7,
+        9,
+        8,
+        10,
+        9
+      ],
+      "evidence_ticks_sum": 25686,
+      "final_evidence_ticks_sum": 30275,
+      "final_readings_sum": 873,
+      "identities": 28,
+      "life_steps_sum": 25826,
+      "matched_regret_sum": 45.30537871653747,
+      "means": {
+        "birth_identity_mae_value": 0.002143859758095254,
+        "birth_mae_persistent_rate": 0.0008161673062389948,
+        "birth_mae_reset_rate": 0.004673406065881437,
+        "birth_mae_swapped_rate": 0.0029600270643342485,
+        "birth_mae_true_rate": 0.0,
+        "birth_rate_mae_value": 0.003857238759642443,
+        "matched_regret_value": 0.0020056389710273793,
+        "mean_final_evidence_ticks": 1081.25,
+        "mean_final_readings": 31.178571428571427,
+        "mean_life_steps": 184.47142857142856,
+        "mean_readings": 5.3428571428571425,
+        "rate_mae_persistent_rate": 0.0003072682947509448,
+        "rate_mae_reset_rate": 0.0007796178445463635,
+        "rate_mae_swapped_rate": 0.0016382964626912727,
+        "rate_mae_true_rate": 0.0,
+        "regret_persistent_rate": 0.0038725798121156184,
+        "regret_reset_rate": 0.005878218783142998,
+        "regret_swapped_rate": 0.0093170648441702,
+        "regret_true_rate": 0.003979490987124851,
+        "survival": 0.30714285714285716,
+        "word_difference_share": 0.05569082296693081
+      },
+      "rate_mae_sums": {
+        "persistent_rate": 6.940883510129092,
+        "reset_rate": 17.610787490457806,
+        "swapped_rate": 37.00747879573316,
+        "true_rate": 0.0
+      },
+      "readings_sum": 748,
+      "regret_sums": {
+        "persistent_rate": 87.47770537587971,
+        "reset_rate": 132.78308409241717,
+        "swapped_rate": 210.46317776496068,
+        "true_rate": 89.89272190816327
+      },
+      "scored_ticks": 22589,
+      "seed_index": 0,
+      "survivors": 43,
+      "test_episodes": 140,
+      "word_differences": {
+        "reset": 1258,
+        "swapped": 2471
+      }
+    },
+    {
+      "birth_identity_mae_difference_sum": 0.29275288044724795,
+      "birth_mae_sums": {
+        "persistent_rate": 0.1357256602333096,
+        "reset_rate": 0.728604171119108,
+        "swapped_rate": 0.4284785406805576,
+        "true_rate": 0.0
+      },
+      "birth_rate_mae_difference_sum": 0.5928785108857985,
+      "cell": "persistent_rate",
+      "deaths_by_need": {
+        "energy": 47,
+        "food": 25,
+        "safety": 15,
+        "water": 34
+      },
+      "episode_survivors": [
+        4,
+        2,
+        7,
+        4,
+        2
+      ],
+      "evidence_ticks_sum": 16529,
+      "final_evidence_ticks_sum": 18795,
+      "final_readings_sum": 532,
+      "identities": 28,
+      "life_steps_sum": 16669,
+      "matched_regret_sum": 24.008082157424393,
+      "means": {
+        "birth_identity_mae_value": 0.0020910920031946283,
+        "birth_mae_persistent_rate": 0.0009694690016664971,
+        "birth_mae_reset_rate": 0.005204315507993629,
+        "birth_mae_swapped_rate": 0.0030605610048611257,
+        "birth_mae_true_rate": 0.0,
+        "birth_rate_mae_value": 0.004234846506327132,
+        "matched_regret_value": 0.001768942098248187,
+        "mean_final_evidence_ticks": 671.25,
+        "mean_final_readings": 19.0,
+        "mean_life_steps": 119.06428571428572,
+        "mean_readings": 3.4,
+        "rate_mae_persistent_rate": 0.000403235877027244,
+        "rate_mae_reset_rate": 0.0008817531092727892,
+        "rate_mae_swapped_rate": 0.0018480681437435577,
+        "rate_mae_true_rate": 0.0,
+        "regret_persistent_rate": 0.004307153332603911,
+        "regret_reset_rate": 0.006076095430852099,
+        "regret_swapped_rate": 0.008717379993434363,
+        "regret_true_rate": 0.003822610930528482,
+        "survival": 0.1357142857142857,
+        "word_difference_share": 0.049440023577954614
+      },
+      "rate_mae_sums": {
+        "persistent_rate": 5.472717323013756,
+        "reset_rate": 11.967153199050294,
+        "swapped_rate": 25.081980846887564,
+        "true_rate": 0.0
+      },
+      "readings_sum": 476,
+      "regret_sums": {
+        "persistent_rate": 58.45668503010028,
+        "reset_rate": 82.46476718752469,
+        "swapped_rate": 118.31228127089119,
+        "true_rate": 51.88047554913256
+      },
+      "scored_ticks": 13572,
+      "seed_index": 1,
+      "survivors": 19,
+      "test_episodes": 140,
+      "word_differences": {
+        "reset": 671,
+        "swapped": 1464
+      }
+    },
+    {
+      "birth_identity_mae_difference_sum": 0.3841355755018159,
+      "birth_mae_sums": {
+        "persistent_rate": 0.1554271607255143,
+        "reset_rate": 0.683867738224936,
+        "swapped_rate": 0.5395627362273302,
+        "true_rate": 0.0
+      },
+      "birth_rate_mae_difference_sum": 0.5284405774994216,
+      "cell": "persistent_rate",
+      "deaths_by_need": {
+        "energy": 42,
+        "food": 11,
+        "safety": 9,
+        "water": 34
+      },
+      "episode_survivors": [
+        9,
+        11,
+        6,
+        7,
+        11
+      ],
+      "evidence_ticks_sum": 24031,
+      "final_evidence_ticks_sum": 29125,
+      "final_readings_sum": 919,
+      "identities": 28,
+      "life_steps_sum": 24171,
+      "matched_regret_sum": 50.48641944127964,
+      "means": {
+        "birth_identity_mae_value": 0.002743825539298685,
+        "birth_mae_persistent_rate": 0.001110194005182245,
+        "birth_mae_reset_rate": 0.004884769558749543,
+        "birth_mae_swapped_rate": 0.00385401954448093,
+        "birth_mae_true_rate": 0.0,
+        "birth_rate_mae_value": 0.0037745755535672975,
+        "matched_regret_value": 0.0023973797160966636,
+        "mean_final_evidence_ticks": 1040.1785714285713,
+        "mean_final_readings": 32.82142857142857,
+        "mean_life_steps": 172.65,
+        "mean_readings": 5.3,
+        "rate_mae_persistent_rate": 0.00041679040346346516,
+        "rate_mae_reset_rate": 0.0008769887914197816,
+        "rate_mae_swapped_rate": 0.001737082529923546,
+        "rate_mae_true_rate": 0.0,
+        "regret_persistent_rate": 0.003418852612319865,
+        "regret_reset_rate": 0.0058162323284165285,
+        "regret_swapped_rate": 0.007500268937944832,
+        "regret_true_rate": 0.002971979812932498,
+        "survival": 0.3142857142857143,
+        "word_difference_share": 0.06780948762999192
+      },
+      "rate_mae_sums": {
+        "persistent_rate": 8.777189106537113,
+        "reset_rate": 18.46850695850918,
+        "swapped_rate": 36.581220997659955,
+        "true_rate": 0.0
+      },
+      "readings_sum": 742,
+      "regret_sums": {
+        "persistent_rate": 71.99761716284404,
+        "reset_rate": 122.48403660412367,
+        "swapped_rate": 157.94816356418022,
+        "true_rate": 62.58692288054547
+      },
+      "scored_ticks": 21059,
+      "seed_index": 2,
+      "survivors": 44,
+      "test_episodes": 140,
+      "word_differences": {
+        "reset": 1428,
+        "swapped": 2867
+      }
+    },
+    {
+      "birth_identity_mae_difference_sum": 0.36186324205437154,
+      "birth_mae_sums": {
+        "persistent_rate": 0.16712310078104478,
+        "reset_rate": 0.627551196649985,
+        "swapped_rate": 0.5289863428354163,
+        "true_rate": 0.0
+      },
+      "birth_rate_mae_difference_sum": 0.4604280958689403,
+      "cell": "persistent_rate",
+      "deaths_by_need": {
+        "energy": 50,
+        "food": 21,
+        "safety": 12,
+        "water": 31
+      },
+      "episode_survivors": [
+        7,
+        3,
+        5,
+        6,
+        5
+      ],
+      "evidence_ticks_sum": 18499,
+      "final_evidence_ticks_sum": 21798,
+      "final_readings_sum": 678,
+      "identities": 28,
+      "life_steps_sum": 18639,
+      "matched_regret_sum": 18.226319952063655,
+      "means": {
+        "birth_identity_mae_value": 0.002584737443245511,
+        "birth_mae_persistent_rate": 0.0011937364341503198,
+        "birth_mae_reset_rate": 0.004482508547499893,
+        "birth_mae_swapped_rate": 0.003778473877395831,
+        "birth_mae_true_rate": 0.0,
+        "birth_rate_mae_value": 0.0032887721133495734,
+        "matched_regret_value": 0.0011721106078497528,
+        "mean_final_evidence_ticks": 778.5,
+        "mean_final_readings": 24.214285714285715,
+        "mean_life_steps": 133.13571428571427,
+        "mean_readings": 4.114285714285714,
+        "rate_mae_persistent_rate": 0.00037194910800947674,
+        "rate_mae_reset_rate": 0.0006404535980508788,
+        "rate_mae_swapped_rate": 0.0013794321204691827,
+        "rate_mae_true_rate": 0.0,
+        "regret_persistent_rate": 0.005091894671661347,
+        "regret_reset_rate": 0.0062640052795111,
+        "regret_swapped_rate": 0.009131003866354015,
+        "regret_true_rate": 0.0034486431265894433,
+        "survival": 0.18571428571428572,
+        "word_difference_share": 0.04829581993569132
+      },
+      "rate_mae_sums": {
+        "persistent_rate": 5.783808629547363,
+        "reset_rate": 9.959053449691165,
+        "swapped_rate": 21.45016947329579,
+        "true_rate": 0.0
+      },
+      "readings_sum": 576,
+      "regret_sums": {
+        "persistent_rate": 79.17896214433394,
+        "reset_rate": 97.4052820963976,
+        "swapped_rate": 141.98711012180493,
+        "true_rate": 53.626400618465844
+      },
+      "scored_ticks": 15550,
+      "seed_index": 3,
+      "survivors": 26,
+      "test_episodes": 140,
+      "word_differences": {
+        "reset": 751,
+        "swapped": 989
+      }
+    },
+    {
+      "birth_identity_mae_difference_sum": 0.34913171139368543,
+      "birth_mae_sums": {
+        "persistent_rate": 0.1731805763739899,
+        "reset_rate": 0.8002791291132118,
+        "swapped_rate": 0.5223122877676754,
+        "true_rate": 0.0
+      },
+      "birth_rate_mae_difference_sum": 0.6270985527392219,
+      "cell": "persistent_rate",
+      "deaths_by_need": {
+        "energy": 50,
+        "food": 19,
+        "safety": 7,
+        "water": 24
+      },
+      "episode_survivors": [
+        6,
+        11,
+        7,
+        9,
+        7
+      ],
+      "evidence_ticks_sum": 21568,
+      "final_evidence_ticks_sum": 25508,
+      "final_readings_sum": 759,
+      "identities": 28,
+      "life_steps_sum": 21708,
+      "matched_regret_sum": 57.05508173716015,
+      "means": {
+        "birth_identity_mae_value": 0.0024937979385263247,
+        "birth_mae_persistent_rate": 0.0012370041169570706,
+        "birth_mae_reset_rate": 0.005716279493665798,
+        "birth_mae_swapped_rate": 0.0037308020554833953,
+        "birth_mae_true_rate": 0.0,
+        "birth_rate_mae_value": 0.004479275376708728,
+        "matched_regret_value": 0.0030648410903072708,
+        "mean_final_evidence_ticks": 911.0,
+        "mean_final_readings": 27.107142857142858,
+        "mean_life_steps": 155.05714285714285,
+        "mean_readings": 4.628571428571429,
+        "rate_mae_persistent_rate": 0.0004758753805349381,
+        "rate_mae_reset_rate": 0.000972443809304193,
+        "rate_mae_swapped_rate": 0.0012105936142414286,
+        "rate_mae_true_rate": 0.0,
+        "regret_persistent_rate": 0.007302489328752478,
+        "regret_reset_rate": 0.010367330419059748,
+        "regret_swapped_rate": 0.010948960066389016,
+        "regret_true_rate": 0.007267034766093566,
+        "survival": 0.2857142857142857,
+        "word_difference_share": 0.06940266437473142
+      },
+      "rate_mae_sums": {
+        "persistent_rate": 8.858896084038408,
+        "reset_rate": 18.103013954006858,
+        "swapped_rate": 22.536410722718436,
+        "true_rate": 0.0
+      },
+      "readings_sum": 648,
+      "regret_sums": {
+        "persistent_rate": 135.94314134405613,
+        "reset_rate": 192.99822308121628,
+        "swapped_rate": 203.82584059589792,
+        "true_rate": 135.2831192055978
+      },
+      "scored_ticks": 18616,
+      "seed_index": 4,
+      "survivors": 40,
+      "test_episodes": 140,
+      "word_differences": {
+        "reset": 1292,
+        "swapped": 1781
+      }
+    },
+    {
+      "birth_identity_mae_difference_sum": 0.29783354530734296,
+      "birth_mae_sums": {
+        "persistent_rate": 0.1272357372177659,
+        "reset_rate": 0.6542768492234012,
+        "swapped_rate": 0.4250692825251089,
+        "true_rate": 0.0
+      },
+      "birth_rate_mae_difference_sum": 0.5270411120056353,
+      "cell": "true_rate",
+      "deaths_by_need": {
+        "energy": 44,
+        "food": 10,
+        "safety": 16,
+        "water": 26
+      },
+      "episode_survivors": [
+        8,
+        8,
+        8,
+        11,
+        9
+      ],
+      "evidence_ticks_sum": 26302,
+      "final_evidence_ticks_sum": 30891,
+      "final_readings_sum": 893,
+      "identities": 28,
+      "life_steps_sum": 26442,
+      "matched_regret_sum": 28.34365541366439,
+      "means": {
+        "birth_identity_mae_value": 0.002127382466481021,
+        "birth_mae_persistent_rate": 0.0009088266944126136,
+        "birth_mae_reset_rate": 0.004673406065881437,
+        "birth_mae_swapped_rate": 0.003036209160893635,
+        "birth_mae_true_rate": 0.0,
+        "birth_rate_mae_value": 0.0037645793714688237,
+        "matched_regret_value": 0.0012214460423901913,
+        "mean_final_evidence_ticks": 1103.25,
+        "mean_final_readings": 31.892857142857142,
+        "mean_life_steps": 188.87142857142857,
+        "mean_readings": 5.485714285714286,
+        "rate_mae_persistent_rate": 0.0004039706481556628,
+        "rate_mae_reset_rate": 0.0006979373910714078,
+        "rate_mae_swapped_rate": 0.0017680870204463029,
+        "rate_mae_true_rate": 0.0,
+        "regret_persistent_rate": 0.004512543302718842,
+        "regret_reset_rate": 0.005733989345109034,
+        "regret_swapped_rate": 0.009488071204503616,
+        "regret_true_rate": 0.003850933982033119,
+        "survival": 0.3142857142857143,
+        "word_difference_share": 0.054040077569489336
+      },
+      "rate_mae_sums": {
+        "persistent_rate": 9.374138890452155,
+        "reset_rate": 16.19563715981202,
+        "swapped_rate": 41.02845930945646,
+        "true_rate": 0.0
+      },
+      "readings_sum": 768,
+      "regret_sums": {
+        "persistent_rate": 104.71356733959072,
+        "reset_rate": 133.05722275325513,
+        "swapped_rate": 220.1706923005064,
+        "true_rate": 89.36092305307852
+      },
+      "scored_ticks": 23205,
+      "seed_index": 0,
+      "survivors": 44,
+      "test_episodes": 140,
+      "word_differences": {
+        "reset": 1254,
+        "swapped": 2674
+      }
+    },
+    {
+      "birth_identity_mae_difference_sum": 0.28438731112275917,
+      "birth_mae_sums": {
+        "persistent_rate": 0.13482839033161467,
+        "reset_rate": 0.728604171119108,
+        "swapped_rate": 0.41921570145437387,
+        "true_rate": 0.0
+      },
+      "birth_rate_mae_difference_sum": 0.5937757807874934,
+      "cell": "true_rate",
+      "deaths_by_need": {
+        "energy": 50,
+        "food": 25,
+        "safety": 14,
+        "water": 32
+      },
+      "episode_survivors": [
+        5,
+        2,
+        6,
+        4,
+        2
+      ],
+      "evidence_ticks_sum": 16761,
+      "final_evidence_ticks_sum": 19027,
+      "final_readings_sum": 549,
+      "identities": 28,
+      "life_steps_sum": 16901,
+      "matched_regret_sum": 34.569200780569595,
+      "means": {
+        "birth_identity_mae_value": 0.002031337936591137,
+        "birth_mae_persistent_rate": 0.0009630599309401048,
+        "birth_mae_reset_rate": 0.005204315507993629,
+        "birth_mae_swapped_rate": 0.002994397867531242,
+        "birth_mae_true_rate": 0.0,
+        "birth_rate_mae_value": 0.004241255577053524,
+        "matched_regret_value": 0.0025042886685431465,
+        "mean_final_evidence_ticks": 679.5357142857143,
+        "mean_final_readings": 19.607142857142858,
+        "mean_life_steps": 120.72142857142858,
+        "mean_readings": 3.5214285714285714,
+        "rate_mae_persistent_rate": 0.000403663393553085,
+        "rate_mae_reset_rate": 0.0008312370875706972,
+        "rate_mae_swapped_rate": 0.0018834032247256462,
+        "rate_mae_true_rate": 0.0,
+        "regret_persistent_rate": 0.004385455783432179,
+        "regret_reset_rate": 0.006889744451975326,
+        "regret_swapped_rate": 0.00875580468523596,
+        "regret_true_rate": 0.00408577847699285,
+        "survival": 0.1357142857142857,
+        "word_difference_share": 0.05331787887568821
+      },
+      "rate_mae_sums": {
+        "persistent_rate": 5.5721694846067855,
+        "reset_rate": 11.474396756825904,
+        "swapped_rate": 25.99849811411282,
+        "true_rate": 0.0
+      },
+      "readings_sum": 493,
+      "regret_sums": {
+        "persistent_rate": 60.53683163449781,
+        "reset_rate": 95.1060324150674,
+        "swapped_rate": 120.8651278749972,
+        "true_rate": 56.4000860964093
+      },
+      "scored_ticks": 13804,
+      "seed_index": 1,
+      "survivors": 19,
+      "test_episodes": 140,
+      "word_differences": {
+        "reset": 736,
+        "swapped": 1576
+      }
+    },
+    {
+      "birth_identity_mae_difference_sum": 0.3852843768152045,
+      "birth_mae_sums": {
+        "persistent_rate": 0.14874936309144404,
+        "reset_rate": 0.683867738224936,
+        "swapped_rate": 0.5340337399066486,
+        "true_rate": 0.0
+      },
+      "birth_rate_mae_difference_sum": 0.5351183751334919,
+      "cell": "true_rate",
+      "deaths_by_need": {
+        "energy": 44,
+        "food": 10,
+        "safety": 9,
+        "water": 31
+      },
+      "episode_survivors": [
+        10,
+        11,
+        7,
+        7,
+        11
+      ],
+      "evidence_ticks_sum": 24325,
+      "final_evidence_ticks_sum": 29419,
+      "final_readings_sum": 922,
+      "identities": 28,
+      "life_steps_sum": 24465,
+      "matched_regret_sum": 32.077185927183606,
+      "means": {
+        "birth_identity_mae_value": 0.0027520312629657462,
+        "birth_mae_persistent_rate": 0.0010624954506531718,
+        "birth_mae_reset_rate": 0.004884769558749543,
+        "birth_mae_swapped_rate": 0.0038145267136189187,
+        "birth_mae_true_rate": 0.0,
+        "birth_rate_mae_value": 0.003822274108096371,
+        "matched_regret_value": 0.001502233219087885,
+        "mean_final_evidence_ticks": 1050.6785714285713,
+        "mean_final_readings": 32.92857142857143,
+        "mean_life_steps": 174.75,
+        "mean_readings": 5.321428571428571,
+        "rate_mae_persistent_rate": 0.000353450428232808,
+        "rate_mae_reset_rate": 0.0006982019214303928,
+        "rate_mae_swapped_rate": 0.0016655640344987491,
+        "rate_mae_true_rate": 0.0,
+        "regret_persistent_rate": 0.0037249174655700247,
+        "regret_reset_rate": 0.005227150684657909,
+        "regret_swapped_rate": 0.006761927761756307,
+        "regret_true_rate": 0.0030480243994529476,
+        "survival": 0.32857142857142857,
+        "word_difference_share": 0.07329180911347352
+      },
+      "rate_mae_sums": {
+        "persistent_rate": 7.547226994055149,
+        "reset_rate": 14.908705628303176,
+        "swapped_rate": 35.56478882865179,
+        "true_rate": 0.0
+      },
+      "readings_sum": 745,
+      "regret_sums": {
+        "persistent_rate": 79.53816264231673,
+        "reset_rate": 111.61534856950034,
+        "swapped_rate": 144.38744349678242,
+        "true_rate": 65.0844650015188
+      },
+      "scored_ticks": 21353,
+      "seed_index": 2,
+      "survivors": 46,
+      "test_episodes": 140,
+      "word_differences": {
+        "reset": 1565,
+        "swapped": 3124
+      }
+    },
+    {
+      "birth_identity_mae_difference_sum": 0.33623557988610225,
+      "birth_mae_sums": {
+        "persistent_rate": 0.16184922935331808,
+        "reset_rate": 0.627551196649985,
+        "swapped_rate": 0.49808480923942033,
+        "true_rate": 0.0
+      },
+      "birth_rate_mae_difference_sum": 0.46570196729666696,
+      "cell": "true_rate",
+      "deaths_by_need": {
+        "energy": 50,
+        "food": 20,
+        "safety": 13,
+        "water": 31
+      },
+      "episode_survivors": [
+        6,
+        4,
+        5,
+        6,
+        5
+      ],
+      "evidence_ticks_sum": 19044,
+      "final_evidence_ticks_sum": 22343,
+      "final_readings_sum": 695,
+      "identities": 28,
+      "life_steps_sum": 19184,
+      "matched_regret_sum": 23.13460026135269,
+      "means": {
+        "birth_identity_mae_value": 0.002401682713472159,
+        "birth_mae_persistent_rate": 0.001156065923952272,
+        "birth_mae_reset_rate": 0.004482508547499893,
+        "birth_mae_swapped_rate": 0.003557748637424431,
+        "birth_mae_true_rate": 0.0,
+        "birth_rate_mae_value": 0.0033264426235476213,
+        "matched_regret_value": 0.0014373780839610246,
+        "mean_final_evidence_ticks": 797.9642857142857,
+        "mean_final_readings": 24.821428571428573,
+        "mean_life_steps": 137.02857142857144,
+        "mean_readings": 4.235714285714286,
+        "rate_mae_persistent_rate": 0.0004010156425762318,
+        "rate_mae_reset_rate": 0.0006311413805614892,
+        "rate_mae_swapped_rate": 0.001345938736016898,
+        "rate_mae_true_rate": 0.0,
+        "regret_persistent_rate": 0.005412465652752949,
+        "regret_reset_rate": 0.006849843736713974,
+        "regret_swapped_rate": 0.008969612467651112,
+        "regret_true_rate": 0.0044120188930559445,
+        "survival": 0.18571428571428572,
+        "word_difference_share": 0.049704877291084186
+      },
+      "rate_mae_sums": {
+        "persistent_rate": 6.454346767264451,
+        "reset_rate": 10.158220520137169,
+        "swapped_rate": 21.662883956191973,
+        "true_rate": 0.0
+      },
+      "readings_sum": 593,
+      "regret_sums": {
+        "persistent_rate": 87.11363468105871,
+        "reset_rate": 110.24823494241141,
+        "swapped_rate": 144.36591266684465,
+        "true_rate": 71.01144408373543
+      },
+      "scored_ticks": 16095,
+      "seed_index": 3,
+      "survivors": 26,
+      "test_episodes": 140,
+      "word_differences": {
+        "reset": 800,
+        "swapped": 1120
+      }
+    },
+    {
+      "birth_identity_mae_difference_sum": 0.3605672848338244,
+      "birth_mae_sums": {
+        "persistent_rate": 0.17131487141171675,
+        "reset_rate": 0.8002791291132118,
+        "swapped_rate": 0.5318821562455411,
+        "true_rate": 0.0
+      },
+      "birth_rate_mae_difference_sum": 0.628964257701495,
+      "cell": "true_rate",
+      "deaths_by_need": {
+        "energy": 50,
+        "food": 22,
+        "safety": 7,
+        "water": 23
+      },
+      "episode_survivors": [
+        7,
+        11,
+        5,
+        8,
+        7
+      ],
+      "evidence_ticks_sum": 20974,
+      "final_evidence_ticks_sum": 24914,
+      "final_readings_sum": 744,
+      "identities": 28,
+      "life_steps_sum": 21114,
+      "matched_regret_sum": 48.84298213668056,
+      "means": {
+        "birth_identity_mae_value": 0.0025754806059558885,
+        "birth_mae_persistent_rate": 0.0012236776529408338,
+        "birth_mae_reset_rate": 0.005716279493665798,
+        "birth_mae_swapped_rate": 0.0037991582588967226,
+        "birth_mae_true_rate": 0.0,
+        "birth_rate_mae_value": 0.004492601840724964,
+        "matched_regret_value": 0.002710186557356595,
+        "mean_final_evidence_ticks": 889.7857142857143,
+        "mean_final_readings": 26.571428571428573,
+        "mean_life_steps": 150.81428571428572,
+        "mean_readings": 4.521428571428571,
+        "rate_mae_persistent_rate": 0.00044204689555669117,
+        "rate_mae_reset_rate": 0.0009688361344022039,
+        "rate_mae_swapped_rate": 0.0010627453523117231,
+        "rate_mae_true_rate": 0.0,
+        "regret_persistent_rate": 0.007820259048722605,
+        "regret_reset_rate": 0.010530445606079202,
+        "regret_swapped_rate": 0.01089250809410903,
+        "regret_true_rate": 0.007587309500890987,
+        "survival": 0.2714285714285714,
+        "word_difference_share": 0.07196759516146932
+      },
+      "rate_mae_sums": {
+        "persistent_rate": 7.966569151722688,
+        "reset_rate": 17.46036481419652,
+        "swapped_rate": 19.152796739361875,
+        "true_rate": 0.0
+      },
+      "readings_sum": 633,
+      "regret_sums": {
+        "persistent_rate": 140.9367085760788,
+        "reset_rate": 189.77969071275936,
+        "swapped_rate": 196.30478087203295,
+        "true_rate": 136.73849182505737
+      },
+      "scored_ticks": 18022,
+      "seed_index": 4,
+      "survivors": 38,
+      "test_episodes": 140,
+      "word_differences": {
+        "reset": 1297,
+        "swapped": 1719
+      }
+    },
+    {
+      "birth_identity_mae_difference_sum": 0.33024846493150317,
+      "birth_mae_sums": {
+        "persistent_rate": 0.10467916162332398,
+        "reset_rate": 0.6542768492234012,
+        "swapped_rate": 0.43492762655482714,
+        "true_rate": 0.0
+      },
+      "birth_rate_mae_difference_sum": 0.5495976876000772,
+      "cell": "swapped_rate",
+      "deaths_by_need": {
+        "energy": 43,
+        "food": 9,
+        "safety": 18,
+        "water": 30
+      },
+      "episode_survivors": [
+        8,
+        7,
+        5,
+        11,
+        9
+      ],
+      "evidence_ticks_sum": 25499,
+      "final_evidence_ticks_sum": 30088,
+      "final_readings_sum": 875,
+      "identities": 28,
+      "life_steps_sum": 25639,
+      "matched_regret_sum": 45.728022483959265,
+      "means": {
+        "birth_identity_mae_value": 0.002358917606653594,
+        "birth_mae_persistent_rate": 0.000747708297309457,
+        "birth_mae_reset_rate": 0.004673406065881437,
+        "birth_mae_swapped_rate": 0.003106625903963051,
+        "birth_mae_true_rate": 0.0,
+        "birth_rate_mae_value": 0.00392569776857198,
+        "matched_regret_value": 0.002041247320951668,
+        "mean_final_evidence_ticks": 1074.5714285714287,
+        "mean_final_readings": 31.25,
+        "mean_life_steps": 183.13571428571427,
+        "mean_readings": 5.357142857142857,
+        "rate_mae_persistent_rate": 0.00032306142621842197,
+        "rate_mae_reset_rate": 0.0007446297075883444,
+        "rate_mae_swapped_rate": 0.0014912220771164256,
+        "rate_mae_true_rate": 0.0,
+        "regret_persistent_rate": 0.0029522199913951694,
+        "regret_reset_rate": 0.004993467312346837,
+        "regret_swapped_rate": 0.00722030538714988,
+        "regret_true_rate": 0.0028599704805367834,
+        "survival": 0.2857142857142857,
+        "word_difference_share": 0.050531202571199
+      },
+      "rate_mae_sums": {
+        "persistent_rate": 7.237222070145089,
+        "reset_rate": 16.68119470939409,
+        "swapped_rate": 33.40635697156217,
+        "true_rate": 0.0
+      },
+      "readings_sum": 750,
+      "regret_sums": {
+        "persistent_rate": 66.13563224723458,
+        "reset_rate": 111.86365473119385,
+        "swapped_rate": 161.7492812829316,
+        "true_rate": 64.06905870498503
+      },
+      "scored_ticks": 22402,
+      "seed_index": 0,
+      "survivors": 40,
+      "test_episodes": 140,
+      "word_differences": {
+        "reset": 1132,
+        "swapped": 2385
+      }
+    },
+    {
+      "birth_identity_mae_difference_sum": 0.3352559550671528,
+      "birth_mae_sums": {
+        "persistent_rate": 0.13078574000953616,
+        "reset_rate": 0.728604171119108,
+        "swapped_rate": 0.46604169507668897,
+        "true_rate": 0.0
+      },
+      "birth_rate_mae_difference_sum": 0.5978184311095719,
+      "cell": "swapped_rate",
+      "deaths_by_need": {
+        "energy": 49,
+        "food": 27,
+        "safety": 12,
+        "water": 35
+      },
+      "episode_survivors": [
+        4,
+        1,
+        6,
+        4,
+        2
+      ],
+      "evidence_ticks_sum": 15079,
+      "final_evidence_ticks_sum": 17345,
+      "final_readings_sum": 496,
+      "identities": 28,
+      "life_steps_sum": 15219,
+      "matched_regret_sum": 20.17422153307876,
+      "means": {
+        "birth_identity_mae_value": 0.0023946853933368055,
+        "birth_mae_persistent_rate": 0.0009341838572109726,
+        "birth_mae_reset_rate": 0.005204315507993629,
+        "birth_mae_swapped_rate": 0.003328869250547778,
+        "birth_mae_true_rate": 0.0,
+        "birth_rate_mae_value": 0.004270131650782656,
+        "matched_regret_value": 0.0016642650992475467,
+        "mean_final_evidence_ticks": 619.4642857142857,
+        "mean_final_readings": 17.714285714285715,
+        "mean_life_steps": 108.70714285714286,
+        "mean_readings": 3.142857142857143,
+        "rate_mae_persistent_rate": 0.0005067325904056459,
+        "rate_mae_reset_rate": 0.0009231192878742808,
+        "rate_mae_swapped_rate": 0.0014736782498518993,
+        "rate_mae_true_rate": 0.0,
+        "regret_persistent_rate": 0.0051717276090165,
+        "regret_reset_rate": 0.0068359927082640454,
+        "regret_swapped_rate": 0.007821897821281978,
+        "regret_true_rate": 0.004380907082234695,
+        "survival": 0.12142857142857143,
+        "word_difference_share": 0.048836825606335586
+      },
+      "rate_mae_sums": {
+        "persistent_rate": 6.142612460897239,
+        "reset_rate": 11.190052007612032,
+        "swapped_rate": 17.863927744704725,
+        "true_rate": 0.0
+      },
+      "readings_sum": 440,
+      "regret_sums": {
+        "persistent_rate": 62.691682076498005,
+        "reset_rate": 82.86590360957676,
+        "swapped_rate": 94.81704538958013,
+        "true_rate": 53.10535565084897
+      },
+      "scored_ticks": 12122,
+      "seed_index": 1,
+      "survivors": 17,
+      "test_episodes": 140,
+      "word_differences": {
+        "reset": 592,
+        "swapped": 939
+      }
+    },
+    {
+      "birth_identity_mae_difference_sum": 0.3896335641126728,
+      "birth_mae_sums": {
+        "persistent_rate": 0.15820698041635683,
+        "reset_rate": 0.683867738224936,
+        "swapped_rate": 0.5478405445290296,
+        "true_rate": 0.0
+      },
+      "birth_rate_mae_difference_sum": 0.5256607578085791,
+      "cell": "swapped_rate",
+      "deaths_by_need": {
+        "energy": 44,
+        "food": 12,
+        "safety": 8,
+        "water": 36
+      },
+      "episode_survivors": [
+        8,
+        10,
+        6,
+        6,
+        10
+      ],
+      "evidence_ticks_sum": 22243,
+      "final_evidence_ticks_sum": 27337,
+      "final_readings_sum": 852,
+      "identities": 28,
+      "life_steps_sum": 22383,
+      "matched_regret_sum": 32.5036479519756,
+      "means": {
+        "birth_identity_mae_value": 0.0027830968865190913,
+        "birth_mae_persistent_rate": 0.0011300498601168345,
+        "birth_mae_reset_rate": 0.004884769558749543,
+        "birth_mae_swapped_rate": 0.003913146746635926,
+        "birth_mae_true_rate": 0.0,
+        "birth_rate_mae_value": 0.0037547196986327082,
+        "matched_regret_value": 0.001686661198275938,
+        "mean_final_evidence_ticks": 976.3214285714286,
+        "mean_final_readings": 30.428571428571427,
+        "mean_life_steps": 159.87857142857143,
+        "mean_readings": 4.821428571428571,
+        "rate_mae_persistent_rate": 0.00038914880727821327,
+        "rate_mae_reset_rate": 0.0007503303113038871,
+        "rate_mae_swapped_rate": 0.001623487171043857,
+        "rate_mae_true_rate": 0.0,
+        "regret_persistent_rate": 0.002804849877505543,
+        "regret_reset_rate": 0.00449151107578148,
+        "regret_swapped_rate": 0.006341935518310265,
+        "regret_true_rate": 0.0023179974616003374,
+        "survival": 0.2857142857142857,
+        "word_difference_share": 0.06460484666078564
+      },
+      "rate_mae_sums": {
+        "persistent_rate": 7.499286665058448,
+        "reset_rate": 14.459615429137209,
+        "swapped_rate": 31.28622127318617,
+        "true_rate": 0.0
+      },
+      "readings_sum": 675,
+      "regret_sums": {
+        "persistent_rate": 54.05226198940932,
+        "reset_rate": 86.55590994138491,
+        "swapped_rate": 122.21543937335713,
+        "true_rate": 44.670129082500104
+      },
+      "scored_ticks": 19271,
+      "seed_index": 2,
+      "survivors": 40,
+      "test_episodes": 140,
+      "word_differences": {
+        "reset": 1245,
+        "swapped": 2470
+      }
+    },
+    {
+      "birth_identity_mae_difference_sum": 0.35782146243660445,
+      "birth_mae_sums": {
+        "persistent_rate": 0.17948938500468625,
+        "reset_rate": 0.627551196649985,
+        "swapped_rate": 0.5373108474412907,
+        "true_rate": 0.0
+      },
+      "birth_rate_mae_difference_sum": 0.44806181164529885,
+      "cell": "swapped_rate",
+      "deaths_by_need": {
+        "energy": 53,
+        "food": 23,
+        "safety": 10,
+        "water": 31
+      },
+      "episode_survivors": [
+        6,
+        3,
+        5,
+        5,
+        4
+      ],
+      "evidence_ticks_sum": 17319,
+      "final_evidence_ticks_sum": 20618,
+      "final_readings_sum": 647,
+      "identities": 28,
+      "life_steps_sum": 17459,
+      "matched_regret_sum": 28.19807559789281,
+      "means": {
+        "birth_identity_mae_value": 0.002555867588832889,
+        "birth_mae_persistent_rate": 0.001282067035747759,
+        "birth_mae_reset_rate": 0.004482508547499893,
+        "birth_mae_swapped_rate": 0.0038379346245806475,
+        "birth_mae_true_rate": 0.0,
+        "birth_rate_mae_value": 0.0032004415117521346,
+        "matched_regret_value": 0.0019622877938686714,
+        "mean_final_evidence_ticks": 736.3571428571429,
+        "mean_final_readings": 23.107142857142858,
+        "mean_life_steps": 124.70714285714286,
+        "mean_readings": 3.892857142857143,
+        "rate_mae_persistent_rate": 0.0004036055935439044,
+        "rate_mae_reset_rate": 0.000996166722262446,
+        "rate_mae_swapped_rate": 0.0014896864150786696,
+        "rate_mae_true_rate": 0.0,
+        "regret_persistent_rate": 0.0045730362830415355,
+        "regret_reset_rate": 0.006535324076910207,
+        "regret_swapped_rate": 0.009265907139350852,
+        "regret_true_rate": 0.0033336640919030863,
+        "survival": 0.16428571428571428,
+        "word_difference_share": 0.05789839944328462
+      },
+      "rate_mae_sums": {
+        "persistent_rate": 5.799812379225907,
+        "reset_rate": 14.314915798911349,
+        "swapped_rate": 21.40679378468048,
+        "true_rate": 0.0
+      },
+      "readings_sum": 545,
+      "regret_sums": {
+        "persistent_rate": 65.71453138730686,
+        "reset_rate": 93.91260698519967,
+        "swapped_rate": 133.15108559247176,
+        "true_rate": 47.904753000647354
+      },
+      "scored_ticks": 14370,
+      "seed_index": 3,
+      "survivors": 23,
+      "test_episodes": 140,
+      "word_differences": {
+        "reset": 832,
+        "swapped": 1066
+      }
+    },
+    {
+      "birth_identity_mae_difference_sum": 0.3931941856453241,
+      "birth_mae_sums": {
+        "persistent_rate": 0.17090312042894854,
+        "reset_rate": 0.8002791291132118,
+        "swapped_rate": 0.5640973060742727,
+        "true_rate": 0.0
+      },
+      "birth_rate_mae_difference_sum": 0.6293760086842632,
+      "cell": "swapped_rate",
+      "deaths_by_need": {
+        "energy": 53,
+        "food": 23,
+        "safety": 7,
+        "water": 26
+      },
+      "episode_survivors": [
+        5,
+        9,
+        3,
+        8,
+        6
+      ],
+      "evidence_ticks_sum": 18604,
+      "final_evidence_ticks_sum": 22544,
+      "final_readings_sum": 683,
+      "identities": 28,
+      "life_steps_sum": 18744,
+      "matched_regret_sum": 41.75356830158764,
+      "means": {
+        "birth_identity_mae_value": 0.0028085298974666007,
+        "birth_mae_persistent_rate": 0.0012207365744924894,
+        "birth_mae_reset_rate": 0.005716279493665798,
+        "birth_mae_swapped_rate": 0.004029266471959091,
+        "birth_mae_true_rate": 0.0,
+        "birth_rate_mae_value": 0.004495542919173309,
+        "matched_regret_value": 0.0026676187261428343,
+        "mean_final_evidence_ticks": 805.1428571428571,
+        "mean_final_readings": 24.392857142857142,
+        "mean_life_steps": 133.88571428571427,
+        "mean_readings": 4.085714285714285,
+        "rate_mae_persistent_rate": 0.0004667339198268904,
+        "rate_mae_reset_rate": 0.000776346240451957,
+        "rate_mae_swapped_rate": 0.0009676419120798036,
+        "rate_mae_true_rate": 0.0,
+        "regret_persistent_rate": 0.006594441032242569,
+        "regret_reset_rate": 0.009262059758385404,
+        "regret_swapped_rate": 0.008020289403390479,
+        "regret_true_rate": 0.006444031983439021,
+        "survival": 0.22142857142857142,
+        "word_difference_share": 0.06446460516227959
+      },
+      "rate_mae_sums": {
+        "persistent_rate": 7.3053193131304885,
+        "reset_rate": 12.15137135555403,
+        "swapped_rate": 15.145531207873086,
+        "true_rate": 0.0
+      },
+      "readings_sum": 572,
+      "regret_sums": {
+        "persistent_rate": 103.21619103666069,
+        "reset_rate": 144.96975933824834,
+        "swapped_rate": 125.53356974186778,
+        "true_rate": 100.86198860478757
+      },
+      "scored_ticks": 15652,
+      "seed_index": 4,
+      "survivors": 31,
+      "test_episodes": 140,
+      "word_differences": {
+        "reset": 1009,
+        "swapped": 1207
+      }
+    }
+  ],
+  "calibration_blocks": [
+    {
+      "evidence_ticks_sum": 4589,
+      "identities": 28,
+      "readings_sum": 125,
+      "seed_index": 0,
+      "steps_sum": 4617
+    },
+    {
+      "evidence_ticks_sum": 2266,
+      "identities": 28,
+      "readings_sum": 56,
+      "seed_index": 1,
+      "steps_sum": 2294
+    },
+    {
+      "evidence_ticks_sum": 5094,
+      "identities": 28,
+      "readings_sum": 177,
+      "seed_index": 2,
+      "steps_sum": 5122
+    },
+    {
+      "evidence_ticks_sum": 3299,
+      "identities": 28,
+      "readings_sum": 102,
+      "seed_index": 3,
+      "steps_sum": 3327
+    },
+    {
+      "evidence_ticks_sum": 3940,
+      "identities": 28,
+      "readings_sum": 111,
+      "seed_index": 4,
+      "steps_sum": 3968
+    }
+  ],
+  "calibration_episodes": 140,
+  "cells": [
+    {
+      "birth_identity_mae_value": 0.0025383738730191626,
+      "birth_mae_persistent_rate": 0.0010610549590368023,
+      "birth_mae_reset_rate": 0.00499225583475806,
+      "birth_mae_swapped_rate": 0.003599428832055965,
+      "birth_mae_true_rate": 0.0,
+      "birth_rate_mae_value": 0.003931200875721258,
+      "cell": "reset_rate",
+      "deaths_by_need": {
+        "energy": 234,
+        "food": 95,
+        "safety": 50,
+        "water": 174
+      },
+      "matched_regret_value": 0.0024561744213986865,
+      "mean_final_evidence_ticks": 812.35,
+      "mean_final_readings": 24.37142857142857,
+      "mean_life_steps": 136.0585714285714,
+      "mean_readings": 4.058571428571429,
+      "per_episode_survival": [
+        0.2357142857142857,
+        0.2357142857142857,
+        0.15714285714285714,
+        0.22142857142857142,
+        0.2
+      ],
+      "per_seed_birth_identity_mae_value": [
+        0.0023186793360358846,
+        0.002234147330282503,
+        0.0028396870293076514,
+        0.002592247766896352,
+        0.0027071079025734216
+      ],
+      "per_seed_birth_mae_persistent_rate": [
+        0.0008025034296144089,
+        0.0009868222023700004,
+        0.0011117493290566996,
+        0.001239106429986235,
+        0.0011650934041566674
+      ],
+      "per_seed_birth_mae_reset_rate": [
+        0.004673406065881437,
+        0.005204315507993629,
+        0.004884769558749543,
+        0.004482508547499893,
+        0.005716279493665798
+      ],
+      "per_seed_birth_mae_swapped_rate": [
+        0.0031211827656502933,
+        0.003220969532652503,
+        0.003951436358364351,
+        0.0038313541968825874,
+        0.0038722013067300893
+      ],
+      "per_seed_birth_mae_true_rate": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "per_seed_birth_rate_mae_value": [
+        0.0038709026362670285,
+        0.004217493305623628,
+        0.0037730202296928426,
+        0.0032434021175136584,
+        0.004551186089509131
+      ],
+      "per_seed_matched_regret_value": [
+        0.0018868920329473602,
+        0.0022934046632969154,
+        0.0021891850358222425,
+        0.0019630091171038916,
+        0.003948381257823023
+      ],
+      "per_seed_mean_final_evidence_ticks": [
+        1024.6785714285713,
+        590.1785714285714,
+        947.5357142857143,
+        742.2857142857143,
+        757.0714285714286
+      ],
+      "per_seed_mean_final_readings": [
+        29.428571428571427,
+        17.464285714285715,
+        29.285714285714285,
+        23.464285714285715,
+        22.214285714285715
+      ],
+      "per_seed_mean_life_steps": [
+        173.15714285714284,
+        102.85,
+        154.12142857142857,
+        125.89285714285714,
+        124.27142857142857
+      ],
+      "per_seed_mean_readings": [
+        4.992857142857143,
+        3.092857142857143,
+        4.5928571428571425,
+        3.9642857142857144,
+        3.65
+      ],
+      "per_seed_rate_mae_persistent_rate": [
+        0.00035866988635365984,
+        0.00034343378629475904,
+        0.00040414078013989,
+        0.0004000966484616425,
+        0.0004258237758595613
+      ],
+      "per_seed_rate_mae_reset_rate": [
+        0.0007042648902486137,
+        0.0006088673581285553,
+        0.0006440203013122002,
+        0.0008997844813263172,
+        0.0008516294928631517
+      ],
+      "per_seed_rate_mae_swapped_rate": [
+        0.001555928730176342,
+        0.0018300419017954603,
+        0.0018531646567225423,
+        0.0017991624343372753,
+        0.0011208737203015238
+      ],
+      "per_seed_rate_mae_true_rate": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "per_seed_regret_persistent_rate": [
+        0.0033644902902815366,
+        0.0074069433518030425,
+        0.0030426843591554215,
+        0.004399345101652629,
+        0.004900280775136194
+      ],
+      "per_seed_regret_reset_rate": [
+        0.005251382323228897,
+        0.009700348015099959,
+        0.0052318693949776635,
+        0.006362354218756521,
+        0.008848662032959217
+      ],
+      "per_seed_regret_swapped_rate": [
+        0.007855268644421041,
+        0.01373916571136557,
+        0.006830780323157633,
+        0.01071782902577903,
+        0.008194394755489465
+      ],
+      "per_seed_regret_true_rate": [
+        0.0030482068056282285,
+        0.007348711311766986,
+        0.0023816730551405995,
+        0.002601804086064724,
+        0.004606690800679316
+      ],
+      "per_seed_survival": [
+        0.2714285714285714,
+        0.12142857142857143,
+        0.2785714285714286,
+        0.17142857142857143,
+        0.20714285714285716
+      ],
+      "per_seed_word_difference_share": [
+        0.042370864079980954,
+        0.04291275880375155,
+        0.059301380991064176,
+        0.040520088057237204,
+        0.07598210541031734
+      ],
+      "rate_mae_persistent_rate": 0.00038643297542190257,
+      "rate_mae_reset_rate": 0.0007417133047757676,
+      "rate_mae_swapped_rate": 0.0016318342886666288,
+      "rate_mae_true_rate": 0.0,
+      "regret_persistent_rate": 0.004622748775605765,
+      "regret_reset_rate": 0.007078923197004452,
+      "regret_swapped_rate": 0.009467487692042548,
+      "regret_true_rate": 0.003997417211855971,
+      "survival": 0.21,
+      "test_episodes": 700,
+      "word_difference_share": 0.052217439468470246
+    },
+    {
+      "birth_identity_mae_value": 0.0024114625364720804,
+      "birth_mae_persistent_rate": 0.0010653141728390254,
+      "birth_mae_reset_rate": 0.00499225583475806,
+      "birth_mae_swapped_rate": 0.003476776709311106,
+      "birth_mae_true_rate": 0.0,
+      "birth_rate_mae_value": 0.003926941661919035,
+      "cell": "persistent_rate",
+      "deaths_by_need": {
+        "energy": 234,
+        "food": 85,
+        "safety": 58,
+        "water": 151
+      },
+      "matched_regret_value": 0.002081782496705851,
+      "mean_final_evidence_ticks": 896.4357142857143,
+      "mean_final_readings": 26.864285714285714,
+      "mean_life_steps": 152.87571428571428,
+      "mean_readings": 4.557142857142857,
+      "per_episode_survival": [
+        0.2357142857142857,
+        0.2571428571428571,
+        0.2357142857142857,
+        0.2571428571428571,
+        0.24285714285714285
+      ],
+      "per_seed_birth_identity_mae_value": [
+        0.002143859758095254,
+        0.0020910920031946283,
+        0.002743825539298685,
+        0.002584737443245511,
+        0.0024937979385263247
+      ],
+      "per_seed_birth_mae_persistent_rate": [
+        0.0008161673062389948,
+        0.0009694690016664971,
+        0.001110194005182245,
+        0.0011937364341503198,
+        0.0012370041169570706
+      ],
+      "per_seed_birth_mae_reset_rate": [
+        0.004673406065881437,
+        0.005204315507993629,
+        0.004884769558749543,
+        0.004482508547499893,
+        0.005716279493665798
+      ],
+      "per_seed_birth_mae_swapped_rate": [
+        0.0029600270643342485,
+        0.0030605610048611257,
+        0.00385401954448093,
+        0.003778473877395831,
+        0.0037308020554833953
+      ],
+      "per_seed_birth_mae_true_rate": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "per_seed_birth_rate_mae_value": [
+        0.003857238759642443,
+        0.004234846506327132,
+        0.0037745755535672975,
+        0.0032887721133495734,
+        0.004479275376708728
+      ],
+      "per_seed_matched_regret_value": [
+        0.0020056389710273793,
+        0.001768942098248187,
+        0.0023973797160966636,
+        0.0011721106078497528,
+        0.0030648410903072708
+      ],
+      "per_seed_mean_final_evidence_ticks": [
+        1081.25,
+        671.25,
+        1040.1785714285713,
+        778.5,
+        911.0
+      ],
+      "per_seed_mean_final_readings": [
+        31.178571428571427,
+        19.0,
+        32.82142857142857,
+        24.214285714285715,
+        27.107142857142858
+      ],
+      "per_seed_mean_life_steps": [
+        184.47142857142856,
+        119.06428571428572,
+        172.65,
+        133.13571428571427,
+        155.05714285714285
+      ],
+      "per_seed_mean_readings": [
+        5.3428571428571425,
+        3.4,
+        5.3,
+        4.114285714285714,
+        4.628571428571429
+      ],
+      "per_seed_rate_mae_persistent_rate": [
+        0.0003072682947509448,
+        0.000403235877027244,
+        0.00041679040346346516,
+        0.00037194910800947674,
+        0.0004758753805349381
+      ],
+      "per_seed_rate_mae_reset_rate": [
+        0.0007796178445463635,
+        0.0008817531092727892,
+        0.0008769887914197816,
+        0.0006404535980508788,
+        0.000972443809304193
+      ],
+      "per_seed_rate_mae_swapped_rate": [
+        0.0016382964626912727,
+        0.0018480681437435577,
+        0.001737082529923546,
+        0.0013794321204691827,
+        0.0012105936142414286
+      ],
+      "per_seed_rate_mae_true_rate": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "per_seed_regret_persistent_rate": [
+        0.0038725798121156184,
+        0.004307153332603911,
+        0.003418852612319865,
+        0.005091894671661347,
+        0.007302489328752478
+      ],
+      "per_seed_regret_reset_rate": [
+        0.005878218783142998,
+        0.006076095430852099,
+        0.0058162323284165285,
+        0.0062640052795111,
+        0.010367330419059748
+      ],
+      "per_seed_regret_swapped_rate": [
+        0.0093170648441702,
+        0.008717379993434363,
+        0.007500268937944832,
+        0.009131003866354015,
+        0.010948960066389016
+      ],
+      "per_seed_regret_true_rate": [
+        0.003979490987124851,
+        0.003822610930528482,
+        0.002971979812932498,
+        0.0034486431265894433,
+        0.007267034766093566
+      ],
+      "per_seed_survival": [
+        0.30714285714285716,
+        0.1357142857142857,
+        0.3142857142857143,
+        0.18571428571428572,
+        0.2857142857142857
+      ],
+      "per_seed_word_difference_share": [
+        0.05569082296693081,
+        0.049440023577954614,
+        0.06780948762999192,
+        0.04829581993569132,
+        0.06940266437473142
+      ],
+      "rate_mae_persistent_rate": 0.0003950238127572138,
+      "rate_mae_reset_rate": 0.0008302514305188012,
+      "rate_mae_swapped_rate": 0.0015626945742137975,
+      "rate_mae_true_rate": 0.0,
+      "regret_persistent_rate": 0.0047985939514906435,
+      "regret_reset_rate": 0.006880376448196494,
+      "regret_swapped_rate": 0.009122935541658486,
+      "regret_true_rate": 0.004297951924653768,
+      "survival": 0.24571428571428572,
+      "test_episodes": 700,
+      "word_difference_share": 0.05812776369706001
+    },
+    {
+      "birth_identity_mae_value": 0.00237758299709319,
+      "birth_mae_persistent_rate": 0.0010628251305797992,
+      "birth_mae_reset_rate": 0.00499225583475806,
+      "birth_mae_swapped_rate": 0.0034404081276729896,
+      "birth_mae_true_rate": 0.0,
+      "birth_rate_mae_value": 0.003929430704178261,
+      "cell": "true_rate",
+      "deaths_by_need": {
+        "energy": 238,
+        "food": 87,
+        "safety": 59,
+        "water": 143
+      },
+      "matched_regret_value": 0.0018751065142677684,
+      "mean_final_evidence_ticks": 904.2428571428571,
+      "mean_final_readings": 27.164285714285715,
+      "mean_life_steps": 154.43714285714287,
+      "mean_readings": 4.617142857142857,
+      "per_episode_survival": [
+        0.2571428571428571,
+        0.2571428571428571,
+        0.22142857142857142,
+        0.2571428571428571,
+        0.24285714285714285
+      ],
+      "per_seed_birth_identity_mae_value": [
+        0.002127382466481021,
+        0.002031337936591137,
+        0.0027520312629657462,
+        0.002401682713472159,
+        0.0025754806059558885
+      ],
+      "per_seed_birth_mae_persistent_rate": [
+        0.0009088266944126136,
+        0.0009630599309401048,
+        0.0010624954506531718,
+        0.001156065923952272,
+        0.0012236776529408338
+      ],
+      "per_seed_birth_mae_reset_rate": [
+        0.004673406065881437,
+        0.005204315507993629,
+        0.004884769558749543,
+        0.004482508547499893,
+        0.005716279493665798
+      ],
+      "per_seed_birth_mae_swapped_rate": [
+        0.003036209160893635,
+        0.002994397867531242,
+        0.0038145267136189187,
+        0.003557748637424431,
+        0.0037991582588967226
+      ],
+      "per_seed_birth_mae_true_rate": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "per_seed_birth_rate_mae_value": [
+        0.0037645793714688237,
+        0.004241255577053524,
+        0.003822274108096371,
+        0.0033264426235476213,
+        0.004492601840724964
+      ],
+      "per_seed_matched_regret_value": [
+        0.0012214460423901913,
+        0.0025042886685431465,
+        0.001502233219087885,
+        0.0014373780839610246,
+        0.002710186557356595
+      ],
+      "per_seed_mean_final_evidence_ticks": [
+        1103.25,
+        679.5357142857143,
+        1050.6785714285713,
+        797.9642857142857,
+        889.7857142857143
+      ],
+      "per_seed_mean_final_readings": [
+        31.892857142857142,
+        19.607142857142858,
+        32.92857142857143,
+        24.821428571428573,
+        26.571428571428573
+      ],
+      "per_seed_mean_life_steps": [
+        188.87142857142857,
+        120.72142857142858,
+        174.75,
+        137.02857142857144,
+        150.81428571428572
+      ],
+      "per_seed_mean_readings": [
+        5.485714285714286,
+        3.5214285714285714,
+        5.321428571428571,
+        4.235714285714286,
+        4.521428571428571
+      ],
+      "per_seed_rate_mae_persistent_rate": [
+        0.0004039706481556628,
+        0.000403663393553085,
+        0.000353450428232808,
+        0.0004010156425762318,
+        0.00044204689555669117
+      ],
+      "per_seed_rate_mae_reset_rate": [
+        0.0006979373910714078,
+        0.0008312370875706972,
+        0.0006982019214303928,
+        0.0006311413805614892,
+        0.0009688361344022039
+      ],
+      "per_seed_rate_mae_swapped_rate": [
+        0.0017680870204463029,
+        0.0018834032247256462,
+        0.0016655640344987491,
+        0.001345938736016898,
+        0.0010627453523117231
+      ],
+      "per_seed_rate_mae_true_rate": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "per_seed_regret_persistent_rate": [
+        0.004512543302718842,
+        0.004385455783432179,
+        0.0037249174655700247,
+        0.005412465652752949,
+        0.007820259048722605
+      ],
+      "per_seed_regret_reset_rate": [
+        0.005733989345109034,
+        0.006889744451975326,
+        0.005227150684657909,
+        0.006849843736713974,
+        0.010530445606079202
+      ],
+      "per_seed_regret_swapped_rate": [
+        0.009488071204503616,
+        0.00875580468523596,
+        0.006761927761756307,
+        0.008969612467651112,
+        0.01089250809410903
+      ],
+      "per_seed_regret_true_rate": [
+        0.003850933982033119,
+        0.00408577847699285,
+        0.0030480243994529476,
+        0.0044120188930559445,
+        0.007587309500890987
+      ],
+      "per_seed_survival": [
+        0.3142857142857143,
+        0.1357142857142857,
+        0.32857142857142857,
+        0.18571428571428572,
+        0.2714285714285714
+      ],
+      "per_seed_word_difference_share": [
+        0.054040077569489336,
+        0.05331787887568821,
+        0.07329180911347352,
+        0.049704877291084186,
+        0.07196759516146932
+      ],
+      "rate_mae_persistent_rate": 0.00040082940161489575,
+      "rate_mae_reset_rate": 0.0007654707830072382,
+      "rate_mae_swapped_rate": 0.0015451476735998638,
+      "rate_mae_true_rate": 0.0,
+      "regret_persistent_rate": 0.00517112825063932,
+      "regret_reset_rate": 0.007046234764907089,
+      "regret_swapped_rate": 0.008973584842651205,
+      "regret_true_rate": 0.00459681305048517,
+      "survival": 0.24714285714285714,
+      "test_episodes": 700,
+      "word_difference_share": 0.060464447602240914
+    },
+    {
+      "birth_identity_mae_value": 0.002580219474561796,
+      "birth_mae_persistent_rate": 0.0010629491249755025,
+      "birth_mae_reset_rate": 0.00499225583475806,
+      "birth_mae_swapped_rate": 0.0036431685995372987,
+      "birth_mae_true_rate": 0.0,
+      "birth_rate_mae_value": 0.003929306709782558,
+      "cell": "swapped_rate",
+      "deaths_by_need": {
+        "energy": 242,
+        "food": 94,
+        "safety": 55,
+        "water": 158
+      },
+      "matched_regret_value": 0.0020044160276973316,
+      "mean_final_evidence_ticks": 842.3714285714286,
+      "mean_final_readings": 25.37857142857143,
+      "mean_life_steps": 142.06285714285713,
+      "mean_readings": 4.26,
+      "per_episode_survival": [
+        0.22142857142857142,
+        0.2142857142857143,
+        0.17857142857142858,
+        0.24285714285714285,
+        0.22142857142857142
+      ],
+      "per_seed_birth_identity_mae_value": [
+        0.002358917606653594,
+        0.0023946853933368055,
+        0.0027830968865190913,
+        0.002555867588832889,
+        0.0028085298974666007
+      ],
+      "per_seed_birth_mae_persistent_rate": [
+        0.000747708297309457,
+        0.0009341838572109726,
+        0.0011300498601168345,
+        0.001282067035747759,
+        0.0012207365744924894
+      ],
+      "per_seed_birth_mae_reset_rate": [
+        0.004673406065881437,
+        0.005204315507993629,
+        0.004884769558749543,
+        0.004482508547499893,
+        0.005716279493665798
+      ],
+      "per_seed_birth_mae_swapped_rate": [
+        0.003106625903963051,
+        0.003328869250547778,
+        0.003913146746635926,
+        0.0038379346245806475,
+        0.004029266471959091
+      ],
+      "per_seed_birth_mae_true_rate": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "per_seed_birth_rate_mae_value": [
+        0.00392569776857198,
+        0.004270131650782656,
+        0.0037547196986327082,
+        0.0032004415117521346,
+        0.004495542919173309
+      ],
+      "per_seed_matched_regret_value": [
+        0.002041247320951668,
+        0.0016642650992475467,
+        0.001686661198275938,
+        0.0019622877938686714,
+        0.0026676187261428343
+      ],
+      "per_seed_mean_final_evidence_ticks": [
+        1074.5714285714287,
+        619.4642857142857,
+        976.3214285714286,
+        736.3571428571429,
+        805.1428571428571
+      ],
+      "per_seed_mean_final_readings": [
+        31.25,
+        17.714285714285715,
+        30.428571428571427,
+        23.107142857142858,
+        24.392857142857142
+      ],
+      "per_seed_mean_life_steps": [
+        183.13571428571427,
+        108.70714285714286,
+        159.87857142857143,
+        124.70714285714286,
+        133.88571428571427
+      ],
+      "per_seed_mean_readings": [
+        5.357142857142857,
+        3.142857142857143,
+        4.821428571428571,
+        3.892857142857143,
+        4.085714285714285
+      ],
+      "per_seed_rate_mae_persistent_rate": [
+        0.00032306142621842197,
+        0.0005067325904056459,
+        0.00038914880727821327,
+        0.0004036055935439044,
+        0.0004667339198268904
+      ],
+      "per_seed_rate_mae_reset_rate": [
+        0.0007446297075883444,
+        0.0009231192878742808,
+        0.0007503303113038871,
+        0.000996166722262446,
+        0.000776346240451957
+      ],
+      "per_seed_rate_mae_swapped_rate": [
+        0.0014912220771164256,
+        0.0014736782498518993,
+        0.001623487171043857,
+        0.0014896864150786696,
+        0.0009676419120798036
+      ],
+      "per_seed_rate_mae_true_rate": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "per_seed_regret_persistent_rate": [
+        0.0029522199913951694,
+        0.0051717276090165,
+        0.002804849877505543,
+        0.0045730362830415355,
+        0.006594441032242569
+      ],
+      "per_seed_regret_reset_rate": [
+        0.004993467312346837,
+        0.0068359927082640454,
+        0.00449151107578148,
+        0.006535324076910207,
+        0.009262059758385404
+      ],
+      "per_seed_regret_swapped_rate": [
+        0.00722030538714988,
+        0.007821897821281978,
+        0.006341935518310265,
+        0.009265907139350852,
+        0.008020289403390479
+      ],
+      "per_seed_regret_true_rate": [
+        0.0028599704805367834,
+        0.004380907082234695,
+        0.0023179974616003374,
+        0.0033336640919030863,
+        0.006444031983439021
+      ],
+      "per_seed_survival": [
+        0.2857142857142857,
+        0.12142857142857143,
+        0.2857142857142857,
+        0.16428571428571428,
+        0.22142857142857142
+      ],
+      "per_seed_word_difference_share": [
+        0.050531202571199,
+        0.048836825606335586,
+        0.06460484666078564,
+        0.05789839944328462,
+        0.06446460516227959
+      ],
+      "rate_mae_persistent_rate": 0.0004178564674546152,
+      "rate_mae_reset_rate": 0.000838118453896183,
+      "rate_mae_swapped_rate": 0.001409143165034131,
+      "rate_mae_true_rate": 0.0,
+      "regret_persistent_rate": 0.004419254958640264,
+      "regret_reset_rate": 0.006423670986337595,
+      "regret_swapped_rate": 0.007734067053896691,
+      "regret_true_rate": 0.0038673142199427846,
+      "survival": 0.2157142857142857,
+      "test_episodes": 700,
+      "word_difference_share": 0.05726717588877689
+    }
+  ],
+  "complete": true,
+  "configuration": {
+    "cells": [
+      "reset_rate",
+      "persistent_rate",
+      "true_rate",
+      "swapped_rate"
+    ],
+    "episode_seed_base": 3700000000,
+    "episode_stride": 16,
+    "identities": 28,
+    "identity_seed_base": 3600000000,
+    "mechanism_fingerprint": "d7dcad13136215ca79546dfdf75f7778105dc42651e5e240b8d05ea21341f4de",
+    "organism": {
+      "bc_epochs": 2,
+      "bc_max_action_weight": 8.0,
+      "bc_warmstart_lives": 0,
+      "bodily_bound_consumption_event_loss_weight": 0.0,
+      "bodily_change_loss_boost": 20.0,
+      "bodily_consumption_event_loss_weight": 0.0,
+      "bodily_drift_loss_weight": 0.0,
+      "bodily_event_audit_json": null,
+      "bodily_event_loss_weight": 0.0,
+      "caregiver_offer_curriculum_steps": 0,
+      "caregiver_offer_distance_end": 0,
+      "caregiver_offer_threshold_start": 0.0,
+      "checkpoint": "runs/organism/probe52_guided_report_lexicon/adult/organism_report_seed1.npz",
+      "consume_options": true,
+      "counterfactual_report_credit": false,
+      "death_penalty": 1.0,
+      "discount": 0.99,
+      "entropy_weight": 0.02,
+      "episodic_binding_size": 16,
+      "episodic_binding_writes": true,
+      "explicit_self_belief": false,
+      "gae_lambda": 0.95,
+      "hidden_size": 256,
+      "inspect_options": true,
+      "island": {
+        "ask_state_period": 25,
+        "caregiver_offer_distance": 0,
+        "caregiver_offer_threshold": 0.0,
+        "height": 9,
+        "language_mode": "grounded",
+        "low_need_ask_threshold": 0.5,
+        "low_need_praise_threshold": 0.6,
+        "max_steps": 400,
+        "max_visible_slots": 3,
+        "report_lexicon_choice": false,
+        "report_lexicon_guided_labels": false,
+        "semantic_choice_horizon": 40,
+        "semantic_choice_low_need": 0.55,
+        "semantic_choice_objects": 3,
+        "semantic_choice_return_duration": 0,
+        "semantic_choice_rounds": 8,
+        "semantic_choice_trial": false,
+        "visible_radius": 2,
+        "width": 9
+      },
+      "language_mode": "grounded",
+      "learning_rate": 0.0003,
+      "live_reward_weight": 0.02,
+      "log_every_lives": 100,
+      "max_grad_norm": 1.0,
+      "max_steps": 400,
+      "metabolism_curriculum_start": 1.0,
+      "metabolism_curriculum_steps": 0,
+      "multi_step_model_horizon": 1,
+      "multi_step_model_weight": 0.0,
+      "need_balanced_replay": false,
+      "next_needs_weight": 0.0,
+      "next_vector_weight": 0.1,
+      "nonpad_token_weight": 5.0,
+      "observation_branching_planning": false,
+      "persistent_information_reuses": 0,
+      "protocol_branch_planning": false,
+      "report": {
+        "birth_levels": [
+          0.35,
+          0.45,
+          0.55,
+          0.65,
+          0.75,
+          0.85
+        ],
+        "caregiver_store": 0.0,
+        "energy_metabolism": 0.016,
+        "food_metabolism": 0.008,
+        "frozen_needs": [],
+        "help_delay": 0,
+        "help_period": 6,
+        "interoception_probability": 0.0,
+        "large_portion_probability": 0.5,
+        "life_steps": 400,
+        "listener_mode": "grounded",
+        "metabolic_spread": 0.0,
+        "move_energy_metabolism": 0.035,
+        "portion_large": 0.6,
+        "portion_requests": false,
+        "portion_small": 0.2,
+        "reveal_birth_needs": true,
+        "safety_metabolism": 0.002,
+        "shock_probability": 0.025,
+        "shock_size": 0.25,
+        "silent_shock_probability": 0.0,
+        "tangled_size_words": false,
+        "unified_uptake": true,
+        "uptake_spread": 0.0,
+        "water_metabolism": 0.012
+      },
+      "report_entropy_weight": 0.02,
+      "report_lexical_childhood_steps": 0,
+      "report_slots": 2,
+      "report_task": true,
+      "reward_prediction_weight": 0.2,
+      "seed": 1,
+      "segment_length": 64,
+      "self_belief_development_steps": 0,
+      "self_belief_hidden_size": 64,
+      "self_belief_rank_weight": 0.0,
+      "self_belief_relational_urgency": false,
+      "self_model_planning_horizon": 1,
+      "self_model_planning_reward_weight": 0.5,
+      "self_model_planning_scale": 0.0,
+      "self_model_planning_start_steps": 0,
+      "semantic_choice_childhood_steps": 0,
+      "split_drift_head": false,
+      "stats_csv": "runs/organism/probe52_guided_report_lexicon/adult/lives_report_seed1.csv",
+      "structured_causal_development_steps": 0,
+      "structured_causal_self_model": false,
+      "tied_report_lexicon": true,
+      "token_embed_size": 32,
+      "token_prediction_weight": 0.0,
+      "total_steps": 200000,
+      "urgent_deficit_utility": false,
+      "value_weight": 0.5,
+      "world_model_replay_capacity": 0,
+      "world_model_replay_updates": 0
+    },
+    "parent_fingerprint": "ddd7c5a9e1cdb4274a63a98c078065e55702b6116457c1cbc659a2b8c32135d4",
+    "schema": 2,
+    "seed_stride": 2000000,
+    "seeds": 5,
+    "test_episodes": 5,
+    "world_kwargs": {
+      "caregiver_store": 0.0,
+      "help_delay": 24,
+      "help_period": 6,
+      "interoception_probability": 0.03,
+      "metabolic_spread": 0.6,
+      "uptake_spread": 0.0
+    }
+  },
+  "gates": {
+    "C1_persistent_identity_physical_ceiling": {
+      "high": 0.06476086132675934,
+      "low": 0.009524852958954926,
+      "mean": 0.03714285714285714,
+      "n": 5,
+      "negative": 0,
+      "positive": 5,
+      "same_sign": 5,
+      "values": [
+        0.04285714285714287,
+        0.014285714285714277,
+        0.04999999999999999,
+        0.01428571428571429,
+        0.06428571428571425
+      ],
+      "verdict": "pass"
+    },
+    "C2_retained_evidence_reaches_survival": {
+      "high": 0.06829595327787871,
+      "low": 0.003132618150692705,
+      "mean": 0.03571428571428571,
+      "n": 5,
+      "negative": 0,
+      "positive": 5,
+      "same_sign": 5,
+      "values": [
+        0.035714285714285754,
+        0.014285714285714277,
+        0.0357142857142857,
+        0.01428571428571429,
+        0.07857142857142854
+      ],
+      "verdict": "pass"
+    },
+    "C3_matched_regret_bridge": {
+      "high": 0.0029590107294962726,
+      "low": 0.001204554263915429,
+      "mean": 0.002081782496705851,
+      "n": 5,
+      "negative": 0,
+      "positive": 5,
+      "same_sign": 5,
+      "values": [
+        0.0020056389710273793,
+        0.001768942098248187,
+        0.0023973797160966636,
+        0.0011721106078497528,
+        0.0030648410903072708
+      ],
+      "verdict": "pass"
+    },
+    "C4_less_rediscovery_at_birth": {
+      "high": 0.0044942287319011485,
+      "low": 0.0033596545919369215,
+      "mean": 0.003926941661919035,
+      "n": 5,
+      "negative": 0,
+      "positive": 5,
+      "same_sign": 5,
+      "values": [
+        0.003857238759642443,
+        0.004234846506327132,
+        0.0037745755535672975,
+        0.0032887721133495734,
+        0.004479275376708728
+      ],
+      "verdict": "pass"
+    },
+    "C5_memory_belongs_to_the_individual": {
+      "high": 0.002763433175303541,
+      "low": 0.00205949189764062,
+      "mean": 0.0024114625364720804,
+      "n": 5,
+      "negative": 0,
+      "positive": 5,
+      "same_sign": 5,
+      "values": [
+        0.002143859758095254,
+        0.0020910920031946283,
+        0.002743825539298685,
+        0.002584737443245511,
+        0.0024937979385263247
+      ],
+      "verdict": "pass"
+    },
+    "C6_viable_construction": {
+      "floor": 0.15,
+      "true_rate_survival": 0.24714285714285714,
+      "verdict": "pass"
+    },
+    "all_pass": true,
+    "ungated_persistent_minus_swapped_survival": {
+      "high": 0.054606610029479,
+      "low": 0.005393389970521006,
+      "mean": 0.030000000000000006,
+      "n": 5,
+      "negative": 0,
+      "positive": 5,
+      "same_sign": 5,
+      "values": [
+        0.021428571428571463,
+        0.014285714285714277,
+        0.02857142857142858,
+        0.021428571428571436,
+        0.06428571428571428
+      ]
+    }
+  },
+  "identity_cell_units": 560,
+  "mismatches": [],
+  "schema": 2,
+  "source_artifact_sha256": "85365d1a17d22f66439fb0e72ad4f6c3eaf8ddced32bf9ba65d2e4f978d83d24",
+  "status": "probe75-confirmation",
+  "stored_gates_match": true,
+  "stored_summary_matches": true,
+  "test_episodes_per_cell": 700,
+  "ungated_true_minus_retained_survival": {
+    "high": 0.014581357740037978,
+    "low": -0.011724214882895132,
+    "mean": 0.0014285714285714236,
+    "n": 5,
+    "negative": 1,
+    "positive": 2,
+    "same_sign": 2,
+    "values": [
+      0.0071428571428571175,
+      0.0,
+      0.01428571428571429,
+      0.0,
+      -0.01428571428571429
+    ]
+  }
+}

@@ -39,6 +39,9 @@ runs/organism/probe65_future_request/*
 runs/organism/probe66_discovered_convention/*
 !runs/organism/probe66_discovered_convention/ceiling_survey.json
 !runs/organism/probe66_discovered_convention/treatment.json
+!runs/organism/probe75_cross_life_replication/
+runs/organism/probe75_cross_life_replication/*
+!runs/organism/probe75_cross_life_replication/evidence.json
 .env
 .DS_Store
 CLAUDE.md

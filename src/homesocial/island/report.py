@@ -926,6 +926,9 @@ class ReportWorld(IslandWorld):
             if cost > self._store_remaining + 1e-12:
                 self._refused_grants += 1
                 return None, None, source_tick
+            if not self._caregiver_allows_grant(need, large=large, cost=cost):
+                self._refused_grants += 1
+                return None, None, source_tick
             self._store_remaining -= cost
         # Counted whether or not there is a basket to count it against, so that
         # what a grant costs is a comparable number in both ecologies.
@@ -953,6 +956,21 @@ class ReportWorld(IslandWorld):
         self._grants_by_need[need] += 1
         self._granted_sizes["large" if large else "small"] += 1
         return need, large, source_tick
+
+    def _caregiver_allows_grant(
+        self, need: str, *, large: bool, cost: float
+    ) -> bool:
+        """Whether a finite-store caregiver approves an affordable request.
+
+        The ordinary caregiver is first-come and therefore always approves.
+        Kept as a protected hook so audit worlds can test allocation policies
+        without adding another ecology knob or changing any existing path.
+        It is consulted only when ``caregiver_store`` is finite and after the
+        global affordability check has passed.
+        """
+
+        del need, large, cost
+        return True
 
     # -- read-only accessors used by audits ---------------------------------
 

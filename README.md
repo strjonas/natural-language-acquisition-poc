@@ -6,11 +6,90 @@ and communication (such that even deflationalists will concede that is uses lang
 **Status:** In development.
 - Online individual-body calibration and causally useful three-word need reports in a small custom
 simulation. 
+- A matched rate-only lesion now shows that using the learned individual rate
+  improves survival at a long consequence horizon.
+- Retaining evidence about the same body's rates across episodes improves
+  survival over relearning each episode; a wrong-identity memory control loses
+  that benefit. This result now replicates on disjoint bodies and episode streams.
 - A rationed caregiver that can be asked for a portion size, where the right
 request depends on a fact about the self that perfect state knowledge cannot supply.
 - ToDo: fuller natural language acquisition
 
 ## Current results
+
+The newest identification instrument, Probe76, infers which opaque restorative
+actions target the same hidden resource from scalar saturation interactions.
+It recovers reachable counts **1–5** and exact action partitions in **25/25
+worlds**, predicts held-out overlap **750/750** correctly, and passes all six
+locked gates. Sensory shuffling destroys grouping; physical remapping
+invalidates the old grouping and is recovered. This uses matched forks and no
+shocks, and leaves unreachable bodily dimensions unresolved. It licenses
+testing sequential exploration, not calling an online organism's structure
+discovered. See the [result](docs/decisions/2026-09-30-saturation-structure-result.md).
+
+Probe75 independently replicates persistent individual rate memory on fresh
+bodies and episode streams, keeping Probe74's mechanism, sample and six gates
+unchanged. Five paired blocks × 28 identities × five test episodes give:
+
+| rates used by request planning | survivors / 700 | survival |
+|---|---:|---:|
+| relearn each episode | 147 | 0.2100 |
+| **retain individual rate evidence** | **172** | **0.2457** |
+| true individual rates | 173 | 0.2471 |
+| memory initialized from another body | 151 | 0.2157 |
+
+Retained minus reset survival is **+0.0357 [+0.0031, +0.0683]**, positive on
+**5/5 blocks**, adding 25 survivors. **All six original gates pass.** An
+independent standard-library checker reconstructs the result from episode
+records and verifies the saved summaries. This replicates the stationary-body
+memory mechanism under one frozen motor parent; it does not discover axes,
+recognize identity, establish saturation or acquire generative language. See
+the [result](docs/decisions/2026-09-30-cross-life-replication-result.md) and
+[preregistration](docs/decisions/2026-09-30-cross-life-replication-preregistration.md).
+
+The preceding survey, Probe74, tests memory about a body that actually persists
+across episodic resets. Current-state belief resets, while a separate recursive
+rate estimator retains its evidence. Five paired blocks x 28 identities x five
+test episodes give 700 episodes per arm, after one calibration episode per
+identity:
+
+| rates used by request planning | survivors / 700 | survival |
+|---|---:|---:|
+| relearn each episode | 159 | 0.2271 |
+| **retain individual rate evidence** | **180** | **0.2571** |
+| true individual rates | 180 | 0.2571 |
+| memory initialized from another body | 158 | 0.2257 |
+
+Retained minus reset survival is **+0.0300 [+0.0141, +0.0459]**, positive on
+**5/5 blocks**. Birth-rate error falls 78.7%; matched regret improves on all
+five blocks. All six preregistered continuation gates pass. The evidence
+budget is intentionally larger for retained memory, with matched estimator
+compute. This local survey licenses independent replication; the aggregate
+retained/true-rate tie does not establish saturation. See the
+[result](docs/decisions/2026-09-30-cross-life-self-result.md),
+[preregistration](docs/decisions/2026-09-30-cross-life-self-preregistration.md),
+and [current state](docs/STATE.md).
+
+The preceding result, Probe73, asks whether the learned bodily rate itself changes
+whether the organism lives. At lag 24, every cell runs the same online recursive
+calibrator, filtered state, uptake belief, request ledger, frozen motor parent
+and planner compute. Only the rate vector exposed to request planning changes.
+Five paired seed blocks x 140 lives per cell give:
+
+| rates used by request planning | survival | mean life steps |
+|---|---:|---:|
+| species rates | 0.1743 | 126.1 |
+| **learned individual rates** | **0.1886** | **131.3** |
+| true individual rates | 0.2129 | 145.5 |
+
+Learned minus species survival is **+0.0143 [+0.0003, +0.0283]**, with four
+positive blocks and one tie. The matched true-rate ceiling is +0.0386
+[+0.0213, +0.0559] on 5/5 blocks. Learned rates remove 81.7% of the species
+rate error, reduce matched word regret on every block, and change 27.5% of need
+words. All five preregistered gates pass, although the primary lower confidence
+bound is narrow. See the [result](docs/decisions/2026-08-24-learned-rate-survival-result.md),
+[preregistration](docs/decisions/2026-08-24-learned-rate-survival-preregistration.md),
+and [current state](docs/STATE.md).
 
 In Probe63, each simulated organism is born with unknown individual metabolic
 constants and receives sparse interoceptive readings. A 21-scalar recursive
@@ -89,6 +168,37 @@ python3 -m venv .venv
 PYTHONPATH=src .venv/bin/python -m pytest -q
 ```
 
+Re-run the resumable Probe74 survey from the same committed parent checkpoint:
+
+```bash
+PYTHONPATH=src .venv/bin/python -u -m homesocial.organism.cross_life_self
+```
+
+Verify Probe75's committed compact evidence with no MLX import, or rerun its
+fixed confirmation on the same parent:
+
+```bash
+.venv/bin/python scripts/summarize_probe75.py
+PYTHONPATH=src .venv/bin/python -u -m homesocial.organism.cross_life_replication \
+  --out /tmp/probe75-replication.json
+```
+
+Completed progress pins its source code. Use a fresh output path when rerunning
+after a source change; incomplete progress refuses a different mechanism.
+
+Re-run Probe76's fixed structure instrument:
+
+```bash
+PYTHONPATH=src .venv/bin/python -u -m homesocial.organism.saturation_structure \
+  --out /tmp/probe76-survey.json
+```
+
+Re-run the preceding Probe73 treatment:
+
+```bash
+PYTHONPATH=src .venv/bin/python -m homesocial.organism.learned_rate_survival
+```
+
 Re-run a one-life smoke treatment from the committed parent checkpoint:
 
 ```bash
@@ -115,14 +225,15 @@ licensed.
 
 | Path | Purpose |
 |---|---|
-| `src/homesocial/` | gridworld, learners, language probes, organism lifecycle, and Probe63 |
-| `tests/` | 428 unit and causal guard tests |
+| `src/homesocial/` | gridworld, learners, language probes, organism lifecycle, and controlled self-model experiments through Probe76 |
+| `tests/` | 579 unit and causal guard tests, plus 13 subtests |
 | `docs/decisions/` | append-only preregistrations, results, and negative findings |
 | `docs/STATE.md` | current scientific state and exact claim boundary |
 | `runs/` | allow-listed public artifacts; all other run output remains ignored |
 | `scripts/summarize_probe63.py` | dependency-light recalculation of the Probe63 headline |
 | `scripts/summarize_probe64.py` | the same for Probe64, including its behavioural negative |
 | `scripts/summarize_probe65.py` | the same for Probe65: the horizon crossover and its divergence control |
+| `scripts/summarize_probe75.py` | independent reconstruction of all six confirmation gates, with committed compact block evidence |
 
 ---
 
@@ -839,6 +950,151 @@ PYTHONPATH=src python3 -m homesocial.organism.decision_granularity --treatment -
 Four of five locked gates pass; G5 fails and is not rewritten. Records:
 `docs/decisions/2026-08-17-decision-granularity-{preregistration,ceiling-survey,result}.md`.
 
+### Probe69: structure against scale
+
+Every comparison in this repository between a structured mechanism and a
+black-box one was run at exactly one development budget -- 80,000 ticks, which is
+**90 seconds** on this machine -- and that budget is the point of **maximum
+separation** between the two families. Swept over budget, the structured model is
+already saturated at 80,000 (16x the compute buys +0.0095) while the black-box
+climbs +0.1582 and catches it: the two tie at 0.935 by 5,120,000 ticks.
+
+The advantage structure buys is **sample efficiency, not a ceiling**.
+
+The survey -- one seed, about two hours, and enough on its own to show the shape:
+
+```bash
+PYTHONPATH=src python3 -m homesocial.organism.belief_scaling --budgets 80000,320000,1280000 --widths 64,256 --seeds 1 --lives 200 --structured
+```
+
+The preregistered treatment. Five seeds across three budgets and three families,
+then the extrapolation arm at 5,120,000 -- together roughly 24 hours on an
+M-series Mac, so run them concurrently on a machine with cores to spare:
+
+```bash
+PYTHONPATH=src python3 -u -m homesocial.organism.belief_scaling --budgets 80000,320000,1280000 --widths 64,256 --seeds 5 --lives 200 --structured --treatment-band --run-dir runs/organism/probe69_belief_scaling/treatment
+PYTHONPATH=src python3 -u -m homesocial.organism.belief_scaling --budgets 5120000 --widths 256 --seeds 3 --lives 200 --structured --treatment-band --run-dir runs/organism/probe69_belief_scaling/extrapolation
+```
+
+Do not pipe either through `grep`: it block-buffers into a file and a healthy run
+looks frozen. Both write `scaling_survey.json` after every cell, so read that.
+
+Grade against the locked gates:
+
+```bash
+PYTHONPATH=src python3 scripts/grade_probe69.py
+```
+
+Six of seven locked gates pass; G6 fails and is not rewritten -- the predicted
+residual gap of 0.025 was measured at +0.0003, direction right and magnitude
+wrong. Records:
+`docs/decisions/2026-08-17-belief-scaling-{ceiling-survey,preregistration}.md` and
+`docs/decisions/2026-08-18-belief-scaling-result.md`.
+
+### Probe70: constitution-aware basket ceiling
+
+Before adding a word for “I burn water fast”, this survey asks whether a
+caregiver handed the oracle individual rates can use them at all. It partitions
+the private lifetime basket by true per-need burden and compares that with the
+existing first-come caregiver, plus species-rate and label-permuted controls.
+
+```bash
+PYTHONPATH=src .venv/bin/python -u -m homesocial.organism.constitution_budget
+```
+
+Five seeds x 40 lives across six finite stores plus the unlimited control take
+about 35 minutes on this machine. Progress is written after every cell to
+`runs/organism/probe70_constitution_budget/ceiling_survey.json`.
+
+The mechanism is **not licensed**. Oracle-rate allocation loses to first-come at
+every finite store, by 0.105–0.205 survival, and all 30 paired seed contrasts are
+negative. The unlimited control is exact. Records:
+`docs/decisions/2026-08-20-constitution-budget-ceiling-{preregistration,survey}.md`.
+
+### Probe71: expanded-body composition-law construction ceiling
+
+Before retraining the frozen parent for more bodily axes, this survey checks a
+fixed K5 body and a closed-form first-use occupancy law with no learned
+component:
+
+```bash
+PYTHONPATH=src .venv/bin/python -m homesocial.organism.composition_law \
+  --lives 100 --seeds 5 \
+  --out runs/organism/probe71_expanded_body/construction_survey.json
+```
+
+Four of six continuation clauses pass. The K5 body survives at 0.976, health
+carries 20.70% of natural requests, and the formula matches its i.i.d. resample
+control. Natural range is 0.02570 against 0.030, and the median axis gap moves
+-0.01707 against the locked absolute 0.020, so C5 and C6 fail: no expanded
+parent or composition treatment is built. Records:
+`docs/decisions/2026-08-22-expanded-body-composition-law-{preregistration,result}.md`.
+
+### Probe72: decision granularity at the survival endpoint
+
+Probe68's finer help quantum raises the open-loop accuracy value of individual
+rates. Probe72 asks whether that amplification reaches survival, using the same
+clean `oracle - state_oracle` rate contrast and `state_oracle - population`
+lesion over five paired seed blocks x 140 lives per cell:
+
+```bash
+PYTHONPATH=src .venv/bin/python -m homesocial.organism.granularity_survival \
+  --out runs/organism/probe72_granularity_survival/treatment.json
+```
+
+The runner checkpoints every 20 lives and resumes completed chunks. Three of
+five locked gates pass. True individual rates buy +0.0214 [+0.0089, +0.0340]
+survival in the fine ecology on 5/5 blocks, but the granularity interaction is
+-0.0229 [-0.0869, +0.0412] with only 2/5 positive. Smaller, more frequent help
+improves every arm's survival; it does not selectively amplify rate knowledge.
+Records:
+`docs/decisions/2026-08-22-granularity-survival-{preregistration,result}.md`.
+
+### Probe73: learned-rate survival
+
+Probe73 returns to the unchanged help clock at lag 24 and changes one input to
+the request rule. Every cell runs the same recursive calibrator; request planning
+reads species, learned, or true rates:
+
+```bash
+PYTHONPATH=src .venv/bin/python scripts/diagnose_probe68.py \
+  --lives 8 --delays 24 --seed-base 2900000000 \
+  --out runs/organism/probe73_learned_rate_survival/granularity_diagnostic.json
+PYTHONPATH=src .venv/bin/python -m homesocial.organism.learned_rate_survival
+```
+
+The runner checkpoints every 20 lives and resumes completed chunks. All five
+locked gates pass. Learned rates buy +0.0143 [+0.0003, +0.0283] survival over
+the matched species-rate lesion; the true-rate ceiling is +0.0386 [+0.0213,
++0.0559]. Records:
+`docs/decisions/2026-08-24-learned-rate-survival-{preregistration,result}.md`.
+
+### Probe74: cross-episode self-knowledge in a persistent body
+
+One individual's metabolic constants now persist across episodic resets while
+birth state, shocks and motor randomness are redrawn. Current-state belief still
+resets every episode. A separate RLS rate memory retains only its parameters and
+evidence statistics. The survey compares reset rates, retained rates, true rates,
+and memory initialized from another identity, with matched estimator compute:
+
+```bash
+PYTHONPATH=src .venv/bin/python scripts/diagnose_probe68.py \
+  --lives 8 --delays 24 --seed-base 3100000020 \
+  --out runs/organism/probe74_cross_life_self/granularity_diagnostic.json
+PYTHONPATH=src .venv/bin/python -u -m homesocial.organism.cross_life_self
+```
+
+Five blocks x 28 identities x five test episodes give 700 test episodes per
+arm, after one shared calibration episode per identity. Progress is saved after
+each calibration episode and each complete identity/cell sequence; rerunning
+the command resumes completed work and rejects a changed parent checkpoint or
+configuration. Episode correlation is retained in the five-block intervals.
+Records: `docs/decisions/2026-09-30-cross-life-self-{preregistration,result}.md`.
+
+All six continuation gates pass: retained rates buy **+0.0300 [+0.0141,
++0.0459]** survival, positive on 5/5 blocks; wrong-identity memory loses the
+benefit. This survey licenses a disjoint-band replication.
+
 Train a fresh option-world model per seed, then test whether option mediation
 still works on those independently trained world-model heads:
 
@@ -862,5 +1118,5 @@ PYTHONPATH=src python3 -m homesocial.recurrent_ac --episodes 2000 --batch-size 3
 ## Test
 
 ```bash
-PYTHONPATH=src python3 -m unittest discover -s tests
+PYTHONPATH=src .venv/bin/python -m pytest -q
 ```

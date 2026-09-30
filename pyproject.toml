@@ -7,7 +7,7 @@ license = "MIT"
 authors = [
   { name = "Jonas Strabel" },
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
   "mlx>=0.32,<0.33",
   "numpy>=2.5,<3",

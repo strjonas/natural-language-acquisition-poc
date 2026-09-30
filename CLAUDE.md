@@ -84,3 +84,24 @@ closes a mechanism is worth more here than a positive one that was not
 controlled -- probes 48 through 56 are all negative and they are why probe57 is
 credible. Do not describe a partial result as complete, and do not soften a
 failed gate into a "mid result".
+
+### Always quote an ETA before waiting on a run
+
+Whenever you start a run and then stop to wait for it, state up front how long
+it should take as **mu and sigma** -- a point estimate and a rough spread, both
+estimates, no false precision. Give the absolute clock time of `mu + sigma` and
+say plainly that if the run is still going after it, something is wrong.
+
+The reason is that without it the only way to tell a long run from a hung one is
+to ask, and that costs a round trip every time. Derive `mu` from a measured
+per-unit cost rather than a guess -- time one cheap cell first, then multiply --
+and price in contention if you are running arms concurrently.
+
+Two practical notes learned here:
+
+- **Do not pipe a long run's output through `grep` or any filter.** They
+  block-buffer into a file, so the log looks frozen while the run is healthy.
+  Write progress to a JSON artifact after every unit instead, and read that; it
+  also survives an interruption.
+- Run cells in `for seed: for cell:` order, so a full replicate lands early and
+  each later seed only tightens the intervals.
