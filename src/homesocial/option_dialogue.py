@@ -8,6 +8,7 @@ import mlx.nn as nn
 import mlx.optimizers as optim
 import numpy as np
 
+from .discrete import straight_through_one_hot
 from .env import RESOURCE_ECOLOGIES
 from .imitation import load_checkpoint
 from .option_counterfactual_language import STATE_POLICIES
@@ -108,8 +109,7 @@ class OptionDialogueMediator(nn.Module):
         logits = self.first_token(hidden)
         probs = mx.softmax(logits / temperature, axis=-1)
         if hard:
-            hard_message = mx.eye(self.vocabulary_size)[mx.argmax(probs, axis=-1)]
-            message = hard_message + probs - mx.stop_gradient(probs)
+            message = straight_through_one_hot(probs)
         else:
             message = probs
         return (
@@ -139,8 +139,7 @@ class OptionDialogueMediator(nn.Module):
         logits = self.reply_token(hidden)
         probs = mx.softmax(logits / temperature, axis=-1)
         if hard:
-            hard_message = mx.eye(self.vocabulary_size)[mx.argmax(probs, axis=-1)]
-            message = hard_message + probs - mx.stop_gradient(probs)
+            message = straight_through_one_hot(probs)
         else:
             message = probs
         return (
@@ -347,6 +346,9 @@ def train_option_dialogue(
             else:
                 repair_indices = batch_value_repair_proposals[:, value_repair_index]
                 value_repair_index += 1
+            # Repair proposals are discrete targets, including model runner-up
+            # choices; only the reply path below should receive gradients.
+            repair_indices = mx.stop_gradient(repair_indices)
             repair_signal = mx.eye(option_count)[repair_indices]
             single_repair_loss, repair_reply_probs, repair_examples = final_loss_for_proposals(
                 batch_features,
@@ -384,13 +386,12 @@ def train_option_dialogue(
             if limited_partner is None or limited_partner_mask is None:
                 raise ValueError("limited_partner proposal training requires a trained partner.")
             partner_logits = limited_partner(batch_features * limited_partner_mask)
-            proposal_signal = mx.eye(option_count)[mx.argmax(partner_logits, axis=-1)]
+            proposal_signal = mx.eye(option_count)[
+                mx.stop_gradient(mx.argmax(partner_logits, axis=-1))
+            ]
         else:
             proposal_probs = mx.softmax(proposal_logits, axis=-1)
-            hard_proposal = mx.eye(option_count)[mx.argmax(proposal_probs, axis=-1)]
-            proposal_signal = hard_proposal + proposal_probs - mx.stop_gradient(
-                proposal_probs
-            )
+            proposal_signal = straight_through_one_hot(proposal_probs)
         final_loss, reply_probs, _final_examples = final_loss_for_proposals(
             batch_features,
             batch_targets,

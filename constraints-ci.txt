@@ -1,0 +1,11 @@
+# Tested runtime/test dependencies for macOS Apple Silicon CI (Python 3.13).
+# Update deliberately, then run the complete suite before committing the update.
+# Install with: python -m pip install -c constraints-ci.txt -e '.[dev]'
+iniconfig==2.3.0
+mlx==0.32.3
+mlx-metal==0.32.3
+numpy==2.5.3
+packaging==26.3
+pluggy==1.6.0
+Pygments==2.21.0
+pytest==9.1.1

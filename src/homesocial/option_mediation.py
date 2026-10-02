@@ -10,6 +10,7 @@ import mlx.optimizers as optim
 import numpy as np
 
 from .attribution import _needs_array
+from .discrete import straight_through_one_hot
 from .env import RESOURCE_ECOLOGIES, Action, HomeostaticSocialGrid
 from .imitation import load_checkpoint
 from .observations import observation_vector, observation_vector_size
@@ -213,10 +214,7 @@ class OptionMediationProtocol(nn.Module):
             probs = mx.softmax(logits / temperature, axis=-1)
             probabilities.append(mx.reshape(probs, (batch_size, option_count, -1)))
             if hard:
-                hard_message = mx.eye(self.vocabulary_size)[
-                    mx.argmax(probs, axis=-1)
-                ]
-                message = hard_message + probs - mx.stop_gradient(probs)
+                message = straight_through_one_hot(probs)
             else:
                 message = probs
             messages.append(mx.reshape(message, (batch_size, option_count, -1)))
@@ -311,10 +309,7 @@ class OptionMediationSender(nn.Module):
             probs = mx.softmax(logits / temperature, axis=-1)
             probabilities.append(mx.reshape(probs, (batch_size, option_count, -1)))
             if hard:
-                hard_message = mx.eye(self.vocabulary_size)[
-                    mx.argmax(probs, axis=-1)
-                ]
-                message = hard_message + probs - mx.stop_gradient(probs)
+                message = straight_through_one_hot(probs)
             else:
                 message = probs
             messages.append(mx.reshape(message, (batch_size, option_count, -1)))

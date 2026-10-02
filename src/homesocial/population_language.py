@@ -8,6 +8,7 @@ import mlx.nn as nn
 import mlx.optimizers as optim
 import numpy as np
 
+from .discrete import straight_through_one_hot
 from .emergent_language import (
     FEATURE_MODES,
     INTENT_LABELS,
@@ -81,10 +82,8 @@ class PopulationSender(nn.Module):
         probs2 = mx.softmax(logits2 / temperature, axis=-1)
         if not hard:
             return probs1, probs2, probs1, probs2
-        hard1 = mx.eye(self.vocabulary_size)[mx.argmax(probs1, axis=-1)]
-        hard2 = mx.eye(self.vocabulary_size)[mx.argmax(probs2, axis=-1)]
-        straight1 = hard1 + probs1 - mx.stop_gradient(probs1)
-        straight2 = hard2 + probs2 - mx.stop_gradient(probs2)
+        straight1 = straight_through_one_hot(probs1)
+        straight2 = straight_through_one_hot(probs2)
         return straight1, straight2, probs1, probs2
 
 

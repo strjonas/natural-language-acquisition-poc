@@ -183,7 +183,7 @@ stays ignored.
 
 ```bash
 python3 -m venv .venv
-.venv/bin/pip install -e '.[dev]'
+.venv/bin/python -m pip install -c constraints-ci.txt -e '.[dev]'
 .venv/bin/python scripts/summarize_probe63.py
 .venv/bin/python scripts/summarize_probe64.py
 .venv/bin/python scripts/summarize_probe65.py
@@ -204,6 +204,10 @@ fixed confirmation on the same parent:
 PYTHONPATH=src .venv/bin/python -u -m homesocial.organism.cross_life_replication \
   --out /tmp/probe75-replication.json
 ```
+
+CI uses `constraints-ci.txt` to keep runtime and test dependencies reproducible.
+Update those versions deliberately and verify the full suite; `pyproject.toml`
+continues to declare the supported dependency ranges.
 
 Completed progress pins its source code. Use a fresh output path when rerunning
 after a source change; incomplete progress refuses a different mechanism.
@@ -273,7 +277,7 @@ licensed.
 | Path | Purpose |
 |---|---|
 | `src/homesocial/` | gridworld, learners, language probes, organism lifecycle, and controlled self-model experiments through Probe79 |
-| `tests/` | 610 unit and causal guard tests, plus 13 subtests |
+| `tests/` | 614 unit and causal guard tests, plus 13 subtests |
 | `docs/decisions/` | append-only preregistrations, results, and negative findings |
 | `docs/STATE.md` | current scientific state and exact claim boundary |
 | `runs/` | allow-listed public artifacts; all other run output remains ignored |

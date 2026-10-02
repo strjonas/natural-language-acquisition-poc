@@ -644,8 +644,13 @@ family comparison was made at, and do not call it a ceiling unless you swept it*
 - `docs/decisions/2026-07-30-outcome-aware-self-planner-result.md`
 - `docs/decisions/2026-07-26-causal-self-report-independent-verification.md`
 
-Latest verification: **610 tests and 13 subtests passed** in 80.01 seconds
-while Probe79 ran on 2026-10-02. All new behavior is
+Latest local verification: **614 tests and 13 subtests passed** on both MLX
+0.32.0 (72.66 seconds) and 0.32.3 (71.36 seconds), on 2026-10-02. The latter
+reproduces CI runtime/test dependency versions. The preceding GitHub run failed
+29 legacy training tests because discrete gather indices lacked explicit
+gradient boundaries; the maintenance repair preserves the straight-through
+soft gradient and pins CI dependencies. See
+`docs/decisions/2026-10-02-mlx-ci-compatibility.md`. All new behavior is
 default off. `tests/test_expanded_body.py` asserts exact legacy-schema constants,
 five unique axes/words/consequence surfaces, paired random streams and a real
 health viability path. `tests/test_composition_law.py` distinguishes fixed-count

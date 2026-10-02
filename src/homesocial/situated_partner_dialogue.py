@@ -10,6 +10,7 @@ import mlx.optimizers as optim
 import numpy as np
 
 from .attribution import _needs_array
+from .discrete import straight_through_one_hot
 from .env import RESOURCE_ECOLOGIES, Action, HomeostaticSocialGrid
 from .imitation import load_checkpoint
 from .observations import observation_vector
@@ -238,8 +239,7 @@ class SituatedPartnerDialogue(nn.Module):
         logits = self.reply_token(hidden)
         probs = mx.softmax(logits / temperature, axis=-1)
         if hard:
-            hard_message = mx.eye(self.vocabulary_size)[mx.argmax(probs, axis=-1)]
-            message = hard_message + probs - mx.stop_gradient(probs)
+            message = straight_through_one_hot(probs)
         else:
             message = probs
         return (

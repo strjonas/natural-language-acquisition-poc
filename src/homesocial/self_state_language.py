@@ -10,6 +10,7 @@ import numpy as np
 
 from .agents import TeacherFollowingAgent
 from .attribution import _needs_array
+from .discrete import straight_through_one_hot
 from .emergent_language import (
     FEATURE_MODES,
     INTENT_LABELS,
@@ -106,10 +107,7 @@ class MultiSlotSender(nn.Module):
             probs = mx.softmax(logits / temperature, axis=-1)
             probabilities.append(probs)
             if hard:
-                hard_message = mx.eye(self.vocabulary_size)[
-                    mx.argmax(probs, axis=-1)
-                ]
-                messages.append(hard_message + probs - mx.stop_gradient(probs))
+                messages.append(straight_through_one_hot(probs))
             else:
                 messages.append(probs)
         return messages, probabilities
