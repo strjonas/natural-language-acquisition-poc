@@ -42,6 +42,15 @@ runs/organism/probe66_discovered_convention/*
 !runs/organism/probe75_cross_life_replication/
 runs/organism/probe75_cross_life_replication/*
 !runs/organism/probe75_cross_life_replication/evidence.json
+!runs/organism/probe77_sequential_structure/
+runs/organism/probe77_sequential_structure/*
+!runs/organism/probe77_sequential_structure/evidence.json
+!runs/organism/probe78_changing_body/
+runs/organism/probe78_changing_body/*
+!runs/organism/probe78_changing_body/evidence.json
+!runs/organism/probe79_evidence_reset/
+runs/organism/probe79_evidence_reset/*
+!runs/organism/probe79_evidence_reset/evidence.json
 .env
 .DS_Store
 CLAUDE.md

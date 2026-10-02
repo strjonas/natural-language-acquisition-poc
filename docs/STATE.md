@@ -1,11 +1,27 @@
 # STATE
 
-Last rewritten: 2026-09-30. Rewrite this file, never append.
+Last rewritten: 2026-10-02. Rewrite this file, never append.
 
 ## Where the next agent should start
 
-Probe75's disjoint-band persistent-memory confirmation completed on 2026-09-30.
-Probe76's different structure-identification instrument also completed. Start here:
+Probe77's sequential discovery screen completed on 2026-09-30: all five gates
+fail at one and six episodes. Probe78's changing-body oracle-reset ceiling
+passes all three clauses: +18 survivors in 700 changed-body episodes, with
+exact stable-sham parity. Probe79's observable-error detector fails G2 and G3:
+17.14% stationary false alarms and no reliable advantage over sign-scrambled
+detection. The approved tranche is complete; this detector is closed before
+a survival treatment. Further work is proposed for approval. Start here:
+
+- `docs/decisions/2026-09-30-sequential-structure-result.md`: random exploration
+  produces too little pair evidence and inaccurate grouping; this method closes.
+- `docs/decisions/2026-10-02-changing-body-ceiling-result.md`: correctly timed
+  resets buy +0.0257 survival [+0.0026,+0.0488]; cue still comes from the simulator.
+- `docs/decisions/2026-10-02-evidence-reset-result.md`: 48.7% lower rate error
+  and 34.2% lower regret do not override the failed selectivity/control gates.
+- `docs/decisions/2026-10-02-next-roadmap-proposal.md`: proposed next scope,
+  pending approval; no broader integration or language work started.
+
+The preceding positive baselines remain:
 
 1. `docs/decisions/2026-09-30-cross-life-replication-result.md` (probe75,
    **all 6 original gates pass; retained memory buys +0.0357 survival**).
@@ -364,7 +380,9 @@ positive physical endpoint belongs to an oracle rather than the learned model.
    restorative groups/count track K1–K5 and a physically moved target map.
    Matched forks and no shocks are still required; arbitrary total state count,
    unreachable variables and an online state estimator remain unestablished.
-2. **Corrigible** — **yes**, unchanged.
+2. **Corrigible** — **yes** for the established evidence-integration result.
+   Autonomous correction after hidden bodily change remains unestablished:
+   Probe78 passes with oracle timing; Probe79 fails the detector screen.
 3. **Load-bearing across uses** — *partial, advanced by probes73–75*. A rate-only
    lesion increases regret and reduces survival; resetting its cross-episode
    evidence now does so too. The same estimate drives future prediction and
@@ -400,6 +418,9 @@ positive physical endpoint belongs to an oracle rather than the learned model.
 | 74 | retained rate evidence across resets of one fixed individual | **survey, 6/6 pass**; retained rates buy **+0.0300 survival**, 5/5 blocks; wrong-identity memory loses the benefit |
 | 75 | unchanged persistent-memory mechanism, disjoint bodies/episodes | **confirmation, 6/6 pass**; retained rates buy **+0.0357 survival**, 5/5; independently reconstructed |
 | 76 | scalar saturation interactions identify unnamed restoration groups | **instrument, 6/6 pass**; exact 25/25 worlds, held-out 750/750; matched-fork and shock-free privileges |
+| 77 | random sequential predecessor-effect contrasts | **0/5 pass** at one and six episodes; inadequate grouping and pair coverage; closed |
+| 78 | oracle-timed reset after hidden body changes | **3/3 clauses pass**; +18 survivors/700, exact stable-sham parity; timing remains privileged |
+| 79 | two consecutive observable prediction errors trigger reset | **1/3 pass**; stationary false alarms and sign-scrambled controls fail; closed before survival treatment |
 
 Do not reopen without contrary evidence:
 
@@ -433,6 +454,10 @@ Do not reopen without contrary evidence:
   raises every arm's survival, but the clean survival rate step is -0.0229
   (probe72).
 
+Probe77's random sequential grouping and Probe79's fixed threshold-and-streak
+detector are also closed at their preregistered budgets. Positive sub-endpoints
+do not license threshold tuning or a detector survival treatment.
+
 Do not carry self priors between independently redrawn bodies. Probe74 keeps
 the physical individual fixed and explicitly tests a wrong-identity prior.
 Do not cite its aggregate true/retained tie as saturation or equivalence; its
@@ -448,22 +473,23 @@ Every item carries the granularity check (`diagnose_probe68.py`), and now also
 the budget check: *at what budget is this comparison being made, and is the
 losing arm saturated there?*
 
-1. **Remove Probe76's identification privileges.** Preregister sequential
-   exploration on ordinary episodes with no matched forks and restored shocks.
-   First measure whether its accessible scalar experience identifies the
-   grouping at a stated budget. Preserve K1–K5, opaque IDs, fixed mean scaling,
-   sensory-pairing lesion, physical remapping and unreachable challenge. A noisy
-   or unpaired interaction estimator is a new mechanism, not an already proven
-   online discovery result. Do not cite count recovery as state estimation.
+1. **Sequential random exploration was tested and failed as Probe77.** All
+   five continuation gates fail at one and six episodes. Do not extend this
+   mechanism's budget or relax its gates. A directed exploration policy or an
+   estimator using more of the scalar history would be a distinct proposal,
+   requiring its own identifiability and survival-cost argument. Preserve
+   K1–K5, opaque IDs, fixed mean scaling, pairing/permutation controls, physical
+   remapping and the unreachable challenge. Count recovery is not state estimation.
 
-2. **Challenge stationary memory with hidden body changes.** Probe75 now meets
-   the independent-replication precondition. A future challenge should randomize
-   hidden change timing and include unchanged individuals. Existing RLS covariance
-   only shrinks and cannot honestly serve as a staleness posterior. First measure
-   whether selectively forgetting obsolete rate evidence improves belief, regret
-   and survival on the original reading stream. Keep episodic state/uptake fixed.
-   An oracle reset cue is a headroom instrument, not learned reflection. Do not
-   invent a paid body sensor before measuring its information value.
+2. **Changing-body timing matters; a selective detector is still missing.**
+   Probe78 passes its five-block oracle-reset clauses and exact stable-sham
+   parity. Probe79's fixed two-error trigger improves matched-history estimates
+   but fails false-alarm and sign-scrambled gates. Do not tune its threshold,
+   streak or budget, or promote it to a survival treatment. A distinct proposal
+   should account for reading gaps and model-fit uncertainty, separate stable
+   calibration from held-out scoring, and establish selective information
+   beyond generic resetting. Existing shrinking RLS covariance is not a
+   staleness posterior. No new detector is implemented or preregistered yet.
 
 3. **Score probe66's declining against survival.** `discovered_convention.py` has
    no closed-loop runner and no survival endpoint; the loop has to be written.
@@ -618,7 +644,8 @@ family comparison was made at, and do not call it a ceiling unless you swept it*
 - `docs/decisions/2026-07-30-outcome-aware-self-planner-result.md`
 - `docs/decisions/2026-07-26-causal-self-report-independent-verification.md`
 
-Latest verification: **579 tests and 13 subtests passed**. All new behavior is
+Latest verification: **610 tests and 13 subtests passed** in 80.01 seconds
+while Probe79 ran on 2026-10-02. All new behavior is
 default off. `tests/test_expanded_body.py` asserts exact legacy-schema constants,
 five unique axes/words/consequence surfaces, paired random streams and a real
 health viability path. `tests/test_composition_law.py` distinguishes fixed-count

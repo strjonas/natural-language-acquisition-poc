@@ -17,6 +17,28 @@ request depends on a fact about the self that perfect state knowledge cannot sup
 
 ## Current results
 
+Probe77 tests a sequential replacement for Probe76's matched forks, with
+ordinary shocks and death-limited experience. **All five continuation gates
+fail** at both one-episode and six-episode budgets. Across 500 bodies, exact
+grouping after six episodes is **36%, 6%, 1%, 0%, 0%** at K1–K5. The five-resource
+bodies collect only about eight usable grant observations in their first life.
+This closes uniform random exploration plus predecessor-effect contrasts at
+those budgets; it does not rule out directed exploration or a different
+estimator. See the [result](docs/decisions/2026-09-30-sequential-structure-result.md).
+
+Probe78's changing-body ceiling passes all three continuation clauses. An
+oracle change cue that discards obsolete rate evidence increases survival from
+**149/700 to 167/700**, **+0.0257 [+0.0026,+0.0488]**, while stationary sham
+episodes are exactly unchanged. The cue supplies no new constants or state
+reading. This establishes the value of correctly timed forgetting, not that
+the organism detects change. See the [result](docs/decisions/2026-10-02-changing-body-ceiling-result.md).
+Probe79's observable-error detector **fails two of three screen gates**. It
+reduces matched-history rate error by 48.7% and request regret by 34.2%, but
+resets 17.1% of unchanged bodies (10% allowed) and does not reliably beat
+sign-scrambled detection. This fixed detector is closed before a survival
+treatment. See the [result](docs/decisions/2026-10-02-evidence-reset-result.md)
+and the [proposed next roadmap](docs/decisions/2026-10-02-next-roadmap-proposal.md).
+
 The newest identification instrument, Probe76, infers which opaque restorative
 actions target the same hidden resource from scalar saturation interactions.
 It recovers reachable counts **1–5** and exact action partitions in **25/25
@@ -186,6 +208,31 @@ PYTHONPATH=src .venv/bin/python -u -m homesocial.organism.cross_life_replication
 Completed progress pins its source code. Use a fresh output path when rerunning
 after a source change; incomplete progress refuses a different mechanism.
 
+Reconstruct Probe77's aggregate gates from its compact public evidence:
+
+```bash
+.venv/bin/python scripts/summarize_probe77.py
+PYTHONPATH=src .venv/bin/python -u -m homesocial.organism.sequential_structure \
+  --out /tmp/probe77-survey.json
+```
+
+Verify the changing-body reset ceiling from its compact block evidence:
+
+```bash
+.venv/bin/python scripts/summarize_probe78.py
+PYTHONPATH=src .venv/bin/python -u -m homesocial.organism.changing_body \
+  --out /tmp/probe78-survey.json
+```
+
+Verify the observable-error detector screen from its compact block evidence:
+
+```bash
+.venv/bin/python scripts/summarize_probe79.py \
+  --input runs/organism/probe79_evidence_reset/evidence.json
+PYTHONPATH=src .venv/bin/python -u -m homesocial.organism.evidence_reset \
+  --out /tmp/probe79-survey.json
+```
+
 Re-run Probe76's fixed structure instrument:
 
 ```bash
@@ -225,8 +272,8 @@ licensed.
 
 | Path | Purpose |
 |---|---|
-| `src/homesocial/` | gridworld, learners, language probes, organism lifecycle, and controlled self-model experiments through Probe76 |
-| `tests/` | 579 unit and causal guard tests, plus 13 subtests |
+| `src/homesocial/` | gridworld, learners, language probes, organism lifecycle, and controlled self-model experiments through Probe79 |
+| `tests/` | 610 unit and causal guard tests, plus 13 subtests |
 | `docs/decisions/` | append-only preregistrations, results, and negative findings |
 | `docs/STATE.md` | current scientific state and exact claim boundary |
 | `runs/` | allow-listed public artifacts; all other run output remains ignored |
@@ -234,6 +281,9 @@ licensed.
 | `scripts/summarize_probe64.py` | the same for Probe64, including its behavioural negative |
 | `scripts/summarize_probe65.py` | the same for Probe65: the horizon crossover and its divergence control |
 | `scripts/summarize_probe75.py` | independent reconstruction of all six confirmation gates, with committed compact block evidence |
+| `scripts/summarize_probe77.py` | reconstruction of sequential-discovery aggregate gates from compact per-body scores |
+| `scripts/summarize_probe78.py` | independent reconstruction of changing-body survival and matched-score gates |
+| `scripts/summarize_probe79.py` | independent reconstruction of the observable-error detector's matched-history gates |
 
 ---
 

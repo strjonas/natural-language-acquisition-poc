@@ -1,0 +1,2026 @@
+{
+  "block_evidence": {
+    "changed": [
+      {
+        "episodes": 140,
+        "identities": 28,
+        "panels": {
+          "after_change": {
+            "ticks": 9326,
+            "totals": {
+              "adaptive": {
+                "rate_mae": 15.163185739237814,
+                "regret": 147.97951872221176,
+                "word_changes": 1106
+              },
+              "muted": {
+                "rate_mae": 29.50860338297266,
+                "regret": 228.4744383667108,
+                "word_changes": 0
+              },
+              "oracle_reset": {
+                "rate_mae": 8.918663283218219,
+                "regret": 86.92562705727642,
+                "word_changes": 1834
+              },
+              "retained": {
+                "rate_mae": 29.50860338297266,
+                "regret": 228.4744383667108,
+                "word_changes": 0
+              },
+              "scrambled": {
+                "rate_mae": 13.735284144131471,
+                "regret": 129.0552529388782,
+                "word_changes": 1199
+              },
+              "true_rate": {
+                "rate_mae": 0.0,
+                "regret": 65.683359497283,
+                "word_changes": 1843
+              }
+            }
+          },
+          "all": {
+            "ticks": 15990,
+            "totals": {
+              "adaptive": {
+                "rate_mae": 19.20495235072883,
+                "regret": 197.39534896240804,
+                "word_changes": 1298
+              },
+              "muted": {
+                "rate_mae": 34.003907004376146,
+                "regret": 272.7430627642512,
+                "word_changes": 0
+              },
+              "oracle_reset": {
+                "rate_mae": 13.413966904621706,
+                "regret": 131.19425145481677,
+                "word_changes": 1834
+              },
+              "retained": {
+                "rate_mae": 34.003907004376146,
+                "regret": 272.7430627642512,
+                "word_changes": 0
+              },
+              "scrambled": {
+                "rate_mae": 16.91228584827538,
+                "regret": 175.57707532646566,
+                "word_changes": 1496
+              },
+              "true_rate": {
+                "rate_mae": 0.0,
+                "regret": 105.89092181579086,
+                "word_changes": 2084
+              }
+            }
+          }
+        },
+        "readings": 564,
+        "reset_identities": {
+          "adaptive": 13,
+          "muted": 0,
+          "scrambled": 15
+        },
+        "resets": {
+          "adaptive": 14,
+          "muted": 0,
+          "scrambled": 21
+        },
+        "steps": 19115,
+        "survivors": 25
+      },
+      {
+        "episodes": 140,
+        "identities": 28,
+        "panels": {
+          "after_change": {
+            "ticks": 10860,
+            "totals": {
+              "adaptive": {
+                "rate_mae": 16.768693353459334,
+                "regret": 132.59984455485096,
+                "word_changes": 1768
+              },
+              "muted": {
+                "rate_mae": 38.335123256625366,
+                "regret": 229.6350994799031,
+                "word_changes": 0
+              },
+              "oracle_reset": {
+                "rate_mae": 10.486091625726619,
+                "regret": 106.58014540363945,
+                "word_changes": 2160
+              },
+              "retained": {
+                "rate_mae": 38.335123256625366,
+                "regret": 229.6350994799031,
+                "word_changes": 0
+              },
+              "scrambled": {
+                "rate_mae": 19.702880321852525,
+                "regret": 148.38603095802605,
+                "word_changes": 1605
+              },
+              "true_rate": {
+                "rate_mae": 0.0,
+                "regret": 63.662045713408965,
+                "word_changes": 2604
+              }
+            }
+          },
+          "all": {
+            "ticks": 18008,
+            "totals": {
+              "adaptive": {
+                "rate_mae": 20.26417156974309,
+                "regret": 148.82910565440457,
+                "word_changes": 1794
+              },
+              "muted": {
+                "rate_mae": 41.533632727794505,
+                "regret": 245.33110846671306,
+                "word_changes": 0
+              },
+              "oracle_reset": {
+                "rate_mae": 13.684601096895754,
+                "regret": 122.27615439044943,
+                "word_changes": 2160
+              },
+              "retained": {
+                "rate_mae": 41.533632727794505,
+                "regret": 245.33110846671306,
+                "word_changes": 0
+              },
+              "scrambled": {
+                "rate_mae": 23.65264932423919,
+                "regret": 165.9590394219122,
+                "word_changes": 1704
+              },
+              "true_rate": {
+                "rate_mae": 0.0,
+                "regret": 75.14974433213682,
+                "word_changes": 2836
+              }
+            }
+          }
+        },
+        "readings": 654,
+        "reset_identities": {
+          "adaptive": 19,
+          "muted": 0,
+          "scrambled": 18
+        },
+        "resets": {
+          "adaptive": 22,
+          "muted": 0,
+          "scrambled": 21
+        },
+        "steps": 21177,
+        "survivors": 30
+      },
+      {
+        "episodes": 140,
+        "identities": 28,
+        "panels": {
+          "after_change": {
+            "ticks": 8984,
+            "totals": {
+              "adaptive": {
+                "rate_mae": 13.46952361581664,
+                "regret": 94.87991998826507,
+                "word_changes": 1657
+              },
+              "muted": {
+                "rate_mae": 33.11287731154115,
+                "regret": 154.59084381357536,
+                "word_changes": 0
+              },
+              "oracle_reset": {
+                "rate_mae": 9.895125853603208,
+                "regret": 75.4598966913274,
+                "word_changes": 2152
+              },
+              "retained": {
+                "rate_mae": 33.11287731154115,
+                "regret": 154.59084381357536,
+                "word_changes": 0
+              },
+              "scrambled": {
+                "rate_mae": 16.67346120616333,
+                "regret": 107.77276848790879,
+                "word_changes": 1349
+              },
+              "true_rate": {
+                "rate_mae": 0.0,
+                "regret": 36.03215971292844,
+                "word_changes": 2560
+              }
+            }
+          },
+          "all": {
+            "ticks": 16412,
+            "totals": {
+              "adaptive": {
+                "rate_mae": 17.060612047780776,
+                "regret": 121.34808975992996,
+                "word_changes": 1687
+              },
+              "muted": {
+                "rate_mae": 36.7291604781633,
+                "regret": 180.82290599297275,
+                "word_changes": 0
+              },
+              "oracle_reset": {
+                "rate_mae": 13.511409020225363,
+                "regret": 101.69195887072479,
+                "word_changes": 2152
+              },
+              "retained": {
+                "rate_mae": 36.7291604781633,
+                "regret": 180.82290599297275,
+                "word_changes": 0
+              },
+              "scrambled": {
+                "rate_mae": 20.16304420084998,
+                "regret": 134.60636610749572,
+                "word_changes": 1378
+              },
+              "true_rate": {
+                "rate_mae": 0.0,
+                "regret": 55.4221062255343,
+                "word_changes": 2825
+              }
+            }
+          }
+        },
+        "readings": 598,
+        "reset_identities": {
+          "adaptive": 17,
+          "muted": 0,
+          "scrambled": 13
+        },
+        "resets": {
+          "adaptive": 19,
+          "muted": 0,
+          "scrambled": 14
+        },
+        "steps": 19575,
+        "survivors": 29
+      },
+      {
+        "episodes": 140,
+        "identities": 28,
+        "panels": {
+          "after_change": {
+            "ticks": 10658,
+            "totals": {
+              "adaptive": {
+                "rate_mae": 15.4775255891976,
+                "regret": 95.22913531162824,
+                "word_changes": 922
+              },
+              "muted": {
+                "rate_mae": 29.300626280518554,
+                "regret": 149.54375385972736,
+                "word_changes": 0
+              },
+              "oracle_reset": {
+                "rate_mae": 8.65824715940332,
+                "regret": 83.24897633559344,
+                "word_changes": 1530
+              },
+              "retained": {
+                "rate_mae": 29.300626280518554,
+                "regret": 149.54375385972736,
+                "word_changes": 0
+              },
+              "scrambled": {
+                "rate_mae": 18.248851095133997,
+                "regret": 97.13256930923242,
+                "word_changes": 701
+              },
+              "true_rate": {
+                "rate_mae": 0.0,
+                "regret": 51.33988729325142,
+                "word_changes": 1685
+              }
+            }
+          },
+          "all": {
+            "ticks": 15836,
+            "totals": {
+              "adaptive": {
+                "rate_mae": 17.806913412599737,
+                "regret": 120.3997950555262,
+                "word_changes": 945
+              },
+              "muted": {
+                "rate_mae": 31.80342775334329,
+                "regret": 174.73425282831403,
+                "word_changes": 0
+              },
+              "oracle_reset": {
+                "rate_mae": 11.161048632228058,
+                "regret": 108.43947530418008,
+                "word_changes": 1530
+              },
+              "retained": {
+                "rate_mae": 31.80342775334329,
+                "regret": 174.73425282831403,
+                "word_changes": 0
+              },
+              "scrambled": {
+                "rate_mae": 21.178133657536325,
+                "regret": 123.66840921884531,
+                "word_changes": 763
+              },
+              "true_rate": {
+                "rate_mae": 0.0,
+                "regret": 74.49104337009622,
+                "word_changes": 1858
+              }
+            }
+          }
+        },
+        "readings": 551,
+        "reset_identities": {
+          "adaptive": 15,
+          "muted": 0,
+          "scrambled": 11
+        },
+        "resets": {
+          "adaptive": 17,
+          "muted": 0,
+          "scrambled": 13
+        },
+        "steps": 19018,
+        "survivors": 28
+      },
+      {
+        "episodes": 140,
+        "identities": 28,
+        "panels": {
+          "after_change": {
+            "ticks": 6581,
+            "totals": {
+              "adaptive": {
+                "rate_mae": 10.159723511030528,
+                "regret": 87.88385834229992,
+                "word_changes": 1265
+              },
+              "muted": {
+                "rate_mae": 24.81710678302605,
+                "regret": 172.374493933727,
+                "word_changes": 0
+              },
+              "oracle_reset": {
+                "rate_mae": 5.276738121476927,
+                "regret": 48.257888285371294,
+                "word_changes": 1712
+              },
+              "retained": {
+                "rate_mae": 24.81710678302605,
+                "regret": 172.374493933727,
+                "word_changes": 0
+              },
+              "scrambled": {
+                "rate_mae": 14.587601682927437,
+                "regret": 112.5410689112269,
+                "word_changes": 918
+              },
+              "true_rate": {
+                "rate_mae": 0.0,
+                "regret": 38.393734621130136,
+                "word_changes": 1779
+              }
+            }
+          },
+          "all": {
+            "ticks": 14625,
+            "totals": {
+              "adaptive": {
+                "rate_mae": 14.678480082650523,
+                "regret": 123.62186801086116,
+                "word_changes": 1390
+              },
+              "muted": {
+                "rate_mae": 29.62178849483856,
+                "regret": 208.11304006928725,
+                "word_changes": 0
+              },
+              "oracle_reset": {
+                "rate_mae": 10.08141983328944,
+                "regret": 83.99643442093156,
+                "word_changes": 1712
+              },
+              "retained": {
+                "rate_mae": 29.62178849483856,
+                "regret": 208.11304006928725,
+                "word_changes": 0
+              },
+              "scrambled": {
+                "rate_mae": 18.91552786460995,
+                "regret": 148.88359531852151,
+                "word_changes": 1030
+              },
+              "true_rate": {
+                "rate_mae": 0.0,
+                "regret": 67.69453969074107,
+                "word_changes": 2198
+              }
+            }
+          }
+        },
+        "readings": 543,
+        "reset_identities": {
+          "adaptive": 13,
+          "muted": 0,
+          "scrambled": 12
+        },
+        "resets": {
+          "adaptive": 18,
+          "muted": 0,
+          "scrambled": 15
+        },
+        "steps": 17643,
+        "survivors": 25
+      }
+    ],
+    "stable": [
+      {
+        "episodes": 140,
+        "identities": 28,
+        "panels": {
+          "after_change": {
+            "ticks": 0,
+            "totals": {
+              "adaptive": {
+                "rate_mae": 0.0,
+                "regret": 0.0,
+                "word_changes": 0
+              },
+              "muted": {
+                "rate_mae": 0.0,
+                "regret": 0.0,
+                "word_changes": 0
+              },
+              "oracle_reset": {
+                "rate_mae": 0.0,
+                "regret": 0.0,
+                "word_changes": 0
+              },
+              "retained": {
+                "rate_mae": 0.0,
+                "regret": 0.0,
+                "word_changes": 0
+              },
+              "scrambled": {
+                "rate_mae": 0.0,
+                "regret": 0.0,
+                "word_changes": 0
+              },
+              "true_rate": {
+                "rate_mae": 0.0,
+                "regret": 0.0,
+                "word_changes": 0
+              }
+            }
+          },
+          "all": {
+            "ticks": 18065,
+            "totals": {
+              "adaptive": {
+                "rate_mae": 8.309892644442742,
+                "regret": 87.075089564176,
+                "word_changes": 367
+              },
+              "muted": {
+                "rate_mae": 9.29610570767709,
+                "regret": 79.61229768596144,
+                "word_changes": 0
+              },
+              "oracle_reset": {
+                "rate_mae": 9.29610570767709,
+                "regret": 79.61229768596144,
+                "word_changes": 0
+              },
+              "retained": {
+                "rate_mae": 9.29610570767709,
+                "regret": 79.61229768596144,
+                "word_changes": 0
+              },
+              "scrambled": {
+                "rate_mae": 7.258380223745185,
+                "regret": 84.6169616587052,
+                "word_changes": 500
+              },
+              "true_rate": {
+                "rate_mae": 0.0,
+                "regret": 77.59364364626539,
+                "word_changes": 520
+              }
+            }
+          }
+        },
+        "readings": 650,
+        "reset_identities": {
+          "adaptive": 5,
+          "muted": 0,
+          "scrambled": 6
+        },
+        "resets": {
+          "adaptive": 6,
+          "muted": 0,
+          "scrambled": 8
+        },
+        "steps": 21183,
+        "survivors": 29
+      },
+      {
+        "episodes": 140,
+        "identities": 28,
+        "panels": {
+          "after_change": {
+            "ticks": 0,
+            "totals": {
+              "adaptive": {
+                "rate_mae": 0.0,
+                "regret": 0.0,
+                "word_changes": 0
+              },
+              "muted": {
+                "rate_mae": 0.0,
+                "regret": 0.0,
+                "word_changes": 0
+              },
+              "oracle_reset": {
+                "rate_mae": 0.0,
+                "regret": 0.0,
+                "word_changes": 0
+              },
+              "retained": {
+                "rate_mae": 0.0,
+                "regret": 0.0,
+                "word_changes": 0
+              },
+              "scrambled": {
+                "rate_mae": 0.0,
+                "regret": 0.0,
+                "word_changes": 0
+              },
+              "true_rate": {
+                "rate_mae": 0.0,
+                "regret": 0.0,
+                "word_changes": 0
+              }
+            }
+          },
+          "all": {
+            "ticks": 20188,
+            "totals": {
+              "adaptive": {
+                "rate_mae": 7.732499234061987,
+                "regret": 62.313498107649885,
+                "word_changes": 29
+              },
+              "muted": {
+                "rate_mae": 7.401627138686398,
+                "regret": 61.88525197431532,
+                "word_changes": 0
+              },
+              "oracle_reset": {
+                "rate_mae": 7.401627138686398,
+                "regret": 61.88525197431532,
+                "word_changes": 0
+              },
+              "retained": {
+                "rate_mae": 7.401627138686398,
+                "regret": 61.88525197431532,
+                "word_changes": 0
+              },
+              "scrambled": {
+                "rate_mae": 8.603169135442275,
+                "regret": 65.37884617340204,
+                "word_changes": 203
+              },
+              "true_rate": {
+                "rate_mae": 0.0,
+                "regret": 48.92444850819584,
+                "word_changes": 580
+              }
+            }
+          }
+        },
+        "readings": 734,
+        "reset_identities": {
+          "adaptive": 3,
+          "muted": 0,
+          "scrambled": 4
+        },
+        "resets": {
+          "adaptive": 3,
+          "muted": 0,
+          "scrambled": 4
+        },
+        "steps": 23339,
+        "survivors": 36
+      },
+      {
+        "episodes": 140,
+        "identities": 28,
+        "panels": {
+          "after_change": {
+            "ticks": 0,
+            "totals": {
+              "adaptive": {
+                "rate_mae": 0.0,
+                "regret": 0.0,
+                "word_changes": 0
+              },
+              "muted": {
+                "rate_mae": 0.0,
+                "regret": 0.0,
+                "word_changes": 0
+              },
+              "oracle_reset": {
+                "rate_mae": 0.0,
+                "regret": 0.0,
+                "word_changes": 0
+              },
+              "retained": {
+                "rate_mae": 0.0,
+                "regret": 0.0,
+                "word_changes": 0
+              },
+              "scrambled": {
+                "rate_mae": 0.0,
+                "regret": 0.0,
+                "word_changes": 0
+              },
+              "true_rate": {
+                "rate_mae": 0.0,
+                "regret": 0.0,
+                "word_changes": 0
+              }
+            }
+          },
+          "all": {
+            "ticks": 18006,
+            "totals": {
+              "adaptive": {
+                "rate_mae": 8.585075980180953,
+                "regret": 74.42029892555568,
+                "word_changes": 250
+              },
+              "muted": {
+                "rate_mae": 7.353715860992806,
+                "regret": 62.30681509418904,
+                "word_changes": 0
+              },
+              "oracle_reset": {
+                "rate_mae": 7.353715860992806,
+                "regret": 62.30681509418904,
+                "word_changes": 0
+              },
+              "retained": {
+                "rate_mae": 7.353715860992806,
+                "regret": 62.30681509418904,
+                "word_changes": 0
+              },
+              "scrambled": {
+                "rate_mae": 8.279262199805574,
+                "regret": 68.84923176711129,
+                "word_changes": 196
+              },
+              "true_rate": {
+                "rate_mae": 0.0,
+                "regret": 53.994796200972736,
+                "word_changes": 399
+              }
+            }
+          }
+        },
+        "readings": 618,
+        "reset_identities": {
+          "adaptive": 5,
+          "muted": 0,
+          "scrambled": 3
+        },
+        "resets": {
+          "adaptive": 7,
+          "muted": 0,
+          "scrambled": 4
+        },
+        "steps": 21156,
+        "survivors": 40
+      },
+      {
+        "episodes": 140,
+        "identities": 28,
+        "panels": {
+          "after_change": {
+            "ticks": 0,
+            "totals": {
+              "adaptive": {
+                "rate_mae": 0.0,
+                "regret": 0.0,
+                "word_changes": 0
+              },
+              "muted": {
+                "rate_mae": 0.0,
+                "regret": 0.0,
+                "word_changes": 0
+              },
+              "oracle_reset": {
+                "rate_mae": 0.0,
+                "regret": 0.0,
+                "word_changes": 0
+              },
+              "retained": {
+                "rate_mae": 0.0,
+                "regret": 0.0,
+                "word_changes": 0
+              },
+              "scrambled": {
+                "rate_mae": 0.0,
+                "regret": 0.0,
+                "word_changes": 0
+              },
+              "true_rate": {
+                "rate_mae": 0.0,
+                "regret": 0.0,
+                "word_changes": 0
+              }
+            }
+          },
+          "all": {
+            "ticks": 15016,
+            "totals": {
+              "adaptive": {
+                "rate_mae": 5.78907647143461,
+                "regret": 84.47872367446773,
+                "word_changes": 113
+              },
+              "muted": {
+                "rate_mae": 5.123333106838595,
+                "regret": 86.88060965352962,
+                "word_changes": 0
+              },
+              "oracle_reset": {
+                "rate_mae": 5.123333106838595,
+                "regret": 86.88060965352962,
+                "word_changes": 0
+              },
+              "retained": {
+                "rate_mae": 5.123333106838595,
+                "regret": 86.88060965352962,
+                "word_changes": 0
+              },
+              "scrambled": {
+                "rate_mae": 6.15382058157267,
+                "regret": 87.12035316858764,
+                "word_changes": 203
+              },
+              "true_rate": {
+                "rate_mae": 0.0,
+                "regret": 83.16243704098005,
+                "word_changes": 336
+              }
+            }
+          }
+        },
+        "readings": 525,
+        "reset_identities": {
+          "adaptive": 5,
+          "muted": 0,
+          "scrambled": 5
+        },
+        "resets": {
+          "adaptive": 7,
+          "muted": 0,
+          "scrambled": 7
+        },
+        "steps": 18191,
+        "survivors": 23
+      },
+      {
+        "episodes": 140,
+        "identities": 28,
+        "panels": {
+          "after_change": {
+            "ticks": 0,
+            "totals": {
+              "adaptive": {
+                "rate_mae": 0.0,
+                "regret": 0.0,
+                "word_changes": 0
+              },
+              "muted": {
+                "rate_mae": 0.0,
+                "regret": 0.0,
+                "word_changes": 0
+              },
+              "oracle_reset": {
+                "rate_mae": 0.0,
+                "regret": 0.0,
+                "word_changes": 0
+              },
+              "retained": {
+                "rate_mae": 0.0,
+                "regret": 0.0,
+                "word_changes": 0
+              },
+              "scrambled": {
+                "rate_mae": 0.0,
+                "regret": 0.0,
+                "word_changes": 0
+              },
+              "true_rate": {
+                "rate_mae": 0.0,
+                "regret": 0.0,
+                "word_changes": 0
+              }
+            }
+          },
+          "all": {
+            "ticks": 18941,
+            "totals": {
+              "adaptive": {
+                "rate_mae": 7.5695154787200005,
+                "regret": 67.96109797472212,
+                "word_changes": 335
+              },
+              "muted": {
+                "rate_mae": 9.598490176529376,
+                "regret": 69.36422468898544,
+                "word_changes": 0
+              },
+              "oracle_reset": {
+                "rate_mae": 9.598490176529376,
+                "regret": 69.36422468898544,
+                "word_changes": 0
+              },
+              "retained": {
+                "rate_mae": 9.598490176529376,
+                "regret": 69.36422468898544,
+                "word_changes": 0
+              },
+              "scrambled": {
+                "rate_mae": 7.814316878140892,
+                "regret": 68.9688992755073,
+                "word_changes": 292
+              },
+              "true_rate": {
+                "rate_mae": 0.0,
+                "regret": 60.95423074610679,
+                "word_changes": 712
+              }
+            }
+          }
+        },
+        "readings": 692,
+        "reset_identities": {
+          "adaptive": 6,
+          "muted": 0,
+          "scrambled": 5
+        },
+        "resets": {
+          "adaptive": 10,
+          "muted": 0,
+          "scrambled": 7
+        },
+        "steps": 21969,
+        "survivors": 35
+      }
+    ]
+  },
+  "boundary": "Block reconstruction; episode seed and pre-change parity checks occurred at extraction. Common driver survival is not a detector effect.",
+  "complete": true,
+  "manifest": {
+    "diagnostic": false,
+    "episode_base": 4500000000,
+    "episodes": 5,
+    "identities": 28,
+    "identity_base": 4400000000,
+    "organism": {
+      "bc_epochs": 2,
+      "bc_max_action_weight": 8.0,
+      "bc_warmstart_lives": 0,
+      "bodily_bound_consumption_event_loss_weight": 0.0,
+      "bodily_change_loss_boost": 20.0,
+      "bodily_consumption_event_loss_weight": 0.0,
+      "bodily_drift_loss_weight": 0.0,
+      "bodily_event_audit_json": null,
+      "bodily_event_loss_weight": 0.0,
+      "caregiver_offer_curriculum_steps": 0,
+      "caregiver_offer_distance_end": 0,
+      "caregiver_offer_threshold_start": 0.0,
+      "checkpoint": "runs/organism/probe52_guided_report_lexicon/adult/organism_report_seed1.npz",
+      "consume_options": true,
+      "counterfactual_report_credit": false,
+      "death_penalty": 1.0,
+      "discount": 0.99,
+      "entropy_weight": 0.02,
+      "episodic_binding_size": 16,
+      "episodic_binding_writes": true,
+      "explicit_self_belief": false,
+      "gae_lambda": 0.95,
+      "hidden_size": 256,
+      "inspect_options": true,
+      "island": {
+        "ask_state_period": 25,
+        "caregiver_offer_distance": 0,
+        "caregiver_offer_threshold": 0.0,
+        "height": 9,
+        "language_mode": "grounded",
+        "low_need_ask_threshold": 0.5,
+        "low_need_praise_threshold": 0.6,
+        "max_steps": 400,
+        "max_visible_slots": 3,
+        "report_lexicon_choice": false,
+        "report_lexicon_guided_labels": false,
+        "semantic_choice_horizon": 40,
+        "semantic_choice_low_need": 0.55,
+        "semantic_choice_objects": 3,
+        "semantic_choice_return_duration": 0,
+        "semantic_choice_rounds": 8,
+        "semantic_choice_trial": false,
+        "visible_radius": 2,
+        "width": 9
+      },
+      "language_mode": "grounded",
+      "learning_rate": 0.0003,
+      "live_reward_weight": 0.02,
+      "log_every_lives": 100,
+      "max_grad_norm": 1.0,
+      "max_steps": 400,
+      "metabolism_curriculum_start": 1.0,
+      "metabolism_curriculum_steps": 0,
+      "multi_step_model_horizon": 1,
+      "multi_step_model_weight": 0.0,
+      "need_balanced_replay": false,
+      "next_needs_weight": 0.0,
+      "next_vector_weight": 0.1,
+      "nonpad_token_weight": 5.0,
+      "observation_branching_planning": false,
+      "persistent_information_reuses": 0,
+      "protocol_branch_planning": false,
+      "report": {
+        "birth_levels": [
+          0.35,
+          0.45,
+          0.55,
+          0.65,
+          0.75,
+          0.85
+        ],
+        "caregiver_store": 0.0,
+        "energy_metabolism": 0.016,
+        "food_metabolism": 0.008,
+        "frozen_needs": [],
+        "help_delay": 0,
+        "help_period": 6,
+        "interoception_probability": 0.0,
+        "large_portion_probability": 0.5,
+        "life_steps": 400,
+        "listener_mode": "grounded",
+        "metabolic_spread": 0.0,
+        "move_energy_metabolism": 0.035,
+        "portion_large": 0.6,
+        "portion_requests": false,
+        "portion_small": 0.2,
+        "reveal_birth_needs": true,
+        "safety_metabolism": 0.002,
+        "shock_probability": 0.025,
+        "shock_size": 0.25,
+        "silent_shock_probability": 0.0,
+        "tangled_size_words": false,
+        "unified_uptake": true,
+        "uptake_spread": 0.0,
+        "water_metabolism": 0.012
+      },
+      "report_entropy_weight": 0.02,
+      "report_lexical_childhood_steps": 0,
+      "report_slots": 2,
+      "report_task": true,
+      "reward_prediction_weight": 0.2,
+      "seed": 1,
+      "segment_length": 64,
+      "self_belief_development_steps": 0,
+      "self_belief_hidden_size": 64,
+      "self_belief_rank_weight": 0.0,
+      "self_belief_relational_urgency": false,
+      "self_model_planning_horizon": 1,
+      "self_model_planning_reward_weight": 0.5,
+      "self_model_planning_scale": 0.0,
+      "self_model_planning_start_steps": 0,
+      "semantic_choice_childhood_steps": 0,
+      "split_drift_head": false,
+      "stats_csv": "runs/organism/probe52_guided_report_lexicon/adult/lives_report_seed1.csv",
+      "structured_causal_development_steps": 0,
+      "structured_causal_self_model": false,
+      "tied_report_lexicon": true,
+      "token_embed_size": 32,
+      "token_prediction_weight": 0.0,
+      "total_steps": 200000,
+      "urgent_deficit_utility": false,
+      "value_weight": 0.5,
+      "world_model_replay_capacity": 0,
+      "world_model_replay_updates": 0
+    },
+    "parent": "ddd7c5a9e1cdb4274a63a98c078065e55702b6116457c1cbc659a2b8c32135d4",
+    "prereg": "498ad432d8595fd4284f20c8afe3dedf1c2c9cd37a12c64401d57dfb90b23a17",
+    "seeds": 5,
+    "source": "87b4354565710a41dcf4933dd4fa6aa83caaba45dff74c581a014507e897af2c",
+    "threshold": 0.05,
+    "world": {
+      "caregiver_store": 0.0,
+      "help_delay": 24,
+      "help_period": 6,
+      "interoception_probability": 0.03,
+      "metabolic_spread": 0.6,
+      "uptake_spread": 0.0
+    }
+  },
+  "raw_sha256": "2e8b551777dea12392a87ce08fbd20e247fa54ce9456c8bff7cd8d708367ab40",
+  "summary": {
+    "all_pass": false,
+    "blocks": {
+      "changed": [
+        {
+          "episodes": 140,
+          "identities": 28,
+          "panels": {
+            "after_change": {
+              "ticks": 9326,
+              "totals": {
+                "adaptive": {
+                  "rate_mae": 15.163185739237814,
+                  "regret": 147.97951872221176,
+                  "word_changes": 1106
+                },
+                "muted": {
+                  "rate_mae": 29.50860338297266,
+                  "regret": 228.4744383667108,
+                  "word_changes": 0
+                },
+                "oracle_reset": {
+                  "rate_mae": 8.918663283218219,
+                  "regret": 86.92562705727642,
+                  "word_changes": 1834
+                },
+                "retained": {
+                  "rate_mae": 29.50860338297266,
+                  "regret": 228.4744383667108,
+                  "word_changes": 0
+                },
+                "scrambled": {
+                  "rate_mae": 13.735284144131471,
+                  "regret": 129.0552529388782,
+                  "word_changes": 1199
+                },
+                "true_rate": {
+                  "rate_mae": 0.0,
+                  "regret": 65.683359497283,
+                  "word_changes": 1843
+                }
+              }
+            },
+            "all": {
+              "ticks": 15990,
+              "totals": {
+                "adaptive": {
+                  "rate_mae": 19.20495235072883,
+                  "regret": 197.39534896240804,
+                  "word_changes": 1298
+                },
+                "muted": {
+                  "rate_mae": 34.003907004376146,
+                  "regret": 272.7430627642512,
+                  "word_changes": 0
+                },
+                "oracle_reset": {
+                  "rate_mae": 13.413966904621706,
+                  "regret": 131.19425145481677,
+                  "word_changes": 1834
+                },
+                "retained": {
+                  "rate_mae": 34.003907004376146,
+                  "regret": 272.7430627642512,
+                  "word_changes": 0
+                },
+                "scrambled": {
+                  "rate_mae": 16.91228584827538,
+                  "regret": 175.57707532646566,
+                  "word_changes": 1496
+                },
+                "true_rate": {
+                  "rate_mae": 0.0,
+                  "regret": 105.89092181579086,
+                  "word_changes": 2084
+                }
+              }
+            }
+          },
+          "readings": 564,
+          "reset_identities": {
+            "adaptive": 13,
+            "muted": 0,
+            "scrambled": 15
+          },
+          "resets": {
+            "adaptive": 14,
+            "muted": 0,
+            "scrambled": 21
+          },
+          "steps": 19115,
+          "survivors": 25
+        },
+        {
+          "episodes": 140,
+          "identities": 28,
+          "panels": {
+            "after_change": {
+              "ticks": 10860,
+              "totals": {
+                "adaptive": {
+                  "rate_mae": 16.768693353459334,
+                  "regret": 132.59984455485096,
+                  "word_changes": 1768
+                },
+                "muted": {
+                  "rate_mae": 38.335123256625366,
+                  "regret": 229.6350994799031,
+                  "word_changes": 0
+                },
+                "oracle_reset": {
+                  "rate_mae": 10.486091625726619,
+                  "regret": 106.58014540363945,
+                  "word_changes": 2160
+                },
+                "retained": {
+                  "rate_mae": 38.335123256625366,
+                  "regret": 229.6350994799031,
+                  "word_changes": 0
+                },
+                "scrambled": {
+                  "rate_mae": 19.702880321852525,
+                  "regret": 148.38603095802605,
+                  "word_changes": 1605
+                },
+                "true_rate": {
+                  "rate_mae": 0.0,
+                  "regret": 63.662045713408965,
+                  "word_changes": 2604
+                }
+              }
+            },
+            "all": {
+              "ticks": 18008,
+              "totals": {
+                "adaptive": {
+                  "rate_mae": 20.26417156974309,
+                  "regret": 148.82910565440457,
+                  "word_changes": 1794
+                },
+                "muted": {
+                  "rate_mae": 41.533632727794505,
+                  "regret": 245.33110846671306,
+                  "word_changes": 0
+                },
+                "oracle_reset": {
+                  "rate_mae": 13.684601096895754,
+                  "regret": 122.27615439044943,
+                  "word_changes": 2160
+                },
+                "retained": {
+                  "rate_mae": 41.533632727794505,
+                  "regret": 245.33110846671306,
+                  "word_changes": 0
+                },
+                "scrambled": {
+                  "rate_mae": 23.65264932423919,
+                  "regret": 165.9590394219122,
+                  "word_changes": 1704
+                },
+                "true_rate": {
+                  "rate_mae": 0.0,
+                  "regret": 75.14974433213682,
+                  "word_changes": 2836
+                }
+              }
+            }
+          },
+          "readings": 654,
+          "reset_identities": {
+            "adaptive": 19,
+            "muted": 0,
+            "scrambled": 18
+          },
+          "resets": {
+            "adaptive": 22,
+            "muted": 0,
+            "scrambled": 21
+          },
+          "steps": 21177,
+          "survivors": 30
+        },
+        {
+          "episodes": 140,
+          "identities": 28,
+          "panels": {
+            "after_change": {
+              "ticks": 8984,
+              "totals": {
+                "adaptive": {
+                  "rate_mae": 13.46952361581664,
+                  "regret": 94.87991998826507,
+                  "word_changes": 1657
+                },
+                "muted": {
+                  "rate_mae": 33.11287731154115,
+                  "regret": 154.59084381357536,
+                  "word_changes": 0
+                },
+                "oracle_reset": {
+                  "rate_mae": 9.895125853603208,
+                  "regret": 75.4598966913274,
+                  "word_changes": 2152
+                },
+                "retained": {
+                  "rate_mae": 33.11287731154115,
+                  "regret": 154.59084381357536,
+                  "word_changes": 0
+                },
+                "scrambled": {
+                  "rate_mae": 16.67346120616333,
+                  "regret": 107.77276848790879,
+                  "word_changes": 1349
+                },
+                "true_rate": {
+                  "rate_mae": 0.0,
+                  "regret": 36.03215971292844,
+                  "word_changes": 2560
+                }
+              }
+            },
+            "all": {
+              "ticks": 16412,
+              "totals": {
+                "adaptive": {
+                  "rate_mae": 17.060612047780776,
+                  "regret": 121.34808975992996,
+                  "word_changes": 1687
+                },
+                "muted": {
+                  "rate_mae": 36.7291604781633,
+                  "regret": 180.82290599297275,
+                  "word_changes": 0
+                },
+                "oracle_reset": {
+                  "rate_mae": 13.511409020225363,
+                  "regret": 101.69195887072479,
+                  "word_changes": 2152
+                },
+                "retained": {
+                  "rate_mae": 36.7291604781633,
+                  "regret": 180.82290599297275,
+                  "word_changes": 0
+                },
+                "scrambled": {
+                  "rate_mae": 20.16304420084998,
+                  "regret": 134.60636610749572,
+                  "word_changes": 1378
+                },
+                "true_rate": {
+                  "rate_mae": 0.0,
+                  "regret": 55.4221062255343,
+                  "word_changes": 2825
+                }
+              }
+            }
+          },
+          "readings": 598,
+          "reset_identities": {
+            "adaptive": 17,
+            "muted": 0,
+            "scrambled": 13
+          },
+          "resets": {
+            "adaptive": 19,
+            "muted": 0,
+            "scrambled": 14
+          },
+          "steps": 19575,
+          "survivors": 29
+        },
+        {
+          "episodes": 140,
+          "identities": 28,
+          "panels": {
+            "after_change": {
+              "ticks": 10658,
+              "totals": {
+                "adaptive": {
+                  "rate_mae": 15.4775255891976,
+                  "regret": 95.22913531162824,
+                  "word_changes": 922
+                },
+                "muted": {
+                  "rate_mae": 29.300626280518554,
+                  "regret": 149.54375385972736,
+                  "word_changes": 0
+                },
+                "oracle_reset": {
+                  "rate_mae": 8.65824715940332,
+                  "regret": 83.24897633559344,
+                  "word_changes": 1530
+                },
+                "retained": {
+                  "rate_mae": 29.300626280518554,
+                  "regret": 149.54375385972736,
+                  "word_changes": 0
+                },
+                "scrambled": {
+                  "rate_mae": 18.248851095133997,
+                  "regret": 97.13256930923242,
+                  "word_changes": 701
+                },
+                "true_rate": {
+                  "rate_mae": 0.0,
+                  "regret": 51.33988729325142,
+                  "word_changes": 1685
+                }
+              }
+            },
+            "all": {
+              "ticks": 15836,
+              "totals": {
+                "adaptive": {
+                  "rate_mae": 17.806913412599737,
+                  "regret": 120.3997950555262,
+                  "word_changes": 945
+                },
+                "muted": {
+                  "rate_mae": 31.80342775334329,
+                  "regret": 174.73425282831403,
+                  "word_changes": 0
+                },
+                "oracle_reset": {
+                  "rate_mae": 11.161048632228058,
+                  "regret": 108.43947530418008,
+                  "word_changes": 1530
+                },
+                "retained": {
+                  "rate_mae": 31.80342775334329,
+                  "regret": 174.73425282831403,
+                  "word_changes": 0
+                },
+                "scrambled": {
+                  "rate_mae": 21.178133657536325,
+                  "regret": 123.66840921884531,
+                  "word_changes": 763
+                },
+                "true_rate": {
+                  "rate_mae": 0.0,
+                  "regret": 74.49104337009622,
+                  "word_changes": 1858
+                }
+              }
+            }
+          },
+          "readings": 551,
+          "reset_identities": {
+            "adaptive": 15,
+            "muted": 0,
+            "scrambled": 11
+          },
+          "resets": {
+            "adaptive": 17,
+            "muted": 0,
+            "scrambled": 13
+          },
+          "steps": 19018,
+          "survivors": 28
+        },
+        {
+          "episodes": 140,
+          "identities": 28,
+          "panels": {
+            "after_change": {
+              "ticks": 6581,
+              "totals": {
+                "adaptive": {
+                  "rate_mae": 10.159723511030528,
+                  "regret": 87.88385834229992,
+                  "word_changes": 1265
+                },
+                "muted": {
+                  "rate_mae": 24.81710678302605,
+                  "regret": 172.374493933727,
+                  "word_changes": 0
+                },
+                "oracle_reset": {
+                  "rate_mae": 5.276738121476927,
+                  "regret": 48.257888285371294,
+                  "word_changes": 1712
+                },
+                "retained": {
+                  "rate_mae": 24.81710678302605,
+                  "regret": 172.374493933727,
+                  "word_changes": 0
+                },
+                "scrambled": {
+                  "rate_mae": 14.587601682927437,
+                  "regret": 112.5410689112269,
+                  "word_changes": 918
+                },
+                "true_rate": {
+                  "rate_mae": 0.0,
+                  "regret": 38.393734621130136,
+                  "word_changes": 1779
+                }
+              }
+            },
+            "all": {
+              "ticks": 14625,
+              "totals": {
+                "adaptive": {
+                  "rate_mae": 14.678480082650523,
+                  "regret": 123.62186801086116,
+                  "word_changes": 1390
+                },
+                "muted": {
+                  "rate_mae": 29.62178849483856,
+                  "regret": 208.11304006928725,
+                  "word_changes": 0
+                },
+                "oracle_reset": {
+                  "rate_mae": 10.08141983328944,
+                  "regret": 83.99643442093156,
+                  "word_changes": 1712
+                },
+                "retained": {
+                  "rate_mae": 29.62178849483856,
+                  "regret": 208.11304006928725,
+                  "word_changes": 0
+                },
+                "scrambled": {
+                  "rate_mae": 18.91552786460995,
+                  "regret": 148.88359531852151,
+                  "word_changes": 1030
+                },
+                "true_rate": {
+                  "rate_mae": 0.0,
+                  "regret": 67.69453969074107,
+                  "word_changes": 2198
+                }
+              }
+            }
+          },
+          "readings": 543,
+          "reset_identities": {
+            "adaptive": 13,
+            "muted": 0,
+            "scrambled": 12
+          },
+          "resets": {
+            "adaptive": 18,
+            "muted": 0,
+            "scrambled": 15
+          },
+          "steps": 17643,
+          "survivors": 25
+        }
+      ],
+      "stable": [
+        {
+          "episodes": 140,
+          "identities": 28,
+          "panels": {
+            "after_change": {
+              "ticks": 0,
+              "totals": {
+                "adaptive": {
+                  "rate_mae": 0.0,
+                  "regret": 0.0,
+                  "word_changes": 0
+                },
+                "muted": {
+                  "rate_mae": 0.0,
+                  "regret": 0.0,
+                  "word_changes": 0
+                },
+                "oracle_reset": {
+                  "rate_mae": 0.0,
+                  "regret": 0.0,
+                  "word_changes": 0
+                },
+                "retained": {
+                  "rate_mae": 0.0,
+                  "regret": 0.0,
+                  "word_changes": 0
+                },
+                "scrambled": {
+                  "rate_mae": 0.0,
+                  "regret": 0.0,
+                  "word_changes": 0
+                },
+                "true_rate": {
+                  "rate_mae": 0.0,
+                  "regret": 0.0,
+                  "word_changes": 0
+                }
+              }
+            },
+            "all": {
+              "ticks": 18065,
+              "totals": {
+                "adaptive": {
+                  "rate_mae": 8.309892644442742,
+                  "regret": 87.075089564176,
+                  "word_changes": 367
+                },
+                "muted": {
+                  "rate_mae": 9.29610570767709,
+                  "regret": 79.61229768596144,
+                  "word_changes": 0
+                },
+                "oracle_reset": {
+                  "rate_mae": 9.29610570767709,
+                  "regret": 79.61229768596144,
+                  "word_changes": 0
+                },
+                "retained": {
+                  "rate_mae": 9.29610570767709,
+                  "regret": 79.61229768596144,
+                  "word_changes": 0
+                },
+                "scrambled": {
+                  "rate_mae": 7.258380223745185,
+                  "regret": 84.6169616587052,
+                  "word_changes": 500
+                },
+                "true_rate": {
+                  "rate_mae": 0.0,
+                  "regret": 77.59364364626539,
+                  "word_changes": 520
+                }
+              }
+            }
+          },
+          "readings": 650,
+          "reset_identities": {
+            "adaptive": 5,
+            "muted": 0,
+            "scrambled": 6
+          },
+          "resets": {
+            "adaptive": 6,
+            "muted": 0,
+            "scrambled": 8
+          },
+          "steps": 21183,
+          "survivors": 29
+        },
+        {
+          "episodes": 140,
+          "identities": 28,
+          "panels": {
+            "after_change": {
+              "ticks": 0,
+              "totals": {
+                "adaptive": {
+                  "rate_mae": 0.0,
+                  "regret": 0.0,
+                  "word_changes": 0
+                },
+                "muted": {
+                  "rate_mae": 0.0,
+                  "regret": 0.0,
+                  "word_changes": 0
+                },
+                "oracle_reset": {
+                  "rate_mae": 0.0,
+                  "regret": 0.0,
+                  "word_changes": 0
+                },
+                "retained": {
+                  "rate_mae": 0.0,
+                  "regret": 0.0,
+                  "word_changes": 0
+                },
+                "scrambled": {
+                  "rate_mae": 0.0,
+                  "regret": 0.0,
+                  "word_changes": 0
+                },
+                "true_rate": {
+                  "rate_mae": 0.0,
+                  "regret": 0.0,
+                  "word_changes": 0
+                }
+              }
+            },
+            "all": {
+              "ticks": 20188,
+              "totals": {
+                "adaptive": {
+                  "rate_mae": 7.732499234061987,
+                  "regret": 62.313498107649885,
+                  "word_changes": 29
+                },
+                "muted": {
+                  "rate_mae": 7.401627138686398,
+                  "regret": 61.88525197431532,
+                  "word_changes": 0
+                },
+                "oracle_reset": {
+                  "rate_mae": 7.401627138686398,
+                  "regret": 61.88525197431532,
+                  "word_changes": 0
+                },
+                "retained": {
+                  "rate_mae": 7.401627138686398,
+                  "regret": 61.88525197431532,
+                  "word_changes": 0
+                },
+                "scrambled": {
+                  "rate_mae": 8.603169135442275,
+                  "regret": 65.37884617340204,
+                  "word_changes": 203
+                },
+                "true_rate": {
+                  "rate_mae": 0.0,
+                  "regret": 48.92444850819584,
+                  "word_changes": 580
+                }
+              }
+            }
+          },
+          "readings": 734,
+          "reset_identities": {
+            "adaptive": 3,
+            "muted": 0,
+            "scrambled": 4
+          },
+          "resets": {
+            "adaptive": 3,
+            "muted": 0,
+            "scrambled": 4
+          },
+          "steps": 23339,
+          "survivors": 36
+        },
+        {
+          "episodes": 140,
+          "identities": 28,
+          "panels": {
+            "after_change": {
+              "ticks": 0,
+              "totals": {
+                "adaptive": {
+                  "rate_mae": 0.0,
+                  "regret": 0.0,
+                  "word_changes": 0
+                },
+                "muted": {
+                  "rate_mae": 0.0,
+                  "regret": 0.0,
+                  "word_changes": 0
+                },
+                "oracle_reset": {
+                  "rate_mae": 0.0,
+                  "regret": 0.0,
+                  "word_changes": 0
+                },
+                "retained": {
+                  "rate_mae": 0.0,
+                  "regret": 0.0,
+                  "word_changes": 0
+                },
+                "scrambled": {
+                  "rate_mae": 0.0,
+                  "regret": 0.0,
+                  "word_changes": 0
+                },
+                "true_rate": {
+                  "rate_mae": 0.0,
+                  "regret": 0.0,
+                  "word_changes": 0
+                }
+              }
+            },
+            "all": {
+              "ticks": 18006,
+              "totals": {
+                "adaptive": {
+                  "rate_mae": 8.585075980180953,
+                  "regret": 74.42029892555568,
+                  "word_changes": 250
+                },
+                "muted": {
+                  "rate_mae": 7.353715860992806,
+                  "regret": 62.30681509418904,
+                  "word_changes": 0
+                },
+                "oracle_reset": {
+                  "rate_mae": 7.353715860992806,
+                  "regret": 62.30681509418904,
+                  "word_changes": 0
+                },
+                "retained": {
+                  "rate_mae": 7.353715860992806,
+                  "regret": 62.30681509418904,
+                  "word_changes": 0
+                },
+                "scrambled": {
+                  "rate_mae": 8.279262199805574,
+                  "regret": 68.84923176711129,
+                  "word_changes": 196
+                },
+                "true_rate": {
+                  "rate_mae": 0.0,
+                  "regret": 53.994796200972736,
+                  "word_changes": 399
+                }
+              }
+            }
+          },
+          "readings": 618,
+          "reset_identities": {
+            "adaptive": 5,
+            "muted": 0,
+            "scrambled": 3
+          },
+          "resets": {
+            "adaptive": 7,
+            "muted": 0,
+            "scrambled": 4
+          },
+          "steps": 21156,
+          "survivors": 40
+        },
+        {
+          "episodes": 140,
+          "identities": 28,
+          "panels": {
+            "after_change": {
+              "ticks": 0,
+              "totals": {
+                "adaptive": {
+                  "rate_mae": 0.0,
+                  "regret": 0.0,
+                  "word_changes": 0
+                },
+                "muted": {
+                  "rate_mae": 0.0,
+                  "regret": 0.0,
+                  "word_changes": 0
+                },
+                "oracle_reset": {
+                  "rate_mae": 0.0,
+                  "regret": 0.0,
+                  "word_changes": 0
+                },
+                "retained": {
+                  "rate_mae": 0.0,
+                  "regret": 0.0,
+                  "word_changes": 0
+                },
+                "scrambled": {
+                  "rate_mae": 0.0,
+                  "regret": 0.0,
+                  "word_changes": 0
+                },
+                "true_rate": {
+                  "rate_mae": 0.0,
+                  "regret": 0.0,
+                  "word_changes": 0
+                }
+              }
+            },
+            "all": {
+              "ticks": 15016,
+              "totals": {
+                "adaptive": {
+                  "rate_mae": 5.78907647143461,
+                  "regret": 84.47872367446773,
+                  "word_changes": 113
+                },
+                "muted": {
+                  "rate_mae": 5.123333106838595,
+                  "regret": 86.88060965352962,
+                  "word_changes": 0
+                },
+                "oracle_reset": {
+                  "rate_mae": 5.123333106838595,
+                  "regret": 86.88060965352962,
+                  "word_changes": 0
+                },
+                "retained": {
+                  "rate_mae": 5.123333106838595,
+                  "regret": 86.88060965352962,
+                  "word_changes": 0
+                },
+                "scrambled": {
+                  "rate_mae": 6.15382058157267,
+                  "regret": 87.12035316858764,
+                  "word_changes": 203
+                },
+                "true_rate": {
+                  "rate_mae": 0.0,
+                  "regret": 83.16243704098005,
+                  "word_changes": 336
+                }
+              }
+            }
+          },
+          "readings": 525,
+          "reset_identities": {
+            "adaptive": 5,
+            "muted": 0,
+            "scrambled": 5
+          },
+          "resets": {
+            "adaptive": 7,
+            "muted": 0,
+            "scrambled": 7
+          },
+          "steps": 18191,
+          "survivors": 23
+        },
+        {
+          "episodes": 140,
+          "identities": 28,
+          "panels": {
+            "after_change": {
+              "ticks": 0,
+              "totals": {
+                "adaptive": {
+                  "rate_mae": 0.0,
+                  "regret": 0.0,
+                  "word_changes": 0
+                },
+                "muted": {
+                  "rate_mae": 0.0,
+                  "regret": 0.0,
+                  "word_changes": 0
+                },
+                "oracle_reset": {
+                  "rate_mae": 0.0,
+                  "regret": 0.0,
+                  "word_changes": 0
+                },
+                "retained": {
+                  "rate_mae": 0.0,
+                  "regret": 0.0,
+                  "word_changes": 0
+                },
+                "scrambled": {
+                  "rate_mae": 0.0,
+                  "regret": 0.0,
+                  "word_changes": 0
+                },
+                "true_rate": {
+                  "rate_mae": 0.0,
+                  "regret": 0.0,
+                  "word_changes": 0
+                }
+              }
+            },
+            "all": {
+              "ticks": 18941,
+              "totals": {
+                "adaptive": {
+                  "rate_mae": 7.5695154787200005,
+                  "regret": 67.96109797472212,
+                  "word_changes": 335
+                },
+                "muted": {
+                  "rate_mae": 9.598490176529376,
+                  "regret": 69.36422468898544,
+                  "word_changes": 0
+                },
+                "oracle_reset": {
+                  "rate_mae": 9.598490176529376,
+                  "regret": 69.36422468898544,
+                  "word_changes": 0
+                },
+                "retained": {
+                  "rate_mae": 9.598490176529376,
+                  "regret": 69.36422468898544,
+                  "word_changes": 0
+                },
+                "scrambled": {
+                  "rate_mae": 7.814316878140892,
+                  "regret": 68.9688992755073,
+                  "word_changes": 292
+                },
+                "true_rate": {
+                  "rate_mae": 0.0,
+                  "regret": 60.95423074610679,
+                  "word_changes": 712
+                }
+              }
+            }
+          },
+          "readings": 692,
+          "reset_identities": {
+            "adaptive": 6,
+            "muted": 0,
+            "scrambled": 5
+          },
+          "resets": {
+            "adaptive": 10,
+            "muted": 0,
+            "scrambled": 7
+          },
+          "steps": 21969,
+          "survivors": 35
+        }
+      ]
+    },
+    "changed_reductions": {
+      "rate_mae": 0.4867661779147974,
+      "regret": 0.3420305663782282
+    },
+    "contrasts": {
+      "retained_minus_adaptive_rate_mae": {
+        "high": 0.001220761451939187,
+        "low": 0.0008635009244471886,
+        "mean": 0.0010421311881931878,
+        "n": 5,
+        "negative": 0,
+        "positive": 5,
+        "same_sign": 5,
+        "values": [
+          0.0009255131115476745,
+          0.0011811117924284437,
+          0.001198424837337468,
+          0.0008838415218959052,
+          0.001021764677756447
+        ]
+      },
+      "retained_minus_adaptive_regret": {
+        "high": 0.005866534091851717,
+        "low": 0.003294716200727519,
+        "mean": 0.004580625146289618,
+        "n": 5,
+        "negative": 0,
+        "positive": 5,
+        "same_sign": 5,
+        "values": [
+          0.004712177223379809,
+          0.005358840671496473,
+          0.003623861578908286,
+          0.0034310720998224197,
+          0.005777174157841101
+        ]
+      },
+      "scrambled_minus_adaptive_rate_mae": {
+        "high": 0.00035547345918653773,
+        "low": -6.090776794582468e-05,
+        "mean": 0.00014728284562035652,
+        "n": 5,
+        "negative": 1,
+        "positive": 4,
+        "same_sign": 4,
+        "values": [
+          -0.00014338126969690125,
+          0.00018816513518969897,
+          0.00018903437442537203,
+          0.0002128833193316864,
+          0.00028971266885192645
+        ]
+      },
+      "scrambled_minus_adaptive_regret": {
+        "high": 0.0019029293678424304,
+        "low": -0.0009716144461849981,
+        "mean": 0.0004656574608287162,
+        "n": 5,
+        "negative": 1,
+        "positive": 4,
+        "same_sign": 4,
+        "values": [
+          -0.0013644949115661272,
+          0.0009512402136554656,
+          0.0008078403818892127,
+          0.0002064040264788524,
+          0.0017272975936861775
+        ]
+      }
+    },
+    "gates": {
+      "G1_changed_improvement": true,
+      "G2_stable_preservation": false,
+      "G3_controls": false
+    },
+    "muted_exact": true,
+    "stable_baseline_mae": 0.00042751592051257204,
+    "stable_false_alarm_share": 0.17142857142857143,
+    "stable_mae": 0.0004209955180209111,
+    "stable_regret_cost": 0.00017460676584894318
+  }
+}

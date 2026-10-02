@@ -4,6 +4,10 @@ For a public overview, read these first:
 
 | File | What it is |
 |---|---|
+| `decisions/2026-09-30-sequential-structure-result.md` | Probe77: all five gates fail at one and six episodes; random sequential exploration does not reproduce forked structure identification within a lived budget. |
+| `decisions/2026-10-02-changing-body-ceiling-result.md` | Probe78: oracle-timed resets add 18 survivors in 700 changed-body episodes; all continuation clauses pass and stationary sham episodes match exactly. |
+| `decisions/2026-10-02-evidence-reset-result.md` | Probe79: changed-history errors improve, but stationary false alarms and sign-scrambled controls fail; detector closed before survival treatment. |
+| `decisions/2026-10-02-next-roadmap-proposal.md` | Proposed next tranche, pending approval: calibrated change evidence, conditional survival test, and a separate structure feasibility argument. |
 | `decisions/2026-09-30-saturation-structure-result.md` | New structure instrument: exact reachable groups/counts in 25/25 worlds; all six gates pass, with matched forks and no shocks as explicit remaining privileges. |
 | `decisions/2026-09-30-cross-life-replication-result.md` | Disjoint-band confirmation: all six original gates pass; retained rates add 25 survivors in 700 episodes, +0.0357 survival on 5/5 blocks. |
 | `decisions/2026-09-30-cross-life-self-result.md` | The newest survey: retaining rate-learning evidence about one persistent body buys +0.0300 survival; all six continuation gates pass and wrong-identity memory loses the benefit. |
@@ -32,13 +36,14 @@ are frozen historical records.
 | `decisions/` | **The durable evidence record.** Append-only. One preregistration and one result per experiment. |
 
 Most of `runs/` is gitignored. A small allow-listed publication bundle contains
-Probe63's, Probe64's, Probe65's and Probe66's JSON records and the parent
+Probe63's, Probe64's, Probe65's and Probe66's JSON records, compact evidence for
+Probe75, Probe77, Probe78 and Probe79, and the parent
 checkpoint required for a smoke rerun. Any other number worth keeping belongs
 in a `decisions/` document.
 
 ## Current position
 
-Tagged `v1-causal-bodily-self-report`, then extended through Probe76. The
+Tagged `v1-causal-bodily-self-report`, then extended through Probe79. The
 repository contains a six-signal request protocol (need x portion size) plus an
 online RLS body calibrator that learns individual bodily constants from
 intermittent evidence. It remains a small structured research organism, not a
@@ -55,9 +60,15 @@ Probe76 then addresses the stalled structure question through causal overlap,
 recovering the reachable count/partition in 25/25 K1–K5 worlds and predicting
 750/750 held-out overlaps. All six gates pass, including shuffled sensory
 pairing, relabeling and physical remapping. Matched forks and absent shocks are
-explicit privileges; unreachable total dimension remains unresolved. The next
-work is sequential exploration without those privileges, not a larger latent
-or reopening the failed composition route.
+explicit privileges; unreachable total dimension remains unresolved. Probe77
+then removes those privileges, but uniform random sequential exploration fails
+all five gates at both locked evidence budgets.
+
+Probe78 establishes the value of correctly timed forgetting after hidden body
+changes: oracle resets add 18 survivors in 700 episodes. Probe79 reduces
+matched-history error with an observable trigger, but fails stationary
+false-alarm and sign-scrambled control gates. Selective autonomous adaptation
+remains unresolved; no detector survival treatment is licensed.
 
 The preceding frontier is persistent individual evidence across episodic resets.
 Probe74 holds all four metabolic constants fixed for an identity while
