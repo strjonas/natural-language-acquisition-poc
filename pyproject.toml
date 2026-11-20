@@ -53,3 +53,4 @@ packages = ["src/homesocial"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["src"]

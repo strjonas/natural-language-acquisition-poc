@@ -1,7 +1,8 @@
 # STATE
 
 Last guidance update: 2026-10-21. Experimental frontier: 2026-10-05.
-Rewrite this file, never append.
+Latest build: 2026-11-20 (development; a budget experiment is ready to run, no
+confirmatory result). Rewrite this file, never append.
 
 ## Where the next agent should start
 
@@ -66,15 +67,43 @@ For a small runnable diagnostic (exploratory, not confirmation):
 PYTHONPATH=src .venv/bin/python -m homesocial.organism.active_self --mode diagnostic --block 0 --k 2
 ```
 
-**Next action (not started):** define the smallest runnable acquisition-to-use
-scenario for that target, identify the first missing connection, and implement
-or test it within a stated budget. Start from suitable existing components and
-check relevant language/world-model methods before inventing replacements.
-A stationary social-actuator prototype is one option, not a required design.
-Use a diagnostic or budget test first if it addresses a concrete blocker; do not
-substitute another general roadmap for that work. Small worlds can still require
-substantial training. Change detection, K5 and navigation are not automatic
-prerequisites. Keep later candidate questions below as background.
+### Built 2026-11-20, not yet run to its budget
+
+Record: `docs/decisions/2026-11-20-learned-self-budget-experiment.md`.
+
+**First missing connection:** no learner in the repository could both find out
+its body and take in words; Probe80's posterior is hand-derived for its physics.
+Two development pieces now address that. Neither is a capability yet.
+
+1. **A learned self on Probe80's body family** (`learned_self.py` on the exact,
+   vectorized physics in `vec_body.py`). One GRU trained across bodies gets the
+   same lived information as `SelfPosterior` and uses one recurrent state to
+   act and to predict its own sensations. A six-minute sanity run reached
+   survival 0.89 / 0.48 / 0.20 at K1-K3 (random 0.45 / 0.14 / 0.02; Probe80's
+   posterior 0.98 / 0.86 / 0.68) and was still rising. **The sustained run has
+   not been done.** Untested: whether it approaches the posterior, at what
+   budget, and every control except the memory-reset lesion.
+
+   ```bash
+   PYTHONPATH=src caffeinate -i .venv/bin/python -m homesocial.organism.learned_self train --out-dir runs/organism/learned_self_dev --max-hours 9
+   PYTHONPATH=src .venv/bin/python -m homesocial.organism.learned_self eval --out-dir runs/organism/learned_self_dev
+   ```
+
+2. **A ceiling check for words** (`caregiver_world.py`, scenario
+   `caregiver-v0`). With oracle speakers, the resource word is worth +0.42 to
+   +0.90 survival and a wrong word equals silence, but the size word adds only
+   +0.02 to +0.07 and does not depend on the body's own rates. **v0 would teach
+   a one-slot vocabulary; do not train a learner for productive speech in it.**
+
+**Next action:** run piece 1 to its budget (about nine hours) and read the
+curve in `runs/organism/learned_self_dev/curve.jsonl`. If survival nears the
+posterior's at K1-K3, give the same learner words and design the confirmatory
+comparison on a new band. If it is flat and clearly below, test one named
+limitation at a time or keep the posterior as the belief and learn only the
+speech. In parallel, find a `caregiver-v1` whose second slot passes the same
+ceiling survey before any language training. Change detection, K5 and
+navigation are not automatic prerequisites. Keep later candidate questions
+below as background.
 
 ## The direction in one paragraph
 

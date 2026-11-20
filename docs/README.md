@@ -11,6 +11,7 @@ For a public overview, read these first:
 
 | File | What it is |
 |---|---|
+| `decisions/2026-11-20-learned-self-budget-experiment.md` | Development build: a recurrent learner on Probe80's exact body family, ready for a sustained budget run; oracle ceiling survey shows the first caregiver scenario supports one word slot, not composition. No confirmatory result. |
 | `decisions/2026-10-05-active-self-discovery-result.md` | Probe80: nine gates pass for a self-posterior acting in a nonspatial body; no language claim. |
 | `decisions/2026-10-04-self-in-the-action-loop-direction.md` | Mechanism and exploratory pilots behind Probe80; proposed follow-ups are subject to current working guidance. |
 | `decisions/2026-09-30-sequential-structure-result.md` | Probe77: all five gates fail at one and six episodes; random sequential exploration does not reproduce forked structure identification within a lived budget. |
