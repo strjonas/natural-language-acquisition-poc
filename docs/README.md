@@ -1,13 +1,22 @@
 # Documentation index
 
+For continued work, start with [shared agent guidance](../CLAUDE.md) and
+[STATE](STATE.md). The [2026-10-21 working-method decision](decisions/2026-10-21-integration-and-budget-guidance.md)
+explains how to balance hypothesis tests, integration and training budget without
+changing past experimental verdicts. Dated roadmaps are not a mandatory order.
+The [research review](decisions/2026-10-21-guidance-research-review.md) records
+the evidence and limits behind the shorter current guidance.
+
 For a public overview, read these first:
 
 | File | What it is |
 |---|---|
+| `decisions/2026-10-05-active-self-discovery-result.md` | Probe80: nine gates pass for a self-posterior acting in a nonspatial body; no language claim. |
+| `decisions/2026-10-04-self-in-the-action-loop-direction.md` | Mechanism and exploratory pilots behind Probe80; proposed follow-ups are subject to current working guidance. |
 | `decisions/2026-09-30-sequential-structure-result.md` | Probe77: all five gates fail at one and six episodes; random sequential exploration does not reproduce forked structure identification within a lived budget. |
 | `decisions/2026-10-02-changing-body-ceiling-result.md` | Probe78: oracle-timed resets add 18 survivors in 700 changed-body episodes; all continuation clauses pass and stationary sham episodes match exactly. |
 | `decisions/2026-10-02-evidence-reset-result.md` | Probe79: changed-history errors improve, but stationary false alarms and sign-scrambled controls fail; detector closed before survival treatment. |
-| `decisions/2026-10-02-next-roadmap-proposal.md` | Proposed next tranche, pending approval: calibrated change evidence, conditional survival test, and a separate structure feasibility argument. |
+| `decisions/2026-10-02-next-roadmap-proposal.md` | Historical proposal before the Probe80 direction; not the current work queue. |
 | `decisions/2026-09-30-saturation-structure-result.md` | New structure instrument: exact reachable groups/counts in 25/25 worlds; all six gates pass, with matched forks and no shocks as explicit remaining privileges. |
 | `decisions/2026-09-30-cross-life-replication-result.md` | Disjoint-band confirmation: all six original gates pass; retained rates add 25 survivors in 700 episodes, +0.0357 survival on 5/5 blocks. |
 | `decisions/2026-09-30-cross-life-self-result.md` | The newest survey: retaining rate-learning evidence about one persistent body buys +0.0300 survival; all six continuation gates pass and wrong-identity memory loses the benefit. |
@@ -15,7 +24,7 @@ For a public overview, read these first:
 | `decisions/2026-08-22-granularity-survival-result.md` | The preceding endpoint result: true individual rates buy a small survival gain, but Probe68's finer decision grain does not amplify it. |
 | `decisions/2026-08-22-expanded-body-composition-law-result.md` | The newest construction result: a viable K5 body and valid first-use occupancy law miss the locked axis-gap gate, so no parent or speaker treatment is built. |
 | `VISION_AND_STATUS.md` | Original vision, novelty boundary, acquisition-vs-emergence distinction, and the route to productive language. |
-| `STATE.md` | Current evidence, failures, and exact next work. Rewritten rather than appended. |
+| `STATE.md` | Current evidence, capabilities, failures and candidate next work. Rewritten rather than appended. |
 | `decisions/2026-08-20-constitution-budget-ceiling-survey.md` | A negative result: oracle-rate lifetime budgeting loses to the live first-come request stream, so the proposed constitution report is not built. |
 | `decisions/2026-08-18-belief-scaling-result.md` | Structured self-belief buys sample efficiency, not a ceiling; the black-box family ties it at 64x compute. |
 | `decisions/2026-08-17-decision-granularity-result.md` | The decision margin is an ecology formula, and changing its quantum at fixed nutrition changes the value of self-knowledge. |
@@ -26,28 +35,35 @@ For a public overview, read these first:
 | `../paper/OUTLINE.md` | Honest vision-plus-interim-result workshop paper route. |
 | `INTERVIEW_GUIDE.md` | Short and technical explanations for a robotics interview. |
 
-For continued research, read these three in order. Most other planning files
-are frozen historical records.
+For continued research, use the following sources. Most other planning files
+are historical records; current working guidance takes precedence on sequencing
+and budget decisions, while locked protocols and results retain their boundaries.
 
 | File | What it is |
 |---|---|
-| `../md/archive/DIRECTION_2026-07-26.md` | **The destination.** Terminal claim, the five properties a real self-model needs, and the phase ladder to earn them. |
+| `../CLAUDE.md` | **Working method.** Evidence discipline, experiment selection, integration, budget and handover rules. |
+| `VISION_AND_STATUS.md` | **The vision.** Developmental language aims; current evidence is in STATE. |
+| `../md/archive/DIRECTION_2026-07-26.md` | **Optional local history.** Terminal claim and five properties; the ignored archive is not needed to continue work, and its phase ladder and compute restrictions are superseded. |
 | `STATE.md` | **The rolling handover.** Where things stand right now. Rewritten, never appended. |
 | `decisions/` | **The durable evidence record.** Append-only. One preregistration and one result per experiment. |
 
 Most of `runs/` is gitignored. A small allow-listed publication bundle contains
 Probe63's, Probe64's, Probe65's and Probe66's JSON records, compact evidence for
-Probe75, Probe77, Probe78 and Probe79, and the parent
+Probe75, Probe77, Probe78, Probe79 and Probe80, and the parent
 checkpoint required for a smoke rerun. Any other number worth keeping belongs
 in a `decisions/` document.
 
 ## Current position
 
-Tagged `v1-causal-bodily-self-report`, then extended through Probe79. The
-repository contains a six-signal request protocol (need x portion size) plus an
-online RLS body calibrator that learns individual bodily constants from
-intermittent evidence. It remains a small structured research organism, not a
-generative language agent.
+The latest frontier is Probe80: a posterior discovers bodily structure while
+choosing actions, with retained evidence and a calibrated confidence readout.
+It passes nine locked gates within its tested body family. This path has no
+language, listener or navigation. See [STATE](STATE.md) for current capabilities
+and candidate work.
+
+The preceding request-word line, summarized below, extends the
+`v1-causal-bodily-self-report` system through Probe79. It contains a six-signal
+request protocol (need x portion size) and an online RLS body calibrator.
 
 Probe75 independently confirms the persistent-memory result on fresh bodies
 and episode streams: **0.2100 → 0.2457 survival**, **+0.0357

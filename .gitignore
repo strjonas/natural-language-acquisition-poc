@@ -51,8 +51,12 @@ runs/organism/probe78_changing_body/*
 !runs/organism/probe79_evidence_reset/
 runs/organism/probe79_evidence_reset/*
 !runs/organism/probe79_evidence_reset/evidence.json
+!runs/organism/probe80_active_self/
+runs/organism/probe80_active_self/*
+!runs/organism/probe80_active_self/evidence.json
 .env
 .DS_Store
 CLAUDE.md
 AGENTS.md
+!/AGENTS.md
 /md

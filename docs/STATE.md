@@ -1,48 +1,312 @@
 # STATE
 
-Last rewritten: 2026-10-02. Rewrite this file, never append.
+Last guidance update: 2026-10-21. Experimental frontier: 2026-10-05.
+Rewrite this file, never append.
 
 ## Where the next agent should start
 
-Probe77's sequential discovery screen completed on 2026-09-30: all five gates
-fail at one and six episodes. Probe78's changing-body oracle-reset ceiling
-passes all three clauses: +18 survivors in 700 changed-body episodes, with
-exact stable-sham parity. Probe79's observable-error detector fails G2 and G3:
-17.14% stationary false alarms and no reliable advantage over sign-scrambled
-detection. The approved tranche is complete; this detector is closed before
-a survival treatment. Further work is proposed for approval. Start here:
+Read [CLAUDE.md](../CLAUDE.md) first for current working rules. The
+[2026-10-21 method decision](decisions/2026-10-21-integration-and-budget-guidance.md)
+balances small hypothesis tests with integration and bounded scale experiments.
+The [research review](decisions/2026-10-21-guidance-research-review.md) shortens
+those rules and clarifies the target and evaluation. Neither changes any
+experimental result.
 
-- `docs/decisions/2026-09-30-sequential-structure-result.md`: random exploration
-  produces too little pair evidence and inaccurate grouping; this method closes.
-- `docs/decisions/2026-10-02-changing-body-ceiling-result.md`: correctly timed
-  resets buy +0.0257 survival [+0.0026,+0.0488]; cue still comes from the simulator.
-- `docs/decisions/2026-10-02-evidence-reset-result.md`: 48.7% lower rate error
-  and 34.2% lower regret do not override the failed selectivity/control gates.
-- `docs/decisions/2026-10-02-next-roadmap-proposal.md`: proposed next scope,
-  pending approval; no broader integration or language work started.
+The programme changed direction on 2026-10-04/05: **the self-model now chooses
+the organism's actions.** For that frontier, read:
 
-The preceding positive baselines remain:
+1. `docs/decisions/2026-10-04-self-in-the-action-loop-direction.md` — why
+   twenty probes bought a few survival points each, the mechanism family, the
+   development pilots, and the ladder (Probes 80–84).
+2. `docs/decisions/2026-10-05-active-self-discovery-result.md` — **Probe80:
+   all nine locked gates pass**, independently reconstructed.
+3. "Choosing the next tranche" below: candidate questions and their actual
+   dependencies, rather than a mandatory sequence by probe number.
 
-1. `docs/decisions/2026-09-30-cross-life-replication-result.md` (probe75,
-   **all 6 original gates pass; retained memory buys +0.0357 survival**).
-2. `docs/decisions/2026-09-30-saturation-structure-result.md` — all six gates
-   pass; exact reachable count/partition in 25/25 worlds, with explicit privileges.
-3. `docs/decisions/2026-09-30-cross-life-self-result.md` (probe74) — the preceding
-   survey, construction and explicit evidence-budget difference.
-4. `docs/decisions/2026-08-02-discovered-self-structure-result.md` (probe61) —
-   the failed latent-pruning mechanism that is not reopened.
-5. `md/archive/DIRECTION_2026-07-26.md` section 2 — the five properties and why
-   load-bearing remains partial even after the new positive.
+`md/archive/DIRECTION_2026-07-26.md` remains the destination (the terminal
+claim and the five properties). Everything about the request-word line
+(Probes 57–79) below is unchanged record.
 
-Evidence about a persistent body survives an episode boundary and pays physical
-rent on a disjoint population. Retained rates improve survival by **+0.0357
-[+0.0031, +0.0683]** over resetting the rate estimate, on **5/5 blocks**.
-State and uptake still reset; wrong-identity memory loses the benefit. The
-independent confirmation is complete, without sample extension or ecology
-tuning. The larger vision remains unfinished: state variables and causal form
-are supplied, the motor ignores the self-model, and the mouth chooses three words.
+## Current capability and next decision
 
-## Probe75: independent persistent-memory confirmation
+**Next capability target: acquired, productive communication used by the same
+learner that predicts and regulates its body. Not yet demonstrated.** This is
+an intermediate milestone from the original vision, not completion of all five
+self-model properties and not a choice of architecture.
+
+The intended demonstration is one learner retaining experience of its body,
+learning caregiver words through situated interaction, and producing a useful
+new combination of known words when its needs require it. Its bodily knowledge
+must influence both action and communication. A scored structure/confidence
+readout or a supplied request lookup does not by itself meet this target.
+
+Before confirmation, specify a versioned scenario and numeric endpoints for
+learning, withheld combinations, bodily outcomes and the predicted effects of
+self-information and communication interventions. Preserve comparison with the
+development baseline. This evaluation is **not built**; the commands below test
+only the existing nonlinguistic component. No new thresholds are implied here.
+
+The runnable Probe80 path is `active_self.run_arm` connecting `SelfPosterior`
+to `LivedBody`:
+action, prediction, retained bodily evidence and a scored structure/confidence
+readout operate together. It has no listener, generated language or navigation.
+The spatial request-word organism is a separate baseline; its capabilities do
+not automatically transfer into this path. No new integration was built by the
+2026-10-21 documentation update.
+
+Reconstruct the existing result without retraining:
+
+```bash
+python3 scripts/summarize_probe80.py --input runs/organism/probe80_active_self/evidence.json
+```
+
+For a small runnable diagnostic (exploratory, not confirmation):
+
+```bash
+PYTHONPATH=src .venv/bin/python -m homesocial.organism.active_self --mode diagnostic --block 0 --k 2
+```
+
+**Next action (not started):** define the smallest runnable acquisition-to-use
+scenario for that target, identify the first missing connection, and implement
+or test it within a stated budget. Start from suitable existing components and
+check relevant language/world-model methods before inventing replacements.
+A stationary social-actuator prototype is one option, not a required design.
+Use a diagnostic or budget test first if it addresses a concrete blocker; do not
+substitute another general roadmap for that work. Small worlds can still require
+substantial training. Change detection, K5 and navigation are not automatic
+prerequisites. Keep later candidate questions below as background.
+
+## The direction in one paragraph
+
+In the request-word line, the self-model primarily affected speech while a
+frozen policy chose motor actions. Probe80 instead uses its self-model to choose
+actuators and establishes large gains over its tested controls. These different
+experiments support investigating the action connection; their effect-size
+difference does not isolate that connection as the sole cause of progress.
+Nor does beating Probe80's action-value bandit establish superiority over a
+trained alternative with history-dependent decisions. The mechanism
+(`src/homesocial/organism/self_posterior.py`) is an online posterior over the
+organism's own unnamed structure — sampled discrete structure, exact Gaussian
+self-parameters, truncation for implied inequalities — that acts by sampling
+a self consistent with the evidence, reports its structure with a confidence,
+and **checks itself against its own sensations**: when they are impossible
+under it (below −30 nats in one tick) it withdraws its confidence and rebuilds
+from remembered experience. Words enter later as social actuators over the
+variables it discovered in the proposed Probe82 work. This is a promising
+starting point, not proof that the posterior is the eventual architecture.
+
+## Probe80: a self-posterior discovers its own body while living in it
+
+**9/9 locked gates pass**; 300 identities × 9 arms × 6 lives; survey band
+5,000,000,000; runner and standard-library checker agree on every gate.
+
+| K | random | structure-free | **posterior** | reset | certainty | yoked | true structure | exact structure, life 6 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 0.436 | 0.969 | **0.978** | 0.864 | 0.978 | 0.225 | 1.000 | **1.00** |
+| 2 | 0.164 | 0.417 | **0.864** | 0.661 | 0.756 | 0.047 | 0.906 | **1.00** |
+| 3 | 0.047 | 0.039 | **0.675** | 0.469 | 0.583 | 0.006 | 0.747 | **0.93** |
+| 4 | 0.017 | 0.006 | **0.472** | 0.297 | 0.336 | 0.000 | 0.589 | **0.67** |
+| 5 | 0.006 | 0.000 | 0.272 | 0.158 | 0.253 | 0.003 | 0.558 | 0.25 |
+
+Survival is the six-life mean. Gates (paired over five blocks, all 5/5):
+posterior beats random at K1–K4 (+0.46 to +0.70) and the structure-free learner
+at K2–K4 (+0.45 to +0.64; K1 ties, as predicted: one hidden resource needs no
+structure); another body's evidence is catastrophic (+0.678; yoked recovers
+0.4% of its own structure); retained self-knowledge pays across lives
+(+0.202); uncertainty drives discovery (+0.879 exact over the certainty
+lesion); self-reports are calibrated at K1–K4 (Brier 0.053; 96.5% correct at
+confidence ≥ 0.9 over 1,161 reports; 1.7% at ≤ 0.1); self-criticism is what
+calibrates them (uncritical Brier 0.127, +0.075 [+0.044, +0.106]); relabeling
+transports 100/100. K5 is the declared stress condition: discovery 0.25,
+overconfident, survival still above random.
+
+Not established: self-criticism's survival effect (+0.034, lower bound
+−0.0005). Not shown: language, change, space, bodies outside the authored
+family.
+
+## Development pilots toward Probes 81 and 82 (not evidence)
+
+Recorded in full in the direction document, Section 3.
+
+- **Change**: after a hidden swap of two large actuators, the self-critical
+  posterior that concludes "my body changed" when no rebuild of its past
+  survives its own replay recovers the new structure (4/4); the uncritical one
+  stays confidently wrong (confidence 1.0); stationary twins concluded change
+  0/4 times (Probe79: 17% of stable bodies). A *small*-alias remap is never
+  used again and never noticed: detection and staleness are separate problems.
+- **Words**: one discovered resource can be restored only by a caregiver's
+  word. Labels from a caregiver who sees the body speed acquisition (K2
+  first-life survival 0.62 against 0.12 silent; report fidelity 0.97 against
+  0.76). The pilot's own scrambled-label control leaked which words matter for
+  this body — Probe82 must scramble reference while preserving vocabulary
+  statistics, and add a labels-without-self-model arm.
+
+## Where the five properties now stand
+
+From `md/archive/DIRECTION_2026-07-26.md` section 2, updated after Probe80.
+
+1. **Discovered** — *advanced by Probe80*. The count of hidden resources and the
+   actuator partition are inferred online from two scalars, without forks, with
+   shocks and death, across K1–K4 (exact 1.00, 1.00, 0.93, 0.67 after six
+   lives). Within an authored family (bounded, depleting, saturating) and with
+   the sensor width given; K5 0.25.
+2. **Corrigible** — **yes** for evidence integration (Probe63). Autonomous
+   correction after hidden change: Probe78's oracle timing passes, Probe79's
+   detector fails; Probe81 will test self-criticism as the detector.
+3. **Load-bearing across uses** — *advanced by Probe80 in the actuator
+   substrate*: one posterior acts, predicts and reports, and five lesions each
+   cost a named endpoint. Still nonspatial; the island organism's motor parent
+   does not read any self-model (Probe84).
+4. **Productive under novel demand** — *partial*, unchanged since Probe66. Words
+   for discovered variables are piloted, not tested.
+5. **Reflexive** — *advanced by Probe80*: calibrated confidence about its own
+   structure, caused by acting on a fact about its own model (its sensations
+   were impossible under it); the lesion loses it.
+
+## Evidence ladder and closed lines
+
+| Probe | Mechanism | Result |
+|---|---|---|
+| 48–56 | neural mouths, COMA critics, recurrent self-belief, ranked belief | all **fail** at 80,000 ticks; see probe69 |
+| 57 | structured learned causal self + social planner | **all local gates pass** |
+| 58 | causal-stage replication, 5 seeds | **5/5 pass**, sd <= 0.009 |
+| 59 | online adaptation after a body-rule change | recalibration 5/5; survival gates **fail** |
+| 60 | outcome-aware realized-consequence planner | planner repair passes; load-bearing gate **fails** |
+| 61 | discovered bodily structure from two sensations | **4 of 5 fail**; closed |
+| 62 | self-uncertainty ceiling survey | posterior **ties** the point filter; closed in its ecology |
+| 63 | individual body + online self-calibration | **7/7 pass**; standing obstacle closed |
+| 64 | portion requests under a rationed caregiver | **7/7 pass**; **survival hears none of it** |
+| 65 | a caregiver that answers eighteen ticks late | **9/9 pass**; ordering *reverses* with the horizon; **a belief reaches survival** |
+| 66 | a caregiver whose size words do not mean one thing | **6/6 pass**; factorization **found rather than given** |
+| 67 | acting on the width of the rate belief | **survey, no**; ceiling arm loses to baseline |
+| 68 | the grain of the decision surface | **4/5 pass, G5 fails**; the floor is a **formula**, the grain is **pinned by viability** |
+| 69 | structured against black-box, swept over budget | **6/7 pass, G6 fails**; structure is **sample efficiency, not a ceiling**; the families **tie** at 64x |
+| 70 | oracle-rate lifetime basket allocation | **ceiling, no**; loses to first-come at all six stores, 30/30 paired cells |
+| 71 | fixed K5 body + first-use composition law | **construction ceiling, 4/6**; body/law viable, range and axis-gap gates **fail** |
+| 72 | compensated quantum, clean rate/state survival contrasts | **3/5**; true rates buy +0.0214 survival, but the granularity interaction is **-0.0229, 2/5 positive** |
+| 73 | learned rate against a matched species-rate lesion | **5/5 pass**; learned rates buy **+0.0143 survival**, true rates +0.0386 |
+| 74 | retained rate evidence across resets of one fixed individual | **survey, 6/6 pass**; retained rates buy **+0.0300 survival**, 5/5 blocks; wrong-identity memory loses the benefit |
+| 75 | unchanged persistent-memory mechanism, disjoint bodies/episodes | **confirmation, 6/6 pass**; retained rates buy **+0.0357 survival**, 5/5; independently reconstructed |
+| 76 | scalar saturation interactions identify unnamed restoration groups | **instrument, 6/6 pass**; exact 25/25 worlds, held-out 750/750; matched-fork and shock-free privileges |
+| 77 | random sequential predecessor-effect contrasts | **0/5 pass** at one and six episodes; inadequate grouping and pair coverage; closed |
+| 78 | oracle-timed reset after hidden body changes | **3/3 clauses pass**; +18 survivors/700, exact stable-sham parity; timing remains privileged |
+| 79 | two consecutive observable prediction errors trigger reset | **1/3 pass**; stationary false alarms and sign-scrambled controls fail; closed before survival treatment |
+| 80 | self-posterior in the action loop: discovered structure, posterior-sampling action, self-criticism | **9/9 pass**; exact structure 1.00/1.00/0.93/0.67 at K1–K4; calibrated self-report (Brier 0.053); +0.45 to +0.70 survival over random and structure-free |
+
+The following closures retain their original verdicts in the tested settings.
+Do not repeat them unchanged or move their gates. A materially different task,
+budget or integration may justify a new experiment with an explicit rationale;
+these entries are not prohibitions on entire architecture families. See
+CLAUDE.md for the development/confirmation distinction.
+
+Closed lines:
+
+- report entropy, head width, vocabulary size, replay, sparse-return loss
+  weights, horizons as a tuning knob, counterfactual token-credit variants;
+- more guided lexical exposure after comprehension reaches ceiling;
+- **black-box recurrent self-belief width/loss/head variants** — *restated, not
+  overturned*: probe69 moved **budget**, and its §5 shows head variants were the
+  wrong lever, which is why they all failed;
+- a larger legacy neural mouth on the same state;
+- **assuming compute alone repairs the request-word system's limitations** —
+  Probe69 does not establish this. It does establish that the tested neural
+  estimator approximately ties the structured one at 5,120,000 ticks. Bounded
+  budget experiments are allowed; neither an architectural ceiling nor success
+  in action or language follows from that estimator comparison;
+- probe61's structure discovery **mechanism** (a sparsity-penalized latent);
+- stacking probe64's `caregiver_store` onto probe65's lag;
+- acting on the rate posterior through probe60's objective, at any horizon;
+- lowering the grant without compensating the period;
+- the mixed `individual − state_oracle` contrast as a gate;
+- **fixed per-need lifetime basket quotas from metabolic rates**, whether the
+  rates are species, oracle or permuted, and moving the store within 22–34 to
+  rescue them; probe70's oracle arm loses 30/30 paired cells.
+- **retraining the parent or building a composition treatment on Probe71's fixed
+  K5 body**; its natural range is 0.02570 against 0.030 and axis-gap movement is
+  -0.01707 against 0.020, so the construction is not licensed. Moving a rate,
+  clock, portion, birth
+  distribution or threshold is a new ecology, not a repair.
+- **halving the help quantum and caregiver period at fixed expected nutrition as
+  a way to amplify the survival value of individual-rate knowledge** in the
+  fixed lag-18 ecology. It amplifies open-loop accuracy value (probe68) and
+  raises every arm's survival, but the clean survival rate step is -0.0229
+  (probe72).
+
+Probe77's random sequential grouping and Probe79's fixed threshold-and-streak
+detector are also closed at their preregistered budgets. Positive sub-endpoints
+do not license threshold tuning or a detector survival treatment.
+
+Do not carry self priors between independently redrawn bodies. Probe74 keeps
+the physical individual fixed and explicitly tests a wrong-identity prior.
+Do not cite its aggregate true/retained tie as saturation or equivalence; its
+paired interval spans +/-0.0217 and the evidence budget was not swept.
+
+**New standing requirement from probe69:** any claim that one mechanism family
+beats another must state the **budget** it was measured at, and must not be cited
+as a ceiling unless the budget was swept.
+
+
+Inference variants tried and rejected **during Probe80's development** (not
+closed lines; recorded so they are not re-tried blindly): a structural change
+hazard of 0.02/0.05, island SMC (4 × 250), moment-matched shock attribution,
+looser sensor tolerance, rarer resampling, and N = 400 particles at K4.
+
+## Choosing the next tranche
+
+The following are candidate research questions, not a mandatory execution order.
+Plan integration into a shared runnable path as work proceeds, rather than
+waiting for every item to pass. An isolated probe remains appropriate when its
+answer can avoid a costly mistake or unblock that path. Preserve its controls
+and claim boundaries. Review the allocation after each bounded tranche.
+
+1. **Probe81 — does the organism notice that its own body changed, and only
+   then?** Relevant to changed-body claims; not inherently a prerequisite for
+   language in stationary bodies. A candidate mechanism is self-criticism plus
+   "conclude change when no rebuild of the past survives its own replay". Requirements
+   from the pilot: a change that touches what the organism does (large-actuator
+   swap), stationary twins for false alarms with Probe79's 17% as the number to
+   beat, the uncritical and keep-best lesions, an oracle-timed restart as
+   reference, and a rebuild that does not replay the whole remembered past
+   (cost grew to 11 rebuilds per identity). Staleness of untested knowledge is a
+   separate, later question.
+2. **Probe82 — words for a self it discovered.** One discovered resource only a
+   caregiver can restore; words as social actuators; labels from a caregiver who
+   sees the body as evidence about the agent's own discovered variables.
+   Controls: reference-scrambled labels that preserve vocabulary statistics,
+   labels without a self-model, scrambled listener. Endpoints: survival,
+   acquisition speed, report fidelity of "what do you need?".
+3. **Probe83 — productive and future speech** over discovered variables: a
+   compositional caregiver protocol (which × how much × when), held-out
+   combinations, and Probe65's counterfactual-branch test for "I will need".
+4. **Probe84 — spatial integration**: the self-posterior as the spatial
+   organism's motor model, and independently developed parents (the old Probe52
+   debt). This is distinct from integrating action, prediction and communication
+   earlier within a simpler world. Neither an actuator demonstration nor
+   downstream seed replication establishes the full developmental system.
+5. **Budget and architecture experiments**: longer training, more varied
+   experience, capacity or inference compute may be necessary. Amortizing the
+   posterior with a learned network is one hypothesis, not a selected solution.
+   Probe69 motivates budget sweeps; it does not validate distillation, shared
+   neural control or language. Specify the suspected limitation, comparable
+   baselines, held-out development curves, resource cap and checkpoint schedule.
+
+Carry-over items from the request-word line that remain open: score Probe66's
+declining against survival; run Probe61's missing controls if F0 or G2 are ever
+cited; replicate the Probe52 childhood-to-adult pipeline.
+
+## On `docs/VISION_AND_STATUS.md`
+
+That document (2026-08-10) argued for a clean v2 and named the argmax mouth as
+the largest gap. The new direction takes its first advice — build the new
+learner cleanly beside the old line, which stays as microscope and baseline —
+without its architectural bet: Probe80's learner is a structured posterior, not
+a recurrent latent and token decoder, because structure buys sample efficiency
+(Probe69) and calibrated self-report is what the reflexive property needs. Its
+diagnosis of the mouth still stands and is what Probes 82–83 are for.
+
+## Record of the request-word line (Probes 63–79, unchanged)
+
+### Probe75: independent persistent-memory confirmation
 
 Same exact mechanism and six gates, 5 × 28 identities × 5 test episodes,
 700 episodes per cell, with new 3.6B identity and 3.7B episode bands. All six
@@ -71,7 +335,7 @@ source as well as parent/configuration and refuses changed partial runs.
 The real completed confirmation resumed without replaying episodes; real
 interruption and learner-update truth-denial guards also pass.
 
-## Probe76: causal overlap as a different structure question
+### Probe76: causal overlap as a different structure question
 
 **All six locked gates pass.** Ordinary unsaturated mean trajectories collapse
 several axes into one scalar effect. Saturating a resource changes whether
@@ -106,7 +370,7 @@ privileges. It does not finish discovered state, produce language or show a
 survival gain. Groups describe restorative causal overlap in an authored
 bounded-resource family; no state estimator or motor-use mechanism is built.
 
-## Probe74: rate memory belongs to one persistent individual
+### Probe74: rate memory belongs to one persistent individual
 
 Five paired blocks x 28 identities x five test episodes = 700 episodes per arm,
 after one shared calibration episode per identity. All four metabolic
@@ -150,7 +414,7 @@ The motor policy still does not read the self-model and the mouth still selects
 three supplied need words. The result remains a local survey, all blocks still
 sharing one parent.
 
-## Probe73: a learned bodily constant reaches survival
+### Probe73: a learned bodily constant reaches survival
 
 Five paired seed blocks x 140 lives per cell, 700 lives per arm, lag 24. Every
 cell runs the same recursive calibrator, filtered state, uptake belief, request
@@ -184,7 +448,7 @@ It motivated Probe74's persistent-identity construction. That survey now passes
 its physical and identity-specific memory gates, but its differently sampled
 bodies are not a paired estimate of how much of Probe73's gap was recovered.
 
-## Probe72: a word-level amplifier does not amplify survival value
+### Probe72: a word-level amplifier does not amplify survival value
 
 Five paired seed blocks x 140 lives per cell, 700 lives per arm, lag 18. The
 baseline and fine ecologies deliver exactly 0.0666667 expected grant per tick;
@@ -215,7 +479,7 @@ lag-18 ecology. It does not close the separate learned-rate question. No
 self-model property advances because the positive endpoint is an oracle ceiling,
 not the recursive learner.
 
-## Probe71: a viable larger body that misses its construction gate
+### Probe71: a viable larger body that misses its construction gate
 
 Five seeds x 100 lives, no learned component. K5 makes the existing safety axis
 reportable and adds health, growing the natural message space from six to ten.
@@ -242,7 +506,7 @@ no expanded parent is trained and no factorized-versus-enumerative treatment is
 built. The fixed K5 construction closes as a bridge. No self-model property
 advances.
 
-## Probe70: constitution is not realized demand
+### Probe70: constitution is not realized demand
 
 Five seeds x 40 lives, same oracle requester in every arm, stores 22–34 plus the
 unlimited inertness control. The caregiver divided its lifetime basket by either
@@ -281,7 +545,7 @@ built. A dynamically rebalanced allocator is a new mechanism and must first name
 what it can do that first-come does not already do. No self-model property
 advances.
 
-### The bias probe69 was built to correct
+#### The bias probe69 was built to correct
 
 Probe68 found that since probe59 every probe had held the ecology fixed and
 varied the mechanism. Probe69 found the other half of the same blind spot:
@@ -292,7 +556,7 @@ varied the mechanism. Probe69 found the other half of the same blind spot:
 
 Measured on this machine, 80,000 ticks is **90 seconds**.
 
-## Probe69: structure is sample efficiency, not a ceiling
+### Probe69: structure is sample efficiency, not a ceiling
 
 Five seeds, matched instrument (`_balanced_accuracy` over `world.lowest_need()`,
 the same function object both audits import), 200 audit lives, 24.4 hours over
@@ -340,14 +604,14 @@ having failed.
 reproduces probe54's published 0.6219 to within 0.031 on a different band, so
 these cells are commensurable with the record.
 
-### What probe69 explicitly does not show
+#### What probe69 explicitly does not show
 
 **Belief-side only.** It does not show a better belief reaching a word, and
 probe68's margin law says it need not. **A black-box that ties the structured
 model on accuracy inherits probe68's problem whole.** No property advances. The
 mouth is still `argmax` over three scores.
 
-## Probe68: the grain of the decision surface (unchanged, still binding)
+### Probe68: the grain of the decision surface (unchanged, still binding)
 
     margin  =  E_grant [ min( grant * uptake, g ) ]
 
@@ -368,184 +632,6 @@ real and does not amplify survival value: the corresponding closed-loop rate
 step is -0.0229 [-0.0869, +0.0412]. The margin law describes the grain of the
 word decision, not a sufficient statistic for the live body's hazard.
 
-## Where the five properties now stand
-
-From `md/archive/DIRECTION_2026-07-26.md` section 2. **Probes74–75 extend and
-independently replicate the third property for retained individual evidence.**
-Probe73 supplied its first clean learned-rate survival use. Probes69–72 advanced none: probe69
-is an estimator comparison, probes70–71 stop at failed ceilings, and probe72's
-positive physical endpoint belongs to an oracle rather than the learned model.
-
-1. **Discovered** — *partial, advanced by probe76's instrument*. Unnamed
-   restorative groups/count track K1–K5 and a physically moved target map.
-   Matched forks and no shocks are still required; arbitrary total state count,
-   unreachable variables and an online state estimator remain unestablished.
-2. **Corrigible** — **yes** for the established evidence-integration result.
-   Autonomous correction after hidden bodily change remains unestablished:
-   Probe78 passes with oracle timing; Probe79 fails the detector screen.
-3. **Load-bearing across uses** — *partial, advanced by probes73–75*. A rate-only
-   lesion increases regret and reduces survival; resetting its cross-episode
-   evidence now does so too. The same estimate drives future prediction and
-   speech and is physically load-bearing. It remains partial because the frozen
-   motor policy does not read the self-model. Probe75 independently replicates
-   persistent memory across fresh bodies/episodes, still under one motor parent.
-4. **Productive under novel demand** — *partial*, unchanged since probe66. What
-   keeps it short of yes is the hypothesis space.
-5. **Reflexive** — *partial*, unchanged since probe67.
-
-## Evidence ladder and closed lines
-
-| Probe | Mechanism | Result |
-|---|---|---|
-| 48–56 | neural mouths, COMA critics, recurrent self-belief, ranked belief | all **fail** at 80,000 ticks; see probe69 |
-| 57 | structured learned causal self + social planner | **all local gates pass** |
-| 58 | causal-stage replication, 5 seeds | **5/5 pass**, sd <= 0.009 |
-| 59 | online adaptation after a body-rule change | recalibration 5/5; survival gates **fail** |
-| 60 | outcome-aware realized-consequence planner | planner repair passes; load-bearing gate **fails** |
-| 61 | discovered bodily structure from two sensations | **4 of 5 fail**; closed |
-| 62 | self-uncertainty ceiling survey | posterior **ties** the point filter; closed in its ecology |
-| 63 | individual body + online self-calibration | **7/7 pass**; standing obstacle closed |
-| 64 | portion requests under a rationed caregiver | **7/7 pass**; **survival hears none of it** |
-| 65 | a caregiver that answers eighteen ticks late | **9/9 pass**; ordering *reverses* with the horizon; **a belief reaches survival** |
-| 66 | a caregiver whose size words do not mean one thing | **6/6 pass**; factorization **found rather than given** |
-| 67 | acting on the width of the rate belief | **survey, no**; ceiling arm loses to baseline |
-| 68 | the grain of the decision surface | **4/5 pass, G5 fails**; the floor is a **formula**, the grain is **pinned by viability** |
-| 69 | structured against black-box, swept over budget | **6/7 pass, G6 fails**; structure is **sample efficiency, not a ceiling**; the families **tie** at 64x |
-| 70 | oracle-rate lifetime basket allocation | **ceiling, no**; loses to first-come at all six stores, 30/30 paired cells |
-| 71 | fixed K5 body + first-use composition law | **construction ceiling, 4/6**; body/law viable, range and axis-gap gates **fail** |
-| 72 | compensated quantum, clean rate/state survival contrasts | **3/5**; true rates buy +0.0214 survival, but the granularity interaction is **-0.0229, 2/5 positive** |
-| 73 | learned rate against a matched species-rate lesion | **5/5 pass**; learned rates buy **+0.0143 survival**, true rates +0.0386 |
-| 74 | retained rate evidence across resets of one fixed individual | **survey, 6/6 pass**; retained rates buy **+0.0300 survival**, 5/5 blocks; wrong-identity memory loses the benefit |
-| 75 | unchanged persistent-memory mechanism, disjoint bodies/episodes | **confirmation, 6/6 pass**; retained rates buy **+0.0357 survival**, 5/5; independently reconstructed |
-| 76 | scalar saturation interactions identify unnamed restoration groups | **instrument, 6/6 pass**; exact 25/25 worlds, held-out 750/750; matched-fork and shock-free privileges |
-| 77 | random sequential predecessor-effect contrasts | **0/5 pass** at one and six episodes; inadequate grouping and pair coverage; closed |
-| 78 | oracle-timed reset after hidden body changes | **3/3 clauses pass**; +18 survivors/700, exact stable-sham parity; timing remains privileged |
-| 79 | two consecutive observable prediction errors trigger reset | **1/3 pass**; stationary false alarms and sign-scrambled controls fail; closed before survival treatment |
-
-Do not reopen without contrary evidence:
-
-- report entropy, head width, vocabulary size, replay, sparse-return loss
-  weights, horizons as a tuning knob, counterfactual token-credit variants;
-- more guided lexical exposure after comprehension reaches ceiling;
-- **black-box recurrent self-belief width/loss/head variants** — *restated, not
-  overturned*: probe69 moved **budget**, and its §5 shows head variants were the
-  wrong lever, which is why they all failed;
-- a larger legacy neural mouth on the same state;
-- **compute scale as a substitute for causal structure** — *restated and
-  quantified*: not a substitute at 80,000 ticks, most of the way there at
-  1,280,000, indistinguishable at 5,120,000. The closure stands as a claim about
-  *substitution*; it is no longer a claim about the *ceiling*;
-- probe61's structure discovery **mechanism** (a sparsity-penalized latent);
-- stacking probe64's `caregiver_store` onto probe65's lag;
-- acting on the rate posterior through probe60's objective, at any horizon;
-- lowering the grant without compensating the period;
-- the mixed `individual − state_oracle` contrast as a gate;
-- **fixed per-need lifetime basket quotas from metabolic rates**, whether the
-  rates are species, oracle or permuted, and moving the store within 22–34 to
-  rescue them; probe70's oracle arm loses 30/30 paired cells.
-- **retraining the parent or building a composition treatment on Probe71's fixed
-  K5 body**; its natural range is 0.02570 against 0.030 and axis-gap movement is
-  -0.01707 against 0.020, so the construction is not licensed. Moving a rate,
-  clock, portion, birth
-  distribution or threshold is a new ecology, not a repair.
-- **halving the help quantum and caregiver period at fixed expected nutrition as
-  a way to amplify the survival value of individual-rate knowledge** in the
-  fixed lag-18 ecology. It amplifies open-loop accuracy value (probe68) and
-  raises every arm's survival, but the clean survival rate step is -0.0229
-  (probe72).
-
-Probe77's random sequential grouping and Probe79's fixed threshold-and-streak
-detector are also closed at their preregistered budgets. Positive sub-endpoints
-do not license threshold tuning or a detector survival treatment.
-
-Do not carry self priors between independently redrawn bodies. Probe74 keeps
-the physical individual fixed and explicitly tests a wrong-identity prior.
-Do not cite its aggregate true/retained tie as saturation or equivalence; its
-paired interval spans +/-0.0217 and the evidence budget was not swept.
-
-**New standing requirement from probe69:** any claim that one mechanism family
-beats another must state the **budget** it was measured at, and must not be cited
-as a ceiling unless the budget was swept.
-
-## Exact next work
-
-Every item carries the granularity check (`diagnose_probe68.py`), and now also
-the budget check: *at what budget is this comparison being made, and is the
-losing arm saturated there?*
-
-1. **Sequential random exploration was tested and failed as Probe77.** All
-   five continuation gates fail at one and six episodes. Do not extend this
-   mechanism's budget or relax its gates. A directed exploration policy or an
-   estimator using more of the scalar history would be a distinct proposal,
-   requiring its own identifiability and survival-cost argument. Preserve
-   K1–K5, opaque IDs, fixed mean scaling, pairing/permutation controls, physical
-   remapping and the unreachable challenge. Count recovery is not state estimation.
-
-2. **Changing-body timing matters; a selective detector is still missing.**
-   Probe78 passes its five-block oracle-reset clauses and exact stable-sham
-   parity. Probe79's fixed two-error trigger improves matched-history estimates
-   but fails false-alarm and sign-scrambled gates. Do not tune its threshold,
-   streak or budget, or promote it to a survival treatment. A distinct proposal
-   should account for reading gaps and model-fit uncertainty, separate stable
-   calibration from held-out scoring, and establish selective information
-   beyond generic resetting. Existing shrinking RLS covariance is not a
-   staleness posterior. No new detector is implemented or preregistered yet.
-
-3. **Score probe66's declining against survival.** `discovered_convention.py` has
-   no closed-loop runner and no survival endpoint; the loop has to be written.
-
-4. **Uncertainty as something *said*, or as a reason to *look*.**
-
-5. **Run probe61's missing controls** if F0 or G2 are ever to be cited.
-
-6. **Replicate the full probe52 childhood-to-adult pipeline.** All causal-stage
-   replications still share one lexical/motor parent — probe69's black-box arm
-   included, which is a real limit on it.
-
-Probe71 measured the first-use equation and found sub-threshold natural range,
-but its fixed body failed the construction gate before a treatment. Do not
-promote that partial measurement into a speaker result, and do not immediately
-retry the 0.020 gate.
-
-Do not request an external corpus or generated data for these steps.
-
-## On `docs/VISION_AND_STATUS.md`
-
-That document (2026-08-10) recommends freezing this line and building a clean
-neural v2. Probes 64–76 were all run after it. **Probe69 moves the argument
-substantially in its favour; probes70–72 close three proposed bridges, while
-probes73–75 establish replicated learned physical uses, including retained evidence
-across episodes, without settling the architecture question.**
-
-- Its central architectural bet — a recurrent latent feeding a token decoder — is
-  the family that failed nine times here. Probe69 shows those failures are
-  **budget-confounded**, so the ladder can no longer be cited against it.
-- Its diagnosis that **the mouth is `argmax` over three scores and does not become
-  language by growing** stands, is unaddressed by probe69, and is the largest
-  remaining gap.
-- Where it remains wrong is the **order**. Probe71 now measures a first-use
-  occupancy law but fails the fixed body's grain gate before treatment. Building
-  the learner on that body would produce a bigger version of a solved toy, which
-  DIRECTION section 4 forbids.
-
-Completed sequence: grain law (**done**, probe68) → estimator-family question
-(**done**, probe69) → constitution-budget ceiling (**done, negative**, probe70) →
-fixed K5/composition ceiling (**done, 4/6, not licensed**, probe71) → survival
-transfer (**done, negative interaction with a positive rate ceiling**, probe72) →
-learned-rate survival (**done, 5/5 pass, small positive**, probe73) →
-persistent-identity memory (**survey done, 6/6 pass**, probe74) → independent
-confirmation (**done, 6/6 pass**, probe75) → scalar causal-grouping instrument
-(**done, 6/6 pass**, probe76). The latter returns to the stalled structure
-question; its next debt is removal of matched forks and shock-free evidence.
-The bridge to a generative mouth is now blocked on this construction rather
-than merely unmeasured. On why a language-model caregiver is right later and
-wrong now — the vocabulary an agent can acquire is bounded by the caregiver's **action space**,
-not its lexicon, and this caregiver can do six distinguishable things — see
-`docs/decisions/2026-08-18-architecture-audit-and-route.md` section 3, which also
-gives the scrambled-phrasing control that keeps such a caregiver honest.
-
-Revisit only with a genuinely different consequence-space argument, not a
-relaxed Probe71 threshold.
 
 ## Executive handover (probes 57–60, unchanged)
 
@@ -569,6 +655,19 @@ family comparison was made at, and do not call it a ceiling unless you swept it*
 (probe69).
 
 ## Standing findings
+
+- **Self-knowledge is worth an order of magnitude more when it chooses the
+  action than when it chooses a word** (direction pilots; Probe80).
+- **Structure matters exactly when there is structure** (Probe80): a
+  structure-free learner ties the posterior with one hidden resource and
+  collapses with two or more.
+- **A self-model of another body is worse than none** (Probe80, yoked).
+- **Uncertainty about the self is what discovers** (Probe80): acting on the
+  single most probable self survives but recovers almost none of its structure.
+- **A self-model that checks itself against its own sensations reports
+  calibrated confidence; one that does not is confidently wrong** (Probe80;
+  development diagnosis: 81/103 confident errors followed an impossible
+  sensation, against 2/390 correct reports).
 
 - **Prediction and attribution come apart** (probe63).
 - **A self-model can only localize a fact its own parameter set can express**
@@ -608,6 +707,10 @@ family comparison was made at, and do not call it a ceiling unless you swept it*
   still instrument privileges.
 
 ## Artifacts and records
+
+- `runs/organism/probe80_active_self/` — `survey_block*_k*.json`, `survey_graded.json`, logs, `parallel_tail/` splice record
+- `docs/decisions/2026-10-04-self-in-the-action-loop-direction.md`
+- `docs/decisions/2026-10-04-active-self-discovery-preregistration.md`, `docs/decisions/2026-10-05-active-self-discovery-result.md`
 
 - `runs/organism/probe75_cross_life_replication/{diagnostic,replication,evidence}.json`
 - `docs/decisions/2026-09-30-cross-life-replication-{preregistration,result}.md`

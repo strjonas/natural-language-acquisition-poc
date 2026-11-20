@@ -4,6 +4,11 @@ Research project: can an embodied learner acquire a self model and make that mod
 and communication (such that even deflationalists will concede that is uses language meaningfully ;D)? 
 
 **Status:** In development.
+- **New direction (2026-10-04): the self-model chooses the organism's actions.** An online
+  self-posterior, fed by two scalar sensations and its own actions, discovers its own hidden
+  body structure while alive, its survival depends on it, and it reports calibrated
+  confidence about itself because it checks itself against its own sensations (Probe80,
+  all nine locked gates pass). See the [direction](docs/decisions/2026-10-04-self-in-the-action-loop-direction.md).
 - Online individual-body calibration and causally useful three-word need reports in a small custom
 simulation. 
 - A matched rate-only lesion now shows that using the learned individual rate
@@ -16,6 +21,37 @@ request depends on a fact about the self that perfect state knowledge cannot sup
 - ToDo: fuller natural language acquisition
 
 ## Current results
+
+**Probe80 — a self-posterior discovers its own body while living in it.** Until now the
+self-model only chose which request word to say, while a frozen motor policy and a caregiver
+clock decided survival; every self-model property had to show up as +0.01–0.04 survival. In
+Probe76/77's body family (ten opaque actuators, one to five hidden bounded resources, only the
+sum and minimum of five channel levels sensed, shocks, death), Probe80 lets the self-model
+choose the action. Its posterior samples which channels are resources and which actuator drives
+which, carries exact Gaussian beliefs over levels, rates and portion sizes, acts by imagining a
+self consistent with the evidence, and withdraws its confidence and rebuilds from memory when
+its own sensations are impossible under it. 300 bodies × 6 lives per arm, paired:
+
+| hidden resources | random | structure-free learner | **self-posterior** | another body's evidence | knows its structure | exact self-structure after 6 lives |
+|---|---:|---:|---:|---:|---:|---:|
+| 1 | 0.436 | 0.969 | **0.978** | 0.225 | 1.000 | **1.00** |
+| 2 | 0.164 | 0.417 | **0.864** | 0.047 | 0.906 | **1.00** |
+| 3 | 0.047 | 0.039 | **0.675** | 0.006 | 0.747 | **0.93** |
+| 4 | 0.017 | 0.006 | **0.472** | 0.000 | 0.589 | **0.67** |
+| 5 | 0.006 | 0.000 | 0.272 | 0.003 | 0.558 | 0.25 |
+
+(Six-life mean survival; "knows its structure" tracks state from the same sensations with the
+true map.) **All nine preregistered gates pass**, each 5/5 blocks where paired: discovery at
+K1–K4; survival over random and over the structure-free learner (which ties at one resource and
+collapses beyond it); over a self-model fed by another body; over forgetting between lives;
+uncertainty drives discovery (+0.88 exact structure over a certainty-equivalent lesion);
+calibrated self-report (Brier 0.053; 96.5% correct at confidence ≥ 0.9); self-criticism causes
+the calibration (uncritical Brier 0.127); exact transport under actuator relabeling. K5 is a
+declared stress condition (discovery 0.25, overconfident). No language, changing body, space or
+consciousness claim. [Result](docs/decisions/2026-10-05-active-self-discovery-result.md),
+[preregistration](docs/decisions/2026-10-04-active-self-discovery-preregistration.md).
+
+The request-word line that preceded it:
 
 Probe77 tests a sequential replacement for Probe76's matched forks, with
 ordinary shocks and death-limited experience. **All five continuation gates
@@ -190,6 +226,15 @@ python3 -m venv .venv
 PYTHONPATH=src .venv/bin/python -m pytest -q
 ```
 
+Verify Probe80 from its committed compact evidence (standard library only), or rerun it. The
+survey runs as 25 resumable block × K units (about 22 CPU-hours in total):
+
+```bash
+python3 scripts/summarize_probe80.py --input runs/organism/probe80_active_self/evidence.json
+PYTHONPATH=src .venv/bin/python -u -m homesocial.organism.active_self --mode survey --block 0 --k 1
+PYTHONPATH=src .venv/bin/python -m homesocial.organism.active_self --mode survey --grade
+```
+
 Re-run the resumable Probe74 survey from the same committed parent checkpoint:
 
 ```bash
@@ -267,6 +312,11 @@ is acquired because it improves prediction, coordination, and bodily
 regulation. That vision is explained—and separated from what exists today—in
 [Vision and research status](docs/VISION_AND_STATUS.md). An honest workshop
 paper route is sketched in [paper/OUTLINE.md](paper/OUTLINE.md).
+
+For continued work, start with [agent guidance](CLAUDE.md) and the
+[current handover](docs/STATE.md). The guidance balances small hypothesis tests,
+integration into one runnable agent, and bounded training-budget experiments;
+dated phase ladders do not impose a mandatory order.
 
 For public-use boundaries, see [Ethics and responsible claims](ETHICS.md) and
 [Project contributions and AI assistance](CONTRIBUTIONS.md). The code is MIT
