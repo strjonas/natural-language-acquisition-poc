@@ -202,3 +202,24 @@ whose second slot is demonstrably worth +0.16 or more. The blocker has moved
 from the world to the learner. Two causes are open: the state may not encode
 how full each social resource is, or it does but the size choice is not
 reached by the delayed, noisy reward (a policy-gradient credit problem).
+
+## Probe of the speaking learner (2026-11-21, evening)
+
+`PYTHONPATH=src .venv/bin/python scripts/speaking_probe.py runs/organism/speaking_self_dev/scratch_s0`
+(and `... words`), 200 development identities per cell, held-out half:
+
+- **The state knows the levels.** A linear readout of the lowest social level
+  at visits reaches R^2 0.83-0.94 (absolute error 0.03-0.06; the mean alone
+  0.17).
+- **The size choice ignores them.** Across deficit bins from below 0.3 to above
+  0.7, its share of 0.6 moves only from about 0.36 to 0.54, and it says 0.6
+  about half the time even when less than 0.3 is missing.
+- **Size meanings are only half discovered.** Which word means 0.2 (or 0.6)
+  for this identity decodes from the state at lives 4-6 with accuracy
+  0.50-0.54 (chance 0.33).
+
+Reading: the knowledge exists but is not connected to the size word, and the
+world hides the consequence that would connect it. With overflow silently
+capped, 0.4 and 0.6 feel the same at a typical deficit, and the cost of
+asking too much arrives only when the ration runs out, often many visits
+later. Next: `2026-11-21-caregiver-v2-sickness-and-held-out-pair.md`.

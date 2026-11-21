@@ -37,6 +37,7 @@ from mlx.utils import tree_flatten, tree_unflatten
 import numpy as np
 
 from homesocial.organism import caregiver_v1 as cv
+from homesocial.organism import caregiver_v2 as c2
 from homesocial.organism import learned_self as ls
 from homesocial.organism.vec_body import ACTUATORS, CHANNELS, DECISIONS, LIVES, WINDOW, sample_bodies
 
@@ -92,6 +93,47 @@ def sample_v1_bodies(rng: np.random.Generator, n: int, ks=(1, 2, 3, 4, 5)) -> cv
     return cv.V1Bodies(**fields, word_channel=word_channel, channel_word=words, mod_meaning=mod_meaning,
                        meaning_mod=np.argsort(mod_meaning, 1),
                        ration=cv.RATION_FACTOR * cv.species_need(base.blocked))
+
+
+WORLDS = ("v1", "v2", "v2r")  # v2r: sickness from overfilling plus the per-life ration
+HOLD_BASE = DEV_EVAL_BASE + 50_000_000  # held-out-pair development bodies (shared convention)
+
+
+def make_env(bodies: cv.V1Bodies, world: str, **kwargs) -> cv.V1Body:
+    if world not in WORLDS:
+        raise ValueError(f"unknown world: {world}")
+    if world == "v1":
+        return cv.V1Body(bodies, VARIANT, **kwargs)
+    return c2.V2Body(bodies, ration=world == "v2r", **kwargs)
+
+
+def train_bodies(rng: np.random.Generator, n: int, ks, convention: str) -> cv.V1Bodies:
+    b = sample_v1_bodies(rng, n, ks)
+    if convention == "shared":  # one language for all; channel 0 rarely needs 0.6 (held-out pair)
+        c2.restrict_hold_rate(c2.share(b), rng)
+    return b
+
+
+def _concat(parts: list[cv.V1Bodies]) -> cv.V1Bodies:
+    from dataclasses import fields
+    return cv.V1Bodies(**{f.name: np.concatenate([getattr(p, f.name) for p in parts]) for f in fields(cv.V1Bodies)})
+
+
+def eval_sets(per_cell: int, convention: str) -> dict[str, cv.V1Bodies]:
+    """Development evaluation bodies. With the shared convention they are
+    training-like (``dev``) plus held-out bodies whose channel 0 is social and
+    fast (``held_out``)."""
+
+    dev = cv.v1_bodies(*dev_identities(per_cell))
+    if convention != "shared":
+        return {"dev": dev}
+    c2.restrict_hold_rate(c2.share(dev), np.random.default_rng(DEV_EVAL_BASE))
+    parts = []
+    for k, social in c2.HOLD_CELLS:
+        idents = [HOLD_BASE + k * 1_000_000 + social * 100_000 + i * 10 for i in range(3 * per_cell)]
+        b = c2.hold_bodies(idents, [k] * len(idents), [social] * len(idents), c2.TEST_FACTOR)
+        parts.append(b.take(np.arange(min(per_cell, b.n))))
+    return {"dev": dev, "held_out": _concat(parts)}
 
 
 def features(env: cv.V1Body, said: np.ndarray) -> np.ndarray:
@@ -193,6 +235,8 @@ class TrainConfig:
     alive_reward: float = 0.5 / DECISIONS
     survive_bonus: float = 0.5
     init: str = ""
+    world: str = "v1"
+    convention: str = "private"
 
 
 AUX = ("policy_loss", "value_loss", "entropy", "predict_loss", "probe_loss", "probe_exact", "kl")
@@ -201,6 +245,8 @@ AUX = ("policy_loss", "value_loss", "entropy", "predict_loss", "probe_loss", "pr
 class Trainer:
     def __init__(self, config: TrainConfig) -> None:
         self.c = c = config
+        if c.world not in WORLDS or c.convention not in c2.CONVENTIONS or (c.convention == "shared" and c.world == "v1"):
+            raise ValueError(f"unsupported world/convention: {c.world}/{c.convention}")
         self.rng = np.random.default_rng([c.seed, 20261121])
         mx.random.seed(c.seed)
         self.model = Agent(c.hidden)
@@ -215,8 +261,8 @@ class Trainer:
 
     def _begin_world(self) -> None:
         c = self.c
-        self.env = cv.V1Body(sample_v1_bodies(self.rng, c.envs, c.ks), VARIANT,
-                             alive_reward=c.alive_reward, survive_bonus=c.survive_bonus)
+        self.env = make_env(train_bodies(self.rng, c.envs, c.ks, c.convention), c.world,
+                            alive_reward=c.alive_reward, survive_bonus=c.survive_bonus)
         self.targets = ls.probe_targets(self.env.b)
         self.said = -np.ones(c.envs, dtype=np.int64)
         self.x = features(self.env, self.said)
@@ -260,7 +306,7 @@ class Trainer:
             done = env.finished.copy()
             index = np.flatnonzero(done)
             while len(index):
-                env.replace(index, sample_v1_bodies(self.rng, len(index), c.ks))
+                env.replace(index, train_bodies(self.rng, len(index), c.ks, c.convention))
                 index = index[env.finished[index]]
             if done.any():
                 self.targets[done] = ls.probe_targets(env.b.take(np.flatnonzero(done)))
@@ -355,16 +401,19 @@ class Trainer:
 
 
 # ------------------------------------------------------------ evaluation
-LESIONS = ("none", "mute", "reset", "scramble_w2")
+LESIONS = ("none", "mute", "reset", "scramble_w2", "mute_pair")
 
 
-def evaluate(model: Agent, bodies: cv.V1Bodies, rng: np.random.Generator, lesion: str = "none") -> dict:
+def evaluate(model: Agent, bodies: cv.V1Bodies, rng: np.random.Generator, lesion: str = "none",
+             world: str = "v1") -> dict:
     """Six lives of every identity.
 
     - ``mute``: nothing the organism says is heard (its voice is cut);
     - ``reset``: recurrent state emptied at every birth;
     - ``scramble_w2``: the modifier word it chose is replaced by a random one
-      before the caregiver hears it (tests whether the second word matters).
+      before the caregiver hears it (tests whether the second word matters);
+    - ``mute_pair``: only the held-out pair (channel 0 with 0.6, in meaning)
+      goes unheard.
 
     Speech statistics, per heard request: did it name a social resource; how
     much of what arrived was absorbed; and *novel combinations*: a word pair
@@ -373,14 +422,14 @@ def evaluate(model: Agent, bodies: cv.V1Bodies, rng: np.random.Generator, lesion
 
     if lesion not in LESIONS:
         raise ValueError(f"unknown lesion: {lesion}")
-    env = cv.V1Body(bodies, VARIANT)
+    env = make_env(bodies, world)
     n = env.n
     rows = np.arange(n)
     said = -np.ones(n, dtype=np.int64)
     h = mx.zeros((n, model.hidden))
     seen = np.zeros((n, W1, W2), dtype=bool)
     stats = {key: np.zeros(n) for key in ("visits", "requests", "social_named", "novel", "novel_social",
-                                          "novel_meanings")}
+                                          "hold_requests", "pair")}
     meaning_count = np.zeros((n, W2))
     while not env.finished.all():
         wipe = env.birth.astype(np.float32) if lesion == "reset" else np.zeros(n, np.float32)
@@ -408,7 +457,13 @@ def evaluate(model: Agent, bodies: cv.V1Bodies, rng: np.random.Generator, lesion
         stats["novel_social"] += novel & social
         np.add.at(meaning_count, (rows[social], bodies.mod_meaning[rows[social], w2[social]]), 1)
         seen[rows[spoken], w1[spoken], w2[spoken]] = True
+        hold = social & (channel == c2.HOLD_CHANNEL)
+        pair = hold & (bodies.mod_meaning[rows, w2] == c2.HOLD_SIZE)
+        stats["hold_requests"] += hold
+        stats["pair"] += pair
         heard = np.where(lesion == "mute", -1, np.where(talk > 0, w1 * W2 + heard_w2, -1))
+        if lesion == "mute_pair":
+            heard = np.where(pair, -1, heard)
         env.step(action, heard)
         said = np.where(env.birth & (env.life == 0), -1, speech)
     out = {}
@@ -424,26 +479,50 @@ def evaluate(model: Agent, bodies: cv.V1Bodies, rng: np.random.Generator, lesion
             "novel_social_share": float(stats["novel_social"][cell].sum() / max(stats["novel"][cell].sum(), 1)),
             "size_meaning_share": [float(v) for v in meaning_count[cell].sum(0) / max(meaning_count[cell].sum(), 1)],
             "wasted_per_life": float(env.wasted[cell].mean() / LIVES),
+            "held_out_pair_share": float(stats["pair"][cell].sum() / max(stats["hold_requests"][cell].sum(), 1)),
+            "held_out_pair_per_identity": float(stats["pair"][cell].mean()),
         }
     return out
 
 
-def evaluate_all(model: Agent, bodies: cv.V1Bodies, seed: int) -> dict:
-    return {lesion: evaluate(model, bodies, np.random.default_rng([seed, 9, i]), lesion)
-            for i, lesion in enumerate(LESIONS)}
+def evaluate_all(model: Agent, bodies: cv.V1Bodies, seed: int, world: str = "v1", lesions=LESIONS) -> dict:
+    return {lesion: evaluate(model, bodies, np.random.default_rng([seed, 9, i]), lesion, world)
+            for i, lesion in enumerate(LESIONS) if lesion in lesions}
 
 
-def references(bodies: cv.V1Bodies) -> dict:
+def references(bodies: cv.V1Bodies, world: str = "v1", held_out: bool = False) -> dict:
     out = {}
-    for arm in ("silent", "composed", "single_0.4", "single_0.6", "species"):
-        survived = cv.run_arm(bodies, VARIANT, arm)["survived"]
+    arms = ("silent", "composed", "single_0.4", "single_0.6", "species")
+    if held_out:
+        arms = (*arms, "no_held_out_pair")
+    for arm in arms:
+        survived = (cv.run_arm(bodies, VARIANT, arm) if world == "v1"
+                    else c2.run_arm(bodies, arm, ration=world == "v2r"))["survived"]
         out[arm] = {f"K{k}_social{s}": float(survived[(bodies.k == k) & (bodies.blocked.sum(1) == s)].mean())
                     for k, s in sorted({(int(k), int(s)) for k, s in zip(bodies.k, bodies.blocked.sum(1))})}
     return out
 
 
-def table(result: dict, refs: dict) -> str:
-    lines = ["six-life mean survival on development identities (caregiver-v1-size)",
+def evaluate_sets(model: Agent, sets: dict, seed: int, world: str) -> dict:
+    out = {"dev": evaluate_all(model, sets["dev"], seed, world, ("none", "mute", "reset", "scramble_w2"))}
+    if "held_out" in sets:
+        out["held_out"] = evaluate_all(model, sets["held_out"], seed, world, ("none", "scramble_w2", "mute_pair"))
+    return out
+
+
+def held_out_table(result: dict, refs: dict) -> str:
+    lines = ["held-out bodies (channel 0 social and fast): learned vs reference speakers",
+             f"{'cell':<12}{'composed*':>10}{'no pair*':>9}{'learned':>9}{'mute pair':>10}{'pair share':>11}"
+             f"{'pair/id':>8}{'right':>7}"]
+    for cell, r in result["none"].items():
+        lines.append(f"{cell:<12}{refs['composed'][cell]:>10.3f}{refs['no_held_out_pair'][cell]:>9.3f}"
+                     f"{r['survival']:>9.3f}{result['mute_pair'][cell]['survival']:>10.3f}"
+                     f"{r['held_out_pair_share']:>11.3f}{r['held_out_pair_per_identity']:>8.2f}{r['social_named']:>7.2f}")
+    return "\n".join(lines)
+
+
+def table(result: dict, refs: dict, world: str = "v1") -> str:
+    lines = [f"six-life mean survival on development identities (caregiver-{world}-size)",
              f"{'cell':<12}{'silent*':>8}{'single.4*':>10}{'composed*':>10}{'learned':>9}{'mute':>7}{'reset':>7}"
              f"{'scr.w2':>8}{'speak':>7}{'right':>7}{'novel':>7}{'novel ok':>9}   size shares",
              "  (* reference speakers with true levels)"]
@@ -461,7 +540,8 @@ def table(result: dict, refs: dict) -> str:
 # ------------------------------------------------------------- execution
 def manifest(config: TrainConfig, per_cell: int) -> dict:
     here = Path(__file__)
-    files = [here, here.with_name("caregiver_v1.py"), here.with_name("learned_self.py"), here.with_name("vec_body.py")]
+    files = [here, here.with_name("caregiver_v1.py"), here.with_name("caregiver_v2.py"), here.with_name("learned_self.py"),
+             here.with_name("vec_body.py")]
     out = {"config": asdict(config), "dev_eval_base": DEV_EVAL_BASE, "dev_eval_per_cell": per_cell,
            "eval_cells": EVAL_CELLS, "features": D_OBS, "variant": VARIANT, "mlx": mx.__version__,
            "numpy": np.__version__, "pins": {p.name: sha256(p.read_bytes()).hexdigest() for p in files}}
@@ -482,27 +562,30 @@ def train(args: argparse.Namespace) -> None:
     else:
         config = TrainConfig(seed=args.seed, envs=args.envs, horizon=args.horizon, hidden=args.hidden,
                              lr=args.lr, entropy=args.entropy, epochs=args.epochs,
-                             init=str(args.init) if args.init else "")
+                             init=str(args.init) if args.init else "", world=args.world, convention=args.convention)
         trainer = Trainer(config)
         next_eval, evaluations = 0, 0
         out.mkdir(parents=True, exist_ok=True)
         (out / "manifest.json").write_text(json.dumps(manifest(config, args.eval_per_cell), indent=1))
-    bodies = cv.v1_bodies(*dev_identities(args.eval_per_cell))
-    refs = references(bodies)
+    world = trainer.c.world
+    sets = eval_sets(args.eval_per_cell, trainer.c.convention)
+    refs = {name: references(b, world, held_out=name == "held_out") for name, b in sets.items()}
     started = perf_counter()
     mark_decisions, mark_seconds = trainer.decisions, trainer.seconds
     window: list[dict] = []
     while True:
         capped = trainer.decisions >= args.max_decisions or (perf_counter() - started) / 3600.0 >= args.max_hours
         if trainer.decisions >= next_eval or capped:
-            result = evaluate_all(trainer.model, bodies, trainer.c.seed)
+            result = evaluate_sets(trainer.model, sets, trainer.c.seed, world)
             evaluations += 1
             next_eval = trainer.decisions + args.eval_every
             ls._append(out / "curve.jsonl", {"decisions": trainer.decisions, "updates": trainer.updates,
                                               "train_seconds": trainer.seconds, "eval": result, "reference": refs})
             trainer.save(checkpoint, {"next_eval": next_eval, "evaluations": evaluations})
             print(f"\n== {trainer.decisions:,} decisions, {trainer.seconds / 3600:.2f} h of training ==\n"
-                  + table(result, refs), flush=True)
+                  + table(result["dev"], refs["dev"], world)
+                  + ("\n" + held_out_table(result["held_out"], refs["held_out"]) if "held_out" in result else ""),
+                  flush=True)
         if capped:
             break
         window.append(trainer.train_step())
@@ -534,6 +617,8 @@ def main() -> None:
     t.add_argument("--eval-every", type=float, default=2e7)
     t.add_argument("--eval-per-cell", type=int, default=100)
     t.add_argument("--log-every", type=int, default=10)
+    t.add_argument("--world", choices=WORLDS, default="v1")
+    t.add_argument("--convention", choices=c2.CONVENTIONS, default="private")
     for name, kind in (("seed", int), ("envs", int), ("horizon", int), ("hidden", int),
                        ("lr", float), ("entropy", float), ("epochs", int)):
         t.add_argument(f"--{name}", type=kind, default=getattr(TrainConfig, name))
@@ -545,11 +630,14 @@ def main() -> None:
         train(args)
     else:
         trainer, state = Trainer.load(args.out_dir / "checkpoint")
-        bodies = cv.v1_bodies(*dev_identities(args.per_cell))
-        result, refs = evaluate_all(trainer.model, bodies, trainer.c.seed), references(bodies)
+        world = trainer.c.world
+        sets = eval_sets(args.per_cell, trainer.c.convention)
+        refs = {name: references(b, world, held_out=name == "held_out") for name, b in sets.items()}
+        result = evaluate_sets(trainer.model, sets, trainer.c.seed, world)
         (args.out_dir / "eval.json").write_text(json.dumps(
             {"decisions": state["decisions"], "per_cell": args.per_cell, "eval": result, "reference": refs}, indent=1))
-        print(f"{state['decisions']:,} decisions\n" + table(result, refs))
+        print(f"{state['decisions']:,} decisions\n" + table(result["dev"], refs["dev"], world)
+              + ("\n" + held_out_table(result["held_out"], refs["held_out"]) if "held_out" in result else ""))
 
 
 if __name__ == "__main__":

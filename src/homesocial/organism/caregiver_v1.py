@@ -161,6 +161,9 @@ class V1Body(VecBody):
         self.wasted = np.zeros(n)
         super().__init__(bodies, **kwargs)
 
+    harm = 0.0           # v1: overflow is lost, nothing more
+    speaker_waste = WASTE  # reference speakers' penalty per spilled unit (ration worlds)
+
     def present(self) -> np.ndarray:
         return ~self.finished & (self.decision % VISIT == 0)
 
@@ -258,12 +261,13 @@ def _project(env: V1Body, rates: np.ndarray, deliveries, levels: np.ndarray) -> 
                 np.add.at(levels, (r, c, channel[r, c]), amount[r, c])
         spill = np.maximum(levels - 1.0, 0.0)
         overflow += spill.sum(-1)
-        levels = np.clip(levels - spill - drain[:, None, :], 0.0, 1.0)
+        levels = np.clip(levels - spill * (1.0 + env.harm) - drain[:, None, :], 0.0, 1.0)
         low = np.minimum(low, np.where(social, levels, np.inf).min(-1))
     return low, overflow
 
 
-def speaker(env: V1Body, arm: str, believed: np.ndarray | None = None) -> tuple[np.ndarray, np.ndarray]:
+def speaker(env: V1Body, arm: str, believed: np.ndarray | None = None,
+            forbid: np.ndarray | None = None) -> tuple[np.ndarray, np.ndarray]:
     """Reference speaker for ``arm``: (actuators, speech). All arms act on own
     resources with Probe80's oracle rule; they differ only in speech.
 
@@ -287,6 +291,8 @@ def speaker(env: V1Body, arm: str, believed: np.ndarray | None = None) -> tuple[
     left = np.repeat(env.left[:, None], n_u, 1)
     # in meaning space; build deliveries exactly as ``decode`` would
     valid = first >= 0
+    if forbid is not None:  # (N, CHANNELS, 3): pairs this speaker may not say (v1-size meanings)
+        valid &= ~forbid[rows[:, None], np.maximum(first, 0), np.maximum(second, 0)]
     if env.variant == "basket":
         split = valid & (second != first)
         d1 = (np.where(valid, first, -1), np.where(split, BASKET[0], sum(BASKET)) * valid, np.ones_like(first))
@@ -314,7 +320,7 @@ def speaker(env: V1Body, arm: str, believed: np.ndarray | None = None) -> tuple[
     # 4) ties go to the resource that would run out first.
     left_ticks = levels / np.maximum((rates + SHOCK_DRAIN) * b.active, 1e-9)
     urgency = left_ticks[rows[:, None], np.maximum(first, 0)]
-    waste = 0.0 if env.variant == "basket" else WASTE
+    waste = 0.0 if env.variant == "basket" else env.speaker_waste
     score = 10.0 * (low >= MARGIN) + absorbed - waste * spilled - 1e-4 * np.minimum(urgency, 1e3)
     score = np.where(valid, score, -np.inf)
     best = score.argmax(1)
@@ -358,7 +364,8 @@ class Reckoner:
             est, life = self.est[i], int(env.life[i])
             for t in range(int(self.tick[i]) + 1, int(env.tick[i]) + 1):
                 for c, a in landed.get((int(i), t), ()):
-                    est[c] = min(est[c] + a, 1.0)
+                    raw = est[c] + a
+                    est[c] = 1.0 - env.harm * (raw - 1.0) if raw > 1.0 else raw
                 est -= self.rates[i]
                 slot = int(b.shock[i, life, t - 1])
                 if slot >= 0 and b.active[i, slot]:

@@ -69,3 +69,9 @@ runs/organism/caregiver_v1/*
 !runs/organism/speaking_self_dev/
 runs/organism/speaking_self_dev/*
 !runs/organism/speaking_self_dev/evidence.json
+!runs/organism/caregiver_v2/
+runs/organism/caregiver_v2/*
+!runs/organism/caregiver_v2/ceiling_survey.json
+!runs/organism/caregiver_v2/ceiling_survey_v2r.json
+!runs/organism/caregiver_v2/held_out_pair.json
+!runs/organism/caregiver_v2/held_out_pair_v2r_iter2.json

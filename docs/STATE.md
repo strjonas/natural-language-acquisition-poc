@@ -1,8 +1,8 @@
 # STATE
 
 Last guidance update: 2026-10-21. Experimental frontier: 2026-10-05.
-Latest build: 2026-11-21 (caregiver-v1 world passes its ceiling survey; speaking
-learner training; development only, no confirmatory result). Rewrite this file, never append.
+Latest build: 2026-11-21 (speaking learner; caregiver-v2r world and held-out word
+pair pass their surveys; two runs training; development only, no confirmation). Rewrite this file, never append.
 
 ## Where the next agent should start
 
@@ -117,33 +117,54 @@ Two development pieces now address that. Neither is a language capability yet.
    (disclosed in the record). Reference speakers are lower bounds, not
    ceilings.
 
-4. **A speaking learner** (`speaking_self.py`). The learned-self GRU, warm
-   started from the 2026-11-21 checkpoint, also chooses whether to speak and
-   two words when the caregiver is present. Word meanings are private to each
-   identity and never given; only bodily reward and sensation prediction train
-   it. Disclosed prior: the utterance has two heads, the second conditioned on
-   the first word. Evaluation reports survival against reference speakers,
-   mute / memory-reset / scrambled-second-word lesions, how often it names a
-   social resource, its size shares, and *novel combinations* (a word pair the
-   identity never said, built from words it has said in other pairs). **Not yet
-   trained to budget; no result.** Started 2026-11-21 ~09:00, three arms up to
-   10 h each: warm start seeds 0 and 1, from scratch seed 0.
+4. **A speaking learner** (`speaking_self.py`). The learned-self GRU also
+   chooses whether to speak and two words when the caregiver is present. Word
+   meanings are never given; only bodily reward and sensation prediction
+   train it. Disclosed prior: two utterance heads, the second conditioned on
+   the first word. **First runs in v1-size (1 billion decisions, three arms):**
+   it acquires private resource words (65-90% name a social resource, muting
+   removes all its advantage, memory reset costs 0.10-0.40) but leaves the size
+   word idle (scrambling it costs 0.00-0.08). A probe shows its state encodes
+   social levels (R^2 0.83-0.94) while size choice ignores them, and size
+   meanings are only half discovered. Warm start bought nothing.
+
+5. **A world where a wrong size is felt: `caregiver-v2r`** (`caregiver_v2.py`;
+   record `docs/decisions/2026-11-21-caregiver-v2-sickness-and-held-out-pair.md`).
+   v1-size plus sickness: overfilling leaves a level at 1 - 2 x overflow. It
+   passes all six survey criteria with the largest second-word value yet
+   (+0.125 to +0.244). A *shared* convention variant holds out one word pair
+   (channel 0 with 0.6): rare in training bodies (1.5% of channel-0 requests),
+   needed in held-out bodies (62-68%) and worth +0.137 survival there. Two
+   development iterations and one bug fix preceded these results (all in the
+   record). v2 without the ration failed its survey.
+
+   **Running 2026-11-21 ~20:45, 10 h each, from scratch:** A, v2r with private
+   conventions; B, v2r with the shared convention and the held-out pair
+   (`runs/organism/speaking_self_dev/v2r_{private,shared}_s0`).
 
    ```bash
-   PYTHONPATH=src .venv/bin/python -m homesocial.organism.caregiver_v1
-   PYTHONPATH=src caffeinate -i .venv/bin/python -m homesocial.organism.speaking_self train --out-dir runs/organism/speaking_self_dev/warm_s0 --seed 0 --init runs/organism/learned_self_dev/checkpoint --max-hours 10 --eval-every 5e7
+   PYTHONPATH=src .venv/bin/python -m homesocial.organism.caregiver_v2 --ration
+   PYTHONPATH=src caffeinate -i .venv/bin/python -m homesocial.organism.speaking_self train --out-dir runs/organism/speaking_self_dev/v2r_shared_s0 --world v2r --convention shared --seed 0 --max-hours 10 --eval-every 5e7
+   PYTHONPATH=src .venv/bin/python scripts/speaking_probe.py runs/organism/speaking_self_dev/scratch_s0
    ```
 
-**Next action:** read the three speaking curves
-(`runs/organism/speaking_self_dev/*/curve.jsonl`). The question is whether a
-learner, from consequence alone, comes to name its social resource, choose
-sizes that track its body, and say useful new word pairs, and whether the
-mute and scrambled-second-word lesions then cost survival. If it stalls, the
-recorded fallbacks are a shared (species) convention first, or planning over
-candidate utterances. Separately, the confirmatory learned-vs-posterior
-comparison on a fresh band (paired arms, five seeds, yoked and reset controls)
-can be preregistered and folded into the final three-arm experiment. Change
-detection, K5 and navigation are not automatic prerequisites. Keep later
+**Next action (the route to the target):**
+
+1. Read runs A and B. The decisive development reading is B's held-out
+   table: does the learner say (channel 0, 0.6) in held-out bodies at a rate
+   near the reference speaker's, and does muting only that pair cost survival?
+   A says whether sickness makes the size word learnable at all.
+2. If B shows it: preregister the confirmatory experiment, which is the
+   finish line. Fresh bands; five training seeds; arms silent (no caregiver
+   speech), grounded (v2r) and decoupled (words whose deliveries do not depend
+   on what was said); lesions mute, mute-pair, scramble-second-word and memory
+   reset; the held-out-pair endpoint; Probe80's posterior and the
+   learned-self body as paired body baselines. About 10 h per seed per arm.
+3. If the size word stays idle even with sickness: the remaining recorded
+   fallback is planning over candidate utterances with the learner's own
+   sensation predictor (it already conditions on what was said).
+
+Change detection, K5 and navigation are not prerequisites. Keep later
 candidate questions below as background.
 
 ## The direction in one paragraph
