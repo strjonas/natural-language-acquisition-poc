@@ -1,0 +1,7889 @@
+{
+ "record": "docs/decisions/2026-11-21-caregiver-v1-ceiling-survey.md",
+ "status": "development; dev band 6.4B monitored during training",
+ "arms": {
+  "warm_s0": {
+   "manifest": {
+    "config": {
+     "seed": 0,
+     "envs": 1024,
+     "horizon": 128,
+     "hidden": 256,
+     "ks": [
+      1,
+      2,
+      3,
+      4,
+      5
+     ],
+     "lr": 0.0003,
+     "gamma": 0.997,
+     "lam": 0.95,
+     "clip": 0.2,
+     "epochs": 3,
+     "minibatches": 4,
+     "entropy": 0.01,
+     "value_coef": 0.5,
+     "predict_coef": 1.0,
+     "max_grad_norm": 1.0,
+     "alive_reward": 0.007575757575757576,
+     "survive_bonus": 0.5,
+     "init": "runs/organism/learned_self_dev/checkpoint"
+    },
+    "dev_eval_base": 6400000000,
+    "dev_eval_per_cell": 100,
+    "eval_cells": [
+     [
+      1,
+      0
+     ],
+     [
+      2,
+      1
+     ],
+     [
+      3,
+      1
+     ],
+     [
+      3,
+      2
+     ],
+     [
+      4,
+      1
+     ],
+     [
+      4,
+      2
+     ],
+     [
+      5,
+      2
+     ]
+    ],
+    "features": 48,
+    "variant": "size",
+    "mlx": "0.32.0",
+    "numpy": "2.5.1",
+    "pins": {
+     "speaking_self.py": "e8ce8781cc21a094d8caaa02d975aec1809244e3adf110f9cb24f167ca251556",
+     "caregiver_v1.py": "999e6d511f58c8bd346a9375f4256ab82664aab0426b83341254434601be7b9f",
+     "learned_self.py": "b28b768b954ce775b8ad28586fe218f588ce6fa8dca99f03cb602f1f67a1652b",
+     "vec_body.py": "1bd91fa6e818472d0deeaf6427b508e1a99d50e4593808c9db2e43738f10f5ec"
+    },
+    "init_weights_sha256": "2c0127ec9fcc3d07ef2a6db1cf497a03bab961f0bb17907dea5e52659fdb4aad"
+   },
+   "stop": {
+    "decisions": 1024065536,
+    "train_seconds": 35768.462387668085,
+    "reason": "--max-hours 10"
+   },
+   "checkpoint_sha256": {
+    "optimizer.npz": "e6f4cd0caf73defca850ab761f89b9de7efa7fa72e921f0adee4516b21dcd56a",
+    "state.json": "c5af3950ef2c88bd12b4f29d0d181af6f2902f51e2334853dfa32796f1984ce5",
+    "weights.npz": "71186381b3d5bf1f30812b00fe01848315fbcbfe5f7933f6dcaa0e01e8af897b"
+   },
+   "final": {
+    "none": {
+     "K1_social0": {
+      "identities": 100,
+      "survival": 0.9833333333333333,
+      "survival_by_life": [
+       0.91,
+       0.99,
+       1.0,
+       1.0,
+       1.0,
+       1.0
+      ],
+      "speak_rate": 0.4854127252812904,
+      "social_named": 0.0,
+      "novel_per_identity": 5.29,
+      "novel_social_share": 0.0,
+      "size_meaning_share": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "wasted_per_life": 0.0
+     },
+     "K2_social1": {
+      "identities": 100,
+      "survival": 0.6233333333333333,
+      "survival_by_life": [
+       0.19,
+       0.59,
+       0.64,
+       0.78,
+       0.78,
+       0.76
+      ],
+      "speak_rate": 0.5202745646370917,
+      "social_named": 0.8656242365013438,
+      "novel_per_identity": 1.26,
+      "novel_social_share": 0.6428571428571429,
+      "size_meaning_share": [
+       0.05955405023990968,
+       0.40304826418289585,
+       0.5373976855771945
+      ],
+      "wasted_per_life": 0.4313878205825546
+     },
+     "K3_social1": {
+      "identities": 100,
+      "survival": 0.47333333333333333,
+      "survival_by_life": [
+       0.13,
+       0.44,
+       0.5,
+       0.54,
+       0.59,
+       0.64
+      ],
+      "speak_rate": 0.5979427549194991,
+      "social_named": 0.849414111194216,
+      "novel_per_identity": 1.25,
+      "novel_social_share": 0.64,
+      "size_meaning_share": [
+       0.05840915761667156,
+       0.40680950983269737,
+       0.5347813325506311
+      ],
+      "wasted_per_life": 0.4295868287137252
+     },
+     "K3_social2": {
+      "identities": 100,
+      "survival": 0.14833333333333334,
+      "survival_by_life": [
+       0.03,
+       0.13,
+       0.16,
+       0.18,
+       0.16,
+       0.23
+      ],
+      "speak_rate": 0.8878962536023055,
+      "social_named": 0.7763713080168776,
+      "novel_per_identity": 2.1,
+      "novel_social_share": 0.5904761904761905,
+      "size_meaning_share": [
+       0.08779264214046822,
+       0.3649665551839465,
+       0.5472408026755853
+      ],
+      "wasted_per_life": 0.5911358894095956
+     },
+     "K4_social1": {
+      "identities": 100,
+      "survival": 0.4116666666666667,
+      "survival_by_life": [
+       0.09,
+       0.24,
+       0.43,
+       0.5,
+       0.59,
+       0.62
+      ],
+      "speak_rate": 0.6149566355751923,
+      "social_named": 0.8094731240021288,
+      "novel_per_identity": 1.37,
+      "novel_social_share": 0.5985401459854015,
+      "size_meaning_share": [
+       0.08218277449046679,
+       0.4188034188034188,
+       0.4990138067061144
+      ],
+      "wasted_per_life": 0.4036008107245868
+     },
+     "K4_social2": {
+      "identities": 100,
+      "survival": 0.16666666666666666,
+      "survival_by_life": [
+       0.05,
+       0.08,
+       0.16,
+       0.23,
+       0.22,
+       0.26
+      ],
+      "speak_rate": 0.843939393939394,
+      "social_named": 0.7730700179533213,
+      "novel_per_identity": 1.7,
+      "novel_social_share": 0.6058823529411764,
+      "size_meaning_share": [
+       0.1114723641430562,
+       0.25452856479331165,
+       0.6339990710636322
+      ],
+      "wasted_per_life": 0.5544223483264193
+     },
+     "K5_social2": {
+      "identities": 100,
+      "survival": 0.06666666666666667,
+      "survival_by_life": [
+       0.03,
+       0.04,
+       0.03,
+       0.07,
+       0.12,
+       0.11
+      ],
+      "speak_rate": 0.9175304191077062,
+      "social_named": 0.6473477406679764,
+      "novel_per_identity": 1.62,
+      "novel_social_share": 0.5246913580246914,
+      "size_meaning_share": [
+       0.15250379362670713,
+       0.3937784522003035,
+       0.4537177541729894
+      ],
+      "wasted_per_life": 0.3530138664121194
+     }
+    },
+    "mute": {
+     "K1_social0": {
+      "identities": 100,
+      "survival": 0.975,
+      "survival_by_life": [
+       0.87,
+       0.99,
+       1.0,
+       0.99,
+       1.0,
+       1.0
+      ],
+      "speak_rate": 0.49404464017615857,
+      "social_named": 0.0,
+      "novel_per_identity": 5.35,
+      "novel_social_share": 0.0,
+      "size_meaning_share": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "wasted_per_life": 0.0
+     },
+     "K2_social1": {
+      "identities": 100,
+      "survival": 0.018333333333333333,
+      "survival_by_life": [
+       0.01,
+       0.03,
+       0.01,
+       0.03,
+       0.02,
+       0.01
+      ],
+      "speak_rate": 0.9763877381938691,
+      "social_named": 0.18201103097157403,
+      "novel_per_identity": 1.86,
+      "novel_social_share": 0.20967741935483872,
+      "size_meaning_share": [
+       0.30303030303030304,
+       0.3682983682983683,
+       0.32867132867132864
+      ],
+      "wasted_per_life": 0.0
+     },
+     "K3_social1": {
+      "identities": 100,
+      "survival": 0.006666666666666667,
+      "survival_by_life": [
+       0.01,
+       0.01,
+       0.0,
+       0.01,
+       0.0,
+       0.01
+      ],
+      "speak_rate": 0.9825641025641025,
+      "social_named": 0.15657620041753653,
+      "novel_per_identity": 1.58,
+      "novel_social_share": 0.16455696202531644,
+      "size_meaning_share": [
+       0.29,
+       0.28,
+       0.43
+      ],
+      "wasted_per_life": 0.0
+     },
+     "K3_social2": {
+      "identities": 100,
+      "survival": 0.0,
+      "survival_by_life": [
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "speak_rate": 0.9984639016897081,
+      "social_named": 0.3223076923076923,
+      "novel_per_identity": 1.34,
+      "novel_social_share": 0.3656716417910448,
+      "size_meaning_share": [
+       0.29594272076372313,
+       0.35799522673031026,
+       0.3460620525059666
+      ],
+      "wasted_per_life": 0.0
+     },
+     "K4_social1": {
+      "identities": 100,
+      "survival": 0.005,
+      "survival_by_life": [
+       0.0,
+       0.0,
+       0.01,
+       0.01,
+       0.01,
+       0.0
+      ],
+      "speak_rate": 0.9520581113801453,
+      "social_named": 0.150559511698881,
+      "novel_per_identity": 1.77,
+      "novel_social_share": 0.14689265536723164,
+      "size_meaning_share": [
+       0.34121621621621623,
+       0.34797297297297297,
+       0.3108108108108108
+      ],
+      "wasted_per_life": 0.0
+     },
+     "K4_social2": {
+      "identities": 100,
+      "survival": 0.0,
+      "survival_by_life": [
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "speak_rate": 0.9860248447204969,
+      "social_named": 0.3291338582677165,
+      "novel_per_identity": 1.33,
+      "novel_social_share": 0.3383458646616541,
+      "size_meaning_share": [
+       0.3229665071770335,
+       0.2822966507177033,
+       0.39473684210526316
+      ],
+      "wasted_per_life": 0.0
+     },
+     "K5_social2": {
+      "identities": 100,
+      "survival": 0.0,
+      "survival_by_life": [
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "speak_rate": 0.971027216856892,
+      "social_named": 0.33815551537070526,
+      "novel_per_identity": 1.06,
+      "novel_social_share": 0.42452830188679247,
+      "size_meaning_share": [
+       0.3235294117647059,
+       0.3449197860962567,
+       0.3315508021390374
+      ],
+      "wasted_per_life": 0.0
+     }
+    },
+    "reset": {
+     "K1_social0": {
+      "identities": 100,
+      "survival": 0.8683333333333333,
+      "survival_by_life": [
+       0.87,
+       0.85,
+       0.91,
+       0.86,
+       0.89,
+       0.83
+      ],
+      "speak_rate": 0.4493156782018471,
+      "social_named": 0.0,
+      "novel_per_identity": 4.03,
+      "novel_social_share": 0.0,
+      "size_meaning_share": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "wasted_per_life": 0.0
+     },
+     "K2_social1": {
+      "identities": 100,
+      "survival": 0.22833333333333333,
+      "survival_by_life": [
+       0.22,
+       0.28,
+       0.22,
+       0.26,
+       0.21,
+       0.18
+      ],
+      "speak_rate": 0.7472014925373134,
+      "social_named": 0.4797128589263421,
+      "novel_per_identity": 3.0,
+      "novel_social_share": 0.22,
+      "size_meaning_share": [
+       0.16070266753415746,
+       0.3793103448275862,
+       0.45998698763825635
+      ],
+      "wasted_per_life": 0.6787110621394415
+     },
+     "K3_social1": {
+      "identities": 100,
+      "survival": 0.14,
+      "survival_by_life": [
+       0.11,
+       0.17,
+       0.09,
+       0.14,
+       0.15,
+       0.18
+      ],
+      "speak_rate": 0.7921239509360878,
+      "social_named": 0.46169519152404237,
+      "novel_per_identity": 2.18,
+      "novel_social_share": 0.27522935779816515,
+      "size_meaning_share": [
+       0.147396293027361,
+       0.5392762577228597,
+       0.31332744924977934
+      ],
+      "wasted_per_life": 0.5070255712668034
+     },
+     "K3_social2": {
+      "identities": 100,
+      "survival": 0.02,
+      "survival_by_life": [
+       0.02,
+       0.01,
+       0.03,
+       0.02,
+       0.02,
+       0.02
+      ],
+      "speak_rate": 0.9693283976731888,
+      "social_named": 0.5122749590834698,
+      "novel_per_identity": 2.07,
+      "novel_social_share": 0.4106280193236715,
+      "size_meaning_share": [
+       0.1906283280085197,
+       0.33759318423855167,
+       0.47177848775292863
+      ],
+      "wasted_per_life": 0.4659763675022841
+     },
+     "K4_social1": {
+      "identities": 100,
+      "survival": 0.085,
+      "survival_by_life": [
+       0.05,
+       0.08,
+       0.12,
+       0.1,
+       0.12,
+       0.04
+      ],
+      "speak_rate": 0.824124513618677,
+      "social_named": 0.3593012275731822,
+      "novel_per_identity": 2.0,
+      "novel_social_share": 0.195,
+      "size_meaning_share": [
+       0.21156373193166886,
+       0.3272010512483574,
+       0.4612352168199737
+      ],
+      "wasted_per_life": 0.36139480248253314
+     },
+     "K4_social2": {
+      "identities": 100,
+      "survival": 0.02666666666666667,
+      "survival_by_life": [
+       0.08,
+       0.01,
+       0.03,
+       0.02,
+       0.02,
+       0.0
+      ],
+      "speak_rate": 0.9605185621685327,
+      "social_named": 0.49447852760736194,
+      "novel_per_identity": 1.42,
+      "novel_social_share": 0.4154929577464789,
+      "size_meaning_share": [
+       0.2667493796526055,
+       0.3598014888337469,
+       0.37344913151364767
+      ],
+      "wasted_per_life": 0.3395091116473654
+     },
+     "K5_social2": {
+      "identities": 100,
+      "survival": 0.013333333333333334,
+      "survival_by_life": [
+       0.01,
+       0.0,
+       0.02,
+       0.01,
+       0.01,
+       0.03
+      ],
+      "speak_rate": 0.9642857142857143,
+      "social_named": 0.4174382716049383,
+      "novel_per_identity": 1.02,
+      "novel_social_share": 0.45098039215686275,
+      "size_meaning_share": [
+       0.30868761552680224,
+       0.40850277264325324,
+       0.2828096118299446
+      ],
+      "wasted_per_life": 0.18917365109571505
+     }
+    },
+    "scramble_w2": {
+     "K1_social0": {
+      "identities": 100,
+      "survival": 0.9833333333333333,
+      "survival_by_life": [
+       0.91,
+       0.99,
+       1.0,
+       1.0,
+       1.0,
+       1.0
+      ],
+      "speak_rate": 0.5029373693119585,
+      "social_named": 0.0,
+      "novel_per_identity": 5.55,
+      "novel_social_share": 0.0,
+      "size_meaning_share": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "wasted_per_life": 0.0
+     },
+     "K2_social1": {
+      "identities": 100,
+      "survival": 0.5766666666666667,
+      "survival_by_life": [
+       0.23,
+       0.57,
+       0.59,
+       0.68,
+       0.68,
+       0.71
+      ],
+      "speak_rate": 0.5611888111888111,
+      "social_named": 0.8794632159118141,
+      "novel_per_identity": 1.28,
+      "novel_social_share": 0.78125,
+      "size_meaning_share": [
+       0.2891008174386921,
+       0.3307901907356948,
+       0.3801089918256131
+      ],
+      "wasted_per_life": 0.30689343130800867
+     },
+     "K3_social1": {
+      "identities": 100,
+      "survival": 0.4166666666666667,
+      "survival_by_life": [
+       0.15,
+       0.3,
+       0.37,
+       0.54,
+       0.56,
+       0.58
+      ],
+      "speak_rate": 0.6428453811954553,
+      "social_named": 0.8373463114754098,
+      "novel_per_identity": 1.54,
+      "novel_social_share": 0.6363636363636364,
+      "size_meaning_share": [
+       0.3692260630162129,
+       0.3083511777301927,
+       0.32242275925359437
+      ],
+      "wasted_per_life": 0.32577110216578337
+     },
+     "K3_social2": {
+      "identities": 100,
+      "survival": 0.115,
+      "survival_by_life": [
+       0.04,
+       0.11,
+       0.09,
+       0.12,
+       0.16,
+       0.17
+      ],
+      "speak_rate": 0.9181818181818182,
+      "social_named": 0.7598093142647598,
+      "novel_per_identity": 2.52,
+      "novel_social_share": 0.6190476190476191,
+      "size_meaning_share": [
+       0.32625482625482627,
+       0.30405405405405406,
+       0.3696911196911197
+      ],
+      "wasted_per_life": 0.4039543013303631
+     },
+     "K4_social1": {
+      "identities": 100,
+      "survival": 0.38666666666666666,
+      "survival_by_life": [
+       0.09,
+       0.25,
+       0.41,
+       0.5,
+       0.49,
+       0.58
+      ],
+      "speak_rate": 0.6480752780153978,
+      "social_named": 0.8049102428722281,
+      "novel_per_identity": 1.58,
+      "novel_social_share": 0.5949367088607594,
+      "size_meaning_share": [
+       0.36930141029845853,
+       0.3335519842571335,
+       0.297146605444408
+      ],
+      "wasted_per_life": 0.33288551130664334
+     },
+     "K4_social2": {
+      "identities": 100,
+      "survival": 0.12166666666666667,
+      "survival_by_life": [
+       0.03,
+       0.08,
+       0.15,
+       0.12,
+       0.16,
+       0.19
+      ],
+      "speak_rate": 0.9024720623095157,
+      "social_named": 0.7590994371482176,
+      "novel_per_identity": 2.16,
+      "novel_social_share": 0.6620370370370371,
+      "size_meaning_share": [
+       0.393475037073653,
+       0.30103806228373703,
+       0.30548690064260997
+      ],
+      "wasted_per_life": 0.385763613316593
+     },
+     "K5_social2": {
+      "identities": 100,
+      "survival": 0.04833333333333333,
+      "survival_by_life": [
+       0.02,
+       0.01,
+       0.04,
+       0.07,
+       0.07,
+       0.08
+      ],
+      "speak_rate": 0.9357664233576642,
+      "social_named": 0.62402496099844,
+      "novel_per_identity": 1.98,
+      "novel_social_share": 0.5808080808080808,
+      "size_meaning_share": [
+       0.3283333333333333,
+       0.3575,
+       0.31416666666666665
+      ],
+      "wasted_per_life": 0.2904062568362829
+     }
+    }
+   },
+   "reference": {
+    "silent": {
+     "K1_social0": 1.0,
+     "K2_social1": 0.021666666666666667,
+     "K3_social1": 0.006666666666666667,
+     "K3_social2": 0.0,
+     "K4_social1": 0.006666666666666667,
+     "K4_social2": 0.0,
+     "K5_social2": 0.0
+    },
+    "composed": {
+     "K1_social0": 1.0,
+     "K2_social1": 0.865,
+     "K3_social1": 0.65,
+     "K3_social2": 0.6433333333333333,
+     "K4_social1": 0.5966666666666667,
+     "K4_social2": 0.5483333333333333,
+     "K5_social2": 0.42333333333333334
+    },
+    "single_0.4": {
+     "K1_social0": 1.0,
+     "K2_social1": 0.6366666666666667,
+     "K3_social1": 0.47,
+     "K3_social2": 0.3983333333333333,
+     "K4_social1": 0.42833333333333334,
+     "K4_social2": 0.36833333333333335,
+     "K5_social2": 0.27166666666666667
+    },
+    "single_0.6": {
+     "K1_social0": 1.0,
+     "K2_social1": 0.27666666666666667,
+     "K3_social1": 0.13333333333333333,
+     "K3_social2": 0.4266666666666667,
+     "K4_social1": 0.15666666666666668,
+     "K4_social2": 0.35333333333333333,
+     "K5_social2": 0.3016666666666667
+    },
+    "species": {
+     "K1_social0": 1.0,
+     "K2_social1": 0.795,
+     "K3_social1": 0.6116666666666667,
+     "K3_social2": 0.43,
+     "K4_social1": 0.585,
+     "K4_social2": 0.36333333333333334,
+     "K5_social2": 0.29833333333333334
+    }
+   },
+   "curve": [
+    {
+     "decisions": 0,
+     "none": {
+      "K1_social0": 0.9883,
+      "K2_social1": 0.0567,
+      "K3_social1": 0.0233,
+      "K3_social2": 0.0,
+      "K4_social1": 0.0283,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "mute": {
+      "K1_social0": 0.9817,
+      "K2_social1": 0.0183,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.8883,
+      "K2_social1": 0.0583,
+      "K3_social1": 0.0133,
+      "K3_social2": 0.0,
+      "K4_social1": 0.015,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "scramble_w2": {
+      "K1_social0": 0.9817,
+      "K2_social1": 0.06,
+      "K3_social1": 0.025,
+      "K3_social2": 0.0,
+      "K4_social1": 0.0217,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0017
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.181,
+      "K3_social1": 0.155,
+      "K3_social2": 0.337,
+      "K4_social1": 0.163,
+      "K4_social2": 0.306,
+      "K5_social2": 0.338
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.319,
+       0.341,
+       0.341
+      ],
+      "K3_social1": [
+       0.308,
+       0.331,
+       0.361
+      ],
+      "K3_social2": [
+       0.387,
+       0.29,
+       0.323
+      ],
+      "K4_social1": [
+       0.321,
+       0.316,
+       0.362
+      ],
+      "K4_social2": [
+       0.305,
+       0.345,
+       0.35
+      ],
+      "K5_social2": [
+       0.304,
+       0.346,
+       0.35
+      ]
+     }
+    },
+    {
+     "decisions": 50069504,
+     "none": {
+      "K1_social0": 0.9833,
+      "K2_social1": 0.16,
+      "K3_social1": 0.0833,
+      "K3_social2": 0.0083,
+      "K4_social1": 0.065,
+      "K4_social2": 0.0083,
+      "K5_social2": 0.0033
+     },
+     "mute": {
+      "K1_social0": 0.975,
+      "K2_social1": 0.0167,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.0033,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.8717,
+      "K2_social1": 0.0767,
+      "K3_social1": 0.0633,
+      "K3_social2": 0.0017,
+      "K4_social1": 0.0267,
+      "K4_social2": 0.0017,
+      "K5_social2": 0.0017
+     },
+     "scramble_w2": {
+      "K1_social0": 0.9733,
+      "K2_social1": 0.1233,
+      "K3_social1": 0.0933,
+      "K3_social2": 0.005,
+      "K4_social1": 0.0717,
+      "K4_social2": 0.0083,
+      "K5_social2": 0.0033
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.451,
+      "K3_social1": 0.442,
+      "K3_social2": 0.407,
+      "K4_social1": 0.323,
+      "K4_social2": 0.352,
+      "K5_social2": 0.41
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.345,
+       0.315,
+       0.34
+      ],
+      "K3_social1": [
+       0.332,
+       0.315,
+       0.353
+      ],
+      "K3_social2": [
+       0.338,
+       0.316,
+       0.346
+      ],
+      "K4_social1": [
+       0.328,
+       0.347,
+       0.324
+      ],
+      "K4_social2": [
+       0.316,
+       0.33,
+       0.354
+      ],
+      "K5_social2": [
+       0.311,
+       0.367,
+       0.322
+      ]
+     }
+    },
+    {
+     "decisions": 100139008,
+     "none": {
+      "K1_social0": 0.97,
+      "K2_social1": 0.2,
+      "K3_social1": 0.1833,
+      "K3_social2": 0.0067,
+      "K4_social1": 0.1033,
+      "K4_social2": 0.005,
+      "K5_social2": 0.005
+     },
+     "mute": {
+      "K1_social0": 0.97,
+      "K2_social1": 0.02,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.84,
+      "K2_social1": 0.0983,
+      "K3_social1": 0.0583,
+      "K3_social2": 0.0033,
+      "K4_social1": 0.0333,
+      "K4_social2": 0.0017,
+      "K5_social2": 0.0
+     },
+     "scramble_w2": {
+      "K1_social0": 0.97,
+      "K2_social1": 0.2033,
+      "K3_social1": 0.17,
+      "K3_social2": 0.0083,
+      "K4_social1": 0.135,
+      "K4_social2": 0.0133,
+      "K5_social2": 0.0083
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.559,
+      "K3_social1": 0.614,
+      "K3_social2": 0.456,
+      "K4_social1": 0.49,
+      "K4_social2": 0.439,
+      "K5_social2": 0.438
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.328,
+       0.331,
+       0.342
+      ],
+      "K3_social1": [
+       0.348,
+       0.309,
+       0.343
+      ],
+      "K3_social2": [
+       0.324,
+       0.353,
+       0.323
+      ],
+      "K4_social1": [
+       0.347,
+       0.327,
+       0.327
+      ],
+      "K4_social2": [
+       0.363,
+       0.326,
+       0.311
+      ],
+      "K5_social2": [
+       0.371,
+       0.309,
+       0.32
+      ]
+     }
+    },
+    {
+     "decisions": 150208512,
+     "none": {
+      "K1_social0": 0.9783,
+      "K2_social1": 0.2633,
+      "K3_social1": 0.225,
+      "K3_social2": 0.0167,
+      "K4_social1": 0.1317,
+      "K4_social2": 0.0367,
+      "K5_social2": 0.0067
+     },
+     "mute": {
+      "K1_social0": 0.97,
+      "K2_social1": 0.02,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.87,
+      "K2_social1": 0.1083,
+      "K3_social1": 0.0767,
+      "K3_social2": 0.005,
+      "K4_social1": 0.03,
+      "K4_social2": 0.015,
+      "K5_social2": 0.0
+     },
+     "scramble_w2": {
+      "K1_social0": 0.975,
+      "K2_social1": 0.2633,
+      "K3_social1": 0.2017,
+      "K3_social2": 0.01,
+      "K4_social1": 0.1483,
+      "K4_social2": 0.02,
+      "K5_social2": 0.01
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.638,
+      "K3_social1": 0.69,
+      "K3_social2": 0.543,
+      "K4_social1": 0.58,
+      "K4_social2": 0.57,
+      "K5_social2": 0.46
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.307,
+       0.361,
+       0.332
+      ],
+      "K3_social1": [
+       0.335,
+       0.312,
+       0.353
+      ],
+      "K3_social2": [
+       0.351,
+       0.335,
+       0.315
+      ],
+      "K4_social1": [
+       0.341,
+       0.312,
+       0.347
+      ],
+      "K4_social2": [
+       0.348,
+       0.334,
+       0.318
+      ],
+      "K5_social2": [
+       0.344,
+       0.308,
+       0.348
+      ]
+     }
+    },
+    {
+     "decisions": 200278016,
+     "none": {
+      "K1_social0": 0.9817,
+      "K2_social1": 0.36,
+      "K3_social1": 0.2367,
+      "K3_social2": 0.0167,
+      "K4_social1": 0.195,
+      "K4_social2": 0.0267,
+      "K5_social2": 0.0083
+     },
+     "mute": {
+      "K1_social0": 0.9733,
+      "K2_social1": 0.02,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.8533,
+      "K2_social1": 0.1417,
+      "K3_social1": 0.085,
+      "K3_social2": 0.01,
+      "K4_social1": 0.0567,
+      "K4_social2": 0.0067,
+      "K5_social2": 0.0
+     },
+     "scramble_w2": {
+      "K1_social0": 0.9717,
+      "K2_social1": 0.3733,
+      "K3_social1": 0.2433,
+      "K3_social2": 0.02,
+      "K4_social1": 0.1883,
+      "K4_social2": 0.0333,
+      "K5_social2": 0.0083
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.789,
+      "K3_social1": 0.762,
+      "K3_social2": 0.645,
+      "K4_social1": 0.642,
+      "K4_social2": 0.635,
+      "K5_social2": 0.532
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.331,
+       0.342,
+       0.327
+      ],
+      "K3_social1": [
+       0.301,
+       0.336,
+       0.363
+      ],
+      "K3_social2": [
+       0.358,
+       0.319,
+       0.322
+      ],
+      "K4_social1": [
+       0.322,
+       0.333,
+       0.344
+      ],
+      "K4_social2": [
+       0.311,
+       0.336,
+       0.352
+      ],
+      "K5_social2": [
+       0.304,
+       0.357,
+       0.339
+      ]
+     }
+    },
+    {
+     "decisions": 250347520,
+     "none": {
+      "K1_social0": 0.9817,
+      "K2_social1": 0.395,
+      "K3_social1": 0.2383,
+      "K3_social2": 0.0333,
+      "K4_social1": 0.2083,
+      "K4_social2": 0.03,
+      "K5_social2": 0.0167
+     },
+     "mute": {
+      "K1_social0": 0.975,
+      "K2_social1": 0.0183,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.87,
+      "K2_social1": 0.1833,
+      "K3_social1": 0.0767,
+      "K3_social2": 0.01,
+      "K4_social1": 0.055,
+      "K4_social2": 0.0083,
+      "K5_social2": 0.0033
+     },
+     "scramble_w2": {
+      "K1_social0": 0.975,
+      "K2_social1": 0.3733,
+      "K3_social1": 0.27,
+      "K3_social2": 0.0283,
+      "K4_social1": 0.215,
+      "K4_social2": 0.0267,
+      "K5_social2": 0.025
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.815,
+      "K3_social1": 0.767,
+      "K3_social2": 0.665,
+      "K4_social1": 0.734,
+      "K4_social2": 0.619,
+      "K5_social2": 0.565
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.326,
+       0.338,
+       0.336
+      ],
+      "K3_social1": [
+       0.334,
+       0.325,
+       0.341
+      ],
+      "K3_social2": [
+       0.332,
+       0.324,
+       0.343
+      ],
+      "K4_social1": [
+       0.34,
+       0.343,
+       0.317
+      ],
+      "K4_social2": [
+       0.331,
+       0.338,
+       0.33
+      ],
+      "K5_social2": [
+       0.315,
+       0.341,
+       0.344
+      ]
+     }
+    },
+    {
+     "decisions": 300417024,
+     "none": {
+      "K1_social0": 0.98,
+      "K2_social1": 0.495,
+      "K3_social1": 0.3667,
+      "K3_social2": 0.0267,
+      "K4_social1": 0.2683,
+      "K4_social2": 0.0467,
+      "K5_social2": 0.0183
+     },
+     "mute": {
+      "K1_social0": 0.9817,
+      "K2_social1": 0.0183,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.8817,
+      "K2_social1": 0.1933,
+      "K3_social1": 0.1033,
+      "K3_social2": 0.02,
+      "K4_social1": 0.06,
+      "K4_social2": 0.0083,
+      "K5_social2": 0.005
+     },
+     "scramble_w2": {
+      "K1_social0": 0.98,
+      "K2_social1": 0.5333,
+      "K3_social1": 0.3233,
+      "K3_social2": 0.0317,
+      "K4_social1": 0.2267,
+      "K4_social2": 0.0417,
+      "K5_social2": 0.0267
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.852,
+      "K3_social1": 0.838,
+      "K3_social2": 0.686,
+      "K4_social1": 0.776,
+      "K4_social2": 0.688,
+      "K5_social2": 0.558
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.332,
+       0.343,
+       0.325
+      ],
+      "K3_social1": [
+       0.327,
+       0.333,
+       0.34
+      ],
+      "K3_social2": [
+       0.34,
+       0.343,
+       0.317
+      ],
+      "K4_social1": [
+       0.333,
+       0.331,
+       0.336
+      ],
+      "K4_social2": [
+       0.328,
+       0.346,
+       0.326
+      ],
+      "K5_social2": [
+       0.341,
+       0.345,
+       0.314
+      ]
+     }
+    },
+    {
+     "decisions": 350486528,
+     "none": {
+      "K1_social0": 0.98,
+      "K2_social1": 0.5183,
+      "K3_social1": 0.355,
+      "K3_social2": 0.02,
+      "K4_social1": 0.2367,
+      "K4_social2": 0.06,
+      "K5_social2": 0.0117
+     },
+     "mute": {
+      "K1_social0": 0.9733,
+      "K2_social1": 0.02,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.875,
+      "K2_social1": 0.2083,
+      "K3_social1": 0.115,
+      "K3_social2": 0.01,
+      "K4_social1": 0.065,
+      "K4_social2": 0.01,
+      "K5_social2": 0.0017
+     },
+     "scramble_w2": {
+      "K1_social0": 0.98,
+      "K2_social1": 0.515,
+      "K3_social1": 0.3783,
+      "K3_social2": 0.03,
+      "K4_social1": 0.2533,
+      "K4_social2": 0.0417,
+      "K5_social2": 0.0183
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.865,
+      "K3_social1": 0.841,
+      "K3_social2": 0.699,
+      "K4_social1": 0.735,
+      "K4_social2": 0.726,
+      "K5_social2": 0.527
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.321,
+       0.356,
+       0.324
+      ],
+      "K3_social1": [
+       0.318,
+       0.342,
+       0.34
+      ],
+      "K3_social2": [
+       0.308,
+       0.333,
+       0.359
+      ],
+      "K4_social1": [
+       0.353,
+       0.327,
+       0.32
+      ],
+      "K4_social2": [
+       0.326,
+       0.379,
+       0.295
+      ],
+      "K5_social2": [
+       0.325,
+       0.321,
+       0.354
+      ]
+     }
+    },
+    {
+     "decisions": 400556032,
+     "none": {
+      "K1_social0": 0.985,
+      "K2_social1": 0.54,
+      "K3_social1": 0.3483,
+      "K3_social2": 0.0367,
+      "K4_social1": 0.3117,
+      "K4_social2": 0.0667,
+      "K5_social2": 0.01
+     },
+     "mute": {
+      "K1_social0": 0.9817,
+      "K2_social1": 0.0167,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.8867,
+      "K2_social1": 0.1817,
+      "K3_social1": 0.0983,
+      "K3_social2": 0.0067,
+      "K4_social1": 0.0683,
+      "K4_social2": 0.0117,
+      "K5_social2": 0.0017
+     },
+     "scramble_w2": {
+      "K1_social0": 0.975,
+      "K2_social1": 0.51,
+      "K3_social1": 0.395,
+      "K3_social2": 0.0367,
+      "K4_social1": 0.3133,
+      "K4_social2": 0.0683,
+      "K5_social2": 0.0083
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.874,
+      "K3_social1": 0.813,
+      "K3_social2": 0.72,
+      "K4_social1": 0.804,
+      "K4_social2": 0.686,
+      "K5_social2": 0.55
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.304,
+       0.357,
+       0.339
+      ],
+      "K3_social1": [
+       0.312,
+       0.332,
+       0.356
+      ],
+      "K3_social2": [
+       0.316,
+       0.342,
+       0.342
+      ],
+      "K4_social1": [
+       0.316,
+       0.345,
+       0.339
+      ],
+      "K4_social2": [
+       0.307,
+       0.375,
+       0.318
+      ],
+      "K5_social2": [
+       0.321,
+       0.383,
+       0.296
+      ]
+     }
+    },
+    {
+     "decisions": 450625536,
+     "none": {
+      "K1_social0": 0.975,
+      "K2_social1": 0.5717,
+      "K3_social1": 0.4133,
+      "K3_social2": 0.0583,
+      "K4_social1": 0.2817,
+      "K4_social2": 0.075,
+      "K5_social2": 0.0183
+     },
+     "mute": {
+      "K1_social0": 0.975,
+      "K2_social1": 0.0183,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.8783,
+      "K2_social1": 0.185,
+      "K3_social1": 0.135,
+      "K3_social2": 0.0067,
+      "K4_social1": 0.0817,
+      "K4_social2": 0.01,
+      "K5_social2": 0.0017
+     },
+     "scramble_w2": {
+      "K1_social0": 0.975,
+      "K2_social1": 0.54,
+      "K3_social1": 0.3917,
+      "K3_social2": 0.0583,
+      "K4_social1": 0.275,
+      "K4_social2": 0.0733,
+      "K5_social2": 0.0167
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.86,
+      "K3_social1": 0.852,
+      "K3_social2": 0.72,
+      "K4_social1": 0.776,
+      "K4_social2": 0.737,
+      "K5_social2": 0.583
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.296,
+       0.349,
+       0.354
+      ],
+      "K3_social1": [
+       0.325,
+       0.325,
+       0.35
+      ],
+      "K3_social2": [
+       0.341,
+       0.332,
+       0.326
+      ],
+      "K4_social1": [
+       0.312,
+       0.357,
+       0.331
+      ],
+      "K4_social2": [
+       0.323,
+       0.324,
+       0.353
+      ],
+      "K5_social2": [
+       0.307,
+       0.349,
+       0.343
+      ]
+     }
+    },
+    {
+     "decisions": 500695040,
+     "none": {
+      "K1_social0": 0.9833,
+      "K2_social1": 0.5067,
+      "K3_social1": 0.39,
+      "K3_social2": 0.0633,
+      "K4_social1": 0.3533,
+      "K4_social2": 0.08,
+      "K5_social2": 0.0283
+     },
+     "mute": {
+      "K1_social0": 0.9783,
+      "K2_social1": 0.0183,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.8833,
+      "K2_social1": 0.175,
+      "K3_social1": 0.1367,
+      "K3_social2": 0.0117,
+      "K4_social1": 0.065,
+      "K4_social2": 0.0217,
+      "K5_social2": 0.0083
+     },
+     "scramble_w2": {
+      "K1_social0": 0.98,
+      "K2_social1": 0.5183,
+      "K3_social1": 0.415,
+      "K3_social2": 0.0283,
+      "K4_social1": 0.3283,
+      "K4_social2": 0.08,
+      "K5_social2": 0.0233
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.828,
+      "K3_social1": 0.83,
+      "K3_social2": 0.7,
+      "K4_social1": 0.809,
+      "K4_social2": 0.712,
+      "K5_social2": 0.596
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.248,
+       0.359,
+       0.392
+      ],
+      "K3_social1": [
+       0.298,
+       0.348,
+       0.354
+      ],
+      "K3_social2": [
+       0.299,
+       0.33,
+       0.37
+      ],
+      "K4_social1": [
+       0.309,
+       0.353,
+       0.338
+      ],
+      "K4_social2": [
+       0.355,
+       0.325,
+       0.32
+      ],
+      "K5_social2": [
+       0.35,
+       0.368,
+       0.282
+      ]
+     }
+    },
+    {
+     "decisions": 550764544,
+     "none": {
+      "K1_social0": 0.9783,
+      "K2_social1": 0.5283,
+      "K3_social1": 0.395,
+      "K3_social2": 0.0567,
+      "K4_social1": 0.2883,
+      "K4_social2": 0.0517,
+      "K5_social2": 0.01
+     },
+     "mute": {
+      "K1_social0": 0.98,
+      "K2_social1": 0.0167,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.88,
+      "K2_social1": 0.195,
+      "K3_social1": 0.1367,
+      "K3_social2": 0.0133,
+      "K4_social1": 0.0717,
+      "K4_social2": 0.02,
+      "K5_social2": 0.005
+     },
+     "scramble_w2": {
+      "K1_social0": 0.9783,
+      "K2_social1": 0.5367,
+      "K3_social1": 0.4067,
+      "K3_social2": 0.0633,
+      "K4_social1": 0.3033,
+      "K4_social2": 0.0883,
+      "K5_social2": 0.0233
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.858,
+      "K3_social1": 0.839,
+      "K3_social2": 0.735,
+      "K4_social1": 0.756,
+      "K4_social2": 0.698,
+      "K5_social2": 0.521
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.184,
+       0.389,
+       0.426
+      ],
+      "K3_social1": [
+       0.255,
+       0.327,
+       0.418
+      ],
+      "K3_social2": [
+       0.252,
+       0.357,
+       0.39
+      ],
+      "K4_social1": [
+       0.263,
+       0.33,
+       0.408
+      ],
+      "K4_social2": [
+       0.254,
+       0.319,
+       0.427
+      ],
+      "K5_social2": [
+       0.301,
+       0.378,
+       0.322
+      ]
+     }
+    },
+    {
+     "decisions": 600834048,
+     "none": {
+      "K1_social0": 0.9733,
+      "K2_social1": 0.5683,
+      "K3_social1": 0.4067,
+      "K3_social2": 0.0633,
+      "K4_social1": 0.35,
+      "K4_social2": 0.09,
+      "K5_social2": 0.0133
+     },
+     "mute": {
+      "K1_social0": 0.9783,
+      "K2_social1": 0.0183,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.8983,
+      "K2_social1": 0.2233,
+      "K3_social1": 0.1367,
+      "K3_social2": 0.0133,
+      "K4_social1": 0.06,
+      "K4_social2": 0.0133,
+      "K5_social2": 0.005
+     },
+     "scramble_w2": {
+      "K1_social0": 0.9733,
+      "K2_social1": 0.5783,
+      "K3_social1": 0.3917,
+      "K3_social2": 0.0633,
+      "K4_social1": 0.28,
+      "K4_social2": 0.0783,
+      "K5_social2": 0.0267
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.842,
+      "K3_social1": 0.837,
+      "K3_social2": 0.732,
+      "K4_social1": 0.786,
+      "K4_social2": 0.721,
+      "K5_social2": 0.572
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.114,
+       0.452,
+       0.434
+      ],
+      "K3_social1": [
+       0.134,
+       0.374,
+       0.492
+      ],
+      "K3_social2": [
+       0.203,
+       0.374,
+       0.423
+      ],
+      "K4_social1": [
+       0.183,
+       0.367,
+       0.45
+      ],
+      "K4_social2": [
+       0.221,
+       0.277,
+       0.502
+      ],
+      "K5_social2": [
+       0.26,
+       0.394,
+       0.347
+      ]
+     }
+    },
+    {
+     "decisions": 650903552,
+     "none": {
+      "K1_social0": 0.9733,
+      "K2_social1": 0.6067,
+      "K3_social1": 0.4017,
+      "K3_social2": 0.0683,
+      "K4_social1": 0.3283,
+      "K4_social2": 0.0783,
+      "K5_social2": 0.0167
+     },
+     "mute": {
+      "K1_social0": 0.975,
+      "K2_social1": 0.0183,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.895,
+      "K2_social1": 0.2333,
+      "K3_social1": 0.1317,
+      "K3_social2": 0.0133,
+      "K4_social1": 0.0717,
+      "K4_social2": 0.0233,
+      "K5_social2": 0.0067
+     },
+     "scramble_w2": {
+      "K1_social0": 0.975,
+      "K2_social1": 0.5617,
+      "K3_social1": 0.3833,
+      "K3_social2": 0.055,
+      "K4_social1": 0.2933,
+      "K4_social2": 0.0917,
+      "K5_social2": 0.0183
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.864,
+      "K3_social1": 0.835,
+      "K3_social2": 0.701,
+      "K4_social1": 0.763,
+      "K4_social2": 0.725,
+      "K5_social2": 0.535
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.102,
+       0.441,
+       0.457
+      ],
+      "K3_social1": [
+       0.129,
+       0.359,
+       0.511
+      ],
+      "K3_social2": [
+       0.179,
+       0.359,
+       0.462
+      ],
+      "K4_social1": [
+       0.167,
+       0.399,
+       0.433
+      ],
+      "K4_social2": [
+       0.192,
+       0.339,
+       0.469
+      ],
+      "K5_social2": [
+       0.258,
+       0.424,
+       0.318
+      ]
+     }
+    },
+    {
+     "decisions": 700973056,
+     "none": {
+      "K1_social0": 0.9783,
+      "K2_social1": 0.585,
+      "K3_social1": 0.43,
+      "K3_social2": 0.0683,
+      "K4_social1": 0.3317,
+      "K4_social2": 0.105,
+      "K5_social2": 0.0367
+     },
+     "mute": {
+      "K1_social0": 0.97,
+      "K2_social1": 0.02,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.875,
+      "K2_social1": 0.2267,
+      "K3_social1": 0.1417,
+      "K3_social2": 0.015,
+      "K4_social1": 0.0717,
+      "K4_social2": 0.015,
+      "K5_social2": 0.0083
+     },
+     "scramble_w2": {
+      "K1_social0": 0.9717,
+      "K2_social1": 0.5517,
+      "K3_social1": 0.4067,
+      "K3_social2": 0.05,
+      "K4_social1": 0.3067,
+      "K4_social2": 0.0717,
+      "K5_social2": 0.035
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.856,
+      "K3_social1": 0.838,
+      "K3_social2": 0.728,
+      "K4_social1": 0.763,
+      "K4_social2": 0.725,
+      "K5_social2": 0.562
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.071,
+       0.492,
+       0.437
+      ],
+      "K3_social1": [
+       0.088,
+       0.411,
+       0.501
+      ],
+      "K3_social2": [
+       0.128,
+       0.438,
+       0.435
+      ],
+      "K4_social1": [
+       0.118,
+       0.428,
+       0.454
+      ],
+      "K4_social2": [
+       0.131,
+       0.389,
+       0.48
+      ],
+      "K5_social2": [
+       0.192,
+       0.393,
+       0.414
+      ]
+     }
+    },
+    {
+     "decisions": 751042560,
+     "none": {
+      "K1_social0": 0.975,
+      "K2_social1": 0.6067,
+      "K3_social1": 0.4117,
+      "K3_social2": 0.1017,
+      "K4_social1": 0.375,
+      "K4_social2": 0.0917,
+      "K5_social2": 0.02
+     },
+     "mute": {
+      "K1_social0": 0.9767,
+      "K2_social1": 0.0183,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.8983,
+      "K2_social1": 0.2233,
+      "K3_social1": 0.1617,
+      "K3_social2": 0.035,
+      "K4_social1": 0.1,
+      "K4_social2": 0.0283,
+      "K5_social2": 0.005
+     },
+     "scramble_w2": {
+      "K1_social0": 0.9817,
+      "K2_social1": 0.58,
+      "K3_social1": 0.4067,
+      "K3_social2": 0.0583,
+      "K4_social1": 0.3333,
+      "K4_social2": 0.0983,
+      "K5_social2": 0.0317
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.861,
+      "K3_social1": 0.815,
+      "K3_social2": 0.743,
+      "K4_social1": 0.808,
+      "K4_social2": 0.726,
+      "K5_social2": 0.547
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.068,
+       0.456,
+       0.476
+      ],
+      "K3_social1": [
+       0.078,
+       0.422,
+       0.5
+      ],
+      "K3_social2": [
+       0.13,
+       0.357,
+       0.512
+      ],
+      "K4_social1": [
+       0.134,
+       0.404,
+       0.462
+      ],
+      "K4_social2": [
+       0.16,
+       0.308,
+       0.532
+      ],
+      "K5_social2": [
+       0.226,
+       0.371,
+       0.403
+      ]
+     }
+    },
+    {
+     "decisions": 801112064,
+     "none": {
+      "K1_social0": 0.9733,
+      "K2_social1": 0.6217,
+      "K3_social1": 0.4367,
+      "K3_social2": 0.1033,
+      "K4_social1": 0.37,
+      "K4_social2": 0.1233,
+      "K5_social2": 0.03
+     },
+     "mute": {
+      "K1_social0": 0.98,
+      "K2_social1": 0.0183,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.895,
+      "K2_social1": 0.2083,
+      "K3_social1": 0.155,
+      "K3_social2": 0.0317,
+      "K4_social1": 0.075,
+      "K4_social2": 0.0217,
+      "K5_social2": 0.0083
+     },
+     "scramble_w2": {
+      "K1_social0": 0.975,
+      "K2_social1": 0.5783,
+      "K3_social1": 0.42,
+      "K3_social2": 0.075,
+      "K4_social1": 0.33,
+      "K4_social2": 0.1133,
+      "K5_social2": 0.03
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.874,
+      "K3_social1": 0.848,
+      "K3_social2": 0.751,
+      "K4_social1": 0.78,
+      "K4_social2": 0.747,
+      "K5_social2": 0.559
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.084,
+       0.454,
+       0.462
+      ],
+      "K3_social1": [
+       0.08,
+       0.429,
+       0.492
+      ],
+      "K3_social2": [
+       0.117,
+       0.413,
+       0.47
+      ],
+      "K4_social1": [
+       0.101,
+       0.411,
+       0.488
+      ],
+      "K4_social2": [
+       0.138,
+       0.328,
+       0.534
+      ],
+      "K5_social2": [
+       0.208,
+       0.396,
+       0.397
+      ]
+     }
+    },
+    {
+     "decisions": 851181568,
+     "none": {
+      "K1_social0": 0.9767,
+      "K2_social1": 0.6267,
+      "K3_social1": 0.455,
+      "K3_social2": 0.1117,
+      "K4_social1": 0.365,
+      "K4_social2": 0.125,
+      "K5_social2": 0.0617
+     },
+     "mute": {
+      "K1_social0": 0.97,
+      "K2_social1": 0.0183,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.9033,
+      "K2_social1": 0.2117,
+      "K3_social1": 0.1317,
+      "K3_social2": 0.0217,
+      "K4_social1": 0.085,
+      "K4_social2": 0.0317,
+      "K5_social2": 0.0117
+     },
+     "scramble_w2": {
+      "K1_social0": 0.9683,
+      "K2_social1": 0.5633,
+      "K3_social1": 0.425,
+      "K3_social2": 0.1,
+      "K4_social1": 0.3233,
+      "K4_social2": 0.1383,
+      "K5_social2": 0.0433
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.871,
+      "K3_social1": 0.835,
+      "K3_social2": 0.744,
+      "K4_social1": 0.767,
+      "K4_social2": 0.771,
+      "K5_social2": 0.667
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.071,
+       0.454,
+       0.475
+      ],
+      "K3_social1": [
+       0.061,
+       0.461,
+       0.478
+      ],
+      "K3_social2": [
+       0.109,
+       0.391,
+       0.5
+      ],
+      "K4_social1": [
+       0.09,
+       0.428,
+       0.482
+      ],
+      "K4_social2": [
+       0.126,
+       0.336,
+       0.537
+      ],
+      "K5_social2": [
+       0.145,
+       0.444,
+       0.412
+      ]
+     }
+    },
+    {
+     "decisions": 901251072,
+     "none": {
+      "K1_social0": 0.975,
+      "K2_social1": 0.6083,
+      "K3_social1": 0.4517,
+      "K3_social2": 0.14,
+      "K4_social1": 0.37,
+      "K4_social2": 0.15,
+      "K5_social2": 0.0517
+     },
+     "mute": {
+      "K1_social0": 0.9633,
+      "K2_social1": 0.0167,
+      "K3_social1": 0.005,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.8783,
+      "K2_social1": 0.2317,
+      "K3_social1": 0.125,
+      "K3_social2": 0.0333,
+      "K4_social1": 0.07,
+      "K4_social2": 0.0433,
+      "K5_social2": 0.005
+     },
+     "scramble_w2": {
+      "K1_social0": 0.9683,
+      "K2_social1": 0.5633,
+      "K3_social1": 0.395,
+      "K3_social2": 0.105,
+      "K4_social1": 0.3567,
+      "K4_social2": 0.145,
+      "K5_social2": 0.0317
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.859,
+      "K3_social1": 0.845,
+      "K3_social2": 0.801,
+      "K4_social1": 0.793,
+      "K4_social2": 0.755,
+      "K5_social2": 0.651
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.051,
+       0.455,
+       0.494
+      ],
+      "K3_social1": [
+       0.08,
+       0.43,
+       0.49
+      ],
+      "K3_social2": [
+       0.085,
+       0.39,
+       0.525
+      ],
+      "K4_social1": [
+       0.106,
+       0.367,
+       0.527
+      ],
+      "K4_social2": [
+       0.145,
+       0.347,
+       0.508
+      ],
+      "K5_social2": [
+       0.161,
+       0.349,
+       0.49
+      ]
+     }
+    },
+    {
+     "decisions": 951320576,
+     "none": {
+      "K1_social0": 0.975,
+      "K2_social1": 0.615,
+      "K3_social1": 0.4433,
+      "K3_social2": 0.135,
+      "K4_social1": 0.37,
+      "K4_social2": 0.1417,
+      "K5_social2": 0.0283
+     },
+     "mute": {
+      "K1_social0": 0.97,
+      "K2_social1": 0.02,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.8833,
+      "K2_social1": 0.2317,
+      "K3_social1": 0.1567,
+      "K3_social2": 0.0233,
+      "K4_social1": 0.1017,
+      "K4_social2": 0.03,
+      "K5_social2": 0.01
+     },
+     "scramble_w2": {
+      "K1_social0": 0.9783,
+      "K2_social1": 0.5567,
+      "K3_social1": 0.39,
+      "K3_social2": 0.105,
+      "K4_social1": 0.3817,
+      "K4_social2": 0.1033,
+      "K5_social2": 0.0333
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.858,
+      "K3_social1": 0.851,
+      "K3_social2": 0.785,
+      "K4_social1": 0.781,
+      "K4_social2": 0.756,
+      "K5_social2": 0.564
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.065,
+       0.457,
+       0.477
+      ],
+      "K3_social1": [
+       0.058,
+       0.418,
+       0.525
+      ],
+      "K3_social2": [
+       0.083,
+       0.359,
+       0.558
+      ],
+      "K4_social1": [
+       0.093,
+       0.44,
+       0.467
+      ],
+      "K4_social2": [
+       0.096,
+       0.325,
+       0.579
+      ],
+      "K5_social2": [
+       0.188,
+       0.334,
+       0.478
+      ]
+     }
+    },
+    {
+     "decisions": 1001390080,
+     "none": {
+      "K1_social0": 0.9767,
+      "K2_social1": 0.6267,
+      "K3_social1": 0.44,
+      "K3_social2": 0.1683,
+      "K4_social1": 0.385,
+      "K4_social2": 0.1933,
+      "K5_social2": 0.0667
+     },
+     "mute": {
+      "K1_social0": 0.9833,
+      "K2_social1": 0.02,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.8933,
+      "K2_social1": 0.2267,
+      "K3_social1": 0.1633,
+      "K3_social2": 0.0317,
+      "K4_social1": 0.0767,
+      "K4_social2": 0.0383,
+      "K5_social2": 0.0133
+     },
+     "scramble_w2": {
+      "K1_social0": 0.98,
+      "K2_social1": 0.5717,
+      "K3_social1": 0.4233,
+      "K3_social2": 0.1133,
+      "K4_social1": 0.34,
+      "K4_social2": 0.1367,
+      "K5_social2": 0.06
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.863,
+      "K3_social1": 0.832,
+      "K3_social2": 0.805,
+      "K4_social1": 0.796,
+      "K4_social2": 0.805,
+      "K5_social2": 0.64
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.053,
+       0.353,
+       0.594
+      ],
+      "K3_social1": [
+       0.054,
+       0.318,
+       0.628
+      ],
+      "K3_social2": [
+       0.084,
+       0.324,
+       0.592
+      ],
+      "K4_social1": [
+       0.107,
+       0.347,
+       0.546
+      ],
+      "K4_social2": [
+       0.098,
+       0.354,
+       0.548
+      ],
+      "K5_social2": [
+       0.138,
+       0.331,
+       0.532
+      ]
+     }
+    },
+    {
+     "decisions": 1024065536,
+     "none": {
+      "K1_social0": 0.9833,
+      "K2_social1": 0.6233,
+      "K3_social1": 0.4733,
+      "K3_social2": 0.1483,
+      "K4_social1": 0.4117,
+      "K4_social2": 0.1667,
+      "K5_social2": 0.0667
+     },
+     "mute": {
+      "K1_social0": 0.975,
+      "K2_social1": 0.0183,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.8683,
+      "K2_social1": 0.2283,
+      "K3_social1": 0.14,
+      "K3_social2": 0.02,
+      "K4_social1": 0.085,
+      "K4_social2": 0.0267,
+      "K5_social2": 0.0133
+     },
+     "scramble_w2": {
+      "K1_social0": 0.9833,
+      "K2_social1": 0.5767,
+      "K3_social1": 0.4167,
+      "K3_social2": 0.115,
+      "K4_social1": 0.3867,
+      "K4_social2": 0.1217,
+      "K5_social2": 0.0483
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.866,
+      "K3_social1": 0.849,
+      "K3_social2": 0.776,
+      "K4_social1": 0.809,
+      "K4_social2": 0.773,
+      "K5_social2": 0.647
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.06,
+       0.403,
+       0.537
+      ],
+      "K3_social1": [
+       0.058,
+       0.407,
+       0.535
+      ],
+      "K3_social2": [
+       0.088,
+       0.365,
+       0.547
+      ],
+      "K4_social1": [
+       0.082,
+       0.419,
+       0.499
+      ],
+      "K4_social2": [
+       0.111,
+       0.255,
+       0.634
+      ],
+      "K5_social2": [
+       0.153,
+       0.394,
+       0.454
+      ]
+     }
+    }
+   ]
+  },
+  "warm_s1": {
+   "manifest": {
+    "config": {
+     "seed": 1,
+     "envs": 1024,
+     "horizon": 128,
+     "hidden": 256,
+     "ks": [
+      1,
+      2,
+      3,
+      4,
+      5
+     ],
+     "lr": 0.0003,
+     "gamma": 0.997,
+     "lam": 0.95,
+     "clip": 0.2,
+     "epochs": 3,
+     "minibatches": 4,
+     "entropy": 0.01,
+     "value_coef": 0.5,
+     "predict_coef": 1.0,
+     "max_grad_norm": 1.0,
+     "alive_reward": 0.007575757575757576,
+     "survive_bonus": 0.5,
+     "init": "runs/organism/learned_self_dev/checkpoint"
+    },
+    "dev_eval_base": 6400000000,
+    "dev_eval_per_cell": 100,
+    "eval_cells": [
+     [
+      1,
+      0
+     ],
+     [
+      2,
+      1
+     ],
+     [
+      3,
+      1
+     ],
+     [
+      3,
+      2
+     ],
+     [
+      4,
+      1
+     ],
+     [
+      4,
+      2
+     ],
+     [
+      5,
+      2
+     ]
+    ],
+    "features": 48,
+    "variant": "size",
+    "mlx": "0.32.0",
+    "numpy": "2.5.1",
+    "pins": {
+     "speaking_self.py": "e8ce8781cc21a094d8caaa02d975aec1809244e3adf110f9cb24f167ca251556",
+     "caregiver_v1.py": "999e6d511f58c8bd346a9375f4256ab82664aab0426b83341254434601be7b9f",
+     "learned_self.py": "b28b768b954ce775b8ad28586fe218f588ce6fa8dca99f03cb602f1f67a1652b",
+     "vec_body.py": "1bd91fa6e818472d0deeaf6427b508e1a99d50e4593808c9db2e43738f10f5ec"
+    },
+    "init_weights_sha256": "2c0127ec9fcc3d07ef2a6db1cf497a03bab961f0bb17907dea5e52659fdb4aad"
+   },
+   "stop": {
+    "decisions": 1024065536,
+    "train_seconds": 35767.89849527972,
+    "reason": "--max-hours 10"
+   },
+   "checkpoint_sha256": {
+    "optimizer.npz": "e0e1910f95364bc3a4df079702d1eb1ed3ab987e14398b68dcbb86c6d621c478",
+    "state.json": "6133ed9ddf6dbe79fb06e19ac7d6d9284bb44db37356bd287cb2de720a4aa78e",
+    "weights.npz": "9241018433692e3434624320361bd8a6e930f34ca8c7d1b5f8bef93b5d448628"
+   },
+   "final": {
+    "none": {
+     "K1_social0": {
+      "identities": 100,
+      "survival": 0.9883333333333333,
+      "survival_by_life": [
+       0.93,
+       1.0,
+       1.0,
+       1.0,
+       1.0,
+       1.0
+      ],
+      "speak_rate": 0.4282175765381948,
+      "social_named": 0.0,
+      "novel_per_identity": 4.74,
+      "novel_social_share": 0.0,
+      "size_meaning_share": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "wasted_per_life": 0.0
+     },
+     "K2_social1": {
+      "identities": 100,
+      "survival": 0.6166666666666667,
+      "survival_by_life": [
+       0.17,
+       0.53,
+       0.68,
+       0.79,
+       0.77,
+       0.76
+      ],
+      "speak_rate": 0.5458131840162891,
+      "social_named": 0.8836558638377244,
+      "novel_per_identity": 1.15,
+      "novel_social_share": 0.6347826086956522,
+      "size_meaning_share": [
+       0.057519788918205805,
+       0.5279683377308707,
+       0.4145118733509235
+      ],
+      "wasted_per_life": 0.47421913010153016
+     },
+     "K3_social1": {
+      "identities": 100,
+      "survival": 0.47333333333333333,
+      "survival_by_life": [
+       0.14,
+       0.37,
+       0.52,
+       0.57,
+       0.63,
+       0.61
+      ],
+      "speak_rate": 0.5980377358490566,
+      "social_named": 0.8558808682483594,
+      "novel_per_identity": 1.09,
+      "novel_social_share": 0.5137614678899083,
+      "size_meaning_share": [
+       0.054261279858448835,
+       0.46475965791801827,
+       0.48097906222353287
+      ],
+      "wasted_per_life": 0.4873450376941017
+     },
+     "K3_social2": {
+      "identities": 100,
+      "survival": 0.14166666666666666,
+      "survival_by_life": [
+       0.04,
+       0.1,
+       0.12,
+       0.15,
+       0.19,
+       0.25
+      ],
+      "speak_rate": 0.8771300448430494,
+      "social_named": 0.7883435582822086,
+      "novel_per_identity": 1.76,
+      "novel_social_share": 0.6079545454545454,
+      "size_meaning_share": [
+       0.08819714656290532,
+       0.4003458711629918,
+       0.5114569822741029
+      ],
+      "wasted_per_life": 0.599233367406608
+     },
+     "K4_social1": {
+      "identities": 100,
+      "survival": 0.35833333333333334,
+      "survival_by_life": [
+       0.09,
+       0.2,
+       0.31,
+       0.46,
+       0.55,
+       0.54
+      ],
+      "speak_rate": 0.6491228070175439,
+      "social_named": 0.7928794178794178,
+      "novel_per_identity": 1.5,
+      "novel_social_share": 0.44,
+      "size_meaning_share": [
+       0.09078990494919699,
+       0.48180924287118976,
+       0.42740085217961327
+      ],
+      "wasted_per_life": 0.48345988695373204
+     },
+     "K4_social2": {
+      "identities": 100,
+      "survival": 0.12333333333333334,
+      "survival_by_life": [
+       0.02,
+       0.07,
+       0.13,
+       0.14,
+       0.2,
+       0.18
+      ],
+      "speak_rate": 0.9131299734748011,
+      "social_named": 0.7316630355846042,
+      "novel_per_identity": 2.06,
+      "novel_social_share": 0.5194174757281553,
+      "size_meaning_share": [
+       0.11563275434243177,
+       0.40347394540942927,
+       0.480893300248139
+      ],
+      "wasted_per_life": 0.554912554379798
+     },
+     "K5_social2": {
+      "identities": 100,
+      "survival": 0.07166666666666667,
+      "survival_by_life": [
+       0.02,
+       0.02,
+       0.08,
+       0.09,
+       0.1,
+       0.12
+      ],
+      "speak_rate": 0.9151992585727525,
+      "social_named": 0.6486075949367088,
+      "novel_per_identity": 1.57,
+      "novel_social_share": 0.47770700636942676,
+      "size_meaning_share": [
+       0.13817330210772832,
+       0.24434035909445745,
+       0.6174863387978142
+      ],
+      "wasted_per_life": 0.4051833776413401
+     }
+    },
+    "mute": {
+     "K1_social0": {
+      "identities": 100,
+      "survival": 0.9833333333333333,
+      "survival_by_life": [
+       0.91,
+       1.0,
+       0.99,
+       1.0,
+       1.0,
+       1.0
+      ],
+      "speak_rate": 0.43090800951625696,
+      "social_named": 0.0,
+      "novel_per_identity": 4.86,
+      "novel_social_share": 0.0,
+      "size_meaning_share": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "wasted_per_life": 0.0
+     },
+     "K2_social1": {
+      "identities": 100,
+      "survival": 0.02,
+      "survival_by_life": [
+       0.02,
+       0.03,
+       0.01,
+       0.03,
+       0.02,
+       0.01
+      ],
+      "speak_rate": 0.9451653411469234,
+      "social_named": 0.14658990256864482,
+      "novel_per_identity": 2.55,
+      "novel_social_share": 0.1607843137254902,
+      "size_meaning_share": [
+       0.36555891238670696,
+       0.338368580060423,
+       0.29607250755287007
+      ],
+      "wasted_per_life": 0.0
+     },
+     "K3_social1": {
+      "identities": 100,
+      "survival": 0.006666666666666667,
+      "survival_by_life": [
+       0.01,
+       0.01,
+       0.0,
+       0.01,
+       0.0,
+       0.01
+      ],
+      "speak_rate": 0.9507595599790466,
+      "social_named": 0.14986225895316804,
+      "novel_per_identity": 2.34,
+      "novel_social_share": 0.1581196581196581,
+      "size_meaning_share": [
+       0.375,
+       0.29044117647058826,
+       0.33455882352941174
+      ],
+      "wasted_per_life": 0.0
+     },
+     "K3_social2": {
+      "identities": 100,
+      "survival": 0.0,
+      "survival_by_life": [
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "speak_rate": 0.9939393939393939,
+      "social_named": 0.3201219512195122,
+      "novel_per_identity": 1.88,
+      "novel_social_share": 0.31382978723404253,
+      "size_meaning_share": [
+       0.3142857142857143,
+       0.3595238095238095,
+       0.3261904761904762
+      ],
+      "wasted_per_life": 0.0
+     },
+     "K4_social1": {
+      "identities": 100,
+      "survival": 0.005,
+      "survival_by_life": [
+       0.0,
+       0.0,
+       0.01,
+       0.01,
+       0.01,
+       0.0
+      ],
+      "speak_rate": 0.9224349533627885,
+      "social_named": 0.1734965407131453,
+      "novel_per_identity": 2.42,
+      "novel_social_share": 0.16115702479338842,
+      "size_meaning_share": [
+       0.3006134969325153,
+       0.36809815950920244,
+       0.3312883435582822
+      ],
+      "wasted_per_life": 0.0
+     },
+     "K4_social2": {
+      "identities": 100,
+      "survival": 0.0,
+      "survival_by_life": [
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "speak_rate": 0.99079754601227,
+      "social_named": 0.3281733746130031,
+      "novel_per_identity": 2.0,
+      "novel_social_share": 0.35,
+      "size_meaning_share": [
+       0.3443396226415094,
+       0.3231132075471698,
+       0.33254716981132076
+      ],
+      "wasted_per_life": 0.0
+     },
+     "K5_social2": {
+      "identities": 100,
+      "survival": 0.0,
+      "survival_by_life": [
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "speak_rate": 0.9532871972318339,
+      "social_named": 0.323956442831216,
+      "novel_per_identity": 1.46,
+      "novel_social_share": 0.3561643835616438,
+      "size_meaning_share": [
+       0.37815126050420167,
+       0.29411764705882354,
+       0.3277310924369748
+      ],
+      "wasted_per_life": 0.0
+     }
+    },
+    "reset": {
+     "K1_social0": {
+      "identities": 100,
+      "survival": 0.8866666666666667,
+      "survival_by_life": [
+       0.91,
+       0.93,
+       0.89,
+       0.83,
+       0.88,
+       0.88
+      ],
+      "speak_rate": 0.4912318919507679,
+      "social_named": 0.0,
+      "novel_per_identity": 4.06,
+      "novel_social_share": 0.0,
+      "size_meaning_share": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "wasted_per_life": 0.0
+     },
+     "K2_social1": {
+      "identities": 100,
+      "survival": 0.22666666666666666,
+      "survival_by_life": [
+       0.23,
+       0.28,
+       0.21,
+       0.22,
+       0.26,
+       0.16
+      ],
+      "speak_rate": 0.7054170661553212,
+      "social_named": 0.4855589534488617,
+      "novel_per_identity": 2.4,
+      "novel_social_share": 0.20416666666666666,
+      "size_meaning_share": [
+       0.17074877536738978,
+       0.483554933519944,
+       0.3456962911126662
+      ],
+      "wasted_per_life": 0.6728709372054739
+     },
+     "K3_social1": {
+      "identities": 100,
+      "survival": 0.11666666666666667,
+      "survival_by_life": [
+       0.11,
+       0.1,
+       0.1,
+       0.13,
+       0.11,
+       0.15
+      ],
+      "speak_rate": 0.7579022988505747,
+      "social_named": 0.37867298578199055,
+      "novel_per_identity": 1.67,
+      "novel_social_share": 0.18562874251497005,
+      "size_meaning_share": [
+       0.20275344180225283,
+       0.34918648310387984,
+       0.44806007509386736
+      ],
+      "wasted_per_life": 0.4678213172361329
+     },
+     "K3_social2": {
+      "identities": 100,
+      "survival": 0.04666666666666667,
+      "survival_by_life": [
+       0.05,
+       0.06,
+       0.05,
+       0.03,
+       0.05,
+       0.04
+      ],
+      "speak_rate": 0.9043887147335423,
+      "social_named": 0.5002888503755055,
+      "novel_per_identity": 1.54,
+      "novel_social_share": 0.4025974025974026,
+      "size_meaning_share": [
+       0.25519630484988454,
+       0.31755196304849886,
+       0.42725173210161665
+      ],
+      "wasted_per_life": 0.4753835547236252
+     },
+     "K4_social1": {
+      "identities": 100,
+      "survival": 0.095,
+      "survival_by_life": [
+       0.12,
+       0.1,
+       0.1,
+       0.07,
+       0.11,
+       0.07
+      ],
+      "speak_rate": 0.7836906584992342,
+      "social_named": 0.39276990718124083,
+      "novel_per_identity": 1.54,
+      "novel_social_share": 0.22727272727272727,
+      "size_meaning_share": [
+       0.17164179104477612,
+       0.43034825870646765,
+       0.39800995024875624
+      ],
+      "wasted_per_life": 0.38562300867836524
+     },
+     "K4_social2": {
+      "identities": 100,
+      "survival": 0.016666666666666666,
+      "survival_by_life": [
+       0.01,
+       0.03,
+       0.02,
+       0.03,
+       0.01,
+       0.0
+      ],
+      "speak_rate": 0.9449236894492369,
+      "social_named": 0.39185393258426965,
+      "novel_per_identity": 1.12,
+      "novel_social_share": 0.36607142857142855,
+      "size_meaning_share": [
+       0.1827956989247312,
+       0.47491039426523296,
+       0.34229390681003585
+      ],
+      "wasted_per_life": 0.31025238627410806
+     },
+     "K5_social2": {
+      "identities": 100,
+      "survival": 0.005,
+      "survival_by_life": [
+       0.01,
+       0.0,
+       0.01,
+       0.0,
+       0.0,
+       0.01
+      ],
+      "speak_rate": 0.8966087675765095,
+      "social_named": 0.3699261992619926,
+      "novel_per_identity": 0.72,
+      "novel_social_share": 0.3055555555555556,
+      "size_meaning_share": [
+       0.314214463840399,
+       0.36159600997506236,
+       0.32418952618453867
+      ],
+      "wasted_per_life": 0.1756767245233333
+     }
+    },
+    "scramble_w2": {
+     "K1_social0": {
+      "identities": 100,
+      "survival": 0.9783333333333334,
+      "survival_by_life": [
+       0.9,
+       0.98,
+       1.0,
+       1.0,
+       0.99,
+       1.0
+      ],
+      "speak_rate": 0.4285429141716567,
+      "social_named": 0.0,
+      "novel_per_identity": 4.61,
+      "novel_social_share": 0.0,
+      "size_meaning_share": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "wasted_per_life": 0.0
+     },
+     "K2_social1": {
+      "identities": 100,
+      "survival": 0.5783333333333334,
+      "survival_by_life": [
+       0.22,
+       0.49,
+       0.59,
+       0.75,
+       0.7,
+       0.72
+      ],
+      "speak_rate": 0.5724274406332454,
+      "social_named": 0.8916801106245679,
+      "novel_per_identity": 1.16,
+      "novel_social_share": 0.6724137931034483,
+      "size_meaning_share": [
+       0.4091496510726286,
+       0.2969759627810804,
+       0.293874386146291
+      ],
+      "wasted_per_life": 0.40937043431966086
+     },
+     "K3_social1": {
+      "identities": 100,
+      "survival": 0.4216666666666667,
+      "survival_by_life": [
+       0.12,
+       0.3,
+       0.46,
+       0.54,
+       0.56,
+       0.55
+      ],
+      "speak_rate": 0.6456561614140404,
+      "social_named": 0.849948347107438,
+      "novel_per_identity": 1.46,
+      "novel_social_share": 0.6712328767123288,
+      "size_meaning_share": [
+       0.31024004861744153,
+       0.3536918869644485,
+       0.33606806441811
+      ],
+      "wasted_per_life": 0.381517803683524
+     },
+     "K3_social2": {
+      "identities": 100,
+      "survival": 0.105,
+      "survival_by_life": [
+       0.05,
+       0.05,
+       0.08,
+       0.13,
+       0.15,
+       0.17
+      ],
+      "speak_rate": 0.9180781195990322,
+      "social_named": 0.7857680722891566,
+      "novel_per_identity": 2.19,
+      "novel_social_share": 0.6438356164383562,
+      "size_meaning_share": [
+       0.3124101581217058,
+       0.32678485864877815,
+       0.36080498322951604
+      ],
+      "wasted_per_life": 0.40947052030068076
+     },
+     "K4_social1": {
+      "identities": 100,
+      "survival": 0.31,
+      "survival_by_life": [
+       0.08,
+       0.18,
+       0.32,
+       0.42,
+       0.4,
+       0.46
+      ],
+      "speak_rate": 0.6449233158609978,
+      "social_named": 0.7618904274533413,
+      "novel_per_identity": 1.68,
+      "novel_social_share": 0.48214285714285715,
+      "size_meaning_share": [
+       0.35203476886606083,
+       0.3160806005531411,
+       0.3318846305807981
+      ],
+      "wasted_per_life": 0.3815769109208313
+     },
+     "K4_social2": {
+      "identities": 100,
+      "survival": 0.09166666666666666,
+      "survival_by_life": [
+       0.04,
+       0.07,
+       0.1,
+       0.11,
+       0.1,
+       0.13
+      ],
+      "speak_rate": 0.9212827988338192,
+      "social_named": 0.7147943037974683,
+      "novel_per_identity": 2.29,
+      "novel_social_share": 0.5895196506550219,
+      "size_meaning_share": [
+       0.25788599889319314,
+       0.38184836745987827,
+       0.3602656336469286
+      ],
+      "wasted_per_life": 0.4303671647005667
+     },
+     "K5_social2": {
+      "identities": 100,
+      "survival": 0.043333333333333335,
+      "survival_by_life": [
+       0.01,
+       0.02,
+       0.05,
+       0.04,
+       0.05,
+       0.09
+      ],
+      "speak_rate": 0.921726041144004,
+      "social_named": 0.6222101252041372,
+      "novel_per_identity": 1.91,
+      "novel_social_share": 0.5392670157068062,
+      "size_meaning_share": [
+       0.34995625546806647,
+       0.30708661417322836,
+       0.3429571303587052
+      ],
+      "wasted_per_life": 0.28414500855147634
+     }
+    }
+   },
+   "reference": {
+    "silent": {
+     "K1_social0": 1.0,
+     "K2_social1": 0.021666666666666667,
+     "K3_social1": 0.006666666666666667,
+     "K3_social2": 0.0,
+     "K4_social1": 0.006666666666666667,
+     "K4_social2": 0.0,
+     "K5_social2": 0.0
+    },
+    "composed": {
+     "K1_social0": 1.0,
+     "K2_social1": 0.865,
+     "K3_social1": 0.65,
+     "K3_social2": 0.6433333333333333,
+     "K4_social1": 0.5966666666666667,
+     "K4_social2": 0.5483333333333333,
+     "K5_social2": 0.42333333333333334
+    },
+    "single_0.4": {
+     "K1_social0": 1.0,
+     "K2_social1": 0.6366666666666667,
+     "K3_social1": 0.47,
+     "K3_social2": 0.3983333333333333,
+     "K4_social1": 0.42833333333333334,
+     "K4_social2": 0.36833333333333335,
+     "K5_social2": 0.27166666666666667
+    },
+    "single_0.6": {
+     "K1_social0": 1.0,
+     "K2_social1": 0.27666666666666667,
+     "K3_social1": 0.13333333333333333,
+     "K3_social2": 0.4266666666666667,
+     "K4_social1": 0.15666666666666668,
+     "K4_social2": 0.35333333333333333,
+     "K5_social2": 0.3016666666666667
+    },
+    "species": {
+     "K1_social0": 1.0,
+     "K2_social1": 0.795,
+     "K3_social1": 0.6116666666666667,
+     "K3_social2": 0.43,
+     "K4_social1": 0.585,
+     "K4_social2": 0.36333333333333334,
+     "K5_social2": 0.29833333333333334
+    }
+   },
+   "curve": [
+    {
+     "decisions": 0,
+     "none": {
+      "K1_social0": 0.9883,
+      "K2_social1": 0.0633,
+      "K3_social1": 0.0317,
+      "K3_social2": 0.0,
+      "K4_social1": 0.0267,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "mute": {
+      "K1_social0": 0.9833,
+      "K2_social1": 0.0167,
+      "K3_social1": 0.005,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.8967,
+      "K2_social1": 0.0417,
+      "K3_social1": 0.02,
+      "K3_social2": 0.0,
+      "K4_social1": 0.0317,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "scramble_w2": {
+      "K1_social0": 0.9783,
+      "K2_social1": 0.0467,
+      "K3_social1": 0.0267,
+      "K3_social2": 0.0,
+      "K4_social1": 0.0267,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.202,
+      "K3_social1": 0.166,
+      "K3_social2": 0.351,
+      "K4_social1": 0.163,
+      "K4_social2": 0.333,
+      "K5_social2": 0.312
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.343,
+       0.322,
+       0.336
+      ],
+      "K3_social1": [
+       0.404,
+       0.328,
+       0.268
+      ],
+      "K3_social2": [
+       0.336,
+       0.286,
+       0.378
+      ],
+      "K4_social1": [
+       0.34,
+       0.346,
+       0.314
+      ],
+      "K4_social2": [
+       0.276,
+       0.409,
+       0.315
+      ],
+      "K5_social2": [
+       0.345,
+       0.299,
+       0.355
+      ]
+     }
+    },
+    {
+     "decisions": 50069504,
+     "none": {
+      "K1_social0": 0.9683,
+      "K2_social1": 0.12,
+      "K3_social1": 0.0833,
+      "K3_social2": 0.0067,
+      "K4_social1": 0.075,
+      "K4_social2": 0.0017,
+      "K5_social2": 0.005
+     },
+     "mute": {
+      "K1_social0": 0.9817,
+      "K2_social1": 0.0183,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.8783,
+      "K2_social1": 0.0733,
+      "K3_social1": 0.0517,
+      "K3_social2": 0.0017,
+      "K4_social1": 0.045,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0033
+     },
+     "scramble_w2": {
+      "K1_social0": 0.975,
+      "K2_social1": 0.1517,
+      "K3_social1": 0.075,
+      "K3_social2": 0.0,
+      "K4_social1": 0.0833,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0033
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.371,
+      "K3_social1": 0.368,
+      "K3_social2": 0.392,
+      "K4_social1": 0.356,
+      "K4_social2": 0.338,
+      "K5_social2": 0.369
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.335,
+       0.334,
+       0.331
+      ],
+      "K3_social1": [
+       0.35,
+       0.318,
+       0.332
+      ],
+      "K3_social2": [
+       0.323,
+       0.308,
+       0.37
+      ],
+      "K4_social1": [
+       0.349,
+       0.34,
+       0.311
+      ],
+      "K4_social2": [
+       0.33,
+       0.353,
+       0.317
+      ],
+      "K5_social2": [
+       0.285,
+       0.366,
+       0.349
+      ]
+     }
+    },
+    {
+     "decisions": 100139008,
+     "none": {
+      "K1_social0": 0.97,
+      "K2_social1": 0.1617,
+      "K3_social1": 0.105,
+      "K3_social2": 0.005,
+      "K4_social1": 0.1083,
+      "K4_social2": 0.005,
+      "K5_social2": 0.0033
+     },
+     "mute": {
+      "K1_social0": 0.9767,
+      "K2_social1": 0.02,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.9083,
+      "K2_social1": 0.1017,
+      "K3_social1": 0.0617,
+      "K3_social2": 0.01,
+      "K4_social1": 0.0483,
+      "K4_social2": 0.0017,
+      "K5_social2": 0.0033
+     },
+     "scramble_w2": {
+      "K1_social0": 0.98,
+      "K2_social1": 0.1833,
+      "K3_social1": 0.1017,
+      "K3_social2": 0.015,
+      "K4_social1": 0.095,
+      "K4_social2": 0.0117,
+      "K5_social2": 0.0067
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.524,
+      "K3_social1": 0.523,
+      "K3_social2": 0.467,
+      "K4_social1": 0.486,
+      "K4_social2": 0.449,
+      "K5_social2": 0.329
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.336,
+       0.341,
+       0.322
+      ],
+      "K3_social1": [
+       0.343,
+       0.329,
+       0.328
+      ],
+      "K3_social2": [
+       0.329,
+       0.348,
+       0.323
+      ],
+      "K4_social1": [
+       0.308,
+       0.346,
+       0.345
+      ],
+      "K4_social2": [
+       0.349,
+       0.308,
+       0.344
+      ],
+      "K5_social2": [
+       0.329,
+       0.338,
+       0.333
+      ]
+     }
+    },
+    {
+     "decisions": 150208512,
+     "none": {
+      "K1_social0": 0.9733,
+      "K2_social1": 0.2617,
+      "K3_social1": 0.1583,
+      "K3_social2": 0.0167,
+      "K4_social1": 0.0933,
+      "K4_social2": 0.015,
+      "K5_social2": 0.0017
+     },
+     "mute": {
+      "K1_social0": 0.97,
+      "K2_social1": 0.0183,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.9,
+      "K2_social1": 0.105,
+      "K3_social1": 0.065,
+      "K3_social2": 0.0133,
+      "K4_social1": 0.0433,
+      "K4_social2": 0.0033,
+      "K5_social2": 0.0
+     },
+     "scramble_w2": {
+      "K1_social0": 0.9667,
+      "K2_social1": 0.3017,
+      "K3_social1": 0.1433,
+      "K3_social2": 0.0267,
+      "K4_social1": 0.1417,
+      "K4_social2": 0.0167,
+      "K5_social2": 0.0033
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.681,
+      "K3_social1": 0.672,
+      "K3_social2": 0.56,
+      "K4_social1": 0.503,
+      "K4_social2": 0.536,
+      "K5_social2": 0.354
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.324,
+       0.35,
+       0.326
+      ],
+      "K3_social1": [
+       0.33,
+       0.34,
+       0.329
+      ],
+      "K3_social2": [
+       0.352,
+       0.316,
+       0.332
+      ],
+      "K4_social1": [
+       0.347,
+       0.335,
+       0.318
+      ],
+      "K4_social2": [
+       0.382,
+       0.318,
+       0.3
+      ],
+      "K5_social2": [
+       0.306,
+       0.378,
+       0.315
+      ]
+     }
+    },
+    {
+     "decisions": 200278016,
+     "none": {
+      "K1_social0": 0.9867,
+      "K2_social1": 0.4083,
+      "K3_social1": 0.285,
+      "K3_social2": 0.015,
+      "K4_social1": 0.2017,
+      "K4_social2": 0.0183,
+      "K5_social2": 0.0067
+     },
+     "mute": {
+      "K1_social0": 0.99,
+      "K2_social1": 0.02,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.9217,
+      "K2_social1": 0.1617,
+      "K3_social1": 0.075,
+      "K3_social2": 0.0067,
+      "K4_social1": 0.055,
+      "K4_social2": 0.0083,
+      "K5_social2": 0.0
+     },
+     "scramble_w2": {
+      "K1_social0": 0.9883,
+      "K2_social1": 0.4333,
+      "K3_social1": 0.265,
+      "K3_social2": 0.025,
+      "K4_social1": 0.1733,
+      "K4_social2": 0.02,
+      "K5_social2": 0.0
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.821,
+      "K3_social1": 0.75,
+      "K3_social2": 0.597,
+      "K4_social1": 0.686,
+      "K4_social2": 0.54,
+      "K5_social2": 0.409
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.319,
+       0.338,
+       0.344
+      ],
+      "K3_social1": [
+       0.321,
+       0.371,
+       0.309
+      ],
+      "K3_social2": [
+       0.348,
+       0.322,
+       0.331
+      ],
+      "K4_social1": [
+       0.331,
+       0.354,
+       0.315
+      ],
+      "K4_social2": [
+       0.342,
+       0.352,
+       0.306
+      ],
+      "K5_social2": [
+       0.322,
+       0.336,
+       0.342
+      ]
+     }
+    },
+    {
+     "decisions": 250347520,
+     "none": {
+      "K1_social0": 0.98,
+      "K2_social1": 0.4783,
+      "K3_social1": 0.3333,
+      "K3_social2": 0.0183,
+      "K4_social1": 0.2217,
+      "K4_social2": 0.0367,
+      "K5_social2": 0.0067
+     },
+     "mute": {
+      "K1_social0": 0.9867,
+      "K2_social1": 0.0167,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.9117,
+      "K2_social1": 0.155,
+      "K3_social1": 0.0833,
+      "K3_social2": 0.0083,
+      "K4_social1": 0.0583,
+      "K4_social2": 0.0033,
+      "K5_social2": 0.0033
+     },
+     "scramble_w2": {
+      "K1_social0": 0.98,
+      "K2_social1": 0.4817,
+      "K3_social1": 0.31,
+      "K3_social2": 0.0367,
+      "K4_social1": 0.2033,
+      "K4_social2": 0.02,
+      "K5_social2": 0.01
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.871,
+      "K3_social1": 0.803,
+      "K3_social2": 0.642,
+      "K4_social1": 0.707,
+      "K4_social2": 0.622,
+      "K5_social2": 0.451
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.328,
+       0.334,
+       0.338
+      ],
+      "K3_social1": [
+       0.345,
+       0.323,
+       0.332
+      ],
+      "K3_social2": [
+       0.401,
+       0.298,
+       0.301
+      ],
+      "K4_social1": [
+       0.32,
+       0.355,
+       0.325
+      ],
+      "K4_social2": [
+       0.312,
+       0.338,
+       0.35
+      ],
+      "K5_social2": [
+       0.318,
+       0.339,
+       0.342
+      ]
+     }
+    },
+    {
+     "decisions": 300417024,
+     "none": {
+      "K1_social0": 0.9817,
+      "K2_social1": 0.4583,
+      "K3_social1": 0.3783,
+      "K3_social2": 0.03,
+      "K4_social1": 0.2417,
+      "K4_social2": 0.0283,
+      "K5_social2": 0.0017
+     },
+     "mute": {
+      "K1_social0": 0.985,
+      "K2_social1": 0.02,
+      "K3_social1": 0.005,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.9167,
+      "K2_social1": 0.1817,
+      "K3_social1": 0.0817,
+      "K3_social2": 0.015,
+      "K4_social1": 0.0683,
+      "K4_social2": 0.005,
+      "K5_social2": 0.0033
+     },
+     "scramble_w2": {
+      "K1_social0": 0.98,
+      "K2_social1": 0.475,
+      "K3_social1": 0.3633,
+      "K3_social2": 0.03,
+      "K4_social1": 0.2167,
+      "K4_social2": 0.04,
+      "K5_social2": 0.0083
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.854,
+      "K3_social1": 0.835,
+      "K3_social2": 0.649,
+      "K4_social1": 0.719,
+      "K4_social2": 0.612,
+      "K5_social2": 0.483
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.33,
+       0.324,
+       0.346
+      ],
+      "K3_social1": [
+       0.323,
+       0.349,
+       0.328
+      ],
+      "K3_social2": [
+       0.332,
+       0.325,
+       0.344
+      ],
+      "K4_social1": [
+       0.342,
+       0.335,
+       0.322
+      ],
+      "K4_social2": [
+       0.357,
+       0.321,
+       0.322
+      ],
+      "K5_social2": [
+       0.295,
+       0.353,
+       0.353
+      ]
+     }
+    },
+    {
+     "decisions": 350486528,
+     "none": {
+      "K1_social0": 0.9767,
+      "K2_social1": 0.5233,
+      "K3_social1": 0.3533,
+      "K3_social2": 0.02,
+      "K4_social1": 0.2383,
+      "K4_social2": 0.0333,
+      "K5_social2": 0.015
+     },
+     "mute": {
+      "K1_social0": 0.9817,
+      "K2_social1": 0.02,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.8767,
+      "K2_social1": 0.19,
+      "K3_social1": 0.0817,
+      "K3_social2": 0.0117,
+      "K4_social1": 0.0683,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0033
+     },
+     "scramble_w2": {
+      "K1_social0": 0.975,
+      "K2_social1": 0.5233,
+      "K3_social1": 0.3317,
+      "K3_social2": 0.0367,
+      "K4_social1": 0.2433,
+      "K4_social2": 0.03,
+      "K5_social2": 0.0133
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.865,
+      "K3_social1": 0.824,
+      "K3_social2": 0.672,
+      "K4_social1": 0.688,
+      "K4_social2": 0.646,
+      "K5_social2": 0.527
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.326,
+       0.329,
+       0.345
+      ],
+      "K3_social1": [
+       0.333,
+       0.345,
+       0.323
+      ],
+      "K3_social2": [
+       0.327,
+       0.335,
+       0.337
+      ],
+      "K4_social1": [
+       0.336,
+       0.332,
+       0.332
+      ],
+      "K4_social2": [
+       0.315,
+       0.33,
+       0.354
+      ],
+      "K5_social2": [
+       0.309,
+       0.331,
+       0.36
+      ]
+     }
+    },
+    {
+     "decisions": 400556032,
+     "none": {
+      "K1_social0": 0.9833,
+      "K2_social1": 0.525,
+      "K3_social1": 0.3717,
+      "K3_social2": 0.025,
+      "K4_social1": 0.235,
+      "K4_social2": 0.04,
+      "K5_social2": 0.015
+     },
+     "mute": {
+      "K1_social0": 0.9783,
+      "K2_social1": 0.0183,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.9017,
+      "K2_social1": 0.1783,
+      "K3_social1": 0.085,
+      "K3_social2": 0.0117,
+      "K4_social1": 0.08,
+      "K4_social2": 0.005,
+      "K5_social2": 0.0033
+     },
+     "scramble_w2": {
+      "K1_social0": 0.9817,
+      "K2_social1": 0.5367,
+      "K3_social1": 0.3583,
+      "K3_social2": 0.03,
+      "K4_social1": 0.26,
+      "K4_social2": 0.0383,
+      "K5_social2": 0.005
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.89,
+      "K3_social1": 0.805,
+      "K3_social2": 0.644,
+      "K4_social1": 0.718,
+      "K4_social2": 0.637,
+      "K5_social2": 0.52
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.314,
+       0.351,
+       0.335
+      ],
+      "K3_social1": [
+       0.294,
+       0.358,
+       0.349
+      ],
+      "K3_social2": [
+       0.341,
+       0.313,
+       0.346
+      ],
+      "K4_social1": [
+       0.307,
+       0.338,
+       0.355
+      ],
+      "K4_social2": [
+       0.293,
+       0.35,
+       0.357
+      ],
+      "K5_social2": [
+       0.285,
+       0.344,
+       0.372
+      ]
+     }
+    },
+    {
+     "decisions": 450625536,
+     "none": {
+      "K1_social0": 0.9867,
+      "K2_social1": 0.5117,
+      "K3_social1": 0.395,
+      "K3_social2": 0.045,
+      "K4_social1": 0.2467,
+      "K4_social2": 0.0367,
+      "K5_social2": 0.0133
+     },
+     "mute": {
+      "K1_social0": 0.9867,
+      "K2_social1": 0.02,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.9033,
+      "K2_social1": 0.2,
+      "K3_social1": 0.1,
+      "K3_social2": 0.02,
+      "K4_social1": 0.085,
+      "K4_social2": 0.0017,
+      "K5_social2": 0.0017
+     },
+     "scramble_w2": {
+      "K1_social0": 0.9867,
+      "K2_social1": 0.5517,
+      "K3_social1": 0.345,
+      "K3_social2": 0.045,
+      "K4_social1": 0.2767,
+      "K4_social2": 0.0583,
+      "K5_social2": 0.025
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.863,
+      "K3_social1": 0.844,
+      "K3_social2": 0.68,
+      "K4_social1": 0.72,
+      "K4_social2": 0.654,
+      "K5_social2": 0.541
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.332,
+       0.321,
+       0.347
+      ],
+      "K3_social1": [
+       0.271,
+       0.36,
+       0.369
+      ],
+      "K3_social2": [
+       0.333,
+       0.345,
+       0.322
+      ],
+      "K4_social1": [
+       0.29,
+       0.364,
+       0.346
+      ],
+      "K4_social2": [
+       0.311,
+       0.327,
+       0.362
+      ],
+      "K5_social2": [
+       0.268,
+       0.325,
+       0.407
+      ]
+     }
+    },
+    {
+     "decisions": 500695040,
+     "none": {
+      "K1_social0": 0.9833,
+      "K2_social1": 0.5183,
+      "K3_social1": 0.3967,
+      "K3_social2": 0.045,
+      "K4_social1": 0.2967,
+      "K4_social2": 0.0467,
+      "K5_social2": 0.0133
+     },
+     "mute": {
+      "K1_social0": 0.9867,
+      "K2_social1": 0.0183,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.8967,
+      "K2_social1": 0.195,
+      "K3_social1": 0.1083,
+      "K3_social2": 0.015,
+      "K4_social1": 0.085,
+      "K4_social2": 0.0117,
+      "K5_social2": 0.005
+     },
+     "scramble_w2": {
+      "K1_social0": 0.99,
+      "K2_social1": 0.5183,
+      "K3_social1": 0.3833,
+      "K3_social2": 0.0367,
+      "K4_social1": 0.3333,
+      "K4_social2": 0.0417,
+      "K5_social2": 0.01
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.85,
+      "K3_social1": 0.843,
+      "K3_social2": 0.673,
+      "K4_social1": 0.748,
+      "K4_social2": 0.647,
+      "K5_social2": 0.553
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.259,
+       0.364,
+       0.377
+      ],
+      "K3_social1": [
+       0.255,
+       0.356,
+       0.389
+      ],
+      "K3_social2": [
+       0.314,
+       0.35,
+       0.336
+      ],
+      "K4_social1": [
+       0.274,
+       0.355,
+       0.371
+      ],
+      "K4_social2": [
+       0.292,
+       0.329,
+       0.379
+      ],
+      "K5_social2": [
+       0.282,
+       0.328,
+       0.39
+      ]
+     }
+    },
+    {
+     "decisions": 550764544,
+     "none": {
+      "K1_social0": 0.9767,
+      "K2_social1": 0.5533,
+      "K3_social1": 0.395,
+      "K3_social2": 0.05,
+      "K4_social1": 0.2817,
+      "K4_social2": 0.0417,
+      "K5_social2": 0.0067
+     },
+     "mute": {
+      "K1_social0": 0.98,
+      "K2_social1": 0.0183,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.895,
+      "K2_social1": 0.2,
+      "K3_social1": 0.1083,
+      "K3_social2": 0.0183,
+      "K4_social1": 0.0833,
+      "K4_social2": 0.0133,
+      "K5_social2": 0.0017
+     },
+     "scramble_w2": {
+      "K1_social0": 0.9733,
+      "K2_social1": 0.52,
+      "K3_social1": 0.385,
+      "K3_social2": 0.045,
+      "K4_social1": 0.3083,
+      "K4_social2": 0.055,
+      "K5_social2": 0.0233
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.859,
+      "K3_social1": 0.842,
+      "K3_social2": 0.703,
+      "K4_social1": 0.73,
+      "K4_social2": 0.665,
+      "K5_social2": 0.51
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.175,
+       0.399,
+       0.426
+      ],
+      "K3_social1": [
+       0.142,
+       0.411,
+       0.446
+      ],
+      "K3_social2": [
+       0.225,
+       0.316,
+       0.459
+      ],
+      "K4_social1": [
+       0.17,
+       0.371,
+       0.459
+      ],
+      "K4_social2": [
+       0.241,
+       0.361,
+       0.398
+      ],
+      "K5_social2": [
+       0.274,
+       0.317,
+       0.409
+      ]
+     }
+    },
+    {
+     "decisions": 600834048,
+     "none": {
+      "K1_social0": 0.975,
+      "K2_social1": 0.5783,
+      "K3_social1": 0.4133,
+      "K3_social2": 0.0583,
+      "K4_social1": 0.31,
+      "K4_social2": 0.055,
+      "K5_social2": 0.015
+     },
+     "mute": {
+      "K1_social0": 0.9817,
+      "K2_social1": 0.02,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.9067,
+      "K2_social1": 0.2,
+      "K3_social1": 0.1133,
+      "K3_social2": 0.0317,
+      "K4_social1": 0.09,
+      "K4_social2": 0.0133,
+      "K5_social2": 0.0033
+     },
+     "scramble_w2": {
+      "K1_social0": 0.975,
+      "K2_social1": 0.5483,
+      "K3_social1": 0.3817,
+      "K3_social2": 0.0517,
+      "K4_social1": 0.2817,
+      "K4_social2": 0.0633,
+      "K5_social2": 0.0217
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.871,
+      "K3_social1": 0.85,
+      "K3_social2": 0.7,
+      "K4_social1": 0.766,
+      "K4_social2": 0.665,
+      "K5_social2": 0.583
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.118,
+       0.425,
+       0.457
+      ],
+      "K3_social1": [
+       0.098,
+       0.43,
+       0.471
+      ],
+      "K3_social2": [
+       0.18,
+       0.297,
+       0.523
+      ],
+      "K4_social1": [
+       0.163,
+       0.404,
+       0.433
+      ],
+      "K4_social2": [
+       0.194,
+       0.41,
+       0.396
+      ],
+      "K5_social2": [
+       0.205,
+       0.334,
+       0.461
+      ]
+     }
+    },
+    {
+     "decisions": 650903552,
+     "none": {
+      "K1_social0": 0.98,
+      "K2_social1": 0.575,
+      "K3_social1": 0.455,
+      "K3_social2": 0.0733,
+      "K4_social1": 0.3183,
+      "K4_social2": 0.0517,
+      "K5_social2": 0.0333
+     },
+     "mute": {
+      "K1_social0": 0.9867,
+      "K2_social1": 0.02,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.91,
+      "K2_social1": 0.2017,
+      "K3_social1": 0.0967,
+      "K3_social2": 0.0333,
+      "K4_social1": 0.0967,
+      "K4_social2": 0.0067,
+      "K5_social2": 0.0067
+     },
+     "scramble_w2": {
+      "K1_social0": 0.9833,
+      "K2_social1": 0.5767,
+      "K3_social1": 0.4183,
+      "K3_social2": 0.05,
+      "K4_social1": 0.2717,
+      "K4_social2": 0.04,
+      "K5_social2": 0.0317
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.871,
+      "K3_social1": 0.861,
+      "K3_social2": 0.709,
+      "K4_social1": 0.733,
+      "K4_social2": 0.688,
+      "K5_social2": 0.57
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.084,
+       0.483,
+       0.433
+      ],
+      "K3_social1": [
+       0.084,
+       0.459,
+       0.457
+      ],
+      "K3_social2": [
+       0.179,
+       0.366,
+       0.455
+      ],
+      "K4_social1": [
+       0.114,
+       0.427,
+       0.459
+      ],
+      "K4_social2": [
+       0.172,
+       0.406,
+       0.422
+      ],
+      "K5_social2": [
+       0.193,
+       0.3,
+       0.508
+      ]
+     }
+    },
+    {
+     "decisions": 700973056,
+     "none": {
+      "K1_social0": 0.975,
+      "K2_social1": 0.595,
+      "K3_social1": 0.425,
+      "K3_social2": 0.0883,
+      "K4_social1": 0.3117,
+      "K4_social2": 0.0583,
+      "K5_social2": 0.0217
+     },
+     "mute": {
+      "K1_social0": 0.9783,
+      "K2_social1": 0.0183,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.8967,
+      "K2_social1": 0.2,
+      "K3_social1": 0.0983,
+      "K3_social2": 0.0217,
+      "K4_social1": 0.0867,
+      "K4_social2": 0.015,
+      "K5_social2": 0.0033
+     },
+     "scramble_w2": {
+      "K1_social0": 0.975,
+      "K2_social1": 0.535,
+      "K3_social1": 0.4267,
+      "K3_social2": 0.0683,
+      "K4_social1": 0.3167,
+      "K4_social2": 0.0533,
+      "K5_social2": 0.0217
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.875,
+      "K3_social1": 0.835,
+      "K3_social2": 0.707,
+      "K4_social1": 0.74,
+      "K4_social2": 0.672,
+      "K5_social2": 0.552
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.074,
+       0.469,
+       0.457
+      ],
+      "K3_social1": [
+       0.069,
+       0.435,
+       0.496
+      ],
+      "K3_social2": [
+       0.145,
+       0.409,
+       0.446
+      ],
+      "K4_social1": [
+       0.117,
+       0.425,
+       0.458
+      ],
+      "K4_social2": [
+       0.128,
+       0.4,
+       0.472
+      ],
+      "K5_social2": [
+       0.157,
+       0.336,
+       0.507
+      ]
+     }
+    },
+    {
+     "decisions": 751042560,
+     "none": {
+      "K1_social0": 0.9767,
+      "K2_social1": 0.595,
+      "K3_social1": 0.4333,
+      "K3_social2": 0.1,
+      "K4_social1": 0.3467,
+      "K4_social2": 0.065,
+      "K5_social2": 0.0333
+     },
+     "mute": {
+      "K1_social0": 0.98,
+      "K2_social1": 0.02,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.8967,
+      "K2_social1": 0.2083,
+      "K3_social1": 0.1317,
+      "K3_social2": 0.0233,
+      "K4_social1": 0.0933,
+      "K4_social2": 0.0183,
+      "K5_social2": 0.0033
+     },
+     "scramble_w2": {
+      "K1_social0": 0.9833,
+      "K2_social1": 0.5567,
+      "K3_social1": 0.4433,
+      "K3_social2": 0.09,
+      "K4_social1": 0.305,
+      "K4_social2": 0.075,
+      "K5_social2": 0.0333
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.869,
+      "K3_social1": 0.85,
+      "K3_social2": 0.753,
+      "K4_social1": 0.775,
+      "K4_social2": 0.67,
+      "K5_social2": 0.573
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.075,
+       0.508,
+       0.417
+      ],
+      "K3_social1": [
+       0.095,
+       0.468,
+       0.437
+      ],
+      "K3_social2": [
+       0.117,
+       0.394,
+       0.489
+      ],
+      "K4_social1": [
+       0.102,
+       0.459,
+       0.439
+      ],
+      "K4_social2": [
+       0.132,
+       0.354,
+       0.514
+      ],
+      "K5_social2": [
+       0.172,
+       0.337,
+       0.491
+      ]
+     }
+    },
+    {
+     "decisions": 801112064,
+     "none": {
+      "K1_social0": 0.985,
+      "K2_social1": 0.6133,
+      "K3_social1": 0.4617,
+      "K3_social2": 0.0933,
+      "K4_social1": 0.3817,
+      "K4_social2": 0.0633,
+      "K5_social2": 0.035
+     },
+     "mute": {
+      "K1_social0": 0.98,
+      "K2_social1": 0.02,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.0033,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.8883,
+      "K2_social1": 0.1917,
+      "K3_social1": 0.1067,
+      "K3_social2": 0.0417,
+      "K4_social1": 0.0933,
+      "K4_social2": 0.02,
+      "K5_social2": 0.0083
+     },
+     "scramble_w2": {
+      "K1_social0": 0.9867,
+      "K2_social1": 0.5583,
+      "K3_social1": 0.4183,
+      "K3_social2": 0.075,
+      "K4_social1": 0.325,
+      "K4_social2": 0.0617,
+      "K5_social2": 0.0267
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.886,
+      "K3_social1": 0.864,
+      "K3_social2": 0.727,
+      "K4_social1": 0.781,
+      "K4_social2": 0.649,
+      "K5_social2": 0.587
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.067,
+       0.512,
+       0.421
+      ],
+      "K3_social1": [
+       0.057,
+       0.411,
+       0.532
+      ],
+      "K3_social2": [
+       0.146,
+       0.38,
+       0.474
+      ],
+      "K4_social1": [
+       0.105,
+       0.459,
+       0.436
+      ],
+      "K4_social2": [
+       0.142,
+       0.399,
+       0.459
+      ],
+      "K5_social2": [
+       0.19,
+       0.368,
+       0.441
+      ]
+     }
+    },
+    {
+     "decisions": 851181568,
+     "none": {
+      "K1_social0": 0.98,
+      "K2_social1": 0.595,
+      "K3_social1": 0.4467,
+      "K3_social2": 0.12,
+      "K4_social1": 0.345,
+      "K4_social2": 0.0933,
+      "K5_social2": 0.0417
+     },
+     "mute": {
+      "K1_social0": 0.9833,
+      "K2_social1": 0.02,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.88,
+      "K2_social1": 0.2083,
+      "K3_social1": 0.13,
+      "K3_social2": 0.0283,
+      "K4_social1": 0.0783,
+      "K4_social2": 0.015,
+      "K5_social2": 0.0033
+     },
+     "scramble_w2": {
+      "K1_social0": 0.985,
+      "K2_social1": 0.5517,
+      "K3_social1": 0.41,
+      "K3_social2": 0.11,
+      "K4_social1": 0.3417,
+      "K4_social2": 0.0817,
+      "K5_social2": 0.03
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.869,
+      "K3_social1": 0.863,
+      "K3_social2": 0.772,
+      "K4_social1": 0.758,
+      "K4_social2": 0.728,
+      "K5_social2": 0.61
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.076,
+       0.512,
+       0.413
+      ],
+      "K3_social1": [
+       0.067,
+       0.412,
+       0.522
+      ],
+      "K3_social2": [
+       0.105,
+       0.379,
+       0.517
+      ],
+      "K4_social1": [
+       0.1,
+       0.415,
+       0.485
+      ],
+      "K4_social2": [
+       0.114,
+       0.404,
+       0.482
+      ],
+      "K5_social2": [
+       0.169,
+       0.327,
+       0.504
+      ]
+     }
+    },
+    {
+     "decisions": 901251072,
+     "none": {
+      "K1_social0": 0.9817,
+      "K2_social1": 0.5833,
+      "K3_social1": 0.46,
+      "K3_social2": 0.1233,
+      "K4_social1": 0.34,
+      "K4_social2": 0.1,
+      "K5_social2": 0.055
+     },
+     "mute": {
+      "K1_social0": 0.9883,
+      "K2_social1": 0.02,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.9,
+      "K2_social1": 0.2017,
+      "K3_social1": 0.1233,
+      "K3_social2": 0.0367,
+      "K4_social1": 0.0933,
+      "K4_social2": 0.0117,
+      "K5_social2": 0.0067
+     },
+     "scramble_w2": {
+      "K1_social0": 0.98,
+      "K2_social1": 0.5483,
+      "K3_social1": 0.4083,
+      "K3_social2": 0.0867,
+      "K4_social1": 0.3133,
+      "K4_social2": 0.065,
+      "K5_social2": 0.0417
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.883,
+      "K3_social1": 0.877,
+      "K3_social2": 0.774,
+      "K4_social1": 0.782,
+      "K4_social2": 0.743,
+      "K5_social2": 0.657
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.067,
+       0.501,
+       0.431
+      ],
+      "K3_social1": [
+       0.049,
+       0.462,
+       0.489
+      ],
+      "K3_social2": [
+       0.089,
+       0.406,
+       0.506
+      ],
+      "K4_social1": [
+       0.071,
+       0.435,
+       0.494
+      ],
+      "K4_social2": [
+       0.091,
+       0.479,
+       0.43
+      ],
+      "K5_social2": [
+       0.149,
+       0.325,
+       0.526
+      ]
+     }
+    },
+    {
+     "decisions": 951320576,
+     "none": {
+      "K1_social0": 0.9767,
+      "K2_social1": 0.6317,
+      "K3_social1": 0.455,
+      "K3_social2": 0.15,
+      "K4_social1": 0.3633,
+      "K4_social2": 0.0817,
+      "K5_social2": 0.055
+     },
+     "mute": {
+      "K1_social0": 0.975,
+      "K2_social1": 0.02,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.8883,
+      "K2_social1": 0.205,
+      "K3_social1": 0.1083,
+      "K3_social2": 0.045,
+      "K4_social1": 0.08,
+      "K4_social2": 0.0133,
+      "K5_social2": 0.0133
+     },
+     "scramble_w2": {
+      "K1_social0": 0.9717,
+      "K2_social1": 0.5717,
+      "K3_social1": 0.4083,
+      "K3_social2": 0.11,
+      "K4_social1": 0.3217,
+      "K4_social2": 0.1033,
+      "K5_social2": 0.0417
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.888,
+      "K3_social1": 0.851,
+      "K3_social2": 0.799,
+      "K4_social1": 0.786,
+      "K4_social2": 0.696,
+      "K5_social2": 0.657
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.082,
+       0.511,
+       0.407
+      ],
+      "K3_social1": [
+       0.052,
+       0.461,
+       0.487
+      ],
+      "K3_social2": [
+       0.073,
+       0.397,
+       0.53
+      ],
+      "K4_social1": [
+       0.059,
+       0.499,
+       0.442
+      ],
+      "K4_social2": [
+       0.14,
+       0.419,
+       0.441
+      ],
+      "K5_social2": [
+       0.16,
+       0.276,
+       0.564
+      ]
+     }
+    },
+    {
+     "decisions": 1001390080,
+     "none": {
+      "K1_social0": 0.9767,
+      "K2_social1": 0.61,
+      "K3_social1": 0.4633,
+      "K3_social2": 0.1433,
+      "K4_social1": 0.3667,
+      "K4_social2": 0.12,
+      "K5_social2": 0.05
+     },
+     "mute": {
+      "K1_social0": 0.985,
+      "K2_social1": 0.02,
+      "K3_social1": 0.005,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.8967,
+      "K2_social1": 0.2017,
+      "K3_social1": 0.1083,
+      "K3_social2": 0.0367,
+      "K4_social1": 0.08,
+      "K4_social2": 0.02,
+      "K5_social2": 0.0117
+     },
+     "scramble_w2": {
+      "K1_social0": 0.9817,
+      "K2_social1": 0.5483,
+      "K3_social1": 0.445,
+      "K3_social2": 0.12,
+      "K4_social1": 0.3367,
+      "K4_social2": 0.0767,
+      "K5_social2": 0.045
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.87,
+      "K3_social1": 0.848,
+      "K3_social2": 0.778,
+      "K4_social1": 0.782,
+      "K4_social2": 0.751,
+      "K5_social2": 0.627
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.057,
+       0.492,
+       0.451
+      ],
+      "K3_social1": [
+       0.049,
+       0.446,
+       0.505
+      ],
+      "K3_social2": [
+       0.081,
+       0.382,
+       0.537
+      ],
+      "K4_social1": [
+       0.097,
+       0.467,
+       0.436
+      ],
+      "K4_social2": [
+       0.117,
+       0.458,
+       0.425
+      ],
+      "K5_social2": [
+       0.171,
+       0.327,
+       0.501
+      ]
+     }
+    },
+    {
+     "decisions": 1024065536,
+     "none": {
+      "K1_social0": 0.9883,
+      "K2_social1": 0.6167,
+      "K3_social1": 0.4733,
+      "K3_social2": 0.1417,
+      "K4_social1": 0.3583,
+      "K4_social2": 0.1233,
+      "K5_social2": 0.0717
+     },
+     "mute": {
+      "K1_social0": 0.9833,
+      "K2_social1": 0.02,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.8867,
+      "K2_social1": 0.2267,
+      "K3_social1": 0.1167,
+      "K3_social2": 0.0467,
+      "K4_social1": 0.095,
+      "K4_social2": 0.0167,
+      "K5_social2": 0.005
+     },
+     "scramble_w2": {
+      "K1_social0": 0.9783,
+      "K2_social1": 0.5783,
+      "K3_social1": 0.4217,
+      "K3_social2": 0.105,
+      "K4_social1": 0.31,
+      "K4_social2": 0.0917,
+      "K5_social2": 0.0433
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.884,
+      "K3_social1": 0.856,
+      "K3_social2": 0.788,
+      "K4_social1": 0.793,
+      "K4_social2": 0.732,
+      "K5_social2": 0.649
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.058,
+       0.528,
+       0.415
+      ],
+      "K3_social1": [
+       0.054,
+       0.465,
+       0.481
+      ],
+      "K3_social2": [
+       0.088,
+       0.4,
+       0.511
+      ],
+      "K4_social1": [
+       0.091,
+       0.482,
+       0.427
+      ],
+      "K4_social2": [
+       0.116,
+       0.403,
+       0.481
+      ],
+      "K5_social2": [
+       0.138,
+       0.244,
+       0.617
+      ]
+     }
+    }
+   ]
+  },
+  "scratch_s0": {
+   "manifest": {
+    "config": {
+     "seed": 0,
+     "envs": 1024,
+     "horizon": 128,
+     "hidden": 256,
+     "ks": [
+      1,
+      2,
+      3,
+      4,
+      5
+     ],
+     "lr": 0.0003,
+     "gamma": 0.997,
+     "lam": 0.95,
+     "clip": 0.2,
+     "epochs": 3,
+     "minibatches": 4,
+     "entropy": 0.01,
+     "value_coef": 0.5,
+     "predict_coef": 1.0,
+     "max_grad_norm": 1.0,
+     "alive_reward": 0.007575757575757576,
+     "survive_bonus": 0.5,
+     "init": ""
+    },
+    "dev_eval_base": 6400000000,
+    "dev_eval_per_cell": 100,
+    "eval_cells": [
+     [
+      1,
+      0
+     ],
+     [
+      2,
+      1
+     ],
+     [
+      3,
+      1
+     ],
+     [
+      3,
+      2
+     ],
+     [
+      4,
+      1
+     ],
+     [
+      4,
+      2
+     ],
+     [
+      5,
+      2
+     ]
+    ],
+    "features": 48,
+    "variant": "size",
+    "mlx": "0.32.0",
+    "numpy": "2.5.1",
+    "pins": {
+     "speaking_self.py": "e8ce8781cc21a094d8caaa02d975aec1809244e3adf110f9cb24f167ca251556",
+     "caregiver_v1.py": "999e6d511f58c8bd346a9375f4256ab82664aab0426b83341254434601be7b9f",
+     "learned_self.py": "b28b768b954ce775b8ad28586fe218f588ce6fa8dca99f03cb602f1f67a1652b",
+     "vec_body.py": "1bd91fa6e818472d0deeaf6427b508e1a99d50e4593808c9db2e43738f10f5ec"
+    }
+   },
+   "stop": {
+    "decisions": 1024065536,
+    "train_seconds": 35768.02988518588,
+    "reason": "--max-hours 10"
+   },
+   "checkpoint_sha256": {
+    "optimizer.npz": "80a2d2e9f4f1e4ccece6a255d5be6b0ea61db22b58f4b30dee4766291bd5b36b",
+    "state.json": "687d7a13d042d2a1576c6025da8eac12f70f85eb1684291003d7992a6a3198c3",
+    "weights.npz": "55298fbdb63b6d4b8dec4dc55c55f898e3c662ede76c170522719a606c09748d"
+   },
+   "final": {
+    "none": {
+     "K1_social0": {
+      "identities": 100,
+      "survival": 0.965,
+      "survival_by_life": [
+       0.83,
+       0.97,
+       0.99,
+       1.0,
+       1.0,
+       1.0
+      ],
+      "speak_rate": 0.4467611336032389,
+      "social_named": 0.0,
+      "novel_per_identity": 7.27,
+      "novel_social_share": 0.0,
+      "size_meaning_share": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "wasted_per_life": 0.0
+     },
+     "K2_social1": {
+      "identities": 100,
+      "survival": 0.6333333333333333,
+      "survival_by_life": [
+       0.28,
+       0.54,
+       0.7,
+       0.74,
+       0.76,
+       0.78
+      ],
+      "speak_rate": 0.535214754301275,
+      "social_named": 0.9037927844588344,
+      "novel_per_identity": 0.73,
+      "novel_social_share": 0.6575342465753424,
+      "size_meaning_share": [
+       0.05373592630501536,
+       0.39201637666325484,
+       0.5542476970317298
+      ],
+      "wasted_per_life": 0.5470218096556725
+     },
+     "K3_social1": {
+      "identities": 100,
+      "survival": 0.48833333333333334,
+      "survival_by_life": [
+       0.16,
+       0.35,
+       0.52,
+       0.63,
+       0.64,
+       0.63
+      ],
+      "speak_rate": 0.6132629107981221,
+      "social_named": 0.8875598086124402,
+      "novel_per_identity": 0.92,
+      "novel_social_share": 0.6086956521739131,
+      "size_meaning_share": [
+       0.062264150943396226,
+       0.522911051212938,
+       0.41482479784366577
+      ],
+      "wasted_per_life": 0.400612052545069
+     },
+     "K3_social2": {
+      "identities": 100,
+      "survival": 0.225,
+      "survival_by_life": [
+       0.07,
+       0.14,
+       0.22,
+       0.23,
+       0.36,
+       0.33
+      ],
+      "speak_rate": 0.8905767250257467,
+      "social_named": 0.8375252963284187,
+      "novel_per_identity": 1.28,
+      "novel_social_share": 0.578125,
+      "size_meaning_share": [
+       0.05453917846047635,
+       0.3524335519502934,
+       0.5930272695892302
+      ],
+      "wasted_per_life": 0.6414931742927061
+     },
+     "K4_social1": {
+      "identities": 100,
+      "survival": 0.3983333333333333,
+      "survival_by_life": [
+       0.07,
+       0.29,
+       0.38,
+       0.48,
+       0.62,
+       0.55
+      ],
+      "speak_rate": 0.6201089648340763,
+      "social_named": 0.7851437699680511,
+      "novel_per_identity": 1.46,
+      "novel_social_share": 0.4589041095890411,
+      "size_meaning_share": [
+       0.08646998982706001,
+       0.41844693116310616,
+       0.49508307900983384
+      ],
+      "wasted_per_life": 0.4571673594767008
+     },
+     "K4_social2": {
+      "identities": 100,
+      "survival": 0.20166666666666666,
+      "survival_by_life": [
+       0.04,
+       0.12,
+       0.21,
+       0.21,
+       0.3,
+       0.33
+      ],
+      "speak_rate": 0.9010286349735891,
+      "social_named": 0.7963591484109843,
+      "novel_per_identity": 1.73,
+      "novel_social_share": 0.5028901734104047,
+      "size_meaning_share": [
+       0.07322743122820612,
+       0.3521890740023247,
+       0.5745834947694692
+      ],
+      "wasted_per_life": 0.5683218394388566
+     },
+     "K5_social2": {
+      "identities": 100,
+      "survival": 0.095,
+      "survival_by_life": [
+       0.02,
+       0.05,
+       0.07,
+       0.09,
+       0.17,
+       0.17
+      ],
+      "speak_rate": 0.905794080867028,
+      "social_named": 0.6810860561435803,
+      "novel_per_identity": 1.64,
+      "novel_social_share": 0.4817073170731707,
+      "size_meaning_share": [
+       0.12094594594594595,
+       0.37905405405405407,
+       0.5
+      ],
+      "wasted_per_life": 0.3441346839808512
+     }
+    },
+    "mute": {
+     "K1_social0": {
+      "identities": 100,
+      "survival": 0.9633333333333334,
+      "survival_by_life": [
+       0.82,
+       0.96,
+       1.0,
+       1.0,
+       1.0,
+       1.0
+      ],
+      "speak_rate": 0.4453662484823958,
+      "social_named": 0.0,
+      "novel_per_identity": 7.13,
+      "novel_social_share": 0.0,
+      "size_meaning_share": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "wasted_per_life": 0.0
+     },
+     "K2_social1": {
+      "identities": 100,
+      "survival": 0.02,
+      "survival_by_life": [
+       0.02,
+       0.03,
+       0.01,
+       0.03,
+       0.02,
+       0.01
+      ],
+      "speak_rate": 0.9679865206402696,
+      "social_named": 0.17667536988685814,
+      "novel_per_identity": 2.86,
+      "novel_social_share": 0.14685314685314685,
+      "size_meaning_share": [
+       0.3054187192118227,
+       0.3399014778325123,
+       0.35467980295566504
+      ],
+      "wasted_per_life": 0.0
+     },
+     "K3_social1": {
+      "identities": 100,
+      "survival": 0.0033333333333333335,
+      "survival_by_life": [
+       0.0,
+       0.01,
+       0.0,
+       0.0,
+       0.0,
+       0.01
+      ],
+      "speak_rate": 0.975635593220339,
+      "social_named": 0.1791530944625407,
+      "novel_per_identity": 2.24,
+      "novel_social_share": 0.15178571428571427,
+      "size_meaning_share": [
+       0.43333333333333335,
+       0.296969696969697,
+       0.2696969696969697
+      ],
+      "wasted_per_life": 0.0
+     },
+     "K3_social2": {
+      "identities": 100,
+      "survival": 0.0,
+      "survival_by_life": [
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "speak_rate": 0.9992406985573272,
+      "social_named": 0.3404255319148936,
+      "novel_per_identity": 1.31,
+      "novel_social_share": 0.35877862595419846,
+      "size_meaning_share": [
+       0.31026785714285715,
+       0.359375,
+       0.33035714285714285
+      ],
+      "wasted_per_life": 0.0
+     },
+     "K4_social1": {
+      "identities": 100,
+      "survival": 0.005,
+      "survival_by_life": [
+       0.0,
+       0.0,
+       0.01,
+       0.01,
+       0.01,
+       0.0
+      ],
+      "speak_rate": 0.9544801149976042,
+      "social_named": 0.17520080321285142,
+      "novel_per_identity": 2.66,
+      "novel_social_share": 0.16541353383458646,
+      "size_meaning_share": [
+       0.37822349570200575,
+       0.2808022922636103,
+       0.34097421203438394
+      ],
+      "wasted_per_life": 0.0
+     },
+     "K4_social2": {
+      "identities": 100,
+      "survival": 0.0,
+      "survival_by_life": [
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "speak_rate": 0.9984639016897081,
+      "social_named": 0.33692307692307694,
+      "novel_per_identity": 1.94,
+      "novel_social_share": 0.27835051546391754,
+      "size_meaning_share": [
+       0.3835616438356164,
+       0.319634703196347,
+       0.2968036529680365
+      ],
+      "wasted_per_life": 0.0
+     },
+     "K5_social2": {
+      "identities": 100,
+      "survival": 0.0,
+      "survival_by_life": [
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "speak_rate": 0.9832007073386384,
+      "social_named": 0.335431654676259,
+      "novel_per_identity": 1.44,
+      "novel_social_share": 0.3819444444444444,
+      "size_meaning_share": [
+       0.3485254691689008,
+       0.34048257372654156,
+       0.3109919571045576
+      ],
+      "wasted_per_life": 0.0
+     }
+    },
+    "reset": {
+     "K1_social0": {
+      "identities": 100,
+      "survival": 0.8666666666666667,
+      "survival_by_life": [
+       0.83,
+       0.88,
+       0.92,
+       0.87,
+       0.85,
+       0.85
+      ],
+      "speak_rate": 0.4989991103202847,
+      "social_named": 0.0,
+      "novel_per_identity": 6.21,
+      "novel_social_share": 0.0,
+      "size_meaning_share": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "wasted_per_life": 0.0
+     },
+     "K2_social1": {
+      "identities": 100,
+      "survival": 0.2916666666666667,
+      "survival_by_life": [
+       0.32,
+       0.29,
+       0.29,
+       0.32,
+       0.22,
+       0.31
+      ],
+      "speak_rate": 0.6961997828447339,
+      "social_named": 0.5767311291328758,
+      "novel_per_identity": 1.15,
+      "novel_social_share": 0.23478260869565218,
+      "size_meaning_share": [
+       0.15792320173066524,
+       0.3656030286641428,
+       0.476473769605192
+      ],
+      "wasted_per_life": 0.6629433559281339
+     },
+     "K3_social1": {
+      "identities": 100,
+      "survival": 0.16833333333333333,
+      "survival_by_life": [
+       0.17,
+       0.18,
+       0.13,
+       0.17,
+       0.19,
+       0.17
+      ],
+      "speak_rate": 0.7754905114184625,
+      "social_named": 0.510576524263791,
+      "novel_per_identity": 0.97,
+      "novel_social_share": 0.27835051546391754,
+      "size_meaning_share": [
+       0.22258326563769293,
+       0.44841592201462227,
+       0.3290008123476848
+      ],
+      "wasted_per_life": 0.4358679320238676
+     },
+     "K3_social2": {
+      "identities": 100,
+      "survival": 0.05333333333333334,
+      "survival_by_life": [
+       0.07,
+       0.02,
+       0.05,
+       0.05,
+       0.04,
+       0.09
+      ],
+      "speak_rate": 0.9404934687953556,
+      "social_named": 0.5180041152263375,
+      "novel_per_identity": 0.73,
+      "novel_social_share": 0.4246575342465753,
+      "size_meaning_share": [
+       0.1708043694141013,
+       0.3545183714001986,
+       0.4746772591857001
+      ],
+      "wasted_per_life": 0.49359902625825613
+     },
+     "K4_social1": {
+      "identities": 100,
+      "survival": 0.08333333333333333,
+      "survival_by_life": [
+       0.09,
+       0.1,
+       0.09,
+       0.05,
+       0.11,
+       0.06
+      ],
+      "speak_rate": 0.8278810408921933,
+      "social_named": 0.4059272563987427,
+      "novel_per_identity": 1.09,
+      "novel_social_share": 0.23853211009174313,
+      "size_meaning_share": [
+       0.17809734513274336,
+       0.4446902654867257,
+       0.377212389380531
+      ],
+      "wasted_per_life": 0.3901027776131893
+     },
+     "K4_social2": {
+      "identities": 100,
+      "survival": 0.016666666666666666,
+      "survival_by_life": [
+       0.03,
+       0.01,
+       0.01,
+       0.0,
+       0.03,
+       0.02
+      ],
+      "speak_rate": 0.9717662508207485,
+      "social_named": 0.4263513513513513,
+      "novel_per_identity": 0.94,
+      "novel_social_share": 0.32978723404255317,
+      "size_meaning_share": [
+       0.2868462757527734,
+       0.35340729001584786,
+       0.35974643423137875
+      ],
+      "wasted_per_life": 0.3297331609366159
+     },
+     "K5_social2": {
+      "identities": 100,
+      "survival": 0.023333333333333334,
+      "survival_by_life": [
+       0.01,
+       0.02,
+       0.02,
+       0.04,
+       0.04,
+       0.01
+      ],
+      "speak_rate": 0.9573128061581525,
+      "social_named": 0.4159356725146199,
+      "novel_per_identity": 0.79,
+      "novel_social_share": 0.3670886075949367,
+      "size_meaning_share": [
+       0.19859402460456943,
+       0.4165202108963093,
+       0.38488576449912126
+      ],
+      "wasted_per_life": 0.2046747581090789
+     }
+    },
+    "scramble_w2": {
+     "K1_social0": {
+      "identities": 100,
+      "survival": 0.965,
+      "survival_by_life": [
+       0.83,
+       0.96,
+       1.0,
+       1.0,
+       1.0,
+       1.0
+      ],
+      "speak_rate": 0.4469528244583924,
+      "social_named": 0.0,
+      "novel_per_identity": 6.82,
+      "novel_social_share": 0.0,
+      "size_meaning_share": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "wasted_per_life": 0.0
+     },
+     "K2_social1": {
+      "identities": 100,
+      "survival": 0.5883333333333334,
+      "survival_by_life": [
+       0.29,
+       0.54,
+       0.62,
+       0.7,
+       0.68,
+       0.7
+      ],
+      "speak_rate": 0.5815001325205407,
+      "social_named": 0.9013217866909754,
+      "novel_per_identity": 0.68,
+      "novel_social_share": 0.6470588235294118,
+      "size_meaning_share": [
+       0.37471554993678885,
+       0.27989886219974713,
+       0.34538558786346396
+      ],
+      "wasted_per_life": 0.40198468833584494
+     },
+     "K3_social1": {
+      "identities": 100,
+      "survival": 0.435,
+      "survival_by_life": [
+       0.16,
+       0.33,
+       0.45,
+       0.54,
+       0.55,
+       0.58
+      ],
+      "speak_rate": 0.6354300385109114,
+      "social_named": 0.8833333333333333,
+      "novel_per_identity": 0.85,
+      "novel_social_share": 0.6588235294117647,
+      "size_meaning_share": [
+       0.36620926243567753,
+       0.3210405946255003,
+       0.3127501429388222
+      ],
+      "wasted_per_life": 0.3359346798940224
+     },
+     "K3_social2": {
+      "identities": 100,
+      "survival": 0.14166666666666666,
+      "survival_by_life": [
+       0.05,
+       0.08,
+       0.16,
+       0.15,
+       0.18,
+       0.23
+      ],
+      "speak_rate": 0.9331269349845202,
+      "social_named": 0.794293297942933,
+      "novel_per_identity": 1.76,
+      "novel_social_share": 0.5625,
+      "size_meaning_share": [
+       0.31954887218045114,
+       0.40058479532163743,
+       0.27986633249791143
+      ],
+      "wasted_per_life": 0.4370434322634971
+     },
+     "K4_social1": {
+      "identities": 100,
+      "survival": 0.39166666666666666,
+      "survival_by_life": [
+       0.08,
+       0.21,
+       0.37,
+       0.51,
+       0.6,
+       0.58
+      ],
+      "speak_rate": 0.6484981437732028,
+      "social_named": 0.8144678636481916,
+      "novel_per_identity": 1.36,
+      "novel_social_share": 0.4852941176470588,
+      "size_meaning_share": [
+       0.4083067092651757,
+       0.3035143769968051,
+       0.2881789137380192
+      ],
+      "wasted_per_life": 0.34907271445238
+     },
+     "K4_social2": {
+      "identities": 100,
+      "survival": 0.115,
+      "survival_by_life": [
+       0.0,
+       0.05,
+       0.11,
+       0.15,
+       0.2,
+       0.18
+      ],
+      "speak_rate": 0.9234012649332396,
+      "social_named": 0.741248097412481,
+      "novel_per_identity": 1.94,
+      "novel_social_share": 0.5670103092783505,
+      "size_meaning_share": [
+       0.2915811088295688,
+       0.37474332648870634,
+       0.3336755646817248
+      ],
+      "wasted_per_life": 0.4224654779186223
+     },
+     "K5_social2": {
+      "identities": 100,
+      "survival": 0.045,
+      "survival_by_life": [
+       0.0,
+       0.01,
+       0.02,
+       0.07,
+       0.08,
+       0.09
+      ],
+      "speak_rate": 0.9533366783743101,
+      "social_named": 0.6336842105263157,
+      "novel_per_identity": 1.77,
+      "novel_social_share": 0.5084745762711864,
+      "size_meaning_share": [
+       0.31146179401993357,
+       0.3338870431893688,
+       0.3546511627906977
+      ],
+      "wasted_per_life": 0.2828320189677234
+     }
+    }
+   },
+   "reference": {
+    "silent": {
+     "K1_social0": 1.0,
+     "K2_social1": 0.021666666666666667,
+     "K3_social1": 0.006666666666666667,
+     "K3_social2": 0.0,
+     "K4_social1": 0.006666666666666667,
+     "K4_social2": 0.0,
+     "K5_social2": 0.0
+    },
+    "composed": {
+     "K1_social0": 1.0,
+     "K2_social1": 0.865,
+     "K3_social1": 0.65,
+     "K3_social2": 0.6433333333333333,
+     "K4_social1": 0.5966666666666667,
+     "K4_social2": 0.5483333333333333,
+     "K5_social2": 0.42333333333333334
+    },
+    "single_0.4": {
+     "K1_social0": 1.0,
+     "K2_social1": 0.6366666666666667,
+     "K3_social1": 0.47,
+     "K3_social2": 0.3983333333333333,
+     "K4_social1": 0.42833333333333334,
+     "K4_social2": 0.36833333333333335,
+     "K5_social2": 0.27166666666666667
+    },
+    "single_0.6": {
+     "K1_social0": 1.0,
+     "K2_social1": 0.27666666666666667,
+     "K3_social1": 0.13333333333333333,
+     "K3_social2": 0.4266666666666667,
+     "K4_social1": 0.15666666666666668,
+     "K4_social2": 0.35333333333333333,
+     "K5_social2": 0.3016666666666667
+    },
+    "species": {
+     "K1_social0": 1.0,
+     "K2_social1": 0.795,
+     "K3_social1": 0.6116666666666667,
+     "K3_social2": 0.43,
+     "K4_social1": 0.585,
+     "K4_social2": 0.36333333333333334,
+     "K5_social2": 0.29833333333333334
+    }
+   },
+   "curve": [
+    {
+     "decisions": 0,
+     "none": {
+      "K1_social0": 0.42,
+      "K2_social1": 0.0133,
+      "K3_social1": 0.005,
+      "K3_social2": 0.0,
+      "K4_social1": 0.0,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "mute": {
+      "K1_social0": 0.425,
+      "K2_social1": 0.0067,
+      "K3_social1": 0.0017,
+      "K3_social2": 0.0,
+      "K4_social1": 0.0,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.4267,
+      "K2_social1": 0.0133,
+      "K3_social1": 0.0033,
+      "K3_social2": 0.0,
+      "K4_social1": 0.0017,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "scramble_w2": {
+      "K1_social0": 0.44,
+      "K2_social1": 0.0117,
+      "K3_social1": 0.0033,
+      "K3_social2": 0.0,
+      "K4_social1": 0.0,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.174,
+      "K3_social1": 0.168,
+      "K3_social2": 0.35,
+      "K4_social1": 0.168,
+      "K4_social2": 0.356,
+      "K5_social2": 0.335
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.304,
+       0.326,
+       0.37
+      ],
+      "K3_social1": [
+       0.275,
+       0.397,
+       0.328
+      ],
+      "K3_social2": [
+       0.388,
+       0.266,
+       0.346
+      ],
+      "K4_social1": [
+       0.339,
+       0.264,
+       0.397
+      ],
+      "K4_social2": [
+       0.364,
+       0.29,
+       0.346
+      ],
+      "K5_social2": [
+       0.297,
+       0.372,
+       0.331
+      ]
+     }
+    },
+    {
+     "decisions": 50069504,
+     "none": {
+      "K1_social0": 0.9633,
+      "K2_social1": 0.1433,
+      "K3_social1": 0.0817,
+      "K3_social2": 0.0067,
+      "K4_social1": 0.05,
+      "K4_social2": 0.0017,
+      "K5_social2": 0.0
+     },
+     "mute": {
+      "K1_social0": 0.9667,
+      "K2_social1": 0.0183,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.8633,
+      "K2_social1": 0.1117,
+      "K3_social1": 0.06,
+      "K3_social2": 0.005,
+      "K4_social1": 0.0183,
+      "K4_social2": 0.0017,
+      "K5_social2": 0.0017
+     },
+     "scramble_w2": {
+      "K1_social0": 0.9333,
+      "K2_social1": 0.18,
+      "K3_social1": 0.085,
+      "K3_social2": 0.0033,
+      "K4_social1": 0.035,
+      "K4_social2": 0.0017,
+      "K5_social2": 0.0033
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.469,
+      "K3_social1": 0.38,
+      "K3_social2": 0.412,
+      "K4_social1": 0.338,
+      "K4_social2": 0.365,
+      "K5_social2": 0.346
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.345,
+       0.322,
+       0.333
+      ],
+      "K3_social1": [
+       0.337,
+       0.363,
+       0.301
+      ],
+      "K3_social2": [
+       0.33,
+       0.319,
+       0.351
+      ],
+      "K4_social1": [
+       0.344,
+       0.326,
+       0.33
+      ],
+      "K4_social2": [
+       0.336,
+       0.299,
+       0.365
+      ],
+      "K5_social2": [
+       0.329,
+       0.32,
+       0.35
+      ]
+     }
+    },
+    {
+     "decisions": 100139008,
+     "none": {
+      "K1_social0": 0.9617,
+      "K2_social1": 0.2167,
+      "K3_social1": 0.1283,
+      "K3_social2": 0.005,
+      "K4_social1": 0.0817,
+      "K4_social2": 0.0067,
+      "K5_social2": 0.0067
+     },
+     "mute": {
+      "K1_social0": 0.9583,
+      "K2_social1": 0.02,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.8633,
+      "K2_social1": 0.1233,
+      "K3_social1": 0.0733,
+      "K3_social2": 0.0083,
+      "K4_social1": 0.0367,
+      "K4_social2": 0.0017,
+      "K5_social2": 0.0
+     },
+     "scramble_w2": {
+      "K1_social0": 0.955,
+      "K2_social1": 0.2483,
+      "K3_social1": 0.13,
+      "K3_social2": 0.015,
+      "K4_social1": 0.0933,
+      "K4_social2": 0.0033,
+      "K5_social2": 0.0017
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.592,
+      "K3_social1": 0.58,
+      "K3_social2": 0.472,
+      "K4_social1": 0.496,
+      "K4_social2": 0.411,
+      "K5_social2": 0.507
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.354,
+       0.308,
+       0.338
+      ],
+      "K3_social1": [
+       0.355,
+       0.335,
+       0.311
+      ],
+      "K3_social2": [
+       0.29,
+       0.347,
+       0.363
+      ],
+      "K4_social1": [
+       0.325,
+       0.296,
+       0.379
+      ],
+      "K4_social2": [
+       0.297,
+       0.354,
+       0.349
+      ],
+      "K5_social2": [
+       0.26,
+       0.351,
+       0.389
+      ]
+     }
+    },
+    {
+     "decisions": 150208512,
+     "none": {
+      "K1_social0": 0.9667,
+      "K2_social1": 0.3733,
+      "K3_social1": 0.225,
+      "K3_social2": 0.0183,
+      "K4_social1": 0.1517,
+      "K4_social2": 0.03,
+      "K5_social2": 0.0033
+     },
+     "mute": {
+      "K1_social0": 0.9667,
+      "K2_social1": 0.02,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.0067,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.8567,
+      "K2_social1": 0.1767,
+      "K3_social1": 0.0933,
+      "K3_social2": 0.0167,
+      "K4_social1": 0.05,
+      "K4_social2": 0.0017,
+      "K5_social2": 0.0
+     },
+     "scramble_w2": {
+      "K1_social0": 0.975,
+      "K2_social1": 0.3533,
+      "K3_social1": 0.2483,
+      "K3_social2": 0.0117,
+      "K4_social1": 0.1483,
+      "K4_social2": 0.015,
+      "K5_social2": 0.0033
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.811,
+      "K3_social1": 0.734,
+      "K3_social2": 0.591,
+      "K4_social1": 0.632,
+      "K4_social2": 0.565,
+      "K5_social2": 0.46
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.33,
+       0.328,
+       0.341
+      ],
+      "K3_social1": [
+       0.316,
+       0.343,
+       0.34
+      ],
+      "K3_social2": [
+       0.32,
+       0.335,
+       0.345
+      ],
+      "K4_social1": [
+       0.339,
+       0.325,
+       0.337
+      ],
+      "K4_social2": [
+       0.3,
+       0.33,
+       0.37
+      ],
+      "K5_social2": [
+       0.318,
+       0.358,
+       0.324
+      ]
+     }
+    },
+    {
+     "decisions": 200278016,
+     "none": {
+      "K1_social0": 0.9683,
+      "K2_social1": 0.4733,
+      "K3_social1": 0.3067,
+      "K3_social2": 0.0267,
+      "K4_social1": 0.1983,
+      "K4_social2": 0.0267,
+      "K5_social2": 0.005
+     },
+     "mute": {
+      "K1_social0": 0.9633,
+      "K2_social1": 0.02,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.0067,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.8617,
+      "K2_social1": 0.21,
+      "K3_social1": 0.105,
+      "K3_social2": 0.0167,
+      "K4_social1": 0.045,
+      "K4_social2": 0.005,
+      "K5_social2": 0.0
+     },
+     "scramble_w2": {
+      "K1_social0": 0.97,
+      "K2_social1": 0.4733,
+      "K3_social1": 0.2917,
+      "K3_social2": 0.025,
+      "K4_social1": 0.19,
+      "K4_social2": 0.02,
+      "K5_social2": 0.0033
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.831,
+      "K3_social1": 0.791,
+      "K3_social2": 0.675,
+      "K4_social1": 0.648,
+      "K4_social2": 0.629,
+      "K5_social2": 0.499
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.336,
+       0.336,
+       0.328
+      ],
+      "K3_social1": [
+       0.336,
+       0.339,
+       0.325
+      ],
+      "K3_social2": [
+       0.325,
+       0.325,
+       0.35
+      ],
+      "K4_social1": [
+       0.321,
+       0.333,
+       0.346
+      ],
+      "K4_social2": [
+       0.35,
+       0.323,
+       0.328
+      ],
+      "K5_social2": [
+       0.303,
+       0.352,
+       0.345
+      ]
+     }
+    },
+    {
+     "decisions": 250347520,
+     "none": {
+      "K1_social0": 0.9667,
+      "K2_social1": 0.4917,
+      "K3_social1": 0.31,
+      "K3_social2": 0.0217,
+      "K4_social1": 0.2283,
+      "K4_social2": 0.0267,
+      "K5_social2": 0.005
+     },
+     "mute": {
+      "K1_social0": 0.9667,
+      "K2_social1": 0.02,
+      "K3_social1": 0.005,
+      "K3_social2": 0.0,
+      "K4_social1": 0.0067,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.885,
+      "K2_social1": 0.2383,
+      "K3_social1": 0.1233,
+      "K3_social2": 0.0133,
+      "K4_social1": 0.05,
+      "K4_social2": 0.01,
+      "K5_social2": 0.0017
+     },
+     "scramble_w2": {
+      "K1_social0": 0.9633,
+      "K2_social1": 0.5067,
+      "K3_social1": 0.3367,
+      "K3_social2": 0.0217,
+      "K4_social1": 0.2283,
+      "K4_social2": 0.015,
+      "K5_social2": 0.005
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.83,
+      "K3_social1": 0.798,
+      "K3_social2": 0.68,
+      "K4_social1": 0.696,
+      "K4_social2": 0.688,
+      "K5_social2": 0.52
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.344,
+       0.34,
+       0.316
+      ],
+      "K3_social1": [
+       0.307,
+       0.336,
+       0.358
+      ],
+      "K3_social2": [
+       0.341,
+       0.328,
+       0.331
+      ],
+      "K4_social1": [
+       0.3,
+       0.357,
+       0.343
+      ],
+      "K4_social2": [
+       0.324,
+       0.35,
+       0.326
+      ],
+      "K5_social2": [
+       0.342,
+       0.309,
+       0.348
+      ]
+     }
+    },
+    {
+     "decisions": 300417024,
+     "none": {
+      "K1_social0": 0.955,
+      "K2_social1": 0.5517,
+      "K3_social1": 0.3833,
+      "K3_social2": 0.025,
+      "K4_social1": 0.2483,
+      "K4_social2": 0.035,
+      "K5_social2": 0.0083
+     },
+     "mute": {
+      "K1_social0": 0.965,
+      "K2_social1": 0.02,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.86,
+      "K2_social1": 0.2483,
+      "K3_social1": 0.11,
+      "K3_social2": 0.0133,
+      "K4_social1": 0.0633,
+      "K4_social2": 0.0083,
+      "K5_social2": 0.0033
+     },
+     "scramble_w2": {
+      "K1_social0": 0.9583,
+      "K2_social1": 0.535,
+      "K3_social1": 0.36,
+      "K3_social2": 0.045,
+      "K4_social1": 0.295,
+      "K4_social2": 0.0167,
+      "K5_social2": 0.0133
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.857,
+      "K3_social1": 0.835,
+      "K3_social2": 0.654,
+      "K4_social1": 0.717,
+      "K4_social2": 0.657,
+      "K5_social2": 0.572
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.354,
+       0.317,
+       0.33
+      ],
+      "K3_social1": [
+       0.321,
+       0.34,
+       0.339
+      ],
+      "K3_social2": [
+       0.319,
+       0.365,
+       0.316
+      ],
+      "K4_social1": [
+       0.296,
+       0.335,
+       0.37
+      ],
+      "K4_social2": [
+       0.307,
+       0.349,
+       0.344
+      ],
+      "K5_social2": [
+       0.317,
+       0.324,
+       0.359
+      ]
+     }
+    },
+    {
+     "decisions": 350486528,
+     "none": {
+      "K1_social0": 0.9733,
+      "K2_social1": 0.5383,
+      "K3_social1": 0.3883,
+      "K3_social2": 0.0317,
+      "K4_social1": 0.31,
+      "K4_social2": 0.03,
+      "K5_social2": 0.01
+     },
+     "mute": {
+      "K1_social0": 0.9683,
+      "K2_social1": 0.02,
+      "K3_social1": 0.005,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.8717,
+      "K2_social1": 0.2583,
+      "K3_social1": 0.1083,
+      "K3_social2": 0.0217,
+      "K4_social1": 0.0417,
+      "K4_social2": 0.0067,
+      "K5_social2": 0.0033
+     },
+     "scramble_w2": {
+      "K1_social0": 0.965,
+      "K2_social1": 0.5417,
+      "K3_social1": 0.355,
+      "K3_social2": 0.025,
+      "K4_social1": 0.295,
+      "K4_social2": 0.0217,
+      "K5_social2": 0.005
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.855,
+      "K3_social1": 0.827,
+      "K3_social2": 0.694,
+      "K4_social1": 0.767,
+      "K4_social2": 0.72,
+      "K5_social2": 0.536
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.328,
+       0.341,
+       0.331
+      ],
+      "K3_social1": [
+       0.342,
+       0.337,
+       0.322
+      ],
+      "K3_social2": [
+       0.338,
+       0.341,
+       0.321
+      ],
+      "K4_social1": [
+       0.353,
+       0.325,
+       0.322
+      ],
+      "K4_social2": [
+       0.353,
+       0.32,
+       0.328
+      ],
+      "K5_social2": [
+       0.309,
+       0.359,
+       0.332
+      ]
+     }
+    },
+    {
+     "decisions": 400556032,
+     "none": {
+      "K1_social0": 0.9733,
+      "K2_social1": 0.5267,
+      "K3_social1": 0.3883,
+      "K3_social2": 0.025,
+      "K4_social1": 0.2983,
+      "K4_social2": 0.0383,
+      "K5_social2": 0.0067
+     },
+     "mute": {
+      "K1_social0": 0.975,
+      "K2_social1": 0.0183,
+      "K3_social1": 0.005,
+      "K3_social2": 0.0,
+      "K4_social1": 0.0067,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.8733,
+      "K2_social1": 0.2633,
+      "K3_social1": 0.1267,
+      "K3_social2": 0.0233,
+      "K4_social1": 0.06,
+      "K4_social2": 0.01,
+      "K5_social2": 0.0
+     },
+     "scramble_w2": {
+      "K1_social0": 0.975,
+      "K2_social1": 0.5433,
+      "K3_social1": 0.3717,
+      "K3_social2": 0.015,
+      "K4_social1": 0.28,
+      "K4_social2": 0.02,
+      "K5_social2": 0.0183
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.868,
+      "K3_social1": 0.844,
+      "K3_social2": 0.667,
+      "K4_social1": 0.743,
+      "K4_social2": 0.707,
+      "K5_social2": 0.576
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.301,
+       0.357,
+       0.342
+      ],
+      "K3_social1": [
+       0.279,
+       0.344,
+       0.378
+      ],
+      "K3_social2": [
+       0.321,
+       0.365,
+       0.313
+      ],
+      "K4_social1": [
+       0.271,
+       0.346,
+       0.383
+      ],
+      "K4_social2": [
+       0.279,
+       0.315,
+       0.406
+      ],
+      "K5_social2": [
+       0.299,
+       0.328,
+       0.373
+      ]
+     }
+    },
+    {
+     "decisions": 450625536,
+     "none": {
+      "K1_social0": 0.9683,
+      "K2_social1": 0.59,
+      "K3_social1": 0.445,
+      "K3_social2": 0.02,
+      "K4_social1": 0.3033,
+      "K4_social2": 0.0367,
+      "K5_social2": 0.0067
+     },
+     "mute": {
+      "K1_social0": 0.975,
+      "K2_social1": 0.02,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.88,
+      "K2_social1": 0.275,
+      "K3_social1": 0.145,
+      "K3_social2": 0.0283,
+      "K4_social1": 0.0483,
+      "K4_social2": 0.0117,
+      "K5_social2": 0.0017
+     },
+     "scramble_w2": {
+      "K1_social0": 0.9733,
+      "K2_social1": 0.5617,
+      "K3_social1": 0.4233,
+      "K3_social2": 0.03,
+      "K4_social1": 0.2783,
+      "K4_social2": 0.04,
+      "K5_social2": 0.005
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.882,
+      "K3_social1": 0.856,
+      "K3_social2": 0.643,
+      "K4_social1": 0.771,
+      "K4_social2": 0.695,
+      "K5_social2": 0.543
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.212,
+       0.404,
+       0.384
+      ],
+      "K3_social1": [
+       0.214,
+       0.387,
+       0.399
+      ],
+      "K3_social2": [
+       0.287,
+       0.321,
+       0.392
+      ],
+      "K4_social1": [
+       0.242,
+       0.373,
+       0.385
+      ],
+      "K4_social2": [
+       0.271,
+       0.308,
+       0.421
+      ],
+      "K5_social2": [
+       0.336,
+       0.276,
+       0.388
+      ]
+     }
+    },
+    {
+     "decisions": 500695040,
+     "none": {
+      "K1_social0": 0.97,
+      "K2_social1": 0.575,
+      "K3_social1": 0.455,
+      "K3_social2": 0.05,
+      "K4_social1": 0.37,
+      "K4_social2": 0.045,
+      "K5_social2": 0.0233
+     },
+     "mute": {
+      "K1_social0": 0.98,
+      "K2_social1": 0.02,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.8983,
+      "K2_social1": 0.2917,
+      "K3_social1": 0.1433,
+      "K3_social2": 0.0217,
+      "K4_social1": 0.0633,
+      "K4_social2": 0.01,
+      "K5_social2": 0.0033
+     },
+     "scramble_w2": {
+      "K1_social0": 0.975,
+      "K2_social1": 0.5517,
+      "K3_social1": 0.3817,
+      "K3_social2": 0.0383,
+      "K4_social1": 0.3083,
+      "K4_social2": 0.035,
+      "K5_social2": 0.0217
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.87,
+      "K3_social1": 0.855,
+      "K3_social2": 0.7,
+      "K4_social1": 0.787,
+      "K4_social2": 0.693,
+      "K5_social2": 0.586
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.187,
+       0.405,
+       0.407
+      ],
+      "K3_social1": [
+       0.183,
+       0.373,
+       0.444
+      ],
+      "K3_social2": [
+       0.233,
+       0.359,
+       0.408
+      ],
+      "K4_social1": [
+       0.186,
+       0.387,
+       0.427
+      ],
+      "K4_social2": [
+       0.283,
+       0.337,
+       0.38
+      ],
+      "K5_social2": [
+       0.325,
+       0.284,
+       0.392
+      ]
+     }
+    },
+    {
+     "decisions": 550764544,
+     "none": {
+      "K1_social0": 0.98,
+      "K2_social1": 0.6,
+      "K3_social1": 0.4383,
+      "K3_social2": 0.07,
+      "K4_social1": 0.32,
+      "K4_social2": 0.0517,
+      "K5_social2": 0.0333
+     },
+     "mute": {
+      "K1_social0": 0.9733,
+      "K2_social1": 0.0217,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.0067,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.8867,
+      "K2_social1": 0.275,
+      "K3_social1": 0.155,
+      "K3_social2": 0.0217,
+      "K4_social1": 0.0917,
+      "K4_social2": 0.0133,
+      "K5_social2": 0.005
+     },
+     "scramble_w2": {
+      "K1_social0": 0.9783,
+      "K2_social1": 0.5783,
+      "K3_social1": 0.4217,
+      "K3_social2": 0.05,
+      "K4_social1": 0.315,
+      "K4_social2": 0.06,
+      "K5_social2": 0.035
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.875,
+      "K3_social1": 0.858,
+      "K3_social2": 0.697,
+      "K4_social1": 0.735,
+      "K4_social2": 0.7,
+      "K5_social2": 0.617
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.175,
+       0.417,
+       0.408
+      ],
+      "K3_social1": [
+       0.234,
+       0.338,
+       0.428
+      ],
+      "K3_social2": [
+       0.253,
+       0.337,
+       0.41
+      ],
+      "K4_social1": [
+       0.235,
+       0.382,
+       0.383
+      ],
+      "K4_social2": [
+       0.336,
+       0.416,
+       0.248
+      ],
+      "K5_social2": [
+       0.359,
+       0.348,
+       0.293
+      ]
+     }
+    },
+    {
+     "decisions": 600834048,
+     "none": {
+      "K1_social0": 0.9733,
+      "K2_social1": 0.625,
+      "K3_social1": 0.4783,
+      "K3_social2": 0.08,
+      "K4_social1": 0.3683,
+      "K4_social2": 0.0667,
+      "K5_social2": 0.005
+     },
+     "mute": {
+      "K1_social0": 0.9667,
+      "K2_social1": 0.0217,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.885,
+      "K2_social1": 0.3,
+      "K3_social1": 0.1483,
+      "K3_social2": 0.02,
+      "K4_social1": 0.1033,
+      "K4_social2": 0.0283,
+      "K5_social2": 0.005
+     },
+     "scramble_w2": {
+      "K1_social0": 0.9733,
+      "K2_social1": 0.58,
+      "K3_social1": 0.425,
+      "K3_social2": 0.0383,
+      "K4_social1": 0.3317,
+      "K4_social2": 0.0567,
+      "K5_social2": 0.03
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.899,
+      "K3_social1": 0.878,
+      "K3_social2": 0.733,
+      "K4_social1": 0.785,
+      "K4_social2": 0.725,
+      "K5_social2": 0.562
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.158,
+       0.414,
+       0.428
+      ],
+      "K3_social1": [
+       0.175,
+       0.394,
+       0.431
+      ],
+      "K3_social2": [
+       0.163,
+       0.45,
+       0.387
+      ],
+      "K4_social1": [
+       0.242,
+       0.4,
+       0.358
+      ],
+      "K4_social2": [
+       0.228,
+       0.426,
+       0.346
+      ],
+      "K5_social2": [
+       0.274,
+       0.412,
+       0.313
+      ]
+     }
+    },
+    {
+     "decisions": 650903552,
+     "none": {
+      "K1_social0": 0.9683,
+      "K2_social1": 0.6717,
+      "K3_social1": 0.4717,
+      "K3_social2": 0.1083,
+      "K4_social1": 0.3533,
+      "K4_social2": 0.0767,
+      "K5_social2": 0.0317
+     },
+     "mute": {
+      "K1_social0": 0.965,
+      "K2_social1": 0.02,
+      "K3_social1": 0.005,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.865,
+      "K2_social1": 0.3083,
+      "K3_social1": 0.1517,
+      "K3_social2": 0.0333,
+      "K4_social1": 0.0883,
+      "K4_social2": 0.0133,
+      "K5_social2": 0.015
+     },
+     "scramble_w2": {
+      "K1_social0": 0.9783,
+      "K2_social1": 0.585,
+      "K3_social1": 0.415,
+      "K3_social2": 0.0517,
+      "K4_social1": 0.3317,
+      "K4_social2": 0.0567,
+      "K5_social2": 0.0333
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.897,
+      "K3_social1": 0.867,
+      "K3_social2": 0.726,
+      "K4_social1": 0.755,
+      "K4_social2": 0.672,
+      "K5_social2": 0.599
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.098,
+       0.392,
+       0.51
+      ],
+      "K3_social1": [
+       0.108,
+       0.509,
+       0.384
+      ],
+      "K3_social2": [
+       0.129,
+       0.354,
+       0.518
+      ],
+      "K4_social1": [
+       0.181,
+       0.362,
+       0.457
+      ],
+      "K4_social2": [
+       0.206,
+       0.364,
+       0.43
+      ],
+      "K5_social2": [
+       0.234,
+       0.353,
+       0.413
+      ]
+     }
+    },
+    {
+     "decisions": 700973056,
+     "none": {
+      "K1_social0": 0.9817,
+      "K2_social1": 0.6583,
+      "K3_social1": 0.47,
+      "K3_social2": 0.1433,
+      "K4_social1": 0.335,
+      "K4_social2": 0.1067,
+      "K5_social2": 0.05
+     },
+     "mute": {
+      "K1_social0": 0.9817,
+      "K2_social1": 0.0217,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.0033,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.8817,
+      "K2_social1": 0.295,
+      "K3_social1": 0.1483,
+      "K3_social2": 0.055,
+      "K4_social1": 0.085,
+      "K4_social2": 0.0283,
+      "K5_social2": 0.0067
+     },
+     "scramble_w2": {
+      "K1_social0": 0.9833,
+      "K2_social1": 0.5633,
+      "K3_social1": 0.4033,
+      "K3_social2": 0.0867,
+      "K4_social1": 0.315,
+      "K4_social2": 0.08,
+      "K5_social2": 0.0267
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.898,
+      "K3_social1": 0.865,
+      "K3_social2": 0.763,
+      "K4_social1": 0.741,
+      "K4_social2": 0.706,
+      "K5_social2": 0.621
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.092,
+       0.438,
+       0.469
+      ],
+      "K3_social1": [
+       0.103,
+       0.457,
+       0.44
+      ],
+      "K3_social2": [
+       0.1,
+       0.393,
+       0.506
+      ],
+      "K4_social1": [
+       0.152,
+       0.453,
+       0.395
+      ],
+      "K4_social2": [
+       0.152,
+       0.494,
+       0.353
+      ],
+      "K5_social2": [
+       0.213,
+       0.403,
+       0.384
+      ]
+     }
+    },
+    {
+     "decisions": 751042560,
+     "none": {
+      "K1_social0": 0.9783,
+      "K2_social1": 0.6017,
+      "K3_social1": 0.465,
+      "K3_social2": 0.1467,
+      "K4_social1": 0.38,
+      "K4_social2": 0.0917,
+      "K5_social2": 0.04
+     },
+     "mute": {
+      "K1_social0": 0.9783,
+      "K2_social1": 0.02,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.0033,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.895,
+      "K2_social1": 0.3,
+      "K3_social1": 0.1617,
+      "K3_social2": 0.0517,
+      "K4_social1": 0.0767,
+      "K4_social2": 0.015,
+      "K5_social2": 0.0083
+     },
+     "scramble_w2": {
+      "K1_social0": 0.985,
+      "K2_social1": 0.5967,
+      "K3_social1": 0.4,
+      "K3_social2": 0.0933,
+      "K4_social1": 0.3667,
+      "K4_social2": 0.11,
+      "K5_social2": 0.0367
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.888,
+      "K3_social1": 0.871,
+      "K3_social2": 0.76,
+      "K4_social1": 0.779,
+      "K4_social2": 0.674,
+      "K5_social2": 0.627
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.092,
+       0.403,
+       0.505
+      ],
+      "K3_social1": [
+       0.112,
+       0.51,
+       0.377
+      ],
+      "K3_social2": [
+       0.076,
+       0.399,
+       0.525
+      ],
+      "K4_social1": [
+       0.129,
+       0.479,
+       0.393
+      ],
+      "K4_social2": [
+       0.113,
+       0.508,
+       0.379
+      ],
+      "K5_social2": [
+       0.182,
+       0.395,
+       0.423
+      ]
+     }
+    },
+    {
+     "decisions": 801112064,
+     "none": {
+      "K1_social0": 0.9733,
+      "K2_social1": 0.6483,
+      "K3_social1": 0.4317,
+      "K3_social2": 0.155,
+      "K4_social1": 0.4133,
+      "K4_social2": 0.1317,
+      "K5_social2": 0.0867
+     },
+     "mute": {
+      "K1_social0": 0.9767,
+      "K2_social1": 0.0217,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.8933,
+      "K2_social1": 0.3083,
+      "K3_social1": 0.145,
+      "K3_social2": 0.0617,
+      "K4_social1": 0.1083,
+      "K4_social2": 0.0167,
+      "K5_social2": 0.0167
+     },
+     "scramble_w2": {
+      "K1_social0": 0.9817,
+      "K2_social1": 0.5833,
+      "K3_social1": 0.43,
+      "K3_social2": 0.1067,
+      "K4_social1": 0.355,
+      "K4_social2": 0.0983,
+      "K5_social2": 0.0433
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.897,
+      "K3_social1": 0.839,
+      "K3_social2": 0.761,
+      "K4_social1": 0.804,
+      "K4_social2": 0.725,
+      "K5_social2": 0.67
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.057,
+       0.379,
+       0.563
+      ],
+      "K3_social1": [
+       0.069,
+       0.518,
+       0.413
+      ],
+      "K3_social2": [
+       0.076,
+       0.32,
+       0.604
+      ],
+      "K4_social1": [
+       0.105,
+       0.442,
+       0.453
+      ],
+      "K4_social2": [
+       0.112,
+       0.428,
+       0.46
+      ],
+      "K5_social2": [
+       0.113,
+       0.318,
+       0.569
+      ]
+     }
+    },
+    {
+     "decisions": 851181568,
+     "none": {
+      "K1_social0": 0.9767,
+      "K2_social1": 0.6433,
+      "K3_social1": 0.4417,
+      "K3_social2": 0.1683,
+      "K4_social1": 0.3767,
+      "K4_social2": 0.1367,
+      "K5_social2": 0.0683
+     },
+     "mute": {
+      "K1_social0": 0.9867,
+      "K2_social1": 0.02,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.0067,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.8733,
+      "K2_social1": 0.2767,
+      "K3_social1": 0.1783,
+      "K3_social2": 0.06,
+      "K4_social1": 0.0817,
+      "K4_social2": 0.02,
+      "K5_social2": 0.015
+     },
+     "scramble_w2": {
+      "K1_social0": 0.9817,
+      "K2_social1": 0.6017,
+      "K3_social1": 0.425,
+      "K3_social2": 0.1033,
+      "K4_social1": 0.3483,
+      "K4_social2": 0.1017,
+      "K5_social2": 0.0583
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.891,
+      "K3_social1": 0.843,
+      "K3_social2": 0.774,
+      "K4_social1": 0.797,
+      "K4_social2": 0.724,
+      "K5_social2": 0.669
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.058,
+       0.423,
+       0.519
+      ],
+      "K3_social1": [
+       0.077,
+       0.548,
+       0.375
+      ],
+      "K3_social2": [
+       0.077,
+       0.367,
+       0.556
+      ],
+      "K4_social1": [
+       0.102,
+       0.467,
+       0.431
+      ],
+      "K4_social2": [
+       0.095,
+       0.405,
+       0.5
+      ],
+      "K5_social2": [
+       0.152,
+       0.41,
+       0.438
+      ]
+     }
+    },
+    {
+     "decisions": 901251072,
+     "none": {
+      "K1_social0": 0.9683,
+      "K2_social1": 0.6583,
+      "K3_social1": 0.4667,
+      "K3_social2": 0.1883,
+      "K4_social1": 0.4283,
+      "K4_social2": 0.155,
+      "K5_social2": 0.075
+     },
+     "mute": {
+      "K1_social0": 0.97,
+      "K2_social1": 0.02,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.8667,
+      "K2_social1": 0.3,
+      "K3_social1": 0.1517,
+      "K3_social2": 0.0467,
+      "K4_social1": 0.1133,
+      "K4_social2": 0.0217,
+      "K5_social2": 0.01
+     },
+     "scramble_w2": {
+      "K1_social0": 0.9633,
+      "K2_social1": 0.5933,
+      "K3_social1": 0.435,
+      "K3_social2": 0.1583,
+      "K4_social1": 0.3583,
+      "K4_social2": 0.1217,
+      "K5_social2": 0.0517
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.899,
+      "K3_social1": 0.858,
+      "K3_social2": 0.793,
+      "K4_social1": 0.813,
+      "K4_social2": 0.748,
+      "K5_social2": 0.654
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.054,
+       0.441,
+       0.505
+      ],
+      "K3_social1": [
+       0.076,
+       0.515,
+       0.41
+      ],
+      "K3_social2": [
+       0.085,
+       0.344,
+       0.571
+      ],
+      "K4_social1": [
+       0.094,
+       0.427,
+       0.479
+      ],
+      "K4_social2": [
+       0.099,
+       0.358,
+       0.544
+      ],
+      "K5_social2": [
+       0.14,
+       0.416,
+       0.444
+      ]
+     }
+    },
+    {
+     "decisions": 951320576,
+     "none": {
+      "K1_social0": 0.9717,
+      "K2_social1": 0.64,
+      "K3_social1": 0.47,
+      "K3_social2": 0.1867,
+      "K4_social1": 0.3917,
+      "K4_social2": 0.175,
+      "K5_social2": 0.08
+     },
+     "mute": {
+      "K1_social0": 0.9683,
+      "K2_social1": 0.0217,
+      "K3_social1": 0.005,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.8667,
+      "K2_social1": 0.3067,
+      "K3_social1": 0.1617,
+      "K3_social2": 0.07,
+      "K4_social1": 0.0817,
+      "K4_social2": 0.0283,
+      "K5_social2": 0.0083
+     },
+     "scramble_w2": {
+      "K1_social0": 0.9683,
+      "K2_social1": 0.595,
+      "K3_social1": 0.4383,
+      "K3_social2": 0.1033,
+      "K4_social1": 0.3167,
+      "K4_social2": 0.1217,
+      "K5_social2": 0.0567
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.879,
+      "K3_social1": 0.878,
+      "K3_social2": 0.799,
+      "K4_social1": 0.774,
+      "K4_social2": 0.772,
+      "K5_social2": 0.661
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.055,
+       0.418,
+       0.526
+      ],
+      "K3_social1": [
+       0.075,
+       0.477,
+       0.449
+      ],
+      "K3_social2": [
+       0.084,
+       0.298,
+       0.618
+      ],
+      "K4_social1": [
+       0.09,
+       0.411,
+       0.498
+      ],
+      "K4_social2": [
+       0.086,
+       0.324,
+       0.59
+      ],
+      "K5_social2": [
+       0.164,
+       0.281,
+       0.555
+      ]
+     }
+    },
+    {
+     "decisions": 1001390080,
+     "none": {
+      "K1_social0": 0.9717,
+      "K2_social1": 0.6667,
+      "K3_social1": 0.4667,
+      "K3_social2": 0.2433,
+      "K4_social1": 0.3967,
+      "K4_social2": 0.1667,
+      "K5_social2": 0.09
+     },
+     "mute": {
+      "K1_social0": 0.9717,
+      "K2_social1": 0.02,
+      "K3_social1": 0.0067,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.86,
+      "K2_social1": 0.2817,
+      "K3_social1": 0.155,
+      "K3_social2": 0.0617,
+      "K4_social1": 0.08,
+      "K4_social2": 0.025,
+      "K5_social2": 0.0167
+     },
+     "scramble_w2": {
+      "K1_social0": 0.9717,
+      "K2_social1": 0.585,
+      "K3_social1": 0.4583,
+      "K3_social2": 0.14,
+      "K4_social1": 0.3517,
+      "K4_social2": 0.11,
+      "K5_social2": 0.0767
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.907,
+      "K3_social1": 0.853,
+      "K3_social2": 0.845,
+      "K4_social1": 0.788,
+      "K4_social2": 0.771,
+      "K5_social2": 0.705
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.067,
+       0.459,
+       0.473
+      ],
+      "K3_social1": [
+       0.069,
+       0.549,
+       0.383
+      ],
+      "K3_social2": [
+       0.062,
+       0.334,
+       0.605
+      ],
+      "K4_social1": [
+       0.082,
+       0.452,
+       0.465
+      ],
+      "K4_social2": [
+       0.1,
+       0.384,
+       0.517
+      ],
+      "K5_social2": [
+       0.123,
+       0.274,
+       0.603
+      ]
+     }
+    },
+    {
+     "decisions": 1024065536,
+     "none": {
+      "K1_social0": 0.965,
+      "K2_social1": 0.6333,
+      "K3_social1": 0.4883,
+      "K3_social2": 0.225,
+      "K4_social1": 0.3983,
+      "K4_social2": 0.2017,
+      "K5_social2": 0.095
+     },
+     "mute": {
+      "K1_social0": 0.9633,
+      "K2_social1": 0.02,
+      "K3_social1": 0.0033,
+      "K3_social2": 0.0,
+      "K4_social1": 0.005,
+      "K4_social2": 0.0,
+      "K5_social2": 0.0
+     },
+     "reset": {
+      "K1_social0": 0.8667,
+      "K2_social1": 0.2917,
+      "K3_social1": 0.1683,
+      "K3_social2": 0.0533,
+      "K4_social1": 0.0833,
+      "K4_social2": 0.0167,
+      "K5_social2": 0.0233
+     },
+     "scramble_w2": {
+      "K1_social0": 0.965,
+      "K2_social1": 0.5883,
+      "K3_social1": 0.435,
+      "K3_social2": 0.1417,
+      "K4_social1": 0.3917,
+      "K4_social2": 0.115,
+      "K5_social2": 0.045
+     },
+     "social_named": {
+      "K1_social0": 0.0,
+      "K2_social1": 0.904,
+      "K3_social1": 0.888,
+      "K3_social2": 0.838,
+      "K4_social1": 0.785,
+      "K4_social2": 0.796,
+      "K5_social2": 0.681
+     },
+     "size_share": {
+      "K1_social0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "K2_social1": [
+       0.054,
+       0.392,
+       0.554
+      ],
+      "K3_social1": [
+       0.062,
+       0.523,
+       0.415
+      ],
+      "K3_social2": [
+       0.055,
+       0.352,
+       0.593
+      ],
+      "K4_social1": [
+       0.086,
+       0.418,
+       0.495
+      ],
+      "K4_social2": [
+       0.073,
+       0.352,
+       0.575
+      ],
+      "K5_social2": [
+       0.121,
+       0.379,
+       0.5
+      ]
+     }
+    }
+   ]
+  }
+ }
+}

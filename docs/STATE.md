@@ -1,8 +1,8 @@
 # STATE
 
 Last guidance update: 2026-10-21. Experimental frontier: 2026-10-05.
-Latest build: 2026-11-20 (development; a budget experiment is ready to run, no
-confirmatory result). Rewrite this file, never append.
+Latest build: 2026-11-21 (caregiver-v1 world passes its ceiling survey; speaking
+learner training; development only, no confirmatory result). Rewrite this file, never append.
 
 ## Where the next agent should start
 
@@ -67,26 +67,34 @@ For a small runnable diagnostic (exploratory, not confirmation):
 PYTHONPATH=src .venv/bin/python -m homesocial.organism.active_self --mode diagnostic --block 0 --k 2
 ```
 
-### Built 2026-11-20, not yet run to its budget
+### Built 2026-11-20, budget run 2026-11-21 (development)
 
-Record: `docs/decisions/2026-11-20-learned-self-budget-experiment.md`.
+Record: `docs/decisions/2026-11-20-learned-self-budget-experiment.md`
+(results section dated 2026-11-21).
 
 **First missing connection:** no learner in the repository could both find out
 its body and take in words; Probe80's posterior is hand-derived for its physics.
-Two development pieces now address that. Neither is a capability yet.
+Two development pieces now address that. Neither is a language capability yet.
 
 1. **A learned self on Probe80's body family** (`learned_self.py` on the exact,
    vectorized physics in `vec_body.py`). One GRU trained across bodies gets the
    same lived information as `SelfPosterior` and uses one recurrent state to
-   act and to predict its own sensations. A six-minute sanity run reached
-   survival 0.89 / 0.48 / 0.20 at K1-K3 (random 0.45 / 0.14 / 0.02; Probe80's
-   posterior 0.98 / 0.86 / 0.68) and was still rising. **The sustained run has
-   not been done.** Untested: whether it approaches the posterior, at what
-   budget, and every control except the memory-reset lesion.
+   act and to predict its own sensations. **After 2.0 billion decisions (7.25 h,
+   one seed) it survives 0.96 / 0.94 / 0.89 / 0.80 / 0.75 at K1-K5**, against
+   Probe80's published posterior 0.98 / 0.86 / 0.68 / 0.47 / 0.27 (other
+   bodies, unpaired). Memory reset at each birth drops it to 0.87-0.32; at K5
+   survival climbs from 0.33 in life one to 0.94 in life six, so it learns this
+   body across lives. It beats the myopic "oracle" at K2-K5 while agreeing with
+   its choice only 31% of the time, so that oracle is a reference policy, not a
+   ceiling. K1-K2 have plateaued; K4-K5 still rise about +0.02 per billion
+   decisions. Untested: paired comparison, seed replication, yoked and
+   uncertainty controls, bodies outside the family. Evidence:
+   `runs/organism/learned_self_dev/evidence.json` (checkpoint kept locally).
 
    ```bash
    PYTHONPATH=src caffeinate -i .venv/bin/python -m homesocial.organism.learned_self train --out-dir runs/organism/learned_self_dev --max-hours 9
    PYTHONPATH=src .venv/bin/python -m homesocial.organism.learned_self eval --out-dir runs/organism/learned_self_dev
+   PYTHONPATH=src .venv/bin/python scripts/learned_self_actions.py
    ```
 
 2. **A ceiling check for words** (`caregiver_world.py`, scenario
@@ -95,15 +103,48 @@ Two development pieces now address that. Neither is a capability yet.
    +0.02 to +0.07 and does not depend on the body's own rates. **v0 would teach
    a one-slot vocabulary; do not train a learner for productive speech in it.**
 
-**Next action:** run piece 1 to its budget (about nine hours) and read the
-curve in `runs/organism/learned_self_dev/curve.jsonl`. If survival nears the
-posterior's at K1-K3, give the same learner words and design the confirmatory
-comparison on a new band. If it is flat and clearly below, test one named
-limitation at a time or keep the posterior as the belief and learn only the
-speech. In parallel, find a `caregiver-v1` whose second slot passes the same
-ceiling survey before any language training. Change detection, K5 and
-navigation are not automatic prerequisites. Keep later candidate questions
-below as background.
+3. **A world where the second word pays: `caregiver-v1-size`** (2026-11-21,
+   `caregiver_v1.py`; record
+   `docs/decisions/2026-11-21-caregiver-v1-ceiling-survey.md`). The caregiver
+   visits every fourth decision and gives a requested portion (0.2 / 0.4 / 0.6)
+   from a per-life ration; overflow above 1.0 is lost. It **passes all six
+   criteria locked before the survey**: with reference speakers the size word
+   is worth +0.16 to +0.22 survival over the best single size, tracking levels
+   with the body's own rather than the species' rates is worth +0.05 to +0.21,
+   and every size is 14-53% of requests (5/5 blocks everywhere). Two
+   alternatives, `v1-when` and `v1-basket`, fail the second-word criterion.
+   Two development iterations of the reference speaker preceded the survey
+   (disclosed in the record). Reference speakers are lower bounds, not
+   ceilings.
+
+4. **A speaking learner** (`speaking_self.py`). The learned-self GRU, warm
+   started from the 2026-11-21 checkpoint, also chooses whether to speak and
+   two words when the caregiver is present. Word meanings are private to each
+   identity and never given; only bodily reward and sensation prediction train
+   it. Disclosed prior: the utterance has two heads, the second conditioned on
+   the first word. Evaluation reports survival against reference speakers,
+   mute / memory-reset / scrambled-second-word lesions, how often it names a
+   social resource, its size shares, and *novel combinations* (a word pair the
+   identity never said, built from words it has said in other pairs). **Not yet
+   trained to budget; no result.** Started 2026-11-21 ~09:00, three arms up to
+   10 h each: warm start seeds 0 and 1, from scratch seed 0.
+
+   ```bash
+   PYTHONPATH=src .venv/bin/python -m homesocial.organism.caregiver_v1
+   PYTHONPATH=src caffeinate -i .venv/bin/python -m homesocial.organism.speaking_self train --out-dir runs/organism/speaking_self_dev/warm_s0 --seed 0 --init runs/organism/learned_self_dev/checkpoint --max-hours 10 --eval-every 5e7
+   ```
+
+**Next action:** read the three speaking curves
+(`runs/organism/speaking_self_dev/*/curve.jsonl`). The question is whether a
+learner, from consequence alone, comes to name its social resource, choose
+sizes that track its body, and say useful new word pairs, and whether the
+mute and scrambled-second-word lesions then cost survival. If it stalls, the
+recorded fallbacks are a shared (species) convention first, or planning over
+candidate utterances. Separately, the confirmatory learned-vs-posterior
+comparison on a fresh band (paired arms, five seeds, yoked and reset controls)
+can be preregistered and folded into the final three-arm experiment. Change
+detection, K5 and navigation are not automatic prerequisites. Keep later
+candidate questions below as background.
 
 ## The direction in one paragraph
 

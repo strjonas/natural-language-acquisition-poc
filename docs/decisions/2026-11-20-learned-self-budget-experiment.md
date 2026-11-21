@@ -139,3 +139,63 @@ ceiling proof; a second slot needs a different consequence, not a retuned
 delay. Candidates for `v1`, each to be put through this same survey first: a
 basket divided among several named resources per visit; a "when" slot under
 delayed answers (Probe65's horizon effect); a costly "check me" request.
+
+## Result of the sustained run (added 2026-11-21)
+
+Development result: one training seed, `git` source `754493a`, default
+configuration. The run stopped at the default `--max-decisions` cap
+(2.0 billion decisions, 7.25 h of training, about 75,000 decisions per second
+under overnight load), before the nine-hour cap. Evaluation: 200 development
+identities per K, six lives each, final checkpoint (no checkpoint selection).
+Evidence: `runs/organism/learned_self_dev/evidence.json` (curve, final
+evaluation, checkpoint hashes); the checkpoint itself stays local.
+
+| K | random | myopic oracle | Probe80 posterior* | learned | learned, memory reset each life | probe exact, life 6 | Probe80 exact, life 6* |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 0.394 | 1.000 | 0.978 | 0.962 | 0.873 | 1.000 | 1.00 |
+| 2 | 0.129 | 0.910 | 0.864 | 0.938 | 0.754 | 0.995 | 1.00 |
+| 3 | 0.039 | 0.782 | 0.675 | 0.887 | 0.598 | 0.590 | 0.93 |
+| 4 | 0.010 | 0.675 | 0.472 | 0.796 | 0.443 | 0.080 | 0.67 |
+| 5 | 0.004 | 0.552 | 0.272 | 0.747 | 0.315 | 0.000 | 0.25 |
+
+\* Probe80's published survey: other bodies of the same family, not paired.
+
+Survival by life at K5: 0.33, 0.62, 0.78, 0.89, 0.94, 0.94 (memory reset:
+flat, 0.29-0.34). K4: 0.34 to 0.96. Life-one survival is no better than the
+reset arm, so the gain is built from this body's own earlier lives, not from
+leaked identity information.
+
+Curve: most of the gain came in the first 200 million decisions (K5 0.66).
+Over the last third, the slope is +0.000 (K1), +0.009, +0.013, +0.018, +0.026
+(K5) survival per billion decisions, against an evaluation noise of about
+0.01. K1-K2 have plateaued; K4-K5 are still rising slowly.
+
+**The "oracle" is not a ceiling.** It always grants the large portion to the
+unblocked resource that would run out first, from true levels and rates. The
+learner, which sees only the two scalars, beats it at K2-K5. At K3-K5 in life
+six only 31% of its choices equal the oracle's; 50% target another resource,
+7% use the other portion, and 13% use an actuator that restores nothing
+(`scripts/learned_self_actions.py`). Why that control is better is untested.
+One hypothesis is that "do nothing" and timing avoid overshoot; this has not
+been checked. Probe80's oracle numbers should be read as a reference policy
+only, as the method guidance already warns.
+
+**What this establishes (development):** one learned recurrent state, given
+only what `SelfPosterior` gets, finds out its body across lives and keeps it
+alive at least as well as the hand-derived posterior at K2-K5 on this family.
+At K1 it is 0.02 below. It survives better while decoding the exact partition
+less often at K3-K5 (per-fact accuracy at life six: 0.93-1.00). Good control
+does not need an exactly decodable map here.
+
+**What it does not establish:** a paired comparison with the posterior (other
+bodies, one seed); replication across training seeds; the yoked-body and
+uncertainty controls; generalization outside the family; anything about
+words. The development identities were monitored throughout, so they cannot
+serve for confirmation.
+
+**Decision:** the learned route passes its development branch condition ("near
+the posterior and still rising"). Keep this learner as the body-knowledge
+carrier for the language stage. A confirmatory comparison on a fresh band
+(paired posterior arm, five training seeds, yoked and reset controls) is now
+worth preregistering, at about 7 h per seed at this rate. The language stage is
+still blocked by `caregiver-v0`, which supports only a one-slot vocabulary.

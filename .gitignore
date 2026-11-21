@@ -60,3 +60,12 @@ CLAUDE.md
 AGENTS.md
 !/AGENTS.md
 /md
+!runs/organism/learned_self_dev/
+runs/organism/learned_self_dev/*
+!runs/organism/learned_self_dev/evidence.json
+!runs/organism/caregiver_v1/
+runs/organism/caregiver_v1/*
+!runs/organism/caregiver_v1/ceiling_survey_*.json
+!runs/organism/speaking_self_dev/
+runs/organism/speaking_self_dev/*
+!runs/organism/speaking_self_dev/evidence.json
