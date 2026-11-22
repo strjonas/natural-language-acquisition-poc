@@ -125,3 +125,101 @@ requests in training-like bodies (threshold < 0.02), H2 0.62-0.68, H3 +0.137
 in both test cells; **pass**. Run B had started with the bug and was restarted
 from scratch on the fixed code (manifest pin `eff7ab9a...`). Run A (private
 convention) uses neither fixed function; its manifest pins the earlier file.
+
+## Results of runs A and B, and why B dies in held-out bodies (2026-11-22)
+
+Development only, one training seed each, 1.48 billion decisions in 9.97 h
+(about 41,000 decisions per second each, sharing the machine). Evidence:
+`runs/organism/speaking_self_dev/evidence.json`, arms `v2r_private_s0` and
+`v2r_shared_s0` (manifests, checkpoint hashes, curves, final evaluations and
+the diagnosis below; checkpoints kept locally). Development identities, 100
+per cell, six lives each; `*` are reference speakers that see true levels.
+
+| cell | A learned | A scramble w2 | B learned | B scramble w2 | B mute | B composed* |
+|---|---:|---:|---:|---:|---:|---:|
+| K2 social1 | 0.522 | 0.460 | 0.833 | 0.405 | 0.017 | 0.797 |
+| K3 social1 | 0.345 | 0.283 | 0.762 | 0.435 | 0.005 | 0.700 |
+| K4 social1 | 0.322 | 0.248 | 0.708 | 0.432 | 0.004 | 0.599 |
+| K3 social2 | 0.048 | 0.028 | 0.453 | 0.137 | 0.000 | 0.550 |
+| K4 social2 | 0.093 | 0.057 | 0.362 | 0.175 | 0.000 | 0.463 |
+
+**A (private conventions): the size word stays nearly idle.** Scrambling it
+costs 0.02-0.07, as in v1-size (0.00-0.08). With two social resources A
+nearly always dies (0.04-0.09 against the composed speaker's 0.40-0.60).
+Sickness alone did not make the size word learnable when every identity has
+its own convention.
+
+**B (shared convention): the size word carries survival.** Scrambling it
+costs 0.25-0.43 with one social resource and 0.18-0.32 with two (K2-K5); muting costs
+everything. With one social resource B beats the composed reference speaker
+(+0.04 to +0.19), which again shows reference speakers are not ceilings. With
+two it is 0.06-0.10 below. A and B differ in convention *and* in their training
+and evaluation bodies (B's channel 0 is restricted), so the contrast does not
+isolate the convention; there is no v1 shared run, so it does not isolate
+sickness either.
+
+**B fails the held-out-pair test, upstream of the pair.** In held-out bodies
+B survives 0.000 in both cells (composed* 0.362 / 0.287, no-pair* 0.233 /
+0.118) and says the pair in none of its channel-0 requests. Survival there was
+0.000 at all 31 evaluations, from the untrained network onward; no early
+success was lost.
+
+Diagnosis (`scripts/held_out_diagnosis.py`, 40 s, 300 held-out identities per
+cell, `held_out_diagnosis.json`). Held-out bodies differ from training in
+three ways at once; the script removes them one at a time on the same
+identities:
+
+| held-out variant | learned K3 / K4 | composed* | no pair* | learner's requests naming channel 0 |
+|---|---:|---:|---:|---:|
+| as built (fast ch0, ch0 + another social) | 0.000 / 0.000 | 0.338 / 0.282 | 0.179 / 0.148 | ~0.00 |
+| slow ch0, ch0 + another social | 0.173 / 0.149 | 0.798 / 0.633 | 0.735 / 0.561 | 0.23 |
+| fast ch0, ch0 the only social | 0.004 / 0.000 | 0.030 / 0.023 | 0.037 / 0.027 | 0.03-0.07 |
+| slow ch0, ch0 the only social | 0.871 / 0.831 | 0.849 / 0.711 | 0.849 / 0.711 | 0.77-0.79 |
+| as training (also training births) | 0.934 / 0.887 | 0.849 / 0.711 | 0.849 / 0.711 | 0.77-0.79 |
+
+1. **The learner fails on the first word.** In the held-out bodies as built
+   it almost never names channel 0. It asks for the other social resource
+   (43% of requests) and for resources it can restore itself (56%), and dies
+   of channel 0 (64-76% of deaths) at a median tick of 35 of 400, after about
+   two caregiver visits. The size question never arises.
+2. **The unseen configuration alone is enough to break it.** With channel 0
+   slowed to the training rates but still social alongside another
+   resource, the learner survives 0.15-0.17 where the no-pair speaker
+   survives 0.56-0.74. It names channel 0 in only 23% of requests. In
+   training, channel 0 was social only when it was the *sole* social
+   resource. The learner did not generalize "channel 0 needs the caregiver"
+   to a body where a second resource does too. Two social resources as such
+   are not the problem: in development bodies with two social resources
+   other than channel 0 it reaches 0.28-0.45.
+3. **On the training configuration it is strong.** It survives 0.83-0.93
+   on the same identities, above the reference speakers.
+4. **The fast rate is what makes the pair needed, and it needs the pooled
+   ration.** In slow bodies the pair is worth only +0.06 to the reference
+   speaker (0.798 against 0.735). With channel 0 fast and the only social
+   resource, every speaker starves (0.02-0.04), because the ration is set
+   from species rates. The held-out cells are survivable only because the
+   ration is pooled with a second social resource.
+
+**Reading.** The held-out-pair test as built confounds a new word combination
+with a new *body configuration*, and the learner fails the configuration. That
+failure is itself a generalization failure of the first word. It is neither
+evidence for nor evidence against productive recombination of the second
+word. The finish-line preregistration stays conditional and is not written.
+
+Design consequences for the next held-out iteration (not yet built or
+surveyed; it will be iteration 3 and must be disclosed as such):
+
+- Training must contain every configuration the test uses except the need
+  for the pair: channel 0 social *together with* other social resources, with
+  the pooled ration, and channel 0 drain rates that overlap the test range.
+- Rarity of the pair then has to come from something other than excluding
+  configurations. For example, channel 0 in training bodies could be born well
+  fed and drain moderately in every configuration, and the test could raise
+  its rate only as far as needed to make 0.6 the right size. H1 (rare in
+  training) and H2/H3 (needed and worth survival in test) must be re-surveyed
+  under the same thresholds.
+- An alternative that avoids a need shift: hold the pair out of the shared
+  *experience* rather than the body. For instance, in training the caregiver
+  could deliver channel 0 only in 0.2/0.4 portions while 0.6 works for every
+  other resource, and the test restores it. This changes what the caregiver
+  teaches, so it needs its own rationale before use.

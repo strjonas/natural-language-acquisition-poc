@@ -1,8 +1,9 @@
 # STATE
 
 Last guidance update: 2026-10-21. Experimental frontier: 2026-10-05.
-Latest build: 2026-11-21 (speaking learner; caregiver-v2r world and held-out word
-pair pass their surveys; two runs training; development only, no confirmation). Rewrite this file, never append.
+Latest build: 2026-11-22 (speaking learner in caregiver-v2r: the size word carries
+survival under a shared convention; the held-out-pair test failed upstream of the
+pair and needs redesign; development only, no confirmation). Rewrite this file, never append.
 
 ## Where the next agent should start
 
@@ -138,31 +139,63 @@ Two development pieces now address that. Neither is a language capability yet.
    development iterations and one bug fix preceded these results (all in the
    record). v2 without the ration failed its survey.
 
-   **Running 2026-11-21 ~20:45, 10 h each, from scratch:** A, v2r with private
-   conventions; B, v2r with the shared convention and the held-out pair
-   (`runs/organism/speaking_self_dev/v2r_{private,shared}_s0`).
+   **Runs A and B (2026-11-21/22, 1.48 billion decisions, 10 h each, seed 0,
+   development).** Results in the same record, evidence
+   `runs/organism/speaking_self_dev/evidence.json` (arms `v2r_*_s0`).
+   - **A, private conventions:** the size word stays nearly idle (scrambling
+     it costs 0.02-0.07, as in v1-size); two social resources nearly always
+     kill it.
+   - **B, shared convention: the agent now uses both words.** Scrambling the
+     size word costs 0.25-0.43 survival with one social resource and
+     0.18-0.32 with two; muting costs everything. With one social resource it
+     survives 0.71-0.83, above the reference speaker that sees true levels
+     (+0.04 to +0.19); with two, 0.28-0.45 (0.06-0.10 below). A and B differ in
+     convention and in training bodies, so this does not isolate either cause.
+   - **B fails the held-out-pair test, upstream of the pair:** survival 0.000
+     in both held-out cells at every evaluation, and it never says the pair.
+     A diagnosis (`scripts/held_out_diagnosis.py`) shows that it almost never
+     names channel 0 there and dies of it within about two caregiver visits.
+     In training, channel 0 was social only as the *sole* social resource.
+     The learner does not carry "channel 0 needs the caregiver" into bodies
+     where a second resource does too: slowing channel 0 to training rates
+     in that configuration still leaves it at 0.15-0.17, against 0.56-0.74
+     for the no-pair reference speaker. On the training configuration of
+     the same identities it survives 0.83-0.93. The test therefore confounds
+     a new word combination with a new body configuration and says nothing
+     yet about productive recombination.
 
    ```bash
    PYTHONPATH=src .venv/bin/python -m homesocial.organism.caregiver_v2 --ration
    PYTHONPATH=src caffeinate -i .venv/bin/python -m homesocial.organism.speaking_self train --out-dir runs/organism/speaking_self_dev/v2r_shared_s0 --world v2r --convention shared --seed 0 --max-hours 10 --eval-every 5e7
+   PYTHONPATH=src .venv/bin/python scripts/held_out_diagnosis.py runs/organism/speaking_self_dev/v2r_shared_s0
    PYTHONPATH=src .venv/bin/python scripts/speaking_probe.py runs/organism/speaking_self_dev/scratch_s0
    ```
 
 **Next action (the route to the target):**
 
-1. Read runs A and B. The decisive development reading is B's held-out
-   table: does the learner say (channel 0, 0.6) in held-out bodies at a rate
-   near the reference speaker's, and does muting only that pair cost survival?
-   A says whether sickness makes the size word learnable at all.
-2. If B shows it: preregister the confirmatory experiment, which is the
-   finish line. Fresh bands; five training seeds; arms silent (no caregiver
-   speech), grounded (v2r) and decoupled (words whose deliveries do not depend
-   on what was said); lesions mute, mute-pair, scramble-second-word and memory
-   reset; the held-out-pair endpoint; Probe80's posterior and the
-   learned-self body as paired body baselines. About 10 h per seed per arm.
-3. If the size word stays idle even with sickness: the remaining recorded
-   fallback is planning over candidate utterances with the learner's own
-   sensation predictor (it already conditions on what was said).
+1. **Redesign the held-out pair (iteration 3, disclosed as development).**
+   Training bodies must contain every configuration the test uses except the
+   need for the pair: channel 0 social *alongside* other social resources
+   with the pooled ration, and channel 0 drain rates overlapping the test
+   range. The pair's rarity then has to come from need alone, for example
+   well-fed births and moderate drain with the test raising the rate only as
+   far as 0.6 requires. Re-survey H1-H3 under unchanged thresholds (seconds),
+   then retrain B (10 h). Run the diagnosis script on the new held-out set
+   before reading the pair. An alternative that avoids a need shift
+   (the caregiver gives channel 0 only 0.2/0.4 in training) is recorded but
+   changes what is taught, so it needs its own rationale.
+2. If the new B says the pair when needed and muting only that pair costs
+   survival: preregister the confirmatory experiment, which is the finish
+   line. Fresh bands; five training seeds; arms silent (no caregiver speech),
+   grounded (v2r) and decoupled (words whose deliveries do not depend on what
+   was said); lesions mute, mute-pair, scramble-second-word and memory reset;
+   the held-out-pair endpoint; Probe80's posterior and the learned-self body
+   as paired body baselines. About 10 h per seed per arm.
+3. If the first word still fails to transfer across body configurations even
+   when they all appear in training, that is the blocker to address before any
+   size-word test. Candidates are more training, more capacity, or planning
+   over candidate utterances with the learner's own sensation predictor (it
+   already conditions on what was said).
 
 Change detection, K5 and navigation are not prerequisites. Keep later
 candidate questions below as background.
